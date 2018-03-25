@@ -8,9 +8,11 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
-	"../types" //should be adjusted to reference our repo
-	"../utxo"
+	//"../types" //should be adjusted to reference our repo
+	//"../utxo"
 	"fmt" //for testing
+	"github.com/ethereum/go-ethereum/rlp"
+
 )
 
 const (
@@ -37,7 +39,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	var app = &ChildChain{
 		BaseApp:			bam.NewBaseApp(appName, logger, db),
 		capKeyMainStore:	sdk.NewKVStoreKey("main"),
-		capKeyIBCStore:  sdk.NewKVStoreKey("ibc"),
+		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
 	}
 
 	// define the utxoMapper
@@ -47,8 +49,10 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	)
 
 	// TODO: add handlers/router
-	// add utxoKeeper
-	
+	// UTXOKeeper to adjust spending and recieving of utxo's
+	UTXOKeeper := NewUTXOKeeper(app.utxoMapper)
+	app.Router().
+		AddRoute("txs", NewHandler(UTXOKeeper))
 
 	// initialize BaseApp
 	// set the BaseApp txDecoder to use txDecoder with RLP
@@ -73,23 +77,19 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 // TODO: change sdk.Tx to different transaction struct
 func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// TODO: implement method
-	var tx = sdk.StdTx{}
-	return tx, nil
+	return nil
 }
-
 
 // TODO: Add initChainer?
 
 // TODO: delete this
 func main() {
-	fmt.Println("Compiled :)")
+	fmt.Println("Compiled")
 }
 
 
 
 // Current big idea TODO List:
-// 1. Build Prototype for UTXO
-// 2. Implement txDecoder
-// 3. Implement Handlers
+// - Implement RLP Encoding/Decoding in app.go and tx.go
 // 4. Implement AnteHandler
-// 5. Write Basic Test Case and run
+// 5. Write Basic Test Cases

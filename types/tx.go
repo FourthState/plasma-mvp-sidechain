@@ -3,6 +3,7 @@ package types
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // Consider correct types to use
@@ -12,9 +13,11 @@ type SpendMsg struct {
 	blknum1   uint
 	txindex1  uint
 	oindex1   uint
+	owner1	  crypto.Address
 	blknum2   uint
 	txindex2  uint
 	oindex2   uint
+	owner2	  crypto.Address
 	newowner1 crypto.Address
 	denom1    uint
 	newowner2  crypto.Address
@@ -22,15 +25,17 @@ type SpendMsg struct {
 	fee       uint
 }
 
-func NewSpendMsg(blknum1 uint, txindex1 uint, oindex1 uint, blknum2 uint, txindex2 uint, oindex2 uint,
+func NewSpendMsg(blknum1 uint, txindex1 uint, oindex1, owner1 crypto.Address uint, blknum2 uint, txindex2 uint, oindex2 uint, owner2 crypto.Address,
 				newowner1 crypto.Address, denom1 uint, newowner2 crypto.Address, denom2 uint, fee uint) SpendMsg {
 	return SpendMsg{
 		blknum1: 	blknum1,
 		txindex1: 	txindex1,
 		oindex1:	oindex1,
+		owner1:		owner1,
 		blknum2:	blknum2,
 		txindex2:	txindex2,
 		oindex2:	oindex2,
+		owner2:		owner2,
 		newowner1:	newowner1,
 		denom1:		denom1,
 		newowner2:	newowner2,
@@ -45,7 +50,11 @@ func (msg SpendMsg) Type() string { return "txs" } // TODO: decide on something 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {
 	// this just ensures everything is correctly formatted
-
+	// Add more checks?
+	if msg.newowner1 == 0 && msg.newowner2 == 0 {
+		return NewError(10,"No recipient of transaction")
+	}
+	return nil
 }
 
 // Implements Msg. 
@@ -60,14 +69,18 @@ func (msg SpendMsg) Get(key interface{}) (value interface{}) {
 
 // Implements Msg.
 func (msg SpendMsg) GetSignBytes() []byte {
-	// TODO
+	// TODO: Implement
+	return nil
 }
 
 // Implements Msg.
 func (msg SpendMsg) GetSigners() []crypto.Address {
 	// TODO
+	addrs := make([]crypto.Address, 2)
+	addrs[0] = msg.owner1
+	addrs[1] = msg.owner2
+	return addrs
 }
-
 //----------------------------------------
 // DepositMsg
 
@@ -83,12 +96,13 @@ func (msg DepositMsg) Type() string { return "txs" } // TODO: decide on somethin
 // Implements Msg.
 func (msg DepositMsg) ValidateBasic() sdk.Error {
 	// this just ensures everything is correctly formatted
-
+	// TODO: Implement
+	return nil
 }
 
 // Implements Msg. 
 func (msg DepositMsg) String() string {
-	return "Spend" // TODO: Implement so contents of Msg are returned
+	return "Deposit" // TODO: Implement so contents of Msg are returned
 }
 
 // Implements Msg.
@@ -98,10 +112,31 @@ func (msg DepositMsg) Get(key interface{}) (value interface{}) {
 
 // Implements Msg.
 func (msg DepositMsg) GetSignBytes() []byte {
-	// TODO
+	// TODO: Implement
+	return nil
 }
 
 // Implements Msg.
 func (msg DepositMsg) GetSigners() []crypto.Address {
-	// TODO
+	// TODO: Implement
+	return nil
 }
+
+//----------------------------------------
+// BaseTx (Transaction wrapper for depositmsg and spendmsg)
+
+type BaseTx struct {
+	Msg
+	Signatures []StdSignature
+}
+
+func NewStdTx(msg Msg, sigs []StdSignature) BaseTx {
+	return BaseTx{
+		Msg: 		msg,
+		Signatures: sigs,
+	}
+}
+
+func (tx BaseTx) GetMsg() Msg 					{ return tx.Msg }
+func (tx BaseTx) GetFeePayer() crypto.Address	{ return tx.Signatures[0].PubKey.Address() }
+func (tx BaseTx) GetSignatures() []StdSignature { return tx.Signatures }
