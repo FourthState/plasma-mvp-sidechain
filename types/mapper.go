@@ -6,6 +6,7 @@ import (
 	"utxo"
 	"reflect"
 	wire "github.com/tendermint/go-wire"
+	"errors"
 )
 
 // Implements UTXOMapper
@@ -60,9 +61,9 @@ func (um utxoMapper) Seal() sealedUTXOMapper {
 }
 
 // Implements UTXO
-func (um utxoMapper) GetUTXO(ctx Context, pubkey crypto.PubKey) UTXO {
+func (um utxoMapper) GetUTXO(ctx Context, addr crypto.Address) UTXO {
 	store := ctx.KVStore(um.key)
-	bz := store.Get(pubkey)
+	bz := store.Get(addr)
 	if bz == nil {
 		return nil
 	}
@@ -72,17 +73,17 @@ func (um utxoMapper) GetUTXO(ctx Context, pubkey crypto.PubKey) UTXO {
 
 //Implements UTXO
 func (um utxoMapper) CreateUTXO(ctx Context, utxo UTXO) {
-	pk := utxo.GetPubKey()
+	addr := utxo.GetAddress()
 	store := ctx.KVStore(um.key)
 	bz := um.encodeUTXO(utxo)
-	store.Set(pk, bz)
+	store.Set(addr, bz)
 }
 
 //Implements UTXO
 func (um utxoMapper) DestroyUTXO(ctx Context, utxo UTXO) {
-	pk := utxo.GetPubKey()
+	addr := utxo.GetAddress()
 	store := ctx.KVStore(um.key)
-	bz := store.Get(pk)
+	bz := store.Get(addr)
 	store.Delete(bz)
 }
 
@@ -160,4 +161,34 @@ func (um utxoMapper) decodeUTXO(bz []byte) UTXO {
 	} else {
 		return reflect.ValueOf(utxoPtr).Elem().Interface().(UTXO)
 	}
+}
+
+//----------------------------------------
+// UTXOKeeper
+
+// UTXOKeeper manages spending and recieving inputs/outputs
+type UTXOKeeper struct {
+	um UTXOMapper
+}
+
+// NewUTXOKeeper returns a new UTXOKeeper
+func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
+	return UTXOKeeper{um: um}
+}
+
+//May need to add check for valid context
+func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address) error {
+	utxo := uk.um.GetUTXO(ctx, addr)
+	if utxo == nil {
+		return errors.New("UTXO does not exist")
+	}
+	uk.um.DestroyUTXO(ctx, utxo)
+	return nil
+}
+
+//May need more checks for error
+func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) error {
+	utxo := NewBaseUTXO(addr, denom)
+	uk.um.CreateUTXO(ctx, utxo)
+	return nil
 }

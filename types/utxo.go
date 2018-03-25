@@ -12,6 +12,9 @@ type UTXO interface {
 	GetPubKey() crypto.PubKey
 	SetPubKey(crypto.PubKey) error // errors if already set
 
+	GetAddress() crypto.Address
+	SetAddress(crypto.Address) error // errors if already set
+
 	//Get and Set denomination of the utxo. Is uint64 appropriate type?
 	GetDenom() uint64
 	SetDenom(uint64) error //errors if already set
@@ -28,7 +31,7 @@ type UTXO interface {
 // Can create and destory utxo 
 // Consider Changing?
 type UTXOMapper interface {
-	GetUXTO(ctx Context, pubkey crypto.PubKey) UTXO
+	GetUXTO(ctx Context, addr crypto.Address) UTXO
 	CreateUTXO(ctx Context, utxo UTXO)
 	DestroyUTXO(ctx Context, utxo UTXO)
 }
@@ -37,12 +40,15 @@ type UTXOMapper interface {
 // Currently being used a prototype
 type BaseUTXO struct {
 	PubKey crypto.PubKey
+	Address crypto.Address
 	Denom uint64
 }
 
-func NewBaseUTXO(pubkey crypto.PubKey) BaseUTXO {
+func NewBaseUTXO(pubkey crypto.PubKey, addr crypto.Address, denom uint64) BaseUTXO {
 	return BaseUTXO {
 		PubKey: pubkey,
+		Address: addr,
+		Denom: uint64,
 	}
 }
 
@@ -69,6 +75,20 @@ func (utxo *BaseUTXO) SetPubKey(pubkey crypto.PubKey) error{
 		return errors.New("cannot override BaseUTXO Public Key")
 	}
 	utxo.PubKey = pubkey
+	return nil
+}
+
+//Implements UTXO 
+func (utxo *BaseUTXO) GetAddress() crypto.Address {
+	return utxo.Address
+}
+
+//Implements UTXO
+func (utxo *BaseUTXO) SetAddress(addr crypto.Address) error{
+	if utxo.Address != nil {
+		return errors.New("cannot override BaseUTXO Address")
+	}
+	utxo.Address = addr
 	return nil
 }
 
