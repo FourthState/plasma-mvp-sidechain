@@ -1,17 +1,16 @@
-package main //change to app
+package app //change to app
 
 //modeled after basecoinapp in cosmos/cosmos-sdk/examples
 import (
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	dbm "github.com/tendermint/tmlibs/db"
-	crypto "github.com/tendermint/go-crypto"
+	//crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
-	//"../types" //should be adjusted to reference our repo
-	//"../utxo"
-	"fmt" //for testing
-	"github.com/ethereum/go-ethereum/rlp"
+	types "plasma-mvp-sidechain/types" 
+	//"fmt" //for testing
+	//"github.com/ethereum/go-ethereum/rlp"
 
 )
 
@@ -31,8 +30,7 @@ type ChildChain struct {
 	capKeyIBCStore *sdk.KVStoreKey //capabilities key to access IBC Store from multistore
 
 	// Manage addition and deletion of unspent utxo's 
-	// TODO: Add utxo mapper here
-	uxtoMapper utxoMapper
+	utxoMapper types.UtxoMapper
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
@@ -43,16 +41,16 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	}
 
 	// define the utxoMapper
-	app.utxoMapper = NewUTXOMapper(
+	app.utxoMapper = types.NewUTXOMapper(
 		app.capKeyMainStore, // target store
-		&BaseUTXO{},
+		&types.BaseUTXO{},
 	)
 
 	// TODO: add handlers/router
 	// UTXOKeeper to adjust spending and recieving of utxo's
-	UTXOKeeper := NewUTXOKeeper(app.utxoMapper)
+	UTXOKeeper := types.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
-		AddRoute("txs", NewHandler(UTXOKeeper))
+		AddRoute("txs", types.NewHandler(UTXOKeeper))
 
 	// initialize BaseApp
 	// set the BaseApp txDecoder to use txDecoder with RLP
@@ -77,19 +75,14 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 // TODO: change sdk.Tx to different transaction struct
 func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// TODO: implement method
-	return nil
+	return nil, nil
 }
 
 // TODO: Add initChainer?
-
-// TODO: delete this
-func main() {
-	fmt.Println("Compiled")
-}
 
 
 
 // Current big idea TODO List:
 // - Implement RLP Encoding/Decoding in app.go and tx.go
-// 4. Implement AnteHandler
-// 5. Write Basic Test Cases
+// - Implement AnteHandler
+// - Write Basic Test Cases

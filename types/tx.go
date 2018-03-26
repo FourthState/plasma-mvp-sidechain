@@ -3,7 +3,6 @@ package types
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // Consider correct types to use
@@ -25,7 +24,7 @@ type SpendMsg struct {
 	fee       uint
 }
 
-func NewSpendMsg(blknum1 uint, txindex1 uint, oindex1, owner1 crypto.Address uint, blknum2 uint, txindex2 uint, oindex2 uint, owner2 crypto.Address,
+func NewSpendMsg(blknum1 uint, txindex1 uint, oindex1 uint, owner1 crypto.Address, blknum2 uint, txindex2 uint, oindex2 uint, owner2 crypto.Address,
 				newowner1 crypto.Address, denom1 uint, newowner2 crypto.Address, denom2 uint, fee uint) SpendMsg {
 	return SpendMsg{
 		blknum1: 	blknum1,
@@ -51,8 +50,8 @@ func (msg SpendMsg) Type() string { return "txs" } // TODO: decide on something 
 func (msg SpendMsg) ValidateBasic() sdk.Error {
 	// this just ensures everything is correctly formatted
 	// Add more checks?
-	if msg.newowner1 == 0 && msg.newowner2 == 0 {
-		return NewError(10,"No recipient of transaction")
+	if msg.newowner1 == nil && msg.newowner2 == nil {
+		return sdk.NewError(10,"No recipient of transaction")
 	}
 	return nil
 }
@@ -126,17 +125,17 @@ func (msg DepositMsg) GetSigners() []crypto.Address {
 // BaseTx (Transaction wrapper for depositmsg and spendmsg)
 
 type BaseTx struct {
-	Msg
-	Signatures []StdSignature
+	sdk.Msg
+	Signatures []sdk.StdSignature
 }
 
-func NewStdTx(msg Msg, sigs []StdSignature) BaseTx {
+func NewStdTx(msg sdk.Msg, sigs []sdk.StdSignature) BaseTx {
 	return BaseTx{
 		Msg: 		msg,
 		Signatures: sigs,
 	}
 }
 
-func (tx BaseTx) GetMsg() Msg 					{ return tx.Msg }
+func (tx BaseTx) GetMsg() sdk.Msg 					{ return tx.Msg }
 func (tx BaseTx) GetFeePayer() crypto.Address	{ return tx.Signatures[0].PubKey.Address() }
-func (tx BaseTx) GetSignatures() []StdSignature { return tx.Signatures }
+func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }

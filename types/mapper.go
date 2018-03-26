@@ -3,15 +3,15 @@ package types
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
-	"utxo"
 	"reflect"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	"errors"
+	"fmt"
 )
 
 // Implements UTXOMapper
 
-type utxoMapper struct {
+type UtxoMapper struct {
 	
 	// The key used to access the store from the Context.
 	key sdk.StoreKey
@@ -19,15 +19,15 @@ type utxoMapper struct {
 	// The prototypical UTXO concrete type
 	proto UTXO
 
-	// The wire codec for binary encoding/decoding of utxo's 
-	cdc *wire.Codec 
+	// The Amino codec for binary encoding/decoding of utxo's 
+	cdc *amino.Codec 
 }
 
 // NewUTXOMapper returns a new utxoMapper that
-// uses go-wire to (binary) encode and decode concrete UTXO
-func NewUTXOMapper(key sdk.StoreKey, proto UTXO) utxoMapper {
-	cdc := wire.NewCodec()
-	return utxoMapper {
+// uses go-Amino to (binary) encode and decode concrete UTXO
+func NewUTXOMapper(key sdk.StoreKey, proto UTXO) UtxoMapper {
+	cdc := amino.NewCodec()
+	return UtxoMapper {
 		key:   key,
 		proto: proto,
 		cdc:   cdc, 
@@ -36,32 +36,32 @@ func NewUTXOMapper(key sdk.StoreKey, proto UTXO) utxoMapper {
 
 // Create and return a sealed utxo mapper. Not sure if necessary
 func NewUTXOMapperSealed(key sdk.StoreKey, proto UTXO) sealedUTXOMapper {
-	cdc := wire.NewCodec()
+	cdc := amino.NewCodec()
 	// um is utxo mapper
-	um := utxoMapper {
+	um := UtxoMapper {
 		key:   key,	
 		proto: proto,
 		cdc:   cdc,
 	}
-	// ISSUE: something about register wire here?
+	// ISSUE: something about register Amino here?
 
-	// make accountMapper's WireCodec() inaccessible, return
+	// make accountMapper's AminoCodec() inaccessible, return
 	return um.Seal()
 }
 
-// Returns the go-wire codec.
-func (um utxoMapper) WireCodec() *wire.Codec {
+// Returns the go-Amino codec.
+func (um UtxoMapper) AminoCodec() *amino.Codec {
 	return um.cdc
 }
 
 // Returns a "sealed" utxoMapper
 // the codec is not accessible from a sealedUTXOMapper
-func (um utxoMapper) Seal() sealedUTXOMapper {
+func (um UtxoMapper) Seal() sealedUTXOMapper {
 	return sealedUTXOMapper{um}
 }
 
 // Implements UTXO
-func (um utxoMapper) GetUTXO(ctx Context, addr crypto.Address) UTXO {
+func (um UtxoMapper) GetUTXO(ctx sdk.Context, addr crypto.Address) UTXO {
 	store := ctx.KVStore(um.key)
 	bz := store.Get(addr)
 	if bz == nil {
@@ -72,7 +72,7 @@ func (um utxoMapper) GetUTXO(ctx Context, addr crypto.Address) UTXO {
 }
 
 //Implements UTXO
-func (um utxoMapper) CreateUTXO(ctx Context, utxo UTXO) {
+func (um UtxoMapper) CreateUTXO(ctx sdk.Context, utxo UTXO) {
 	addr := utxo.GetAddress()
 	store := ctx.KVStore(um.key)
 	bz := um.encodeUTXO(utxo)
@@ -80,7 +80,7 @@ func (um utxoMapper) CreateUTXO(ctx Context, utxo UTXO) {
 }
 
 //Implements UTXO
-func (um utxoMapper) DestroyUTXO(ctx Context, utxo UTXO) {
+func (um UtxoMapper) DestroyUTXO(ctx sdk.Context, utxo UTXO) {
 	addr := utxo.GetAddress()
 	store := ctx.KVStore(um.key)
 	bz := store.Get(addr)
@@ -90,20 +90,20 @@ func (um utxoMapper) DestroyUTXO(ctx Context, utxo UTXO) {
 //----------------------------------------
 // sealedUTXOMapper
 
-func sealedUTXOMapper struct {
-	utxoMapper
+type sealedUTXOMapper struct {
+	UtxoMapper
 }
 
 // There's no way for external modules to mutate the 
 // sum.utxoMapper.ctx from here, even with reflection
-func (sum sealedUTXOMapper) WireCodec() *wire.Codec {
+func (sum sealedUTXOMapper) AminoCodec() *amino.Codec {
 	panic("utxoMapper is sealed")
 }
 
 //----------------------------------------
 // misc.
 
-func (um utxoMapper) clonePrototypePtr() interface{} {
+func (um UtxoMapper) clonePrototypePtr() interface{} {
 	protoRt := reflect.TypeOf(um.proto)
 	if protoRt.Kind() == reflect.Ptr {
 		protoErt := protoRt.Elem()
@@ -119,7 +119,7 @@ func (um utxoMapper) clonePrototypePtr() interface{} {
 }
 
 // Creates a new struct (or pointer to struct) from um.proto.
-func (um utxoMapper) clonePrototype() sdk.Account {
+func (um UtxoMapper) clonePrototype() UTXO {
 	protoRt := reflect.TypeOf(um.proto)
 	if protoRt.Kind() == reflect.Ptr {
 		protoCrt := protoRt.Elem()
@@ -142,7 +142,7 @@ func (um utxoMapper) clonePrototype() sdk.Account {
 	}
 }
 
-func (um utxoMapper) encodeUTXO(utxo UTXO) []byte {
+func (um UtxoMapper) encodeUTXO(utxo UTXO) []byte {
 	bz, err := um.cdc.MarshalBinary(utxo)
 	if err != nil {
 		panic(err)
@@ -150,7 +150,7 @@ func (um utxoMapper) encodeUTXO(utxo UTXO) []byte {
 	return bz
 }
 
-func (um utxoMapper) decodeUTXO(bz []byte) UTXO {
+func (um UtxoMapper) decodeUTXO(bz []byte) UTXO {
 	utxoPtr := um.clonePrototypePtr()
 	err := um.cdc.UnmarshalBinary(bz, utxoPtr)
 	if err != nil {
@@ -168,11 +168,11 @@ func (um utxoMapper) decodeUTXO(bz []byte) UTXO {
 
 // UTXOKeeper manages spending and recieving inputs/outputs
 type UTXOKeeper struct {
-	um UTXOMapper
+	um UtxoMapper
 }
 
 // NewUTXOKeeper returns a new UTXOKeeper
-func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
+func NewUTXOKeeper(um UtxoMapper) UTXOKeeper {
 	return UTXOKeeper{um: um}
 }
 
