@@ -1,97 +1,134 @@
 package types
 
 import (
+	"reflect"
+	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
-	"reflect"
 	amino "github.com/tendermint/go-amino"
-	"errors"
-	"fmt"
 )
 
-// Implements UTXOMapper
-
-type UtxoMapper struct {
+// Manages utxo's in existence
+// Uses go-amino encoding/decoding library
+// Does not need to be changed to RLP
+type UTXOMapper struct {
 	
 	// The key used to access the store from the Context.
 	key sdk.StoreKey
 
 	// The prototypical UTXO concrete type
-	proto UTXO
+	proto UTXOHolder
 
 	// The Amino codec for binary encoding/decoding of utxo's 
 	cdc *amino.Codec 
 }
 
-// NewUTXOMapper returns a new utxoMapper that
+// NewUTXOMapper returns a new UtxoMapper that
 // uses go-Amino to (binary) encode and decode concrete UTXO
-func NewUTXOMapper(key sdk.StoreKey, proto UTXO) UtxoMapper {
+func NewUTXOMapper(key sdk.StoreKey, proto UTXOHolder) UTXOMapper {
 	cdc := amino.NewCodec()
-	return UtxoMapper {
+	Register(cdc)
+	return UTXOMapper {
 		key:   key,
 		proto: proto,
 		cdc:   cdc, 
 	}
+
 }
 
 // Create and return a sealed utxo mapper. Not sure if necessary
-func NewUTXOMapperSealed(key sdk.StoreKey, proto UTXO) sealedUTXOMapper {
+func NewUTXOMapperSealed(key sdk.StoreKey, proto UTXOHolder) sealedUTXOMapper {
 	cdc := amino.NewCodec()
-	// um is utxo mapper
-	um := UtxoMapper {
+	um := UTXOMapper {
 		key:   key,	
 		proto: proto,
 		cdc:   cdc,
 	}
-	// ISSUE: something about register Amino here?
+	// Register for amino encoding/decoding
+	Register(cdc)
 
-	// make accountMapper's AminoCodec() inaccessible, return
+	// make accountMapper's AminoCodec() inaccessible
 	return um.Seal()
 }
 
+// Register all crypto interfaces and concrete types necessary
+func Register(cdc *amino.Codec) {
+	cdc.RegisterConcrete(crypto.PubKey{}, "go-crypto/PubKey", nil)
+	cdc.RegisterConcrete(crypto.PrivKey{}, "go-crypto/PrivKey", nil)
+	cdc.RegisterConcrete(crypto.Signature{}, "go-crypto/Signature", nil)
+	cdc.RegisterConcrete(sdk.StdSignature{}, "sdk/StdSignature", nil)
+	cdc.RegisterInterface((*crypto.PubKeyInner)(nil), nil)
+	cdc.RegisterConcrete(crypto.PubKeyEd25519{}, "go-crypto/PubKeyEd25519", nil)
+	cdc.RegisterConcrete(crypto.SignatureEd25519{}, "go-crypto/SignatureEd25519", nil)
+	cdc.RegisterInterface((*crypto.SignatureInner)(nil), nil)
+	cdc.RegisterInterface((*UTXOHolder)(nil), nil)
+	cdc.RegisterConcrete(BaseUTXOHolder{}, "types/BaseUTXOHolder", nil)
+}
+
 // Returns the go-Amino codec.
-func (um UtxoMapper) AminoCodec() *amino.Codec {
+func (um UTXOMapper) AminoCodec() *amino.Codec {
 	return um.cdc
 }
 
 // Returns a "sealed" utxoMapper
 // the codec is not accessible from a sealedUTXOMapper
-func (um UtxoMapper) Seal() sealedUTXOMapper {
+func (um UTXOMapper) Seal() sealedUTXOMapper {
 	return sealedUTXOMapper{um}
 }
 
-// Implements UTXO
-func (um UtxoMapper) GetUTXO(ctx sdk.Context, addr crypto.Address) UTXO {
-	store := ctx.KVStore(um.key)
-	bz := store.Get(addr)
+func (um UTXOMapper) GetUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) UTXO {
+	store := ctx.KVStore(um.key) // Get the utxo store
+	bz := store.Get(addr) // Gets the encoded bytes at the address addr
+	// Checks to see if there is a utxo at that address
 	if bz == nil {
 		return nil
 	}
-	utxo := um.decodeUTXO(bz)
+	utxoHolder := um.decodeUTXOHolder(bz) // Decode the go-amino encoded utxoHolder
+	utxo, _ := utxoHolder.GetUTXO(denom) // Get the utxo from utxoHolder
 	return utxo
 }
 
-//Implements UTXO
-func (um UtxoMapper) CreateUTXO(ctx sdk.Context, utxo UTXO) {
-	addr := utxo.GetAddress()
-	store := ctx.KVStore(um.key)
-	bz := um.encodeUTXO(utxo)
-	store.Set(addr, bz)
+func (um UTXOMapper) CreateUTXO(ctx sdk.Context, utxo UTXO) {
+	addr := utxo.GetAddress() // Get the address of the utxo
+	store := ctx.KVStore(um.key) // Get the utxo store 
+	bz := store.Get(addr)
+	var utxoHolder UTXOHolder
+	if bz != nil {
+		// Holder already exists
+		utxoHolder = um.decodeUTXOHolder(bz)
+	} else {
+		// Holder does not exist and needs to be created
+		utxoHolder = NewUTXOHolder() // change
+	}
+	utxoHolder.AddUTXO(utxo) //Add the utxo to the utxoHolder
+	bz = um.encodeUTXOHolder(utxoHolder) // Encode the utxoHolder
+	store.Set(addr, bz) // Add the encoded utxo to the utxo store at address addr
 }
 
-//Implements UTXO
-func (um UtxoMapper) DestroyUTXO(ctx sdk.Context, utxo UTXO) {
+func (um UTXOMapper) DestroyUTXO(ctx sdk.Context, utxo UTXO) {
 	addr := utxo.GetAddress()
-	store := ctx.KVStore(um.key)
+	store := ctx.KVStore(um.key) // Get the utxo store
 	bz := store.Get(addr)
-	store.Delete(bz)
+	if bz == nil {
+		// Add error messages
+		return
+	}
+	utxoHolder := um.decodeUTXOHolder(bz)
+	utxoHolder.DeleteUTXO(utxo)
+	if utxoHolder.GetLength() == 0 {
+		store.Delete(addr)
+	} else {
+		bz = um.encodeUTXOHolder(utxoHolder)
+		store.Set(addr, bz)
+	}
+	
 }
 
 //----------------------------------------
 // sealedUTXOMapper
 
 type sealedUTXOMapper struct {
-	UtxoMapper
+	UTXOMapper
 }
 
 // There's no way for external modules to mutate the 
@@ -103,7 +140,7 @@ func (sum sealedUTXOMapper) AminoCodec() *amino.Codec {
 //----------------------------------------
 // misc.
 
-func (um UtxoMapper) clonePrototypePtr() interface{} {
+func (um UTXOMapper) clonePrototypePtr() interface{} {
 	protoRt := reflect.TypeOf(um.proto)
 	if protoRt.Kind() == reflect.Ptr {
 		protoErt := protoRt.Elem()
@@ -119,47 +156,47 @@ func (um UtxoMapper) clonePrototypePtr() interface{} {
 }
 
 // Creates a new struct (or pointer to struct) from um.proto.
-func (um UtxoMapper) clonePrototype() UTXO {
+func (um UTXOMapper) clonePrototype() UTXOHolder {
 	protoRt := reflect.TypeOf(um.proto)
 	if protoRt.Kind() == reflect.Ptr {
 		protoCrt := protoRt.Elem()
 		if protoCrt.Kind() != reflect.Struct {
-			panic("utxoMapper requires a struct proto UTXO, or a pointer to one")
+			panic("utxoMapper requires a struct proto UTXOHolder, or a pointer to one")
 		}
 		protoRv := reflect.New(protoCrt)
-		clone, ok := protoRv.Interface().(UTXO)
+		clone, ok := protoRv.Interface().(UTXOHolder)
 		if !ok {
 			panic(fmt.Sprintf("utxoMapper requires a proto UTXO, but %v doesn't implement UTXO", protoRt))
 		}
 		return clone
 	} else {
 		protoRv := reflect.New(protoRt).Elem()
-		clone, ok := protoRv.Interface().(UTXO)
+		clone, ok := protoRv.Interface().(UTXOHolder)
 		if !ok {
-			panic(fmt.Sprintf("utxoMapper requires a proto UTXO, but %v doesn't implement UTXO", protoRt))
+			panic(fmt.Sprintf("utxoMapper requires a proto UTXOHolder, but %v doesn't implement UTXO", protoRt))
 		}
 		return clone
 	}
 }
 
-func (um UtxoMapper) encodeUTXO(utxo UTXO) []byte {
-	bz, err := um.cdc.MarshalBinary(utxo)
+func (um UTXOMapper) encodeUTXOHolder(uh UTXOHolder) []byte {
+	bz, err := um.cdc.MarshalBinary(uh)
 	if err != nil {
 		panic(err)
 	}
 	return bz
 }
 
-func (um UtxoMapper) decodeUTXO(bz []byte) UTXO {
-	utxoPtr := um.clonePrototypePtr()
-	err := um.cdc.UnmarshalBinary(bz, utxoPtr)
+func (um UTXOMapper) decodeUTXOHolder(bz []byte) UTXOHolder {
+	uhPtr := um.clonePrototypePtr()
+	err := um.cdc.UnmarshalBinary(bz, uhPtr)
 	if err != nil {
 		panic(err)
 	}
 	if reflect.ValueOf(um.proto).Kind() == reflect.Ptr {
-		return reflect.ValueOf(utxoPtr).Interface().(UTXO)
+		return reflect.ValueOf(uhPtr).Interface().(UTXOHolder)
 	} else {
-		return reflect.ValueOf(utxoPtr).Elem().Interface().(UTXO)
+		return reflect.ValueOf(uhPtr).Elem().Interface().(UTXOHolder)
 	}
 }
 
@@ -168,27 +205,28 @@ func (um UtxoMapper) decodeUTXO(bz []byte) UTXO {
 
 // UTXOKeeper manages spending and recieving inputs/outputs
 type UTXOKeeper struct {
-	um UtxoMapper
+	um UTXOMapper
 }
 
 // NewUTXOKeeper returns a new UTXOKeeper
-func NewUTXOKeeper(um UtxoMapper) UTXOKeeper {
+func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
 	return UTXOKeeper{um: um}
 }
 
-//May need to add check for valid context
-func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address) error {
-	utxo := uk.um.GetUTXO(ctx, addr)
+// Delete's utxo from utxo store
+func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) sdk.Error {
+	utxo := uk.um.GetUTXO(ctx, addr, denom) // Get the utxo that should be spent
+	// Check to see if utxo exists
 	if utxo == nil {
-		return errors.New("UTXO does not exist")
+		return sdk.NewError(101, "Unrecognized UTXO. Does not exist.")
 	}
-	uk.um.DestroyUTXO(ctx, utxo)
+	uk.um.DestroyUTXO(ctx, utxo) // Delete utxo from utxo store
 	return nil
 }
 
-//May need more checks for error
-func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) error {
-	utxo := NewBaseUTXO(addr, denom)
-	uk.um.CreateUTXO(ctx, utxo)
+// Creates a new utxo and adds it to the utxo store
+func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) sdk.Error {
+	utxo := NewBaseUTXO(addr, denom) // Creates new utxo
+	uk.um.CreateUTXO(ctx, utxo) // Adds utxo to utxo store
 	return nil
 }

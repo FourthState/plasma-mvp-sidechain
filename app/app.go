@@ -1,41 +1,44 @@
-package app //change to app
+package app 
 
 //modeled after basecoinapp in cosmos/cosmos-sdk/examples
 import (
+	// TODO: Change to import from FourthState repo (currently not on there)
+	types "plasma-mvp-sidechain/types" //points to a local package
+
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	dbm "github.com/tendermint/tmlibs/db"
-	//crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/log"
-	types "plasma-mvp-sidechain/types" 
-	//"fmt" //for testing
-	//"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/tendermint/go-amino" // Not necessary once switched to RLP
+	//"github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
 
 )
 
 const (
-	appName = "plasmaChildChain"
+	appName = "plasmaChildChain" // Can be changed
 )
 
 // Extended ABCI application
-
 type ChildChain struct {
 	*bam.BaseApp // Pointer to the Base App
-	// TODO: Add RLP here?
 
+	cdc *amino.Codec // Delete once changed to RLP
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
 	//Not sure if this is needed
 	capKeyIBCStore *sdk.KVStoreKey //capabilities key to access IBC Store from multistore
 
 	// Manage addition and deletion of unspent utxo's 
-	utxoMapper types.UtxoMapper
+	utxoMapper types.UTXOMapper
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	var app = &ChildChain{
 		BaseApp:			bam.NewBaseApp(appName, logger, db),
+		cdc:				MakeCodec(),
 		capKeyMainStore:	sdk.NewKVStoreKey("main"),
 		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
 	}
@@ -43,7 +46,9 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// define the utxoMapper
 	app.utxoMapper = types.NewUTXOMapper(
 		app.capKeyMainStore, // target store
-		&types.BaseUTXO{},
+		// MYNOTE: may need to change proto
+		&types.BaseUTXOHolder{}, // UTXOHolder is a struct that holds BaseUTXO's
+							 // BaseUTXO implemented UTXO interface
 	)
 
 	// TODO: add handlers/router
@@ -74,15 +79,37 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 
 // TODO: change sdk.Tx to different transaction struct
 func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
-	// TODO: implement method
-	return nil, nil
+	// TODO: implement method with RLP
+	var tx = types.BaseTx{}
+	// BaseTx is struct for Msg wrapped with authentication data
+	err := app.cdc.UnmarshalBinary(txBytes, &tx)
+	if err != nil {
+		return nil, sdk.ErrTxParse("").TraceCause(err, "")
+	}
+	return tx, nil
 }
 
 // TODO: Add initChainer?
 
+func MakeCodec() *amino.Codec {
+	cdc := amino.NewCodec()
+	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
+	types.RegisterAmino(cdc)   // Register bank.[SendMsg,IssueMsg] types.
+	// crypto.RegisterWire(cdc)
+	cdc.RegisterConcrete(crypto.PubKey{}, "go-crypto/PubKey", nil)
+	cdc.RegisterConcrete(crypto.PrivKey{}, "go-crypto/PrivKey", nil)
+	cdc.RegisterConcrete(crypto.Signature{}, "go-crypto/Signature", nil)
+	cdc.RegisterConcrete(sdk.StdSignature{}, "sdk/StdSignature", nil)
+	cdc.RegisterInterface((*crypto.PubKeyInner)(nil), nil)
+	cdc.RegisterConcrete(crypto.PubKeyEd25519{}, "go-crypto/PubKeyEd25519", nil)
+	cdc.RegisterConcrete(crypto.SignatureEd25519{}, "go-crypto/SignatureEd25519", nil)
+	cdc.RegisterInterface((*crypto.SignatureInner)(nil), nil)
+	return cdc
+}
 
 
-// Current big idea TODO List:
+
+// Current TODO List:
 // - Implement RLP Encoding/Decoding in app.go and tx.go
 // - Implement AnteHandler
 // - Write Basic Test Cases

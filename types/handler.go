@@ -24,8 +24,32 @@ func NewHandler(uk UTXOKeeper) sdk.Handler {
 func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 	// NOTE: totalIn == totalOut should already have been checked
 	// TODO: Implement
-	panic("not implemented yet")
-
+	if msg.Owner1 != nil {
+		//CHANGE
+		err := uk.SpendUTXO(ctx, msg.Owner1, msg.Denom1)
+		if err != nil {
+			return err.Result()
+		}
+	}
+	if msg.Owner2 != nil {
+		//CHANGE
+		err := uk.SpendUTXO(ctx, msg.Owner2, msg.Denom2)
+		if err != nil {
+			return err.Result()
+		}
+	}
+	if msg.Newowner1 != nil {
+		err := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1)
+		if err != nil {
+			return err.Result()
+		}
+	}
+	if msg.Newowner2 != nil {
+		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2)
+		if err != nil {
+			return err.Result()
+		}
+	}
 	// TODO: add some tags so we can search it!
 	return sdk.Result{} // TODO
 }
@@ -33,5 +57,5 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 // Handle IssueMsg.
 func handleDepositMsg(ctx sdk.Context, uk UTXOKeeper, msg DepositMsg) sdk.Result {
 	// TODO: Implement 
-	panic("not implemented yet")
+	return sdk.Result{}
 }
