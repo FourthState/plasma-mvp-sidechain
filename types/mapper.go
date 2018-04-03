@@ -76,7 +76,7 @@ func (um UTXOMapper) Seal() sealedUTXOMapper {
 	return sealedUTXOMapper{um}
 }
 
-func (um UTXOMapper) GetUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) UTXO {
+func (um UTXOMapper) GetUTXO(ctx sdk.Context, addr crypto.Address, position [3]uint) UTXO {
 	store := ctx.KVStore(um.key) // Get the utxo store
 	bz := store.Get(addr) // Gets the encoded bytes at the address addr
 	// Checks to see if there is a utxo at that address
@@ -84,7 +84,7 @@ func (um UTXOMapper) GetUTXO(ctx sdk.Context, addr crypto.Address, denom uint64)
 		return nil
 	}
 	utxoHolder := um.decodeUTXOHolder(bz) // Decode the go-amino encoded utxoHolder
-	utxo, _ := utxoHolder.GetUTXO(denom) // Get the utxo from utxoHolder
+	utxo, _ := utxoHolder.GetUTXO(position) // Get the utxo from utxoHolder
 	return utxo
 }
 
@@ -122,6 +122,22 @@ func (um UTXOMapper) DestroyUTXO(ctx sdk.Context, utxo UTXO) {
 		store.Set(addr, bz)
 	}
 	
+}
+
+func (um UTXOMapper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs []sdk.StdSignature) sdk.Error {
+	store := ctx.KVStore(um.key)
+	bz := store.Get(addr)
+	if (bz == nil) {
+		return sdk.NewError(100, "No store associated with address")
+	}
+	utxoHolder := um.decodeUTXOHolder(bz)
+	err := utxoHolder.FinalizeUTXO(denom, sigs, position)
+	if err == nil {
+		return sdk.NewError(100, err.Error())
+	}
+	bz = um.encodeUTXOHolder(utxoHolder)
+	store.Set(addr, bz)
+	return nil
 }
 
 //----------------------------------------
@@ -214,8 +230,8 @@ func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
 }
 
 // Delete's utxo from utxo store
-func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) sdk.Error {
-	utxo := uk.um.GetUTXO(ctx, addr, denom) // Get the utxo that should be spent
+func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position [3]uint) sdk.Error {
+	utxo := uk.um.GetUTXO(ctx, addr, position) // Get the utxo that should be spent
 	// Check to see if utxo exists
 	if utxo == nil {
 		return sdk.NewError(101, "Unrecognized UTXO. Does not exist.")
@@ -229,4 +245,8 @@ func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uin
 	utxo := NewBaseUTXO(addr, denom) // Creates new utxo
 	uk.um.CreateUTXO(ctx, utxo) // Adds utxo to utxo store
 	return nil
+}
+
+func (uk UTXOKeeper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs []sdk.StdSignature) sdk.Error {
+	return uk.um.FinalizeUTXO(ctx, addr, denom, position, sigs)
 }

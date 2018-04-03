@@ -1,11 +1,11 @@
 package types
 
 import (
-	"encoding/json"
-
+	big "math/big"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-amino"
+	rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 // Consider correct types to use
@@ -56,6 +56,30 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	if msg.Newowner1 == nil && msg.Newowner2 == nil {
 		return sdk.NewError(100,"No recipients of transaction")
 	}
+	switch {
+	case new(big.Int).SetBytes(msg.Owner1.Bytes()).Sign() == 0: // address is 0x0
+		return sdk.NewError(100,"Must provide address in Owner1 field")
+	case new(big.Int).SetBytes(msg.Newowner1.Bytes()).Sign() == 0:
+		return sdk.NewError(100,"Must provide address in NewOwner1 field")
+	case msg.Blknum1 <= 0:
+		return sdk.NewError(100,"First blocknum is negative")
+	case msg.Txindex1 < 0:
+		return sdk.NewError(100,"Transaction index 1 is negative")
+	case msg.Oindex1 != 0 && msg.Oindex1 != 1:
+		return sdk.NewError(100,"Output index 1 is negative")
+	case msg.Blknum2 <= 0:
+		return sdk.NewError(100,"Second blocknum is negative")
+	case msg.Txindex2 < 0:
+		return sdk.NewError(100,"Transaction index 2 is negative")
+	case msg.Oindex2 != 0 && msg.Oindex2 != 1:
+		return sdk.NewError(100,"Output index 2 is negative")
+	case msg.Denom1 <= 0:
+		return sdk.NewError(100,"First denomination must be positive")
+	case msg.Denom2 < 0:
+		return sdk.NewError(100,"Denomination cannot be negative")
+	case msg.Fee < 0:
+		return sdk.NewError(100,"Fee cannot be negative")
+	}
 	return nil
 }
 
@@ -72,7 +96,7 @@ func (msg SpendMsg) Get(key interface{}) (value interface{}) {
 // Implements Msg.
 func (msg SpendMsg) GetSignBytes() []byte {
 	// TODO: Implement with RLP encoding
-	b, err := json.Marshal(msg) // XXX: ensure some canonical form
+	b, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		panic(err)
 	}
@@ -82,9 +106,11 @@ func (msg SpendMsg) GetSignBytes() []byte {
 // Implements Msg.
 func (msg SpendMsg) GetSigners() []crypto.Address {
 	// TODO
-	addrs := make([]crypto.Address, 2)
-	addrs[0] = msg.Owner1
-	addrs[1] = msg.Owner2
+	addrs := make([]crypto.Address, 1)
+	addrs[0] = crypto.Address(msg.Owner1)
+	if new(big.Int).SetBytes(msg.Owner2.Bytes()).Sign() != 0 {
+		addrs = append(addrs, crypto.Address(msg.Owner2))
+	}
 	return addrs
 }
 //----------------------------------------
@@ -119,7 +145,7 @@ func (msg DepositMsg) Get(key interface{}) (value interface{}) {
 // Implements Msg.
 func (msg DepositMsg) GetSignBytes() []byte {
 	// TODO: Implement with RLP encoding
-	b, err := json.Marshal(msg) // XXX: ensure some canonical form
+	b, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		panic(err)
 	}
@@ -129,9 +155,61 @@ func (msg DepositMsg) GetSignBytes() []byte {
 // Implements Msg.
 func (msg DepositMsg) GetSigners() []crypto.Address {
 	// TODO: Implement
-	addrs := make([]crypto.Address, 2)
-	addrs[0] = msg.Owner
+	addrs := make([]crypto.Address, 1)
+	addrs[0] = crypto.Address(msg.Owner)
 	return addrs
+}
+
+type FinalizeMsg struct {
+	Spend SpendMsg
+	Position [3]uint
+	ConfirmSigs []sdk.StdSignature
+}
+
+func NewFinalizeMsg(spend SpendMsg, position [3]uint, sigs []sdk.StdSignature) FinalizeMsg {
+	return FinalizeMsg{
+		Spend: spend,
+		Position: position,
+		ConfirmSigs: sigs,
+	}
+}
+
+func (msg FinalizeMsg) Type() string {
+	return "txs"
+}
+
+func (msg FinalizeMsg) String() string {
+	return "Finalize"
+}
+
+func (msg FinalizeMsg) ValidateBasic() error {
+	switch {
+	case msg.Position[0] <= msg.Spend.Blknum1 || msg.Position[0] <= msg.Spend.Blknum2:
+		return sdk.NewError(100, "New UTXO Blocknum must have greater height than inputs")
+	case msg.Position[1] < 0:
+		return sdk.NewError(100, "Transaction index negative")
+	case msg.Position[2] != 0 && msg.Position[2] != 0:
+		return sdk.NewError(100, "Output index must be either 0 or 1")
+	case len(msg.ConfirmSigs) == 0:
+		return sdk.NewError(100, "Msg must have at least one confirm sig")
+	}
+	return nil
+}
+
+func (msg FinalizeMsg) Get(key interface{}) (val interface{}) {
+	return nil
+}
+
+func (msg FinalizeMsg) GetSignBytes() []byte {
+	b, err := rlp.EncodeToBytes(msg)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+func (msg FinalizeMsg) GetSigners() []crypto.Address {
+	return nil
 }
 
 //----------------------------------------
@@ -152,6 +230,14 @@ func NewBaseTx(msg sdk.Msg, sigs []sdk.StdSignature) BaseTx {
 func (tx BaseTx) GetMsg() sdk.Msg 					{ return tx.Msg }
 func (tx BaseTx) GetFeePayer() crypto.Address		{ return tx.Signatures[0].PubKey.Address() }
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
+
+func (tx BaseTx) GetTxBytes() []byte {
+	b, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
 
 func RegisterAmino(cdc *amino.Codec) {
 	// TODO include option to always include prefix bytes.

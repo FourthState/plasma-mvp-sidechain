@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/go-amino" // Not necessary once switched to RLP
-	//"github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
+	rlp "github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
 
 )
 
@@ -82,9 +82,9 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// TODO: implement method with RLP
 	var tx = types.BaseTx{}
 	// BaseTx is struct for Msg wrapped with authentication data
-	err := app.cdc.UnmarshalBinary(txBytes, &tx)
+	err := rlp.DecodeBytes(txBytes, &tx)
 	if err != nil {
-		return nil, sdk.ErrTxParse("").TraceCause(err, "")
+		return nil, sdk.ErrTxDecode("").TraceCause(err, "")
 	}
 	return tx, nil
 }

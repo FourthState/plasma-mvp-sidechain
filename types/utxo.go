@@ -3,7 +3,7 @@ package types //might need to be adjusted
 import (
 	crypto "github.com/tendermint/go-crypto"
 	"errors"
-	//sdk "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 )
 
@@ -20,6 +20,12 @@ type UTXO interface {
 	GetDenom() uint64
 	SetDenom(uint64) error //errors if already set
 
+	GetPosition() [3]uint
+	SetPosition(uint, uint, uint) error
+
+	GetConfirmSigs() []sdk.StdSignature
+	SetConfirmSigs([]sdk.StdSignature) error
+
 	Get(key interface{}) (value interface{}, err error)
 	Set(key interface{}, value interface{}) error
 	
@@ -28,9 +34,10 @@ type UTXO interface {
 }
 
 type UTXOHolder interface {
-	GetUTXO(denom uint64) (UTXO, int) 
+	GetUTXO(position [3]uint) (UTXO, int) 
 	DeleteUTXO(utxo UTXO) error
 	AddUTXO(utxo UTXO) error 
+	FinalizeUTXO(denom uint64, sigs []sdk.StdSignature, position [3]uint) error
 	GetLength() int 
 	
 }
@@ -40,12 +47,16 @@ type UTXOHolder interface {
 type BaseUTXO struct {
 	Address crypto.Address
 	Denom uint64
+	Position [3]uint
+	ConfirmSigs []sdk.StdSignature
 }
 
 func NewBaseUTXO(addr crypto.Address, denom uint64) BaseUTXO {
 	return BaseUTXO {
 		Address: addr,
 		Denom: denom,
+		Position: [3]uint{0, 0, 0},
+		ConfirmSigs: nil,
 	}
 }
 
@@ -92,6 +103,30 @@ func (utxo BaseUTXO) SetDenom(denom uint64) error {
 	return nil
 }
 
+func (utxo BaseUTXO) GetPosition() [3]uint {
+	return utxo.Position
+}
+
+func (utxo BaseUTXO) SetPosition(blockNum uint, txIndex uint, oIndex uint) error {
+	if utxo.Position[0] != 0 {
+		return errors.New("Cannot override BaseUTXO Position")
+	}
+	utxo.Position = [3]uint{blockNum, txIndex, oIndex}
+	return nil
+}
+
+func (utxo BaseUTXO) GetConfirmSigs() []sdk.StdSignature {
+	return utxo.ConfirmSigs
+}
+
+func (utxo BaseUTXO) SetConfirmSigs(sigs []sdk.StdSignature) error {
+	if utxo.GetConfirmSigs() != nil {
+		return errors.New("Confirm Sigs already set")
+	}
+	utxo.ConfirmSigs = sigs
+	return nil
+}
+
 //----------------------------------------
 // UTXOHolder
 
@@ -110,9 +145,9 @@ func NewUTXOHolder() BaseUTXOHolder {
 }
 
 // Gets the utxo from the utxoList
-func (uh BaseUTXOHolder) GetUTXO(denom uint64) (UTXO, int) {
+func (uh BaseUTXOHolder) GetUTXO(position [3]uint) (UTXO, int) {
 	for index, elem := range uh.utxoList {
-		if elem.GetDenom() == denom {
+		if elem.GetPosition() == position {
 			return elem, index
 		}
 	}
@@ -123,7 +158,7 @@ func (uh BaseUTXOHolder) GetUTXO(denom uint64) (UTXO, int) {
 func (uh BaseUTXOHolder) DeleteUTXO(utxo UTXO) error {
 	for index, elem := range uh.utxoList {
 		// If two utxo's are identical in the list it will delete the first one
-		if elem.GetDenom() == utxo.GetDenom() {
+		if elem.GetPosition() == utxo.GetPosition() {
 			uh.utxoList = append(uh.utxoList[:index], uh.utxoList[index + 1:]...)
 			return nil
 		}
@@ -135,6 +170,18 @@ func (uh BaseUTXOHolder) DeleteUTXO(utxo UTXO) error {
 func (uh BaseUTXOHolder) AddUTXO(utxo UTXO) error {
 	uh.utxoList = append(uh.utxoList, utxo)
 	return nil
+}
+
+func (uh BaseUTXOHolder) FinalizeUTXO(denom uint64, sigs []sdk.StdSignature, position [3]uint) error {
+	for _, elem := range uh.utxoList {
+		// Find first unfinalized UTXO with same position and finalize with position
+		if elem.GetDenom() == denom && elem.GetPosition()[0] == 0 {
+			elem.SetPosition(position[0], position[1], position[2])
+			elem.SetConfirmSigs(sigs)
+			return nil
+		}
+	}
+	return errors.New("Unfinalized UTXO with given position and denom does not exist")
 }
 
 func (uh BaseUTXOHolder) GetLength() int {
