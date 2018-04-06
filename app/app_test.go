@@ -12,6 +12,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	types "plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types" 
+	rlp "github.com/ethereum/go-ethereum/rlp"
 
 )
 
@@ -41,15 +42,14 @@ func TestSpendMsg(t *testing.T) {
 		Fee: 1,
 	}
 
-	priv := crypto.GenPrivKeyEd25519()
+	priv := crypto.GenPrivKeySecp256k1()
 	sig := priv.Sign(msg.GetSignBytes())
 	tx := types.NewBaseTx(msg, []sdk.StdSignature {{
 			PubKey: 	priv.PubKey(),
 			Signature:	sig,
 		}})
-	//Change to RLP once implemented
-	cdc := MakeCodec()
-	txBytes, err:= cdc.MarshalBinary(tx)
+	
+	txBytes, err:= rlp.EncodeToBytes(&tx)
 	require.NoError(t, err)
 
 	// Run a check 

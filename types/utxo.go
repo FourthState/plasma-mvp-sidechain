@@ -132,21 +132,22 @@ func (utxo BaseUTXO) SetConfirmSigs(sigs []sdk.StdSignature) error {
 
 // Holds a list of UTXO's
 // All utxo's have same address, but possibly different denominations 
+// UtxoList needs to be public for go amino encoding to work
 type BaseUTXOHolder struct {
-	utxoList []UTXO
+	UtxoList []UTXO
 }
 
 // Creates a new UTXOHolder 
 // utxoList is a slice initialized with length 1 and capacity 10
 func NewUTXOHolder() BaseUTXOHolder {
 	return BaseUTXOHolder {
-		utxoList: 	make([]UTXO, 1, 10),
+		UtxoList: 	make([]UTXO, 1, 10),
 	}
 }
 
 // Gets the utxo from the utxoList
 func (uh BaseUTXOHolder) GetUTXO(position [3]uint) (UTXO, int) {
-	for index, elem := range uh.utxoList {
+	for index, elem := range uh.UtxoList {
 		if elem.GetPosition() == position {
 			return elem, index
 		}
@@ -156,10 +157,10 @@ func (uh BaseUTXOHolder) GetUTXO(position [3]uint) (UTXO, int) {
 
 // Delete utxo from utxoList
 func (uh BaseUTXOHolder) DeleteUTXO(utxo UTXO) error {
-	for index, elem := range uh.utxoList {
+	for index, elem := range uh.UtxoList {
 		// If two utxo's are identical in the list it will delete the first one
 		if elem.GetPosition() == utxo.GetPosition() {
-			uh.utxoList = append(uh.utxoList[:index], uh.utxoList[index + 1:]...)
+			uh.UtxoList = append(uh.UtxoList[:index], uh.UtxoList[index + 1:]...)
 			return nil
 		}
 	}
@@ -168,12 +169,12 @@ func (uh BaseUTXOHolder) DeleteUTXO(utxo UTXO) error {
 
 // Apends a utxo to the utxoList
 func (uh BaseUTXOHolder) AddUTXO(utxo UTXO) error {
-	uh.utxoList = append(uh.utxoList, utxo)
+	uh.UtxoList = append(uh.UtxoList, utxo)
 	return nil
 }
 
 func (uh BaseUTXOHolder) FinalizeUTXO(denom uint64, sigs []sdk.StdSignature, position [3]uint) error {
-	for _, elem := range uh.utxoList {
+	for _, elem := range uh.UtxoList {
 		// Find first unfinalized UTXO with same position and finalize with position
 		if elem.GetDenom() == denom && elem.GetPosition()[0] == 0 {
 			elem.SetPosition(position[0], position[1], position[2])
@@ -185,5 +186,5 @@ func (uh BaseUTXOHolder) FinalizeUTXO(denom uint64, sigs []sdk.StdSignature, pos
 }
 
 func (uh BaseUTXOHolder) GetLength() int {
-	return len(uh.utxoList)
+	return len(uh.UtxoList)
 }

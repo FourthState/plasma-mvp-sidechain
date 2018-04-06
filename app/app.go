@@ -1,6 +1,5 @@
 package app 
 
-//modeled after basecoinapp in cosmos/cosmos-sdk/examples
 import (
 	// TODO: Change to import from FourthState repo (currently not on there)
 	types "plasma-mvp-sidechain/types" //points to a local package
@@ -9,11 +8,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	dbm "github.com/tendermint/tmlibs/db"
 	cmn "github.com/tendermint/tmlibs/common"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/log"
 
-	"github.com/tendermint/go-amino" // Not necessary once switched to RLP
-	rlp "github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
+	rlp "github.com/ethereum/go-ethereum/rlp"
 
 )
 
@@ -25,7 +22,6 @@ const (
 type ChildChain struct {
 	*bam.BaseApp // Pointer to the Base App
 
-	cdc *amino.Codec // Delete once changed to RLP
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
 	//Not sure if this is needed
@@ -38,7 +34,6 @@ type ChildChain struct {
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	var app = &ChildChain{
 		BaseApp:			bam.NewBaseApp(appName, logger, db),
-		cdc:				MakeCodec(),
 		capKeyMainStore:	sdk.NewKVStoreKey("main"),
 		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
 	}
@@ -61,14 +56,11 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
 	
-	// TODO: set initChainer?
 	// TO-UNDERSTAND: Not sure what mounting does yet
 	app.MountStoresIAVL(app.capKeyMainStore)
 	
-	// TO-UNDERSTAND: What does ante handler do, do i need to make a new one
-	//app.setAnteHandler()
-	
-	// TODO: set ante handler
+	// TODO: Make ante handler
+	//
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
 		cmn.Exit(err.Error())
@@ -88,28 +80,3 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	}
 	return tx, nil
 }
-
-// TODO: Add initChainer?
-
-func MakeCodec() *amino.Codec {
-	cdc := amino.NewCodec()
-	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
-	types.RegisterAmino(cdc)   // Register bank.[SendMsg,IssueMsg] types.
-	// crypto.RegisterWire(cdc)
-	cdc.RegisterConcrete(crypto.PubKey{}, "go-crypto/PubKey", nil)
-	cdc.RegisterConcrete(crypto.PrivKey{}, "go-crypto/PrivKey", nil)
-	cdc.RegisterConcrete(crypto.Signature{}, "go-crypto/Signature", nil)
-	cdc.RegisterConcrete(sdk.StdSignature{}, "sdk/StdSignature", nil)
-	cdc.RegisterInterface((*crypto.PubKeyInner)(nil), nil)
-	cdc.RegisterConcrete(crypto.PubKeyEd25519{}, "go-crypto/PubKeyEd25519", nil)
-	cdc.RegisterConcrete(crypto.SignatureEd25519{}, "go-crypto/SignatureEd25519", nil)
-	cdc.RegisterInterface((*crypto.SignatureInner)(nil), nil)
-	return cdc
-}
-
-
-
-// Current TODO List:
-// - Implement RLP Encoding/Decoding in app.go and tx.go
-// - Implement AnteHandler
-// - Write Basic Test Cases
