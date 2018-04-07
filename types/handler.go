@@ -1,7 +1,6 @@
 package types
 
 import (
-	"math/big"
 	"reflect"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -12,8 +11,8 @@ func NewHandler(uk UTXOKeeper) sdk.Handler {
 		switch msg := msg.(type) {
 		case SpendMsg:
 			return handleSpendMsg(ctx, uk, msg)
-		case DepositMsg:
-			return handleDepositMsg(ctx, uk, msg)
+		case FinalizeMsg:
+			return handleFinalizeMsg(ctx, uk, msg)
 		default:
 			errMsg := "Unrecognized Msg type: " + reflect.TypeOf(msg).Name()
 			return sdk.ErrUnknownRequest(errMsg).Result()
@@ -25,16 +24,17 @@ func NewHandler(uk UTXOKeeper) sdk.Handler {
 func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 	// NOTE: totalIn == totalOut should already have been checked
 	// TODO: Implement
+	if msg.IsDeposit() {
+		return handleDepositMsg(ctx, uk, msg)
+	}
 	if msg.Owner1 != nil {
-		//CHANGE
 		position := [3]uint{msg.Blknum1, msg.Txindex1, msg.Oindex1}
 		err := uk.SpendUTXO(ctx, msg.Owner1, position)
 		if err != nil {
 			return err.Result()
 		}
 	}
-	if msg.Owner2 != nil {
-		//CHANGE
+	if msg.Owner2 != nil && !ZeroAddress(msg.Owner2) {
 		position := [3]uint{msg.Blknum2, msg.Txindex2, msg.Oindex2}
 		err := uk.SpendUTXO(ctx, msg.Owner2, position)
 		if err != nil {
@@ -47,7 +47,7 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 			return err.Result()
 		}
 	}
-	if msg.Newowner2 != nil {
+	if msg.Newowner2 != nil && !ZeroAddress(msg.Newowner2) {
 		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2)
 		if err != nil {
 			return err.Result()
@@ -58,8 +58,11 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 }
 
 // Handle IssueMsg.
-func handleDepositMsg(ctx sdk.Context, uk UTXOKeeper, msg DepositMsg) sdk.Result {
-	// TODO: Implement 
+func handleDepositMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
+	err := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1)
+	if err != nil {
+		return err.Result()
+	}
 	return sdk.Result{}
 }
 
@@ -68,7 +71,7 @@ func handleFinalizeMsg(ctx sdk.Context, uk UTXOKeeper, msg FinalizeMsg) sdk.Resu
 	if err != nil {
 		return sdk.NewError(100, err.Error()).Result()
 	}
-	if msg.Spend.Newowner2 != nil && new(big.Int).SetBytes(msg.Spend.Newowner2).Sign() != 0 {
+	if msg.Spend.Newowner2 != nil && ZeroAddress(msg.Spend.Newowner2) {
 		err = uk.FinalizeUTXO(ctx, msg.Spend.Newowner2, msg.Spend.Denom2, msg.Position, msg.ConfirmSigs)
 	}
 	if err != nil {

@@ -57,30 +57,60 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 		return sdk.NewError(100,"No recipients of transaction")
 	}
 	switch {
-	case new(big.Int).SetBytes(msg.Owner1.Bytes()).Sign() == 0: // address is 0x0
+	case ZeroAddress(msg.Newowner1): // address is 0x0
 		return sdk.NewError(100,"Must provide address in Owner1 field")
-	case new(big.Int).SetBytes(msg.Newowner1.Bytes()).Sign() == 0:
-		return sdk.NewError(100,"Must provide address in NewOwner1 field")
-	case msg.Blknum1 <= 0:
-		return sdk.NewError(100,"First blocknum is negative")
-	case msg.Txindex1 < 0:
-		return sdk.NewError(100,"Transaction index 1 is negative")
-	case msg.Oindex1 != 0 && msg.Oindex1 != 1:
-		return sdk.NewError(100,"Output index 1 is negative")
-	case msg.Blknum2 <= 0:
-		return sdk.NewError(100,"Second blocknum is negative")
-	case msg.Txindex2 < 0:
-		return sdk.NewError(100,"Transaction index 2 is negative")
-	case msg.Oindex2 != 0 && msg.Oindex2 != 1:
-		return sdk.NewError(100,"Output index 2 is negative")
+	case msg.Blknum1 == 0:
+		return msg.validateDepositMsg()
+	}
+	return msg.validateSpendMsg()
+}
+
+func (msg SpendMsg) validateDepositMsg() sdk.Error {
+	switch {
+	case !ZeroAddress(msg.Owner1) || !ZeroAddress(msg.Owner2):
+		return sdk.NewError(100,"Deposit message malformed")
+	case msg.Txindex1 != 0 || msg.Txindex2 != 0:
+		return sdk.NewError(100,"Deposit message malformed")
+	case msg.Oindex1 != 0 || msg.Oindex2 != 0:
+		return sdk.NewError(100,"Deposit message malformed")
+	case msg.Blknum2 != 0:
+		return sdk.NewError(100,"Deposit message malformed")
 	case msg.Denom1 <= 0:
 		return sdk.NewError(100,"First denomination must be positive")
-	case msg.Denom2 < 0:
-		return sdk.NewError(100,"Denomination cannot be negative")
+	case msg.Denom2 != 0:
+		return sdk.NewError(100,"Deposit message malformed")
 	case msg.Fee < 0:
 		return sdk.NewError(100,"Fee cannot be negative")
 	}
 	return nil
+}
+
+func (msg SpendMsg) validateSpendMsg() sdk.Error {
+	switch {
+	case msg.Txindex1 < 0:
+		return sdk.NewError(100,"Transaction index cannot be negative")
+	case msg.Oindex1 != 0 && msg.Oindex1 != 1:
+		return sdk.NewError(100,"Output index 1 must be either 0 or 1")
+	case msg.Blknum2 != 0:
+		if (msg.Txindex2 < 0) {
+			return sdk.NewError(100, "Transaction index cannot be negative")
+		}
+		if (msg.Oindex2 != 0 && msg.Oindex2 != 1) {
+			return sdk.NewError(100,"Output index 2 must be either 0 or 1")
+		}
+		if (msg.Denom2 <= 0) {
+			return sdk.NewError(100, "Second denomination must be positive")
+		}
+	case msg.Denom1 <= 0:
+		return sdk.NewError(100,"First denomination must be positive")
+	case msg.Fee < 0:
+		return sdk.NewError(100,"Fee cannot be negative")
+	}
+	return nil
+}
+
+func (msg SpendMsg) IsDeposit() bool {
+	return msg.Blknum1 == 0
 }
 
 // Implements Msg. 
@@ -113,52 +143,6 @@ func (msg SpendMsg) GetSigners() []crypto.Address {
 	}
 	return addrs
 }
-//----------------------------------------
-// DepositMsg
-
-//Consider changing rootchain contract
-type DepositMsg struct {
-	Owner 	crypto.Address
-	Denom 	uint
-}
-
-// Implements Msg.
-func (msg DepositMsg) Type() string { return "txs" } // TODO: decide on something better
-
-// Implements Msg.
-func (msg DepositMsg) ValidateBasic() sdk.Error {
-	// this just ensures everything is correctly formatted
-	// TODO: Implement
-	return nil
-}
-
-// Implements Msg. 
-func (msg DepositMsg) String() string {
-	return "Deposit" // TODO: Implement so contents of Msg are returned
-}
-
-// Implements Msg.
-func (msg DepositMsg) Get(key interface{}) (value interface{}) {
-	return nil // TODO: Implement 
-}
-
-// Implements Msg.
-func (msg DepositMsg) GetSignBytes() []byte {
-	// TODO: Implement with RLP encoding
-	b, err := rlp.EncodeToBytes(msg)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-// Implements Msg.
-func (msg DepositMsg) GetSigners() []crypto.Address {
-	// TODO: Implement
-	addrs := make([]crypto.Address, 1)
-	addrs[0] = crypto.Address(msg.Owner)
-	return addrs
-}
 
 type FinalizeMsg struct {
 	Spend SpendMsg
@@ -182,7 +166,7 @@ func (msg FinalizeMsg) String() string {
 	return "Finalize"
 }
 
-func (msg FinalizeMsg) ValidateBasic() error {
+func (msg FinalizeMsg) ValidateBasic() sdk.Error {
 	switch {
 	case msg.Position[0] <= msg.Spend.Blknum1 || msg.Position[0] <= msg.Spend.Blknum2:
 		return sdk.NewError(100, "New UTXO Blocknum must have greater height than inputs")
@@ -220,28 +204,19 @@ type BaseTx struct {
 	Signatures []sdk.StdSignature
 }
 
-func NewBaseTx(msg sdk.Msg, sigs []sdk.StdSignature) BaseTx {
+func NewBaseTx(msg SpendMsg, sigs []sdk.StdSignature) BaseTx {
 	return BaseTx{
 		Msg: 		msg,
 		Signatures: sigs,
 	}
 }
 
-func (tx BaseTx) GetMsg() sdk.Msg 					{ return tx.Msg }
+func (tx BaseTx) GetMsg() sdk.Msg					{ return tx.Msg }
 func (tx BaseTx) GetFeePayer() crypto.Address		{ return tx.Signatures[0].PubKey.Address() }
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
-
-func (tx BaseTx) GetTxBytes() []byte {
-	b, err := rlp.EncodeToBytes(tx)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
 
 func RegisterAmino(cdc *amino.Codec) {
 	// TODO include option to always include prefix bytes.
 	cdc.RegisterConcrete(SpendMsg{}, "plasma-mvp-sidechain/SpendMsg", nil)
-	cdc.RegisterConcrete(DepositMsg{}, "plasma-mvp-sidechain/DepositMsg", nil)
 	cdc.RegisterConcrete(BaseTx{}, "plasma-mvp-sidechain/BaseTx", nil)
 }

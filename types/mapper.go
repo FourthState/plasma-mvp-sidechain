@@ -236,6 +236,7 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position [3
 	if utxo == nil {
 		return sdk.NewError(101, "Unrecognized UTXO. Does not exist.")
 	}
+	fmt.Println(utxo)
 	uk.um.DestroyUTXO(ctx, utxo) // Delete utxo from utxo store
 	return nil
 }

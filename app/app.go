@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/go-amino" // Not necessary once switched to RLP
-	rlp "github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
+	//rlp "github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
 
 )
 
@@ -82,7 +82,7 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// TODO: implement method with RLP
 	var tx = types.BaseTx{}
 	// BaseTx is struct for Msg wrapped with authentication data
-	err := rlp.DecodeBytes(txBytes, &tx)
+	err := app.cdc.UnmarshalBinary(txBytes, &tx)
 	if err != nil {
 		return nil, sdk.ErrTxDecode("").TraceCause(err, "")
 	}
@@ -101,8 +101,8 @@ func MakeCodec() *amino.Codec {
 	cdc.RegisterConcrete(crypto.Signature{}, "go-crypto/Signature", nil)
 	cdc.RegisterConcrete(sdk.StdSignature{}, "sdk/StdSignature", nil)
 	cdc.RegisterInterface((*crypto.PubKeyInner)(nil), nil)
-	cdc.RegisterConcrete(crypto.PubKeyEd25519{}, "go-crypto/PubKeyEd25519", nil)
-	cdc.RegisterConcrete(crypto.SignatureEd25519{}, "go-crypto/SignatureEd25519", nil)
+	cdc.RegisterConcrete(crypto.PubKeySecp256k1{}, "go-crypto/PubKeySecpk1", nil)
+	cdc.RegisterConcrete(crypto.SignatureSecp256k1{}, "go-crypto/SignatureSecpk1", nil)
 	cdc.RegisterInterface((*crypto.SignatureInner)(nil), nil)
 	return cdc
 }

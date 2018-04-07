@@ -12,6 +12,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	types "plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types" 
+	//rlp "github.com/ethereum/go-ethereum/rlp"
 
 )
 
@@ -21,7 +22,7 @@ func newChildChain() *ChildChain {
 	return NewChildChain(logger, db)
 }
 
-func TestSpendMsg(t *testing.T) {
+func TestDepositMsg(t *testing.T) {
 	cc := newChildChain()
 	
 	// Construct a SpendMsg
@@ -41,25 +42,25 @@ func TestSpendMsg(t *testing.T) {
 		Fee: 1,
 	}
 
-	priv := crypto.GenPrivKeyEd25519()
+	priv := crypto.GenPrivKeySecp256k1()
 	sig := priv.Sign(msg.GetSignBytes())
 	tx := types.NewBaseTx(msg, []sdk.StdSignature {{
 			PubKey: 	priv.PubKey(),
 			Signature:	sig,
 		}})
-	//Change to RLP once implemented
+	
 	cdc := MakeCodec()
-	txBytes, err:= cdc.MarshalBinary(tx)
+	txBytes, err := cdc.MarshalBinary(tx)
 	require.NoError(t, err)
 
 	// Run a check 
 	cres := cc.CheckTx(txBytes)
-	assert.Equal(t, sdk.CodeType(101),
+	assert.Equal(t, sdk.CodeType(100),
 				sdk.CodeType(cres.Code), cres.Log)
 
 	// Simulate a Block
 	cc.BeginBlock(abci.RequestBeginBlock{})
 	dres := cc.DeliverTx(txBytes)
-	assert.Equal(t, sdk.CodeType(101), sdk.CodeType(dres.Code), dres.Log)
+	assert.Equal(t, sdk.CodeType(100), sdk.CodeType(dres.Code), dres.Log)
 
 }
