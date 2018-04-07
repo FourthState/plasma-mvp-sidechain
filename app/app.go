@@ -1,4 +1,4 @@
-package app 
+package app
 
 import (
 	// TODO: Change to import from FourthState repo (currently not on there)
@@ -6,12 +6,11 @@ import (
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	dbm "github.com/tendermint/tmlibs/db"
 	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
 	rlp "github.com/ethereum/go-ethereum/rlp"
-
 )
 
 const (
@@ -27,15 +26,15 @@ type ChildChain struct {
 	//Not sure if this is needed
 	capKeyIBCStore *sdk.KVStoreKey //capabilities key to access IBC Store from multistore
 
-	// Manage addition and deletion of unspent utxo's 
+	// Manage addition and deletion of unspent utxo's
 	utxoMapper types.UTXOMapper
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	var app = &ChildChain{
-		BaseApp:			bam.NewBaseApp(appName, logger, db),
-		capKeyMainStore:	sdk.NewKVStoreKey("main"),
-		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
+		BaseApp:         bam.NewBaseApp(appName, logger, db),
+		capKeyMainStore: sdk.NewKVStoreKey("main"),
+		capKeyIBCStore:  sdk.NewKVStoreKey("ibc"),
 	}
 
 	// define the utxoMapper
@@ -43,7 +42,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 		app.capKeyMainStore, // target store
 		// MYNOTE: may need to change proto
 		&types.BaseUTXOHolder{}, // UTXOHolder is a struct that holds BaseUTXO's
-							 // BaseUTXO implemented UTXO interface
+		// BaseUTXO implemented UTXO interface
 	)
 
 	// TODO: add handlers/router
@@ -55,11 +54,16 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// initialize BaseApp
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
-	
+
 	// TO-UNDERSTAND: Not sure what mounting does yet
 	app.MountStoresIAVL(app.capKeyMainStore)
-	
+
 	// TODO: Make ante handler
+	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
+
+	// TODO: implement types.newantehandler
+	app.setAnteHandler(types.NewAnteHandler(app.utxoMapper))
+
 	//
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
