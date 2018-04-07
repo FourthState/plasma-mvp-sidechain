@@ -62,6 +62,7 @@ func Register(cdc *amino.Codec) {
 	cdc.RegisterConcrete(crypto.SignatureEd25519{}, "go-crypto/SignatureEd25519", nil)
 	cdc.RegisterInterface((*crypto.SignatureInner)(nil), nil)
 	cdc.RegisterInterface((*UTXOHolder)(nil), nil)
+	cdc.RegisterInterface((*UTXO)(nil), nil)
 	cdc.RegisterConcrete(BaseUTXOHolder{}, "types/BaseUTXOHolder", nil)
 }
 

@@ -13,7 +13,6 @@ import (
 	types "plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types" 
 	//rlp "github.com/ethereum/go-ethereum/rlp"
-
 )
 
 func newChildChain() *ChildChain {
@@ -51,6 +50,7 @@ func TestDepositMsg(t *testing.T) {
 	
 	cdc := MakeCodec()
 	txBytes, err := cdc.MarshalBinary(tx)
+
 	require.NoError(t, err)
 
 	// Run a check 

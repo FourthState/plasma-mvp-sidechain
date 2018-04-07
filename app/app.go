@@ -1,6 +1,5 @@
 package app 
 
-//modeled after basecoinapp in cosmos/cosmos-sdk/examples
 import (
 	// TODO: Change to import from FourthState repo (currently not on there)
 	types "plasma-mvp-sidechain/types" //points to a local package
@@ -9,11 +8,12 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	dbm "github.com/tendermint/tmlibs/db"
 	cmn "github.com/tendermint/tmlibs/common"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/log"
+	crypto "github.com/tendermint/go-crypto"
 
 	"github.com/tendermint/go-amino" // Not necessary once switched to RLP
 	//rlp "github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
+
 
 )
 
@@ -25,7 +25,8 @@ const (
 type ChildChain struct {
 	*bam.BaseApp // Pointer to the Base App
 
-	cdc *amino.Codec // Delete once changed to RLP
+	cdc *amino.Codec
+
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
 	//Not sure if this is needed
@@ -38,7 +39,7 @@ type ChildChain struct {
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	var app = &ChildChain{
 		BaseApp:			bam.NewBaseApp(appName, logger, db),
-		cdc:				MakeCodec(),
+		cdc: MakeCodec(),
 		capKeyMainStore:	sdk.NewKVStoreKey("main"),
 		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
 	}
@@ -61,14 +62,11 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
 	
-	// TODO: set initChainer?
 	// TO-UNDERSTAND: Not sure what mounting does yet
 	app.MountStoresIAVL(app.capKeyMainStore)
 	
-	// TO-UNDERSTAND: What does ante handler do, do i need to make a new one
-	//app.setAnteHandler()
-	
-	// TODO: set ante handler
+	// TODO: Make ante handler
+	//
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
 		cmn.Exit(err.Error())
