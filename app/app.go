@@ -29,6 +29,8 @@ type ChildChain struct {
 
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
+	
+	capKeySigStore *sdk.KVStoreKey //capabilities key to access confirm signature store from multistore
 	//Not sure if this is needed
 	capKeyIBCStore *sdk.KVStoreKey //capabilities key to access IBC Store from multistore
 
@@ -47,6 +49,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// define the utxoMapper
 	app.utxoMapper = types.NewUTXOMapper(
 		app.capKeyMainStore, // target store
+		app.capKeySigStore,
 		// MYNOTE: may need to change proto
 		&types.BaseUTXOHolder{}, // UTXOHolder is a struct that holds BaseUTXO's
 							 // BaseUTXO implemented UTXO interface
