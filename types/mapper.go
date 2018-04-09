@@ -1,48 +1,53 @@
 package types
 
 import (
-	"reflect"
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	crypto "github.com/tendermint/go-crypto"
 	amino "github.com/tendermint/go-amino"
+	crypto "github.com/tendermint/go-crypto"
+	"reflect"
 )
 
 // Manages utxo's in existence
 // Uses go-amino encoding/decoding library
 // Does not need to be changed to RLP
 type UTXOMapper struct {
-	
-	// The key used to access the store from the Context.
-	key sdk.StoreKey
+
+	// The contextKey used to access the store from the Context.
+	contextKey sdk.StoreKey
+
+	// The Key required to access store with all confirmSigs. Persists throughout application
+	sigKey sdk.StoreKey
 
 	// The prototypical UTXO concrete type
 	proto UTXOHolder
 
-	// The Amino codec for binary encoding/decoding of utxo's 
-	cdc *amino.Codec 
+	// The Amino codec for binary encoding/decoding of utxo's
+	cdc *amino.Codec
 }
 
 // NewUTXOMapper returns a new UtxoMapper that
 // uses go-Amino to (binary) encode and decode concrete UTXO
-func NewUTXOMapper(key sdk.StoreKey, proto UTXOHolder) UTXOMapper {
+func NewUTXOMapper(contextKey sdk.StoreKey, sigKey sdk.StoreKey, proto UTXOHolder) UTXOMapper {
 	cdc := amino.NewCodec()
 	Register(cdc)
-	return UTXOMapper {
-		key:   key,
-		proto: proto,
-		cdc:   cdc, 
+	return UTXOMapper{
+		contextKey: contextKey,
+		sigKey:     sigKey,
+		proto:      proto,
+		cdc:        cdc,
 	}
 
 }
 
 // Create and return a sealed utxo mapper. Not sure if necessary
-func NewUTXOMapperSealed(key sdk.StoreKey, proto UTXOHolder) sealedUTXOMapper {
+func NewUTXOMapperSealed(contextKey sdk.StoreKey, sigKey sdk.StoreKey, proto UTXOHolder) sealedUTXOMapper {
 	cdc := amino.NewCodec()
-	um := UTXOMapper {
-		key:   key,	
-		proto: proto,
-		cdc:   cdc,
+	um := UTXOMapper{
+		contextKey: contextKey,
+		sigKey:     sigKey,
+		proto:      proto,
+		cdc:        cdc,
 	}
 	// Register for amino encoding/decoding
 	Register(cdc)
@@ -78,20 +83,20 @@ func (um UTXOMapper) Seal() sealedUTXOMapper {
 }
 
 func (um UTXOMapper) GetUTXO(ctx sdk.Context, addr crypto.Address, position [3]uint) UTXO {
-	store := ctx.KVStore(um.key) // Get the utxo store
-	bz := store.Get(addr) // Gets the encoded bytes at the address addr
+	store := ctx.KVStore(um.contextKey) // Get the utxo store
+	bz := store.Get(addr)               // Gets the encoded bytes at the address addr
 	// Checks to see if there is a utxo at that address
 	if bz == nil {
 		return nil
 	}
-	utxoHolder := um.decodeUTXOHolder(bz) // Decode the go-amino encoded utxoHolder
+	utxoHolder := um.decodeUTXOHolder(bz)   // Decode the go-amino encoded utxoHolder
 	utxo, _ := utxoHolder.GetUTXO(position) // Get the utxo from utxoHolder
 	return utxo
 }
 
 func (um UTXOMapper) CreateUTXO(ctx sdk.Context, utxo UTXO) {
-	addr := utxo.GetAddress() // Get the address of the utxo
-	store := ctx.KVStore(um.key) // Get the utxo store 
+	addr := utxo.GetAddress()           // Get the address of the utxo
+	store := ctx.KVStore(um.contextKey) // Get the utxo store
 	bz := store.Get(addr)
 	var utxoHolder UTXOHolder
 	if bz != nil {
@@ -101,14 +106,14 @@ func (um UTXOMapper) CreateUTXO(ctx sdk.Context, utxo UTXO) {
 		// Holder does not exist and needs to be created
 		utxoHolder = NewUTXOHolder() // change
 	}
-	utxoHolder.AddUTXO(utxo) //Add the utxo to the utxoHolder
+	utxoHolder.AddUTXO(utxo)             //Add the utxo to the utxoHolder
 	bz = um.encodeUTXOHolder(utxoHolder) // Encode the utxoHolder
-	store.Set(addr, bz) // Add the encoded utxo to the utxo store at address addr
+	store.Set(addr, bz)                  // Add the encoded utxo to the utxo store at address addr
 }
 
 func (um UTXOMapper) DestroyUTXO(ctx sdk.Context, utxo UTXO) {
 	addr := utxo.GetAddress()
-	store := ctx.KVStore(um.key) // Get the utxo store
+	store := ctx.KVStore(um.contextKey) // Get the utxo store
 	bz := store.Get(addr)
 	if bz == nil {
 		// Add error messages
@@ -122,13 +127,13 @@ func (um UTXOMapper) DestroyUTXO(ctx sdk.Context, utxo UTXO) {
 		bz = um.encodeUTXOHolder(utxoHolder)
 		store.Set(addr, bz)
 	}
-	
+
 }
 
-func (um UTXOMapper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs []sdk.StdSignature) sdk.Error {
-	store := ctx.KVStore(um.key)
+func (um UTXOMapper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs [2]crypto.Signature) sdk.Error {
+	store := ctx.KVStore(um.contextKey)
 	bz := store.Get(addr)
-	if (bz == nil) {
+	if bz == nil {
 		return sdk.NewError(100, "No store associated with address")
 	}
 	utxoHolder := um.decodeUTXOHolder(bz)
@@ -138,6 +143,17 @@ func (um UTXOMapper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom ui
 	}
 	bz = um.encodeUTXOHolder(utxoHolder)
 	store.Set(addr, bz)
+	sigStore := ctx.KVStore(um.sigKey)
+	key := []byte{byte(position[0]), byte(position[1]), byte(position[2])}
+	sz := store.Get(key)
+	if sz != nil {
+		return sdk.NewError(100, "Signatures for given position already present in store")
+	}
+	encodedSigs, encErr := um.cdc.MarshalBinary(sigs)
+	if encErr != nil {
+		return sdk.NewError(100, "Encoding of signatures failed")
+	}
+	sigStore.Set(key, encodedSigs)
 	return nil
 }
 
@@ -148,7 +164,7 @@ type sealedUTXOMapper struct {
 	UTXOMapper
 }
 
-// There's no way for external modules to mutate the 
+// There's no way for external modules to mutate the
 // sum.utxoMapper.ctx from here, even with reflection
 func (sum sealedUTXOMapper) AminoCodec() *amino.Codec {
 	panic("utxoMapper is sealed")
@@ -245,10 +261,10 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position [3
 // Creates a new utxo and adds it to the utxo store
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) sdk.Error {
 	utxo := NewBaseUTXO(addr, denom) // Creates new utxo
-	uk.um.CreateUTXO(ctx, utxo) // Adds utxo to utxo store
+	uk.um.CreateUTXO(ctx, utxo)      // Adds utxo to utxo store
 	return nil
 }
 
-func (uk UTXOKeeper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs []sdk.StdSignature) sdk.Error {
+func (uk UTXOKeeper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs [2]crypto.Signature) sdk.Error {
 	return uk.um.FinalizeUTXO(ctx, addr, denom, position, sigs)
 }

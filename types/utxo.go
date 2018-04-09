@@ -1,10 +1,8 @@
 package types //might need to be adjusted
 
 import (
-	crypto "github.com/tendermint/go-crypto"
 	"errors"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
+	crypto "github.com/tendermint/go-crypto"
 )
 
 // UTXO is a standard unspent transaction output
@@ -23,62 +21,62 @@ type UTXO interface {
 	GetPosition() [3]uint
 	SetPosition(uint, uint, uint) error
 
-	GetConfirmSigs() []sdk.StdSignature
-	SetConfirmSigs([]sdk.StdSignature) error
+	GetConfirmSigs() [2]crypto.Signature
+	SetConfirmSigs([2]crypto.Signature) error
 
 	Get(key interface{}) (value interface{}, err error)
 	Set(key interface{}, value interface{}) error
-	
+
 	//TODO: ADD SUPPORT FOR DIFFERENT COINS
 
 }
 
 type UTXOHolder interface {
-	GetUTXO(position [3]uint) (UTXO, int) 
+	GetUTXO(position [3]uint) (UTXO, int)
 	DeleteUTXO(utxo UTXO) error
-	AddUTXO(utxo UTXO) error 
-	FinalizeUTXO(denom uint64, sigs []sdk.StdSignature, position [3]uint) error
-	GetLength() int 
-	
+	AddUTXO(utxo UTXO) error
+	FinalizeUTXO(denom uint64, sigs [2]crypto.Signature, position [3]uint) error
+	GetLength() int
 }
 
 // Consider moving BaseUTXO and AppUTXO to another file. Are they necessary?
 // Currently being used a prototype
+// BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
 type BaseUTXO struct {
-	Address crypto.Address
-	Denom uint64
-	Position [3]uint
-	ConfirmSigs []sdk.StdSignature
+	Address     crypto.Address
+	Denom       uint64
+	Position    [3]uint
+	ConfirmSigs [2]crypto.Signature
 }
 
 func NewBaseUTXO(addr crypto.Address, denom uint64) BaseUTXO {
-	return BaseUTXO {
-		Address: addr,
-		Denom: denom,
-		Position: [3]uint{0, 0, 0},
-		ConfirmSigs: nil,
+	return BaseUTXO{
+		Address:     addr,
+		Denom:       denom,
+		Position:    [3]uint{0, 0, 0},
+		ConfirmSigs: emptySignatures(),
 	}
 }
 
-// Implements UTXO 
+// Implements UTXO
 // Not sure what this is supposed to achieve. Modeled from baseaccount
 func (utxo BaseUTXO) Get(key interface{}) (value interface{}, err error) {
 	panic("not implemented yet")
 }
 
-// Implements UTXO 
+// Implements UTXO
 // Not sure what this is supposed to achieve. Modeled from baseaccount
 func (utxo BaseUTXO) Set(key interface{}, value interface{}) error {
 	panic("not implemented yet")
 }
 
-//Implements UTXO 
+//Implements UTXO
 func (utxo BaseUTXO) GetAddress() crypto.Address {
 	return utxo.Address
 }
 
 //Implements UTXO
-func (utxo BaseUTXO) SetAddress(addr crypto.Address) error{
+func (utxo BaseUTXO) SetAddress(addr crypto.Address) error {
 	if utxo.Address != nil {
 		return errors.New("cannot override BaseUTXO Address")
 	}
@@ -115,33 +113,38 @@ func (utxo BaseUTXO) SetPosition(blockNum uint, txIndex uint, oIndex uint) error
 	return nil
 }
 
-func (utxo BaseUTXO) GetConfirmSigs() []sdk.StdSignature {
+func (utxo BaseUTXO) GetConfirmSigs() [2]crypto.Signature {
 	return utxo.ConfirmSigs
 }
 
-func (utxo BaseUTXO) SetConfirmSigs(sigs []sdk.StdSignature) error {
-	if utxo.GetConfirmSigs() != nil {
+func (utxo BaseUTXO) SetConfirmSigs(sigs [2]crypto.Signature) error {
+	if utxo.GetConfirmSigs() != emptySignatures() {
 		return errors.New("Confirm Sigs already set")
 	}
+
 	utxo.ConfirmSigs = sigs
 	return nil
+}
+
+func emptySignatures() [2]crypto.Signature {
+	return [2]crypto.Signature{crypto.Signature{}, crypto.Signature{}}
 }
 
 //----------------------------------------
 // UTXOHolder
 
 // Holds a list of UTXO's
-// All utxo's have same address, but possibly different denominations 
+// All utxo's have same address, but possibly different denominations
 // UtxoList needs to be public for go amino encoding to work
 type BaseUTXOHolder struct {
 	UtxoList []UTXO
 }
 
-// Creates a new UTXOHolder 
+// Creates a new UTXOHolder
 // utxoList is a slice initialized with length 1 and capacity 10
 func NewUTXOHolder() BaseUTXOHolder {
-	return BaseUTXOHolder {
-		UtxoList: 	make([]UTXO, 1, 10),
+	return BaseUTXOHolder{
+		UtxoList: make([]UTXO, 1, 10),
 	}
 }
 
@@ -160,7 +163,7 @@ func (uh BaseUTXOHolder) DeleteUTXO(utxo UTXO) error {
 	for index, elem := range uh.UtxoList {
 		// If two utxo's are identical in the list it will delete the first one
 		if elem.GetPosition() == utxo.GetPosition() {
-			uh.UtxoList = append(uh.UtxoList[:index], uh.UtxoList[index + 1:]...)
+			uh.UtxoList = append(uh.UtxoList[:index], uh.UtxoList[index+1:]...)
 			return nil
 		}
 	}
@@ -173,7 +176,7 @@ func (uh BaseUTXOHolder) AddUTXO(utxo UTXO) error {
 	return nil
 }
 
-func (uh BaseUTXOHolder) FinalizeUTXO(denom uint64, sigs []sdk.StdSignature, position [3]uint) error {
+func (uh BaseUTXOHolder) FinalizeUTXO(denom uint64, sigs [2]crypto.Signature, position [3]uint) error {
 	for _, elem := range uh.UtxoList {
 		// Find first unfinalized UTXO with same position and finalize with position
 		if elem.GetDenom() == denom && elem.GetPosition()[0] == 0 {

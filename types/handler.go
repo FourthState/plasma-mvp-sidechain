@@ -1,8 +1,8 @@
 package types
 
 import (
-	"reflect"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"reflect"
 )
 
 // Handle all "bank" type messages.
