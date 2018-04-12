@@ -5,12 +5,10 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
-	"reflect"
 )
 
 // Manages utxo's in existence
 // Uses go-amino encoding/decoding library
-// Does not need to be changed to RLP
 type UTXOMapper struct {
 
 	// The contextKey used to access the store from the Context.
@@ -19,34 +17,29 @@ type UTXOMapper struct {
 	// The Key required to access store with all confirmSigs. Persists throughout application
 	sigKey sdk.StoreKey
 
-	// The prototypical UTXO concrete type
-	proto UTXOHolder
-
 	// The Amino codec for binary encoding/decoding of utxo's
 	cdc *amino.Codec
 }
 
 // NewUTXOMapper returns a new UtxoMapper that
 // uses go-Amino to (binary) encode and decode concrete UTXO
-func NewUTXOMapper(contextKey sdk.StoreKey, sigKey sdk.StoreKey, proto UTXOHolder) UTXOMapper {
+func NewUTXOMapper(contextKey sdk.StoreKey, sigKey sdk.StoreKey) UTXOMapper {
 	cdc := amino.NewCodec()
 	Register(cdc)
 	return UTXOMapper{
 		contextKey: contextKey,
 		sigKey:     sigKey,
-		proto:      proto,
 		cdc:        cdc,
 	}
 
 }
 
 // Create and return a sealed utxo mapper. Not sure if necessary
-func NewUTXOMapperSealed(contextKey sdk.StoreKey, sigKey sdk.StoreKey, proto UTXOHolder) sealedUTXOMapper {
+func NewUTXOMapperSealed(contextKey sdk.StoreKey, sigKey sdk.StoreKey) sealedUTXOMapper {
 	cdc := amino.NewCodec()
 	um := UTXOMapper{
 		contextKey: contextKey,
 		sigKey:     sigKey,
-		proto:      proto,
 		cdc:        cdc,
 	}
 	// Register for amino encoding/decoding
@@ -58,14 +51,7 @@ func NewUTXOMapperSealed(contextKey sdk.StoreKey, sigKey sdk.StoreKey, proto UTX
 
 // Register all crypto interfaces and concrete types necessary
 func Register(cdc *amino.Codec) {
-	cdc.RegisterConcrete(crypto.PubKey{}, "go-crypto/PubKey", nil)
-	cdc.RegisterConcrete(crypto.PrivKey{}, "go-crypto/PrivKey", nil)
-	cdc.RegisterConcrete(crypto.Signature{}, "go-crypto/Signature", nil)
-	cdc.RegisterConcrete(sdk.StdSignature{}, "sdk/StdSignature", nil)
-	cdc.RegisterInterface((*crypto.PubKeyInner)(nil), nil)
-	cdc.RegisterConcrete(crypto.PubKeyEd25519{}, "go-crypto/PubKeyEd25519", nil)
-	cdc.RegisterConcrete(crypto.SignatureEd25519{}, "go-crypto/SignatureEd25519", nil)
-	cdc.RegisterInterface((*crypto.SignatureInner)(nil), nil)
+	crypto.RegisterAmino(cdc)
 	cdc.RegisterInterface((*UTXOHolder)(nil), nil)
 	cdc.RegisterInterface((*UTXO)(nil), nil)
 	cdc.RegisterConcrete(BaseUTXOHolder{}, "types/BaseUTXOHolder", nil)
@@ -170,47 +156,6 @@ func (sum sealedUTXOMapper) AminoCodec() *amino.Codec {
 	panic("utxoMapper is sealed")
 }
 
-//----------------------------------------
-// misc.
-
-func (um UTXOMapper) clonePrototypePtr() interface{} {
-	protoRt := reflect.TypeOf(um.proto)
-	if protoRt.Kind() == reflect.Ptr {
-		protoErt := protoRt.Elem()
-		if protoErt.Kind() != reflect.Struct {
-			panic("utxoMapper requires a struct proto UTXO, or a pointer to one")
-		}
-		protoRv := reflect.New(protoErt)
-		return protoRv.Interface()
-	} else {
-		protoRv := reflect.New(protoRt)
-		return protoRv.Interface()
-	}
-}
-
-// Creates a new struct (or pointer to struct) from um.proto.
-func (um UTXOMapper) clonePrototype() UTXOHolder {
-	protoRt := reflect.TypeOf(um.proto)
-	if protoRt.Kind() == reflect.Ptr {
-		protoCrt := protoRt.Elem()
-		if protoCrt.Kind() != reflect.Struct {
-			panic("utxoMapper requires a struct proto UTXOHolder, or a pointer to one")
-		}
-		protoRv := reflect.New(protoCrt)
-		clone, ok := protoRv.Interface().(UTXOHolder)
-		if !ok {
-			panic(fmt.Sprintf("utxoMapper requires a proto UTXO, but %v doesn't implement UTXO", protoRt))
-		}
-		return clone
-	} else {
-		protoRv := reflect.New(protoRt).Elem()
-		clone, ok := protoRv.Interface().(UTXOHolder)
-		if !ok {
-			panic(fmt.Sprintf("utxoMapper requires a proto UTXOHolder, but %v doesn't implement UTXO", protoRt))
-		}
-		return clone
-	}
-}
 
 func (um UTXOMapper) encodeUTXOHolder(uh UTXOHolder) []byte {
 	bz, err := um.cdc.MarshalBinary(uh)
@@ -221,16 +166,12 @@ func (um UTXOMapper) encodeUTXOHolder(uh UTXOHolder) []byte {
 }
 
 func (um UTXOMapper) decodeUTXOHolder(bz []byte) UTXOHolder {
-	uhPtr := um.clonePrototypePtr()
-	err := um.cdc.UnmarshalBinary(bz, uhPtr)
+	utxoHolder := &BaseUTXOHolder{}
+	err := um.cdc.UnmarshalBinary(bz, utxoHolder)
 	if err != nil {
 		panic(err)
 	}
-	if reflect.ValueOf(um.proto).Kind() == reflect.Ptr {
-		return reflect.ValueOf(uhPtr).Interface().(UTXOHolder)
-	} else {
-		return reflect.ValueOf(uhPtr).Elem().Interface().(UTXOHolder)
-	}
+	return utxoHolder
 }
 
 //----------------------------------------

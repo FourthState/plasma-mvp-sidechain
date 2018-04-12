@@ -8,9 +8,7 @@ import (
 // UTXO is a standard unspent transaction output
 // Has pubkey for authentication
 type UTXO interface {
-	// Decided to use address instead of public keys
-	// since each utxo newly created will be created from an
-	// Ethereum address
+	// Address to which UTXO's are sent
 	GetAddress() crypto.Address
 	SetAddress(crypto.Address) error // errors if already set
 
@@ -39,8 +37,6 @@ type UTXOHolder interface {
 	GetLength() int
 }
 
-// Consider moving BaseUTXO and AppUTXO to another file. Are they necessary?
-// Currently being used a prototype
 // BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
 type BaseUTXO struct {
 	Address     crypto.Address
@@ -127,7 +123,7 @@ func (utxo BaseUTXO) SetConfirmSigs(sigs [2]crypto.Signature) error {
 }
 
 func emptySignatures() [2]crypto.Signature {
-	return [2]crypto.Signature{crypto.Signature{}, crypto.Signature{}}
+	return [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 }
 
 //----------------------------------------
@@ -135,27 +131,26 @@ func emptySignatures() [2]crypto.Signature {
 
 // Holds a list of UTXO's
 // All utxo's have same address, but possibly different denominations
-// UtxoList needs to be public for go amino encoding to work
 type BaseUTXOHolder struct {
 	UtxoList []UTXO
 }
 
 // Creates a new UTXOHolder
-// utxoList is a slice initialized with length 1 and capacity 10
+// UtxoList is a slice initialized with length 1 and capacity 10
 func NewUTXOHolder() BaseUTXOHolder {
 	return BaseUTXOHolder{
 		UtxoList: make([]UTXO, 1, 10),
 	}
 }
 
-// Gets the utxo from the utxoList
+// Gets the utxo from the UtxoList
 func (uh BaseUTXOHolder) GetUTXO(position [3]uint) (UTXO, int) {
 	for index, elem := range uh.UtxoList {
 		if elem.GetPosition() == position {
 			return elem, index
 		}
 	}
-	return BaseUTXO{}, 0 //utxo is not in the list
+	return BaseUTXO{}, 0 // utxo is not in the list
 }
 
 // Delete utxo from utxoList

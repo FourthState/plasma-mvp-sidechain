@@ -11,14 +11,12 @@ import (
 	"github.com/tendermint/tmlibs/log"
 	crypto "github.com/tendermint/go-crypto"
 
-	"github.com/tendermint/go-amino" // Not necessary once switched to RLP
-	//rlp "github.com/ethereum/go-ethereum/rlp" // TODO: Change from amino to RLP
-
-	rlp "github.com/ethereum/go-ethereum/rlp"
+	"github.com/tendermint/go-amino" 
+	//rlp "github.com/ethereum/go-ethereum/rlp" 
 )
 
 const (
-	appName = "plasmaChildChain" // Can be changed
+	appName = "plasmaChildChain"
 )
 
 // Extended ABCI application
@@ -41,9 +39,9 @@ type ChildChain struct {
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	var app = &ChildChain{
 		BaseApp:			bam.NewBaseApp(appName, logger, db),
-		cdc: MakeCodec(),
+		cdc: 				MakeCodec(),
 		capKeyMainStore:	sdk.NewKVStoreKey("main"),
-		capKeySigStore: sdk.NewKVStoreKey("sig"),
+		capKeySigStore: 	sdk.NewKVStoreKey("sig"),
 		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
 
 	}
@@ -52,12 +50,8 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	app.utxoMapper = types.NewUTXOMapper(
 		app.capKeyMainStore, // target store
 		app.capKeySigStore,
-		// MYNOTE: may need to change proto
-		&types.BaseUTXOHolder{}, // UTXOHolder is a struct that holds BaseUTXO's
-		// BaseUTXO implemented UTXO interface
 	)
 
-	// TODO: add handlers/router
 	// UTXOKeeper to adjust spending and recieving of utxo's
 	UTXOKeeper := types.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
@@ -67,16 +61,11 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
 
-	// TO-UNDERSTAND: Not sure what mounting does yet
 	app.MountStoresIAVL(app.capKeyMainStore)
 
-	// TODO: Make ante handler
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
+	//app.setAnteHandler(types.NewAnteHandler(app.utxoMapper))
 
-	// TODO: implement types.newantehandler
-	app.setAnteHandler(types.NewAnteHandler(app.utxoMapper))
-
-	//
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
 		cmn.Exit(err.Error())
@@ -85,7 +74,6 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	return app
 }
 
-// TODO: change sdk.Tx to different transaction struct
 func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// TODO: implement method with RLP
 	var tx = types.BaseTx{}
@@ -97,27 +85,11 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	return tx, nil
 }
 
-// TODO: Add initChainer?
 
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
-	types.RegisterAmino(cdc)   // Register bank.[SendMsg,IssueMsg] types.
-	// crypto.RegisterWire(cdc)
-	cdc.RegisterConcrete(crypto.PubKey{}, "go-crypto/PubKey", nil)
-	cdc.RegisterConcrete(crypto.PrivKey{}, "go-crypto/PrivKey", nil)
-	cdc.RegisterConcrete(crypto.Signature{}, "go-crypto/Signature", nil)
-	cdc.RegisterConcrete(sdk.StdSignature{}, "sdk/StdSignature", nil)
-	cdc.RegisterInterface((*crypto.PubKeyInner)(nil), nil)
-	cdc.RegisterConcrete(crypto.PubKeySecp256k1{}, "go-crypto/PubKeySecpk1", nil)
-	cdc.RegisterConcrete(crypto.SignatureSecp256k1{}, "go-crypto/SignatureSecpk1", nil)
-	cdc.RegisterInterface((*crypto.SignatureInner)(nil), nil)
+	types.RegisterAmino(cdc)   // Register SpendMsg, BaseTx
+	crypto.RegisterAmino(cdc)
 	return cdc
 }
-
-
-
-// Current TODO List:
-// - Implement RLP Encoding/Decoding in app.go and tx.go
-// - Implement AnteHandler
-// - Write Basic Test Cases

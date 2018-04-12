@@ -8,8 +8,6 @@ import (
 )
 
 // Consider correct types to use
-// Also consider changing to have input/output structs. Not sure how
-// would work with rootContract
 // ConfirmSigs1 has confirm signatures from spenders of transaction located at [Blknum1, Txindex1, Oindex1] with signatures in order
 // ConfirmSigs2 has confirm signatures from spenders of transaction located at [Blknum2, Txindex2, Oindex2] with signatures in order
 type SpendMsg struct {
@@ -125,7 +123,7 @@ func (msg SpendMsg) IsDeposit() bool {
 
 // Implements Msg.
 func (msg SpendMsg) String() string {
-	return "Spend" // TODO: Implement so contents of Msg are returned
+	return "Spend" // TODO: Issue #3
 }
 
 // Implements Msg.
@@ -135,7 +133,6 @@ func (msg SpendMsg) Get(key interface{}) (value interface{}) {
 
 // Implements Msg.
 func (msg SpendMsg) GetSignBytes() []byte {
-	// TODO: Implement with RLP encoding
 	b, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		panic(err)
@@ -145,7 +142,6 @@ func (msg SpendMsg) GetSignBytes() []byte {
 
 // Implements Msg.
 func (msg SpendMsg) GetSigners() []crypto.Address {
-	// TODO
 	addrs := make([]crypto.Address, 1)
 	addrs[0] = crypto.Address(msg.Owner1)
 	if !ZeroAddress(msg.Owner2) {
@@ -173,7 +169,7 @@ func (msg FinalizeMsg) Type() string {
 }
 
 func (msg FinalizeMsg) String() string {
-	return "Finalize"
+	return "Finalize" // TODO: Issue #3
 }
 
 func (msg FinalizeMsg) ValidateBasic() sdk.Error {
@@ -226,7 +222,7 @@ func (tx BaseTx) GetFeePayer() crypto.Address       { return tx.Signatures[0].Pu
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
 
 func RegisterAmino(cdc *amino.Codec) {
-	// TODO include option to always include prefix bytes.
+	// TODO include option to always include prefix bytes
 	cdc.RegisterConcrete(SpendMsg{}, "plasma-mvp-sidechain/SpendMsg", nil)
 	cdc.RegisterConcrete(BaseTx{}, "plasma-mvp-sidechain/BaseTx", nil)
 }
