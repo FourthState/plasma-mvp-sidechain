@@ -52,7 +52,6 @@ func NewUTXOMapperSealed(contextKey sdk.StoreKey, sigKey sdk.StoreKey) sealedUTX
 // Register all crypto interfaces and concrete types necessary
 func Register(cdc *amino.Codec) {
 	crypto.RegisterAmino(cdc)
-	cdc.RegisterInterface((*UTXOHolder)(nil), nil)
 	cdc.RegisterInterface((*UTXO)(nil), nil)
 	cdc.RegisterConcrete(BaseUTXOHolder{}, "types/BaseUTXOHolder", nil)
 }
@@ -68,79 +67,35 @@ func (um UTXOMapper) Seal() sealedUTXOMapper {
 	return sealedUTXOMapper{um}
 }
 
-func (um UTXOMapper) GetUTXO(ctx sdk.Context, addr crypto.Address, position [3]uint) UTXO {
+func (um UTXOMapper) GetUTXO(ctx sdk.Context, position [3]uint) UTXO {
 	store := ctx.KVStore(um.contextKey) // Get the utxo store
-	bz := store.Get(addr)               // Gets the encoded bytes at the address addr
+	pos := position[0] * 100000 + position[1] * 10 + position[2]
+	bz := store.Get(pos)               // Gets the encoded bytes at the address addr
 	// Checks to see if there is a utxo at that address
 	if bz == nil {
 		return nil
 	}
-	utxoHolder := um.decodeUTXOHolder(bz)   // Decode the go-amino encoded utxoHolder
-	utxo, _ := utxoHolder.GetUTXO(position) // Get the utxo from utxoHolder
+	utxo := um.decodeUTXO(bz)   // Decode the go-amino encoded utxo
 	return utxo
 }
 
-func (um UTXOMapper) CreateUTXO(ctx sdk.Context, utxo UTXO) {
-	addr := utxo.GetAddress()           // Get the address of the utxo
+func (um UTXOMapper) AddUTXO(ctx sdk.Context, utxo UTXO) {
+	position := utxo.GetPosition()       // Get the position of the utxo
 	store := ctx.KVStore(um.contextKey) // Get the utxo store
-	bz := store.Get(addr)
-	var utxoHolder UTXOHolder
-	if bz != nil {
-		// Holder already exists
-		utxoHolder = um.decodeUTXOHolder(bz)
-	} else {
-		// Holder does not exist and needs to be created
-		utxoHolder = NewUTXOHolder() // change
-	}
-	utxoHolder.AddUTXO(utxo)             //Add the utxo to the utxoHolder
-	bz = um.encodeUTXOHolder(utxoHolder) // Encode the utxoHolder
-	store.Set(addr, bz)                  // Add the encoded utxo to the utxo store at address addr
+	pos := position[0] * 100000 + position[1] * 10 + position[2]
+	bz = um.encodeUTXO(utxo) 			// Encode the utxoHolder
+	store.Set(pos, bz)                  // Add the encoded utxo to the utxo store at address addr
 }
 
-func (um UTXOMapper) DestroyUTXO(ctx sdk.Context, utxo UTXO) {
-	addr := utxo.GetAddress()
+func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position [3]uint) {
 	store := ctx.KVStore(um.contextKey) // Get the utxo store
-	bz := store.Get(addr)
+	pos := position[0] * 100000 + position[1] * 10 + position[2]
+	bz := store.Get(pos)
 	if bz == nil {
 		// Add error messages
 		return
 	}
-	utxoHolder := um.decodeUTXOHolder(bz)
-	utxoHolder.DeleteUTXO(utxo)
-	if utxoHolder.GetLength() == 0 {
-		store.Delete(addr)
-	} else {
-		bz = um.encodeUTXOHolder(utxoHolder)
-		store.Set(addr, bz)
-	}
-
-}
-
-func (um UTXOMapper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs [2]crypto.Signature) sdk.Error {
-	store := ctx.KVStore(um.contextKey)
-	bz := store.Get(addr)
-	if bz == nil {
-		return sdk.NewError(100, "No store associated with address")
-	}
-	utxoHolder := um.decodeUTXOHolder(bz)
-	err := utxoHolder.FinalizeUTXO(denom, sigs, position)
-	if err == nil {
-		return sdk.NewError(100, err.Error())
-	}
-	bz = um.encodeUTXOHolder(utxoHolder)
-	store.Set(addr, bz)
-	sigStore := ctx.KVStore(um.sigKey)
-	key := []byte{byte(position[0]), byte(position[1]), byte(position[2])}
-	sz := store.Get(key)
-	if sz != nil {
-		return sdk.NewError(100, "Signatures for given position already present in store")
-	}
-	encodedSigs, encErr := um.cdc.MarshalBinary(sigs)
-	if encErr != nil {
-		return sdk.NewError(100, "Encoding of signatures failed")
-	}
-	sigStore.Set(key, encodedSigs)
-	return nil
+	store.Set(pos, nil)
 }
 
 //----------------------------------------
@@ -157,7 +112,7 @@ func (sum sealedUTXOMapper) AminoCodec() *amino.Codec {
 }
 
 
-func (um UTXOMapper) encodeUTXOHolder(uh UTXOHolder) []byte {
+func (um UTXOMapper) encodeUTXO(uh UTXO) []byte {
 	bz, err := um.cdc.MarshalBinary(uh)
 	if err != nil {
 		panic(err)
@@ -165,18 +120,17 @@ func (um UTXOMapper) encodeUTXOHolder(uh UTXOHolder) []byte {
 	return bz
 }
 
-func (um UTXOMapper) decodeUTXOHolder(bz []byte) UTXOHolder {
-	utxoHolder := &BaseUTXOHolder{}
-	err := um.cdc.UnmarshalBinary(bz, utxoHolder)
+func (um UTXOMapper) decodeUTXO(bz []byte) UTXO {
+	utxo := &BaseUTXO{}
+	err := um.cdc.UnmarshalBinary(bz, utxo)
 	if err != nil {
 		panic(err)
 	}
-	return utxoHolder
-}
+	return utxo
 
 //----------------------------------------
 // UTXOKeeper
-
+// Unnecessary?
 // UTXOKeeper manages spending and recieving inputs/outputs
 type UTXOKeeper struct {
 	um UTXOMapper
@@ -189,23 +143,22 @@ func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
 
 // Delete's utxo from utxo store
 func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position [3]uint) sdk.Error {
-	utxo := uk.um.GetUTXO(ctx, addr, position) // Get the utxo that should be spent
+	
+	utxo := uk.um.GetUTXO(ctx, position) // Get the utxo that should be spent
 	// Check to see if utxo exists
 	if utxo == nil {
 		return sdk.NewError(101, "Unrecognized UTXO. Does not exist.")
 	}
-	fmt.Println(utxo)
-	uk.um.DestroyUTXO(ctx, utxo) // Delete utxo from utxo store
+	uk.um.DeleteUTXO(ctx, utxo) // Delete utxo from utxo store
 	return nil
 }
 
 // Creates a new utxo and adds it to the utxo store
-func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64) sdk.Error {
-	utxo := NewBaseUTXO(addr, denom) // Creates new utxo
-	uk.um.CreateUTXO(ctx, utxo)      // Adds utxo to utxo store
-	return nil
-}
+func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
+	 oldutxo UTXO, oindex uint) sdk.Error {
 
-func (uk UTXOKeeper) FinalizeUTXO(ctx sdk.Context, addr crypto.Address, denom uint64, position [3]uint, sigs [2]crypto.Signature) sdk.Error {
-	return uk.um.FinalizeUTXO(ctx, addr, denom, position, sigs)
+	position := [3]uint{ctx.BlockHeight(), ctx.TxIndex(), oindex}
+	utxo := NewBaseUTXO(addr, oldutxo.GetCSAddress(), nil, oldutxo.GetCSPubKey(), denom, position) 
+	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
+	return nil
 }

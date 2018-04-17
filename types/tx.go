@@ -8,18 +8,20 @@ import (
 )
 
 // Consider correct types to use
-// ConfirmSigs1 has confirm signatures from spenders of transaction located at [Blknum1, Txindex1, Oindex1] with signatures in order
-// ConfirmSigs2 has confirm signatures from spenders of transaction located at [Blknum2, Txindex2, Oindex2] with signatures in order
+// ConfirmSig1 has confirm signatures from spenders of transaction located at [Blknum1, Txindex1, Oindex1] with signatures in order
+// ConfirmSig2 has confirm signatures from spenders of transaction located at [Blknum2, Txindex2, Oindex2] with signatures in order
 type SpendMsg struct {
-	Blknum1      uint
-	Txindex1     uint
-	Oindex1      uint
-	Owner1       crypto.Address
+	Blknum1      uint64
+	Txindex1     uint16
+	Oindex1      uint8
+	Indenom1	 uint64
+	Owner1		 crypto.Address
 	ConfirmSigs1 [2]crypto.Signature
-	Blknum2      uint
-	Txindex2     uint
-	Oindex2      uint
-	Owner2       crypto.Address
+	Blknum2      uint64
+	Txindex2     uint16
+	Oindex2      uint8
+	Indenom2	 uint64
+	Owner2 		 crypto.Address
 	ConfirmSigs2 [2]crypto.Signature
 	Newowner1    crypto.Address
 	Denom1       uint64
@@ -28,20 +30,25 @@ type SpendMsg struct {
 	Fee          uint
 }
 
-func NewSpendMsg(blknum1 uint, txindex1 uint, oindex1 uint, owner1 crypto.Address, confirmSigs1 [2]crypto.Signature,
-	blknum2 uint, txindex2 uint, oindex2 uint, owner2 crypto.Address, confirmSigs2 [2]crypto.Signature,
-	newowner1 crypto.Address, denom1 uint64, newowner2 crypto.Address, denom2 uint64, fee uint) SpendMsg {
+func NewSpendMsg(blknum1 uint, txindex1 uint, oindex1 uint,
+	indenom1 uint64, owner1 crypto.Address, confirmSigs1 [2]crypto.Signature,
+	blknum2 uint, txindex2 uint, oindex2 uint,
+	indenom2 uint64, owner2 crypto.Address, confirmSigs2 [2]crypto.Signature,
+	newowner1 crypto.Address, denom1 uint64,
+	newowner2 crypto.Address, denom2 uint64, fee uint) SpendMsg {
 	return SpendMsg{
 		Blknum1:      blknum1,
 		Txindex1:     txindex1,
 		Oindex1:      oindex1,
-		Owner1:       owner1,
-		ConfirmSigs1: confirmSigs1,
+		Indenom1:     indenom1,
+		Owner1:	 	  owner1,
+		ConfirmSigs1: [2]confirmSigs1, 
 		Blknum2:      blknum2,
 		Txindex2:     txindex2,
 		Oindex2:      oindex2,
-		ConfirmSigs2: confirmSigs2,
-		Owner2:       owner2,
+		Indenom2:     indenom2,
+		Owner2:	 	  owner2,
+		ConfirmSigs2: [2]confirmSigs2, 
 		Newowner1:    newowner1,
 		Denom1:       denom1,
 		Newowner2:    newowner2,
@@ -55,8 +62,6 @@ func (msg SpendMsg) Type() string { return "txs" } // TODO: decide on something 
 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {
-	// this just ensures everything is correctly formatted
-	// Add more checks?
 	if msg.Newowner1 == nil && msg.Newowner2 == nil {
 		return sdk.NewError(100, "No recipients of transaction")
 	}
@@ -72,6 +77,10 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 func (msg SpendMsg) validateDepositMsg() sdk.Error {
 	switch {
 	case !ZeroAddress(msg.Owner1) || !ZeroAddress(msg.Owner2):
+		return sdk.NewError(100, "Deposit message malformed")
+	case msg.Indenom1 == 0 && msg.Indenom2 == 0:
+		return sdk.NewError(100, "Deposit message malformed")
+	case msg.Indenom1 < 0 || msg.Indenom2 < 0:
 		return sdk.NewError(100, "Deposit message malformed")
 	case msg.Txindex1 != 0 || msg.Txindex2 != 0:
 		return sdk.NewError(100, "Deposit message malformed")
@@ -93,6 +102,7 @@ func (msg SpendMsg) validateDepositMsg() sdk.Error {
 	return nil
 }
 
+// CA: Do we need the checks for < 0 if the type is uint?
 func (msg SpendMsg) validateSpendMsg() sdk.Error {
 	switch {
 	case msg.Txindex1 < 0:
@@ -113,6 +123,8 @@ func (msg SpendMsg) validateSpendMsg() sdk.Error {
 		return sdk.NewError(100, "First denomination must be positive")
 	case msg.Fee < 0:
 		return sdk.NewError(100, "Fee cannot be negative")
+	case msg.Indenom1 < 0 || msg.Indenom2 < 0:
+		return sdk.NewError(100, "Input denominations must be positive")
 	}
 	return nil
 }
@@ -150,58 +162,6 @@ func (msg SpendMsg) GetSigners() []crypto.Address {
 	return addrs
 }
 
-type FinalizeMsg struct {
-	Spend       SpendMsg
-	Position    [3]uint
-	ConfirmSigs [2]crypto.Signature
-}
-
-func NewFinalizeMsg(spend SpendMsg, position [3]uint, sigs [2]crypto.Signature) FinalizeMsg {
-	return FinalizeMsg{
-		Spend:       spend,
-		Position:    position,
-		ConfirmSigs: sigs,
-	}
-}
-
-func (msg FinalizeMsg) Type() string {
-	return "txs"
-}
-
-func (msg FinalizeMsg) String() string {
-	return "Finalize" // TODO: Issue #3
-}
-
-func (msg FinalizeMsg) ValidateBasic() sdk.Error {
-	switch {
-	case msg.Position[0] <= msg.Spend.Blknum1 || msg.Position[0] <= msg.Spend.Blknum2:
-		return sdk.NewError(100, "New UTXO Blocknum must have greater height than inputs")
-	case msg.Position[1] < 0:
-		return sdk.NewError(100, "Transaction index negative")
-	case msg.Position[2] != 0 && msg.Position[2] != 0:
-		return sdk.NewError(100, "Output index must be either 0 or 1")
-	case len(msg.ConfirmSigs) == 0:
-		return sdk.NewError(100, "Msg must have at least one confirm sig")
-	}
-	return nil
-}
-
-func (msg FinalizeMsg) Get(key interface{}) (val interface{}) {
-	return nil
-}
-
-func (msg FinalizeMsg) GetSignBytes() []byte {
-	b, err := rlp.EncodeToBytes(msg)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-func (msg FinalizeMsg) GetSigners() []crypto.Address {
-	return nil
-}
-
 //----------------------------------------
 // BaseTx (Transaction wrapper for depositmsg and spendmsg)
 
@@ -222,7 +182,7 @@ func (tx BaseTx) GetFeePayer() crypto.Address       { return tx.Signatures[0].Pu
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
 
 func RegisterAmino(cdc *amino.Codec) {
-	// TODO include option to always include prefix bytes
+	// TODO: include option to always include prefix bytes
 	cdc.RegisterConcrete(SpendMsg{}, "plasma-mvp-sidechain/SpendMsg", nil)
 	cdc.RegisterConcrete(BaseTx{}, "plasma-mvp-sidechain/BaseTx", nil)
 }
