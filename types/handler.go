@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// Handle all "bank" type messages.
+// Handle messages.
 func NewHandler(uk UTXOKeeper) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		switch msg := msg.(type) {
@@ -47,6 +47,9 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 			return err.Result()
 		}
 	}
+	// Update txIndex
+	txindex := GetTxIndex(ctx)
+	WithTxIndex(ctx, txindex + 1)
 	// TODO: add some tags so we can search it!
 	return sdk.Result{} // TODO
 }

@@ -157,7 +157,7 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position [3
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
 	 oldutxo UTXO, oindex uint) sdk.Error {
 
-	position := [3]uint{ctx.BlockHeight(), ctx.TxIndex(), oindex}
+	position := [3]uint{ctx.BlockHeight(), GetTxIndex(ctx), oindex}
 	utxo := NewBaseUTXO(addr, oldutxo.GetCSAddress(), nil, oldutxo.GetCSPubKey(), denom, position) 
 	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
 	return nil
