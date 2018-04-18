@@ -10,9 +10,7 @@ import (
 
 // TODO: what kind of Mapper to take in as param?
 func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
-	return func(ctx sdk.Context, tx sdk.Tx,)
-	(_ sdk.Context, _ sdk.Result, abort bool) 
-	{
+	return func(ctx sdk.Context, tx sdk.Tx) (newCtx sdk.Context, result sdk.Result, abort bool) {
 
 		// TODO: figure out Go syntax: tx.()
 		baseTx, ok := tx.(BaseTx)
@@ -20,7 +18,7 @@ func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 			return ctx, sdk.ErrInternal("tx must be type BaseTx").Result(), true
 		}
 
-		sigs := tx.getSignatures()
+		sigs := tx.GetSignatures()
 		if len(sigs) == 0 {
 			return ctx,
 				sdk.ErrUnauthorized("no signers").Result(),
