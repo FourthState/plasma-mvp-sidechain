@@ -1,4 +1,4 @@
-package types //might need to be adjusted
+package types 
 
 import (
 	"errors"
@@ -8,11 +8,21 @@ import (
 // UTXO is a standard unspent transaction output
 // Has pubkey for authentication
 type UTXO interface {
-	// Decided to use address instead of public keys
-	// since each utxo newly created will be created from an
-	// Ethereum address
+	// Address to which UTXO's are sent
 	GetAddress() crypto.Address
 	SetAddress(crypto.Address) error // errors if already set
+
+	// Address corresponding to confirm signature
+	GetCSAddress() [2]crypto.Address
+	SetCSAddress([2]crypto.Address) error // errors if already set
+
+	// Public Key for UTXO
+	GetPubKey() crypto.PubKey 
+	SetPubKey(crypto.PubKey) error 
+
+	// Public Key for confirm Sigs
+	GetCSPubKey() [2]crypto.PubKey 
+	SetCSPubKey([2]crypto.PubKey) error
 
 	//Get and Set denomination of the utxo. Is uint64 appropriate type?
 	GetDenom() uint64
@@ -21,9 +31,6 @@ type UTXO interface {
 	GetPosition() [3]uint
 	SetPosition(uint, uint, uint) error
 
-	GetConfirmSigs() [2]crypto.Signature
-	SetConfirmSigs([2]crypto.Signature) error
-
 	Get(key interface{}) (value interface{}, err error)
 	Set(key interface{}, value interface{}) error
 
@@ -31,41 +38,34 @@ type UTXO interface {
 
 }
 
-type UTXOHolder interface {
-	GetUTXO(position [3]uint) (UTXO, int)
-	DeleteUTXO(utxo UTXO) error
-	AddUTXO(utxo UTXO) error
-	FinalizeUTXO(denom uint64, sigs [2]crypto.Signature, position [3]uint) error
-	GetLength() int
-}
-
-// Consider moving BaseUTXO and AppUTXO to another file. Are they necessary?
-// Currently being used a prototype
 // BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
 type BaseUTXO struct {
 	Address     crypto.Address
+	CSAdress 	[2]crypto.Address
+	PubKey 		crypto.PubKey
+	CSPubKey 	[2]crypto.PubKey
 	Denom       uint64
 	Position    [3]uint
-	ConfirmSigs [2]crypto.Signature
 }
 
-func NewBaseUTXO(addr crypto.Address, denom uint64) BaseUTXO {
+func NewBaseUTXO(addr crypto.Address, csaddr [2]crypto.Address, pubkey crypto.PubKey, 
+	cspubkey [2]crypto.PubKey, denom uint64, position [3]uint) BaseUTXO {
 	return BaseUTXO{
 		Address:     addr,
+		CSAdress:	 csaddr,
+		PubKey:		 pubkey,
+		CSPubKey: 	 cspubkey,
 		Denom:       denom,
-		Position:    [3]uint{0, 0, 0},
-		ConfirmSigs: emptySignatures(),
+		Position:    position,
 	}
 }
 
 // Implements UTXO
-// Not sure what this is supposed to achieve. Modeled from baseaccount
 func (utxo BaseUTXO) Get(key interface{}) (value interface{}, err error) {
 	panic("not implemented yet")
 }
 
 // Implements UTXO
-// Not sure what this is supposed to achieve. Modeled from baseaccount
 func (utxo BaseUTXO) Set(key interface{}, value interface{}) error {
 	panic("not implemented yet")
 }
@@ -80,10 +80,61 @@ func (utxo BaseUTXO) SetAddress(addr crypto.Address) error {
 	if utxo.Address != nil {
 		return errors.New("cannot override BaseUTXO Address")
 	}
-	if addr == nil {
+	if addr == nil || addr.ZeroAddress() {
 		return errors.New("address provided is nil")
 	}
 	utxo.Address = addr
+	return nil
+}
+
+// Implements UTXO
+func (utxo BaseUTXO) GetCSAddress() [2]crypto.Address {
+	return utxo.CSAdress
+}
+
+//Implements UTXO
+func (utxo BaseUTXO) SetCSAddress(csaddr [2]crypto.Address) error {
+	if utxo.Address != nil {
+		return errors.New("cannot override BaseUTXO Confirm Signature Address")
+	}
+	if csaddr == nil || csaddr[0].ZeroAddress() {
+		return errors.New("address provided is nil")
+	}
+	utxo.CSAddress = csaddr
+	return nil
+}
+
+// Implements UTXO
+func (utxo BaseUTXO) GetPubKey() crypto.PubKey {
+	return utxo.PubKey
+}
+
+// Implements UTXO
+func (utxo BaseUTXO) SetPubKey(pubkey crypto.PubKey) {
+	if utxo.PubKey != nil {
+		return errors.New("cannot override BaseUTXO PubKey")
+	}
+	if pubkey == nil {
+		return errors.New("pubkey provided is nil")
+	}
+	utxo.PubKey = pubkey
+	return nil
+}
+
+// Implements UTXO
+func (utxo BaseUTXO) GetCSPubKey() [2]crypto.PubKey {
+	return utxo.CSPubKey
+}
+
+// Implements UTXO
+func (utxo BaseUTXO) SetCSPubKey(cspubkey [2]crypto.PubKey) {
+	if utxo.PubKey != nil {
+		return errors.New("cannot override BaseUTXO confirm sig PubKey")
+	}
+	if cspubkey == nil {
+		return errors.New("pubkey provided is nil")
+	}
+	utxo.CSPubKey = cspubkey
 	return nil
 }
 
@@ -111,83 +162,4 @@ func (utxo BaseUTXO) SetPosition(blockNum uint, txIndex uint, oIndex uint) error
 	}
 	utxo.Position = [3]uint{blockNum, txIndex, oIndex}
 	return nil
-}
-
-func (utxo BaseUTXO) GetConfirmSigs() [2]crypto.Signature {
-	return utxo.ConfirmSigs
-}
-
-func (utxo BaseUTXO) SetConfirmSigs(sigs [2]crypto.Signature) error {
-	if utxo.GetConfirmSigs() != emptySignatures() {
-		return errors.New("Confirm Sigs already set")
-	}
-
-	utxo.ConfirmSigs = sigs
-	return nil
-}
-
-func emptySignatures() [2]crypto.Signature {
-	return [2]crypto.Signature{crypto.Signature{}, crypto.Signature{}}
-}
-
-//----------------------------------------
-// UTXOHolder
-
-// Holds a list of UTXO's
-// All utxo's have same address, but possibly different denominations
-// UtxoList needs to be public for go amino encoding to work
-type BaseUTXOHolder struct {
-	UtxoList []UTXO
-}
-
-// Creates a new UTXOHolder
-// utxoList is a slice initialized with length 1 and capacity 10
-func NewUTXOHolder() BaseUTXOHolder {
-	return BaseUTXOHolder{
-		UtxoList: make([]UTXO, 1, 10),
-	}
-}
-
-// Gets the utxo from the utxoList
-func (uh BaseUTXOHolder) GetUTXO(position [3]uint) (UTXO, int) {
-	for index, elem := range uh.UtxoList {
-		if elem.GetPosition() == position {
-			return elem, index
-		}
-	}
-	return BaseUTXO{}, 0 //utxo is not in the list
-}
-
-// Delete utxo from utxoList
-func (uh BaseUTXOHolder) DeleteUTXO(utxo UTXO) error {
-	for index, elem := range uh.UtxoList {
-		// If two utxo's are identical in the list it will delete the first one
-		if elem.GetPosition() == utxo.GetPosition() {
-			uh.UtxoList = append(uh.UtxoList[:index], uh.UtxoList[index+1:]...)
-			return nil
-		}
-	}
-	return errors.New("utxo does not exist in utxoList")
-}
-
-// Apends a utxo to the utxoList
-func (uh BaseUTXOHolder) AddUTXO(utxo UTXO) error {
-	uh.UtxoList = append(uh.UtxoList, utxo)
-	return nil
-}
-
-func (uh BaseUTXOHolder) FinalizeUTXO(denom uint64, sigs [2]crypto.Signature, position [3]uint) error {
-	for _, elem := range uh.UtxoList {
-		// Find first unfinalized UTXO with same position and finalize with position
-		if elem.GetDenom() == denom && elem.GetPosition()[0] == 0 {
-			elem.SetPosition(position[0], position[1], position[2])
-			elem.SetConfirmSigs(sigs)
-			return nil
-		}
-	}
-	return errors.New("Unfinalized UTXO with given position and denom does not exist")
-}
-
-func (uh BaseUTXOHolder) GetLength() int {
-	return len(uh.UtxoList)
 }
