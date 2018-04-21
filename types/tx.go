@@ -62,7 +62,10 @@ func (msg SpendMsg) Type() string { return "txs" } // TODO: decide on something 
 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {
-	if msg.Newowner1 == nil && msg.Newowner2 == nil {
+	if !ValidAddress(msg.Owner1) {
+		return sdk.NewError(100, "First owner must be filled")
+	}
+	if !ValidAddress(msg.Newowner1) {
 		return sdk.NewError(100, "No recipients of transaction")
 	}
 	switch {
@@ -75,6 +78,8 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 		if msg.Denom2 == 0 {
 			return sdk.NewError(100, "Second denomination must be positive")
 		}
+	case msg.Indenom1 == 0:
+		return sdk.NewError(100, "First input denomination must be positive.")
 	case msg.Denom1 == 0:
 		return sdk.NewError(100, "First denomination must be positive")
 	case msg.Indenom1 + msg.Indenom2 == msg.Denom1 + msg.Denom2 + msg.Fee:
@@ -106,7 +111,7 @@ func (msg SpendMsg) GetSignBytes() []byte {
 func (msg SpendMsg) GetSigners() []crypto.Address {
 	addrs := make([]crypto.Address, 1)
 	addrs[0] = crypto.Address(msg.Owner1)
-	if !ZeroAddress(msg.Owner2) {
+	if ValidAddress(msg.Owner2) {
 		addrs = append(addrs, crypto.Address(msg.Owner2))
 	}
 	return addrs

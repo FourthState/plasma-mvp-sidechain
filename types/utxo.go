@@ -12,10 +12,6 @@ type UTXO interface {
 	GetAddress() crypto.Address
 	SetAddress(crypto.Address) error // errors if already set
 
-	// Address corresponding to confirm signature
-	GetCSAddress() [2]crypto.Address
-	SetCSAddress([2]crypto.Address) error // errors if already set
-
 	// Public Key for UTXO
 	GetPubKey() crypto.PubKey 
 	SetPubKey(crypto.PubKey) error 
@@ -41,7 +37,7 @@ type UTXO interface {
 // BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
 type BaseUTXO struct {
 	Address     crypto.Address
-	CSAdress 	[2]crypto.Address
+	CSAddress 	[2]crypto.Address
 	PubKey 		crypto.PubKey
 	CSPubKey 	[2]crypto.PubKey
 	Denom       uint64
@@ -52,7 +48,7 @@ func NewBaseUTXO(addr crypto.Address, csaddr [2]crypto.Address, pubkey crypto.Pu
 	cspubkey [2]crypto.PubKey, denom uint64, position [3]uint) BaseUTXO {
 	return BaseUTXO{
 		Address:     addr,
-		CSAdress:	 csaddr,
+		CSAddress:	 csaddr,
 		PubKey:		 pubkey,
 		CSPubKey: 	 cspubkey,
 		Denom:       denom,
@@ -84,23 +80,6 @@ func (utxo BaseUTXO) SetAddress(addr crypto.Address) error {
 		return errors.New("address provided is nil")
 	}
 	utxo.Address = addr
-	return nil
-}
-
-// Implements UTXO
-func (utxo BaseUTXO) GetCSAddress() [2]crypto.Address {
-	return utxo.CSAdress
-}
-
-//Implements UTXO
-func (utxo BaseUTXO) SetCSAddress(csaddr [2]crypto.Address) error {
-	if utxo.Address != nil {
-		return errors.New("cannot override BaseUTXO Confirm Signature Address")
-	}
-	if csaddr == nil || csaddr[0].ZeroAddress() {
-		return errors.New("address provided is nil")
-	}
-	utxo.CSAddress = csaddr
 	return nil
 }
 
