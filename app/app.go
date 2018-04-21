@@ -64,7 +64,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	app.MountStoresIAVL(app.capKeyMainStore)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	//app.setAnteHandler(types.NewAnteHandler(app.utxoMapper))
+	app.SetAnteHandler(types.NewAnteHandler(app.utxoMapper))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {

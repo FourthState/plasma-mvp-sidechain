@@ -28,8 +28,8 @@ type UTXO interface {
 	GetDenom() uint64
 	SetDenom(uint64) error //errors if already set
 
-	GetPosition() [3]uint
-	SetPosition(uint, uint, uint) error
+	GetPosition() Position
+	SetPosition(uint64, uint16, uint8) error
 
 	Get(key interface{}) (value interface{}, err error)
 	Set(key interface{}, value interface{}) error
@@ -41,18 +41,19 @@ type UTXO interface {
 // BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
 type BaseUTXO struct {
 	Address     crypto.Address
-	CSAdress 	[2]crypto.Address
+	CSAddress 	[2]crypto.Address
 	PubKey 		crypto.PubKey
 	CSPubKey 	[2]crypto.PubKey
 	Denom       uint64
-	Position    [3]uint
+	Position    Position
 }
 
 func NewBaseUTXO(addr crypto.Address, csaddr [2]crypto.Address, pubkey crypto.PubKey, 
-	cspubkey [2]crypto.PubKey, denom uint64, position [3]uint) BaseUTXO {
+	cspubkey [2]crypto.PubKey, denom uint64, 
+	position Position) BaseUTXO {
 	return BaseUTXO{
 		Address:     addr,
-		CSAdress:	 csaddr,
+		CSAddress:	 csaddr,
 		PubKey:		 pubkey,
 		CSPubKey: 	 cspubkey,
 		Denom:       denom,
@@ -80,7 +81,7 @@ func (utxo BaseUTXO) SetAddress(addr crypto.Address) error {
 	if utxo.Address != nil {
 		return errors.New("cannot override BaseUTXO Address")
 	}
-	if addr == nil || addr.ZeroAddress() {
+	if addr == nil || ZeroAddress(addr) {
 		return errors.New("address provided is nil")
 	}
 	utxo.Address = addr
@@ -89,7 +90,7 @@ func (utxo BaseUTXO) SetAddress(addr crypto.Address) error {
 
 // Implements UTXO
 func (utxo BaseUTXO) GetCSAddress() [2]crypto.Address {
-	return utxo.CSAdress
+	return utxo.CSAddress
 }
 
 //Implements UTXO
@@ -97,7 +98,7 @@ func (utxo BaseUTXO) SetCSAddress(csaddr [2]crypto.Address) error {
 	if utxo.Address != nil {
 		return errors.New("cannot override BaseUTXO Confirm Signature Address")
 	}
-	if csaddr == nil || csaddr[0].ZeroAddress() {
+	if csaddr[0] == nil || ZeroAddress(csaddr[0]) {
 		return errors.New("address provided is nil")
 	}
 	utxo.CSAddress = csaddr
@@ -110,7 +111,7 @@ func (utxo BaseUTXO) GetPubKey() crypto.PubKey {
 }
 
 // Implements UTXO
-func (utxo BaseUTXO) SetPubKey(pubkey crypto.PubKey) {
+func (utxo BaseUTXO) SetPubKey(pubkey crypto.PubKey) error {
 	if utxo.PubKey != nil {
 		return errors.New("cannot override BaseUTXO PubKey")
 	}
@@ -127,11 +128,11 @@ func (utxo BaseUTXO) GetCSPubKey() [2]crypto.PubKey {
 }
 
 // Implements UTXO
-func (utxo BaseUTXO) SetCSPubKey(cspubkey [2]crypto.PubKey) {
-	if utxo.PubKey != nil {
+func (utxo BaseUTXO) SetCSPubKey(cspubkey [2]crypto.PubKey) error {
+	if utxo.CSPubKey[0] != nil {
 		return errors.New("cannot override BaseUTXO confirm sig PubKey")
 	}
-	if cspubkey == nil {
+	if cspubkey[0] == nil {
 		return errors.New("pubkey provided is nil")
 	}
 	utxo.CSPubKey = cspubkey
@@ -152,14 +153,32 @@ func (utxo BaseUTXO) SetDenom(denom uint64) error {
 	return nil
 }
 
-func (utxo BaseUTXO) GetPosition() [3]uint {
+func (utxo BaseUTXO) GetPosition() Position {
 	return utxo.Position
 }
 
-func (utxo BaseUTXO) SetPosition(blockNum uint, txIndex uint, oIndex uint) error {
-	if utxo.Position[0] != 0 {
+func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8) error {
+	if utxo.Position.Blknum != 0 {
 		return errors.New("Cannot override BaseUTXO Position")
 	}
-	utxo.Position = [3]uint{blockNum, txIndex, oIndex}
+	utxo.Position = Position{blockNum, txIndex, oIndex}
 	return nil
+}
+
+//----------------------------------------
+// misc
+// total position = Position.Blknum * 1000000 + Position.TxIndex * 10 + Position.Oindex
+
+type Position struct {
+	Blknum 		uint64
+	TxIndex		uint16
+	Oindex 		uint8
+}
+
+func NewPosition(blknum uint64, txIndex uint16, oIndex uint8) Position {
+	return Position{
+		Blknum: 	blknum,
+		TxIndex: 	txIndex,
+		Oindex: 	oIndex,
+	}
 }

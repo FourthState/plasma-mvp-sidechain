@@ -3,12 +3,14 @@ package types
 import (
 	"bytes"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/spf13/viper"
+	crypto "github.com/tendermint/go-crypto"
+	//abci "github.com/tendermint/abci/types"
+	//"github.com/spf13/viper"
 )
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
 // and deducts fees from the first signer.
-func NewAnteHandler(utxoMapper UTXOMapper, spentDeposits DepositMapper) sdk.AnteHandler {
+func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
@@ -23,7 +25,7 @@ func NewAnteHandler(utxoMapper UTXOMapper, spentDeposits DepositMapper) sdk.Ante
 
 		msg := tx.GetMsg()
 
-		baseTx, ok := tx.(BaseTx)
+		_, ok := tx.(BaseTx)
 		if !ok {
 			return ctx, sdk.ErrInternal("tx must be in form of BaseTx").Result(), true
 		}
@@ -56,7 +58,7 @@ func NewAnteHandler(utxoMapper UTXOMapper, spentDeposits DepositMapper) sdk.Ante
 		// 4. Then check that created msg matches fee
 
 
-		spendMsg, ok: = msg.(SpendMsg)
+		spendMsg, ok := msg.(SpendMsg)
 		if !ok {
 			return ctx, sdk.ErrInternal("Msg must be of type SpendMsg").Result(), true
 		}
@@ -64,8 +66,14 @@ func NewAnteHandler(utxoMapper UTXOMapper, spentDeposits DepositMapper) sdk.Ante
 
 		// Check for empty sigs
 
-		position1 := [3]uint{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1}
+		position1 := Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1}
 		res := processSig(ctx, utxoMapper, position1, sigs[0], signBytes)
+		if !res.IsOK() {
+			return ctx, res, true
+		}
+		
+		//Change signBytes to correct value
+		res = processConfirmSig(ctx, utxoMapper, position1, spendMsg.ConfirmSigs1,signBytes)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -83,12 +91,16 @@ func NewAnteHandler(utxoMapper UTXOMapper, spentDeposits DepositMapper) sdk.Ante
 
 		// check for empty sig
 
-		position2 := [3]uint{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2}
+		position2 := Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2}
 		res = processSig(ctx, utxoMapper, position2, sigs[1], signBytes)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
 
+		res = processConfirmSig(ctx, utxoMapper, position2, spendMsg.ConfirmSigs2,signBytes)
+		if !res.IsOK() {
+			return ctx, res, true
+		}
 
 		utxo2 := utxoMapper.GetUTXO(ctx, position2)
 		if utxo2 == nil {
@@ -103,57 +115,61 @@ func NewAnteHandler(utxoMapper UTXOMapper, spentDeposits DepositMapper) sdk.Ante
 
 		// If DeliverTx() update fee
 		// Rough outline of dealing with fees
-		if !ctx.isCheckTx() {
-			feePosition := [3]uint{ctx.BlockHeight * 1000, 65535, 0} //adjust based on where feeutxo is
+		if !ctx.IsCheckTx() {
+			header := ctx.BlockHeader()
+			feeTxIndex := uint16(header.GetNumTxs()) - 1
+			feePosition := Position{uint64(ctx.BlockHeight()) * 1000, feeTxIndex, 0} //adjust based on where feeutxo is
 			feeUTXO := utxoMapper.GetUTXO(ctx, feePosition)
-			if txIndex == 65535 { //is fee msg
-				if feeUTXO.Denom1 != spendMsg.Denom1 {
-					return ErrUnauthorized("Fees collected does not match fees reported").Result(), true
+			if GetTxIndex(ctx) == feeTxIndex { //is fee msg
+				if feeUTXO.GetDenom() != spendMsg.Denom1 {
+					return ctx, sdk.ErrUnauthorized("Fees collected does not match fees reported").Result(), true
 				}
 			} else {
 				// Is not fee Msg
 				fee := spendMsg.Fee
 				// first transaction in a block
 				if feeUTXO != nil {
-					fee = fee + feeUTXO.Denom1
-					utxoMapper.DeleteUTXO(ctx, feePosition, fee)
+					fee = fee + feeUTXO.GetDenom()
+					utxoMapper.DeleteUTXO(ctx, feePosition)
 				}
-				feeUTXO = NewBaseUTXO(nil, nil, nil, nil, fee, feePosition)
-				utxoMapper.AddUTXO(ctx, feeUTXO)
-			}
-		}	
-
-		// LL: not sure what ChainID and viper is?
-		// CA: If we want to do cross chain transactions (in the future) 
-		// 	   we will need to sign with a chain-id and add to root contract?
-		//		
-		//chainID := ctx.ChainID()
-		//if chainID == "" {
-			//chainID = viper.GetString("chain-id")
-		//}
-
-		// signBytes := sdk.StdSignBytes(chain-id, fee, msg)
-
-		// // cache the signer accounts in the context
-		// // LL: WithSigners is only used for testing!! (see x/auth/context_test.go)
-		// ctx = WithSigners(ctx, signerAccs)
-
-		// // TODO: tx tags (?)
-
-		return ctx, sdk.Result{}, false // continue...
-	}
-}
-
-
-// verify the signature
-// if the account doesn't have a pubkey, set it.
+				
+				feeUTXO = NewBaseUTXO(crypto.Address([]byte("")),[2]crypto.Address{crypto.Address([]byte("")),
+				crypto.Address([]byte(""))}, crypto.PubKeySecp256k1{}, [2]crypto.PubKey{crypto.PubKeySecp256k1{}, crypto.PubKeySecp256k1{}}, fee, feePosition)
+								utxoMapper.AddUTXO(ctx, feeUTXO)
+							}
+						}	
+				
+						// LL: not sure what ChainID and viper is?
+						// CA: If we want to do cross chain transactions (in the future) 
+						// 	   we will need to sign with a chain-id and add to root contract?
+						//		
+						//chainID := ctx.ChainID()
+						//if chainID == "" {
+							//chainID = viper.GetString("chain-id")
+						//}
+				
+						// signBytes := sdk.StdSignBytes(chain-id, fee, msg)
+				
+						// // cache the signer accounts in the context
+						// // LL: WithSigners is only used for testing!! (see x/auth/context_test.go)
+						// ctx = WithSigners(ctx, signerAccs)
+				
+						// // TODO: tx tags (?)
+				
+						return ctx, sdk.Result{}, false // continue...
+					}
+				}
+				
+				
+				// verify the signature
+				// if the account doesn't have a pubkey, set it.}
 func processSig(
 	ctx sdk.Context, um UTXOMapper,
-	position [3]uint, sig sdk.StdSignature, signBytes []byte) (
+	position Position, sig sdk.StdSignature, signBytes []byte) (
 	res sdk.Result) {
 
 	// Get the utxo.
-	utxo = um.GetUTXO(ctx, position)
+	utxo := um.GetUTXO(ctx, position)
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
 	}
@@ -163,9 +179,9 @@ func processSig(
 	// set it from the StdSignature.
 
 	pubKey := utxo.GetPubKey()
-	if pubKey.Empty() {
+	if pubKey == nil{
 		pubKey = sig.PubKey
-		if pubKey.Empty() {
+		if pubKey == nil {
 			return sdk.ErrInvalidPubKey("PubKey not found").Result()
 		}
 		if !bytes.Equal(pubKey.Address(), utxo.GetAddress()) {
@@ -188,33 +204,27 @@ func processSig(
 
 func processConfirmSig(
 	ctx sdk.Context, utxoMapper UTXOMapper,
-	position [3]uint, sig sdk.StdSignature, signBytes []byte) (
+	position Position, sig [2]crypto.Signature, signBytes []byte) (
 	res sdk.Result) {
 	
-	utxo = um.GetUTXO(ctx, position)
+	utxo := utxoMapper.GetUTXO(ctx, position)
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
 	}
 
-	pubKey := utxo.GetCSPubKey()
-	if pubKey.Empty() {
-		pubKey = sig.PubKey
-		if pubKey.Empty() {
-			return sdk.ErrInvalidPubKey("PubKey not found").Result()
-		}
-
-		if !bytes.Equal(pubKey.Address(), utxo.GetCSAddress()) {
-			return sdk.ErrInvalidPubKey("PubKey does not match signer address").Result()
-		}
-
-		err := utxo.SetCSPubKey(pubKey)
-		if err != nil {
-			return sdk.ErrInternal("setting PubKey on signer's account").Result()
-		}
+	csPubKeys := utxo.GetCSPubKey()
+	pubKey1 := csPubKeys[0]
+	pubKey2 := csPubKeys[1]
+	if pubKey1 == nil || pubKey2 == nil {
+		return sdk.ErrInvalidPubKey("PubKey not found").Result()
 	}
 
 	// Check sig.
-	if !pubKey.VerifyBytes(signBytes, sig.Signature) {
+	if !pubKey1.VerifyBytes(signBytes, sig[0]) {
+		return sdk.ErrUnauthorized("signature verification failed").Result()
+	}
+
+	if !pubKey2.VerifyBytes(signBytes, sig[1]) {
 		return sdk.ErrUnauthorized("signature verification failed").Result()
 	}
 

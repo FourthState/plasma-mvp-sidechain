@@ -27,28 +27,28 @@ type SpendMsg struct {
 	Denom1       uint64
 	Newowner2    crypto.Address
 	Denom2       uint64
-	Fee          uint
+	Fee          uint64
 }
 
-func NewSpendMsg(blknum1 uint, txindex1 uint, oindex1 uint,
+func NewSpendMsg(blknum1 uint64, txindex1 uint16, oindex1 uint8,
 	indenom1 uint64, owner1 crypto.Address, confirmSigs1 [2]crypto.Signature,
-	blknum2 uint, txindex2 uint, oindex2 uint,
+	blknum2 uint64, txindex2 uint16, oindex2 uint8,
 	indenom2 uint64, owner2 crypto.Address, confirmSigs2 [2]crypto.Signature,
 	newowner1 crypto.Address, denom1 uint64,
-	newowner2 crypto.Address, denom2 uint64, fee uint) SpendMsg {
+	newowner2 crypto.Address, denom2 uint64, fee uint64) SpendMsg {
 	return SpendMsg{
 		Blknum1:      blknum1,
 		Txindex1:     txindex1,
 		Oindex1:      oindex1,
 		Indenom1:     indenom1,
 		Owner1:	 	  owner1,
-		ConfirmSigs1: [2]confirmSigs1, 
+		ConfirmSigs1: confirmSigs1, 
 		Blknum2:      blknum2,
 		Txindex2:     txindex2,
 		Oindex2:      oindex2,
 		Indenom2:     indenom2,
 		Owner2:	 	  owner2,
-		ConfirmSigs2: [2]confirmSigs2, 
+		ConfirmSigs2: confirmSigs2, 
 		Newowner1:    newowner1,
 		Denom1:       denom1,
 		Newowner2:    newowner2,

@@ -1,7 +1,7 @@
 package types
 
 import (
-	"fmt"
+	//"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
@@ -53,7 +53,8 @@ func NewUTXOMapperSealed(contextKey sdk.StoreKey, sigKey sdk.StoreKey) sealedUTX
 func Register(cdc *amino.Codec) {
 	crypto.RegisterAmino(cdc)
 	cdc.RegisterInterface((*UTXO)(nil), nil)
-	cdc.RegisterConcrete(BaseUTXOHolder{}, "types/BaseUTXOHolder", nil)
+	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
+	cdc.RegisterConcrete(Position{}, "types/Position", nil)
 }
 
 // Returns the go-Amino codec.
@@ -67,10 +68,10 @@ func (um UTXOMapper) Seal() sealedUTXOMapper {
 	return sealedUTXOMapper{um}
 }
 
-func (um UTXOMapper) GetUTXO(ctx sdk.Context, position [3]uint) UTXO {
+func (um UTXOMapper) GetUTXO(ctx sdk.Context, position Position) UTXO {
 	store := ctx.KVStore(um.contextKey) // Get the utxo store
-	pos := position[0] * 100000 + position[1] * 10 + position[2]
-	bz := store.Get(pos)               // Gets the encoded bytes at the address addr
+	posBytes := um.encodePosition(position)
+	bz := store.Get(posBytes)               // Gets the encoded bytes at the address addr
 	// Checks to see if there is a utxo at that address
 	if bz == nil {
 		return nil
@@ -82,14 +83,14 @@ func (um UTXOMapper) GetUTXO(ctx sdk.Context, position [3]uint) UTXO {
 func (um UTXOMapper) AddUTXO(ctx sdk.Context, utxo UTXO) {
 	position := utxo.GetPosition()       // Get the position of the utxo
 	store := ctx.KVStore(um.contextKey) // Get the utxo store
-	pos := position[0] * 100000 + position[1] * 10 + position[2]
-	bz = um.encodeUTXO(utxo) 			// Encode the utxoHolder
+	pos := um.encodePosition(position)
+	bz := um.encodeUTXO(utxo) 			// Encode the utxoHolder
 	store.Set(pos, bz)                  // Add the encoded utxo to the utxo store at address addr
 }
 
-func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position [3]uint) {
+func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position Position) {
 	store := ctx.KVStore(um.contextKey) // Get the utxo store
-	pos := position[0] * 100000 + position[1] * 10 + position[2]
+	pos := um.encodePosition(position)
 	bz := store.Get(pos)
 	if bz == nil {
 		// Add error messages
@@ -127,6 +128,24 @@ func (um UTXOMapper) decodeUTXO(bz []byte) UTXO {
 		panic(err)
 	}
 	return utxo
+}
+
+func (um UTXOMapper) encodePosition(pos Position) []byte {
+	bz, err := um.cdc.MarshalBinary(pos)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+func (um UTXOMapper) decodePosition(bz []byte) Position {
+	pos := Position{}
+	err := um.cdc.UnmarshalBinary(bz, pos)
+	if err != nil {
+		panic(err)
+	}
+	return pos
+}
 
 //----------------------------------------
 // UTXOKeeper
@@ -142,22 +161,22 @@ func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
 }
 
 // Delete's utxo from utxo store
-func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position [3]uint) sdk.Error {
+func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Position) sdk.Error {
 	
 	utxo := uk.um.GetUTXO(ctx, position) // Get the utxo that should be spent
 	// Check to see if utxo exists
 	if utxo == nil {
 		return sdk.NewError(101, "Unrecognized UTXO. Does not exist.")
 	}
-	uk.um.DeleteUTXO(ctx, utxo) // Delete utxo from utxo store
+	uk.um.DeleteUTXO(ctx, position) // Delete utxo from utxo store
 	return nil
 }
 
 // Creates a new utxo and adds it to the utxo store
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
-	 oldutxo UTXO, oindex uint) sdk.Error {
+	oldutxo UTXO, oindex uint8) sdk.Error {
 
-	position := [3]uint{ctx.BlockHeight(), GetTxIndex(ctx), oindex}
+	position := Position{uint64(ctx.BlockHeight()) * 1000, GetTxIndex(ctx), oindex}
 	utxo := NewBaseUTXO(addr, oldutxo.GetCSAddress(), nil, oldutxo.GetCSPubKey(), denom, position) 
 	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
 	return nil

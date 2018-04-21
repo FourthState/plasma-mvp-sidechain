@@ -22,14 +22,14 @@ func NewHandler(uk UTXOKeeper) sdk.Handler {
 func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 	// NOTE: totalIn == totalOut should already have been checked
 	// NOTE: Both input utxo's should have same reference to confirm sig
-	position1 := [3]uint{msg.Blknum1, msg.Txindex1, msg.Oindex1}
+	position1 := Position{msg.Blknum1, msg.Txindex1, msg.Oindex1}
 	utxo1 := uk.um.GetUTXO(ctx, position1) 
 	err := uk.SpendUTXO(ctx, msg.Owner1, position1)
 		if err != nil {
 			return err.Result()
 		}
 	if msg.Owner2 != nil && !ZeroAddress(msg.Owner2) {
-		position := [3]uint{msg.Blknum2, msg.Txindex2, msg.Oindex2}
+		position := Position{msg.Blknum2, msg.Txindex2, msg.Oindex2}
 		err := uk.SpendUTXO(ctx, msg.Owner2, position)
 		if err != nil {
 			return err.Result()
