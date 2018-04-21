@@ -15,7 +15,7 @@ type UTXOMapper struct {
 	contextKey sdk.StoreKey
 
 	// The Key required to access store with all confirmSigs. Persists throughout application
-	sigKey sdk.StoreKey
+	
 
 	// The Amino codec for binary encoding/decoding of utxo's
 	cdc *amino.Codec
@@ -23,23 +23,21 @@ type UTXOMapper struct {
 
 // NewUTXOMapper returns a new UtxoMapper that
 // uses go-Amino to (binary) encode and decode concrete UTXO
-func NewUTXOMapper(contextKey sdk.StoreKey, sigKey sdk.StoreKey) UTXOMapper {
+func NewUTXOMapper(contextKey sdk.StoreKey) UTXOMapper {
 	cdc := amino.NewCodec()
 	Register(cdc)
 	return UTXOMapper{
 		contextKey: contextKey,
-		sigKey:     sigKey,
 		cdc:        cdc,
 	}
 
 }
 
 // Create and return a sealed utxo mapper. Not sure if necessary
-func NewUTXOMapperSealed(contextKey sdk.StoreKey, sigKey sdk.StoreKey) sealedUTXOMapper {
+func NewUTXOMapperSealed(contextKey sdk.StoreKey) sealedUTXOMapper {
 	cdc := amino.NewCodec()
 	um := UTXOMapper{
 		contextKey: contextKey,
-		sigKey:     sigKey,
 		cdc:        cdc,
 	}
 	// Register for amino encoding/decoding
@@ -68,15 +66,17 @@ func (um UTXOMapper) Seal() sealedUTXOMapper {
 	return sealedUTXOMapper{um}
 }
 
+// Returns the UTXO located at the go amino encoded Position struct
+// Returns nil if no UTXO exists
 func (um UTXOMapper) GetUTXO(ctx sdk.Context, position Position) UTXO {
-	store := ctx.KVStore(um.contextKey) // Get the utxo store
-	posBytes := um.encodePosition(position)
-	bz := store.Get(posBytes)               // Gets the encoded bytes at the address addr
-	// Checks to see if there is a utxo at that address
+	store := ctx.KVStore(um.contextKey) 	
+	pos := um.encodePosition(position) 
+	bz := store.Get(pos)               
+	
 	if bz == nil {
 		return nil
 	}
-	utxo := um.decodeUTXO(bz)   // Decode the go-amino encoded utxo
+	utxo := um.decodeUTXO(bz)  
 	return utxo
 }
 

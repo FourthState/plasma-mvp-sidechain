@@ -50,7 +50,7 @@ type BaseUTXO struct {
 
 func NewBaseUTXO(addr crypto.Address, csaddr [2]crypto.Address, pubkey crypto.PubKey, 
 	cspubkey [2]crypto.PubKey, denom uint64, 
-	position Position) BaseUTXO {
+	position Position) UTXO {
 	return BaseUTXO{
 		Address:     addr,
 		CSAddress:	 csaddr,

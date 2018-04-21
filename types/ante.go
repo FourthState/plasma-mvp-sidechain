@@ -4,6 +4,7 @@ import (
 	"bytes"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
+	"fmt"
 	//abci "github.com/tendermint/abci/types"
 	//"github.com/spf13/viper"
 )
@@ -14,14 +15,13 @@ func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
-
+		fmt.Println("Inside ante handler")
 		sigs := tx.GetSignatures()
 		if len(sigs) == 0 {
 			return ctx,
 				sdk.ErrUnauthorized("no signers").Result(),
 				true
 		}
-
 
 		msg := tx.GetMsg()
 
