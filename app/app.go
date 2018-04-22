@@ -10,7 +10,7 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 	crypto "github.com/tendermint/go-crypto"
-
+	//"fmt"
 	"github.com/tendermint/go-amino" 
 	//rlp "github.com/ethereum/go-ethereum/rlp" 
 )
@@ -28,7 +28,7 @@ type ChildChain struct {
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
 	
-	capKeySigStore *sdk.KVStoreKey //capabilities key to access confirm signature store from multistore
+	//capKeySigStore *sdk.KVStoreKey //capabilities key to access confirm signature store from multistore
 	//Not sure if this is needed
 	capKeyIBCStore *sdk.KVStoreKey //capabilities key to access IBC Store from multistore
 
@@ -41,7 +41,6 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 		BaseApp:			bam.NewBaseApp(appName, logger, db),
 		cdc: 				MakeCodec(),
 		capKeyMainStore:	sdk.NewKVStoreKey("main"),
-		capKeySigStore: 	sdk.NewKVStoreKey("sig"),
 		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
 
 	}
@@ -49,7 +48,6 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// define the utxoMapper
 	app.utxoMapper = types.NewUTXOMapper(
 		app.capKeyMainStore, // target store
-		app.capKeySigStore,
 	)
 
 	// UTXOKeeper to adjust spending and recieving of utxo's

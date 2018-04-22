@@ -1,7 +1,5 @@
 package types
 
 import (
-	"testing"
+	// /"testing"
 )
-
-// Add tests

@@ -12,13 +12,8 @@ type UTXO interface {
 	GetAddress() crypto.Address
 	SetAddress(crypto.Address) error // errors if already set
 
-	// Public Key for UTXO
-	GetPubKey() crypto.PubKey 
-	SetPubKey(crypto.PubKey) error 
-
-	// Public Key for confirm Sigs
-	GetCSPubKey() [2]crypto.PubKey 
-	SetCSPubKey([2]crypto.PubKey) error
+	GetInputAddresses() [2]crypto.Address
+	SetInputAddresses([2]crypto.Address) error
 
 	//Get and Set denomination of the utxo. Is uint64 appropriate type?
 	GetDenom() uint64
@@ -31,27 +26,24 @@ type UTXO interface {
 	Set(key interface{}, value interface{}) error
 
 	//TODO: ADD SUPPORT FOR DIFFERENT COINS
+	//Will possibly have to add support for input positions
+	//Do not need to add Pubkey to struct. Instead client ecrecovers confirm signature to get Pubkey. Then call PubKey.Address() to verify and verify against InputAddresses.
 
 }
 
 // BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
 type BaseUTXO struct {
+	InputAddresses [2]crypto.Address
 	Address     crypto.Address
-	CSAddress 	[2]crypto.Address
-	PubKey 		crypto.PubKey
-	CSPubKey 	[2]crypto.PubKey
 	Denom       uint64
 	Position    Position
 }
 
-func NewBaseUTXO(addr crypto.Address, csaddr [2]crypto.Address, pubkey crypto.PubKey, 
-	cspubkey [2]crypto.PubKey, denom uint64, 
-	position Position) BaseUTXO {
+func NewBaseUTXO(addr crypto.Address, inputaddr [2]crypto.Address, denom uint64, 
+	position Position) UTXO {
 	return BaseUTXO{
-		Address:     addr,
-		CSAddress:	 csaddr,
-		PubKey:		 pubkey,
-		CSPubKey: 	 cspubkey,
+		InputAddresses:	 inputaddr,
+		Address: addr,
 		Denom:       denom,
 		Position:    position,
 	}
@@ -84,38 +76,19 @@ func (utxo BaseUTXO) SetAddress(addr crypto.Address) error {
 	return nil
 }
 
-// Implements UTXO
-func (utxo BaseUTXO) GetPubKey() crypto.PubKey {
-	return utxo.PubKey
-}
-
-// Implements UTXO
-func (utxo BaseUTXO) SetPubKey(pubkey crypto.PubKey) error {
-	if utxo.PubKey != nil {
-		return errors.New("cannot override BaseUTXO PubKey")
+func (utxo BaseUTXO) SetInputAddresses(addrs [2]crypto.Address) error {
+	if utxo.InputAddresses[0] != nil {
+		return errors.New("cannot override BaseUTXO Address")
 	}
-	if pubkey == nil {
-		return errors.New("pubkey provided is nil")
+	if addrs[0] == nil || ZeroAddress(addrs[0]) {
+		return errors.New("address provided is nil")
 	}
-	utxo.PubKey = pubkey
+	utxo.InputAddresses = addrs
 	return nil
 }
 
-// Implements UTXO
-func (utxo BaseUTXO) GetCSPubKey() [2]crypto.PubKey {
-	return utxo.CSPubKey
-}
-
-// Implements UTXO
-func (utxo BaseUTXO) SetCSPubKey(cspubkey [2]crypto.PubKey) error {
-	if utxo.CSPubKey[0] != nil {
-		return errors.New("cannot override BaseUTXO confirm sig PubKey")
-	}
-	if cspubkey[0] == nil {
-		return errors.New("pubkey provided is nil")
-	}
-	utxo.CSPubKey = cspubkey
-	return nil
+func (utxo BaseUTXO) GetInputAddresses() [2]crypto.Address {
+	return utxo.InputAddresses
 }
 
 //Implements UTXO

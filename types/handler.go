@@ -23,26 +23,29 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg) sdk.Result {
 	// NOTE: totalIn == totalOut should already have been checked
 	// NOTE: Both input utxo's should have same reference to confirm sig
 	position1 := Position{msg.Blknum1, msg.Txindex1, msg.Oindex1}
-	utxo1 := uk.um.GetUTXO(ctx, position1) 
+	utxo1 := uk.um.GetUTXO(ctx, position1)
+	var position2 Position
+	var utxo2 BaseUTXO
 	err := uk.SpendUTXO(ctx, msg.Owner1, position1)
 		if err != nil {
 			return err.Result()
 		}
 	if msg.Owner2 != nil && !ZeroAddress(msg.Owner2) {
-		position := Position{msg.Blknum2, msg.Txindex2, msg.Oindex2}
-		err := uk.SpendUTXO(ctx, msg.Owner2, position)
+		position2 = Position{msg.Blknum2, msg.Txindex2, msg.Oindex2}
+		utxo2 := uk.um.GetUTXO(ctx, position2)
+		err := uk.SpendUTXO(ctx, msg.Owner2, position2)
 		if err != nil {
 			return err.Result()
 		}
 	}
-	if msg.Newowner1 != nil {
-		err := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1, utxo1, 0)
-		if err != nil {
-			return err.Result()
-		}
+
+	oldUTXOs := [2]UTXO{utxo1, utxo2}
+	err2 := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1, oldUTXOs, 0)
+	if err2 != nil {
+		return err2.Result()
 	}
 	if msg.Newowner2 != nil && !ZeroAddress(msg.Newowner2) {
-		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2, utxo1, 1)
+		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2, oldUTXOs, 1)
 		if err != nil {
 			return err.Result()
 		}

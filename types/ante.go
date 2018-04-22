@@ -1,11 +1,13 @@
 package types
 
 import (
-	"bytes"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
+	"fmt"
 	//abci "github.com/tendermint/abci/types"
 	//"github.com/spf13/viper"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"reflect"
 )
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
@@ -14,13 +16,13 @@ func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
+		fmt.Println("Inside ante handler")
 		sigs := tx.GetSignatures()
 		if len(sigs) == 0 {
 			return ctx,
 				sdk.ErrUnauthorized("no signers").Result(),
 				true
 		}
-
 
 		msg := tx.GetMsg()
 
@@ -133,7 +135,7 @@ func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 				}
 				
 				feeUTXO = NewBaseUTXO(crypto.Address([]byte("")),[2]crypto.Address{crypto.Address([]byte("")),
-				crypto.Address([]byte(""))}, crypto.PubKeySecp256k1{}, [2]crypto.PubKey{crypto.PubKeySecp256k1{}, crypto.PubKeySecp256k1{}}, fee, feePosition)
+				crypto.Address([]byte(""))}, fee, feePosition)
 								utxoMapper.AddUTXO(ctx, feeUTXO)
 							}
 						}	
@@ -173,28 +175,7 @@ func processSig(
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
 	}
 
-
-	// If pubkey is not known for account,
-	// set it from the StdSignature.
-
-	pubKey := utxo.GetPubKey()
-	if pubKey == nil{
-		pubKey = sig.PubKey
-		if pubKey == nil {
-			return sdk.ErrInvalidPubKey("PubKey not found").Result()
-		}
-		if !bytes.Equal(pubKey.Address(), utxo.GetAddress()) {
-			return sdk.ErrInvalidPubKey("PubKey does not match signer address").Result()
-		}
-
-		err := utxo.SetPubKey(pubKey)
-		if err != nil {
-			return sdk.ErrInternal("setting PubKey on signer's account").Result()
-		}
-	}
-
-	// Check sig.
-	if !pubKey.VerifyBytes(signBytes, sig.Signature) {
+	if !sig.PubKey.VerifyBytes(signBytes, sig.Signature) {
 		return sdk.ErrUnauthorized("signature verification failed").Result()
 	}
 
@@ -210,21 +191,25 @@ func processConfirmSig(
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
 	}
+	inputAddresses := utxo.GetInputAddresses()
 
-	csPubKeys := utxo.GetCSPubKey()
-	pubKey1 := csPubKeys[0]
-	pubKey2 := csPubKeys[1]
-	if pubKey1 == nil || pubKey2 == nil {
-		return sdk.ErrInvalidPubKey("PubKey not found").Result()
+	ethsigs := make([]crypto.SignatureSecp256k1, 2)
+	for i, s := range sig {
+		ethsigs[i] = s.(crypto.SignatureSecp256k1)
 	}
 
-	// Check sig.
-	if !pubKey1.VerifyBytes(signBytes, sig[0]) {
+	hash := ethcrypto.Keccak256(signBytes)
+
+	pubKey1, err1 := ethcrypto.SigToPub(hash, ethsigs[0].Bytes())
+	if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), inputAddresses[0].Bytes()) {
 		return sdk.ErrUnauthorized("signature verification failed").Result()
 	}
 
-	if !pubKey2.VerifyBytes(signBytes, sig[1]) {
-		return sdk.ErrUnauthorized("signature verification failed").Result()
+	if ValidAddress(inputAddresses[1]) {
+		pubKey2, err2 := ethcrypto.SigToPub(hash, ethsigs[1].Bytes())
+		if err2 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey2).Bytes(), inputAddresses[1].Bytes()) {
+			return sdk.ErrUnauthorized("signature verification failed").Result()
+		}	
 	}
 
 	return sdk.Result{}
