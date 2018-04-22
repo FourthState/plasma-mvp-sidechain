@@ -96,7 +96,7 @@ func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position Position) {
 		fmt.Println("Tried to Delete a UTXO that does not exist") // for testing
 		return 
 	}
-	
+
 	store.Delete(pos)
 }
 
@@ -165,7 +165,7 @@ func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
 func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Position) sdk.Error {
 	
 	utxo := uk.um.GetUTXO(ctx, position) // Get the utxo that should be spent
-	// Check to see if utxo exists
+	// Check to see if utxo exists, will be taken care of in ante handler
 	if utxo == nil {
 		return sdk.NewError(101, "Unrecognized UTXO. Does not exist.")
 	}
@@ -175,10 +175,10 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Po
 
 // Creates a new utxo and adds it to the utxo store
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
-	oldutxo UTXO, oindex uint8) sdk.Error {
+	csAddress [2]crypto.Address, csPubKey [2]crypto.PubKey, oindex uint8) sdk.Error {
 
 	position := Position{uint64(ctx.BlockHeight()) * 1000, GetTxIndex(ctx), oindex}
-	utxo := NewBaseUTXO(addr, oldutxo.GetCSAddress(), nil, oldutxo.GetCSPubKey(), denom, position) 
-	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
+	utxo := NewBaseUTXO(addr, csAddress, nil, csPubKey, denom, position) 
+	uk.um.AddUTXO(ctx, utxo)
 	return nil
 }

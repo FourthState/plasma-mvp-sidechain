@@ -11,7 +11,7 @@ import (
 
 func TestContextWithTxIndexIncrement(t *testing.T) {
 	ms, _ := setupMultiStore() // setupMultiStore() is in mapper_test.go
-	ctx := sdk.NewContext(ms, abci.Header{ChainID: "testingchain"}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
 
 	txIndex := GetTxIndex(ctx)
 	assert.Equal(t, uint16(0), txIndex)

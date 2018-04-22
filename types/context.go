@@ -4,7 +4,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-type contextKey int // not sure if needed
+type contextKey int 
 
 const (
 	contextKeyTxIndex contextKey = iota
