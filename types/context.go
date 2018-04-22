@@ -10,7 +10,7 @@ const (
 	contextKeyTxIndex contextKey = iota
 )
 
-func WithTxIndex(ctx sdk.Context, uint16 txIndex) sdk.Context {
+func WithTxIndex(ctx sdk.Context, txIndex uint16) sdk.Context {
 	return ctx.WithValue(contextKeyTxIndex, txIndex)
 }
 
