@@ -1,28 +1,23 @@
 package types
 
 import (
-	//"fmt"
+	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
 )
 
-// Manages utxo's in existence
+// Maps Position struct to UTXO
 // Uses go-amino encoding/decoding library
 type UTXOMapper struct {
 
 	// The contextKey used to access the store from the Context.
 	contextKey sdk.StoreKey
 
-	// The Key required to access store with all confirmSigs. Persists throughout application
-	
-
-	// The Amino codec for binary encoding/decoding of utxo's
+	// The Amino codec for binary encoding/decoding
 	cdc *amino.Codec
 }
 
-// NewUTXOMapper returns a new UtxoMapper that
-// uses go-Amino to (binary) encode and decode concrete UTXO
 func NewUTXOMapper(contextKey sdk.StoreKey) UTXOMapper {
 	cdc := amino.NewCodec()
 	Register(cdc)
@@ -47,7 +42,7 @@ func NewUTXOMapperSealed(contextKey sdk.StoreKey) sealedUTXOMapper {
 	return um.Seal()
 }
 
-// Register all crypto interfaces and concrete types necessary
+// Registers all interfaces and concrete types necessary for encoding/decoding
 func Register(cdc *amino.Codec) {
 	crypto.RegisterAmino(cdc)
 	cdc.RegisterInterface((*UTXO)(nil), nil)
@@ -66,37 +61,43 @@ func (um UTXOMapper) Seal() sealedUTXOMapper {
 	return sealedUTXOMapper{um}
 }
 
-// Returns the UTXO located at the go amino encoded Position struct
-// Returns nil if no UTXO exists
+// Returns the UTXO corresponding to the go amino encoded Position struct
+// Returns nil if no UTXO exists at that position
 func (um UTXOMapper) GetUTXO(ctx sdk.Context, position Position) UTXO {
 	store := ctx.KVStore(um.contextKey) 	
 	pos := um.encodePosition(position) 
 	bz := store.Get(pos)               
 	
 	if bz == nil {
-		return nil
+		return nil 
 	}
+
 	utxo := um.decodeUTXO(bz)  
 	return utxo
 }
 
+// Adds the UTXO to the mapper
 func (um UTXOMapper) AddUTXO(ctx sdk.Context, utxo UTXO) {
-	position := utxo.GetPosition()       // Get the position of the utxo
-	store := ctx.KVStore(um.contextKey) // Get the utxo store
+	position := utxo.GetPosition() 
 	pos := um.encodePosition(position)
-	bz := um.encodeUTXO(utxo) 			// Encode the utxoHolder
-	store.Set(pos, bz)                  // Add the encoded utxo to the utxo store at address addr
+
+	store := ctx.KVStore(um.contextKey) 
+	bz := um.encodeUTXO(utxo) 			
+	store.Set(pos, bz)                  
 }
 
+// Deletes UTXO corresponding to the position from mapping
 func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position Position) {
-	store := ctx.KVStore(um.contextKey) // Get the utxo store
+	store := ctx.KVStore(um.contextKey) 
 	pos := um.encodePosition(position)
 	bz := store.Get(pos)
+	// NOTE: For testing, this should never happen
 	if bz == nil {
-		// Add error messages
-		return
+		fmt.Println("Tried to Delete a UTXO that does not exist") // for testing
+		return 
 	}
-	store.Set(pos, nil)
+	
+	store.Delete(pos)
 }
 
 //----------------------------------------
