@@ -12,7 +12,7 @@ import (
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
 // and deducts fees from the first signer.
-func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
+func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
@@ -121,7 +121,7 @@ func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 			feePosition := Position{uint64(ctx.BlockHeight()) * 1000, feeTxIndex, 0} //adjust based on where feeutxo is
 			feeUTXO := utxoMapper.GetUTXO(ctx, feePosition)
 			// change 0 to txindex
-			if 0 == feeTxIndex { //is fee msg
+			if *txIndex == feeTxIndex { //is fee msg
 				if feeUTXO.GetDenom() != spendMsg.Denom1 {
 					return ctx, sdk.ErrUnauthorized("Fees collected does not match fees reported").Result(), true
 				}

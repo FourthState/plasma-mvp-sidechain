@@ -25,6 +25,7 @@ type ChildChain struct {
 
 	cdc *amino.Codec
 
+	txIndex *uint64
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
 	
@@ -37,9 +38,11 @@ type ChildChain struct {
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
+	cdc := MakeCodec
 	var app = &ChildChain{
 		BaseApp:			bam.NewBaseApp(appName, logger, db),
-		cdc: 				MakeCodec(),
+		cdc: 				cdc,
+		txIndex: 			0,
 		capKeyMainStore:	sdk.NewKVStoreKey("main"),
 		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
 
@@ -48,12 +51,13 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// define the utxoMapper
 	app.utxoMapper = types.NewUTXOMapper(
 		app.capKeyMainStore, // target store
+		cdc,
 	)
 
 	// UTXOKeeper to adjust spending and recieving of utxo's
 	UTXOKeeper := types.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
-		AddRoute("txs", types.NewHandler(UTXOKeeper))
+		AddRoute("txs", types.NewHandler(UTXOKeeper, &txIndex))
 
 	// initialize BaseApp
 	// set the BaseApp txDecoder to use txDecoder with RLP
@@ -62,7 +66,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	app.MountStoresIAVL(app.capKeyMainStore)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(types.NewAnteHandler(app.utxoMapper))
+	app.SetAnteHandler(types.NewAnteHandler(app.utxoMapper, &txIndex))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -87,7 +91,7 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
-	types.RegisterAmino(cdc)   // Register SpendMsg, BaseTx
+	types.RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
 }

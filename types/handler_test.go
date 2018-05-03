@@ -10,13 +10,10 @@ import (
 )
 
 func NewUTXO(ctx sdk.Context, mapper UTXOMapper, privA crypto.PrivKey, privB crypto.PrivKey, position Position) UTXO {
-	pubKeyA := privA.PubKey()
-	addrA := pubKeyA.Address()
-	pubKeyB := privB.PubKey()
-	addrB := pubKeyB.Address()
+	addrA := privA.PubKey().Address()
+	addrB := privB.PubKey().Address()
 	confirmAddr := [2]crypto.Address{addrA, addrA}
-	confirmPubKey := [2]crypto.PubKey{pubKeyA, pubKeyA}
-	return NewBaseUTXO(addrB, confirmAddr, pubKeyB, confirmPubKey, 100, position)
+	return NewBaseUTXO(addrB, confirmAddr, 100, position)
 }
 
 /*
@@ -30,7 +27,8 @@ func TestHandleSpendMessage(t *testing.T) {
 	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil)
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 	keeper := NewUTXOKeeper(mapper)
-	handler := NewHandler(keeper)
+	var txIndex uint16 = uint16(0)
+	handler := NewHandler(keeper, &txIndex)
 
 	// Add in 2 parentUTXO
 	privA := crypto.GenPrivKeySecp256k1()
@@ -75,7 +73,7 @@ func TestHandleSpendMessage(t *testing.T) {
 	res := handler(ctx, msg)
 	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(res.Code), res.Log)
 
-	//assert.Equal(t, 1, GetTxIndex(ctx)) // txIndex incremented
+	assert.Equal(t, uint16(1), txIndex) // txIndex incremented
 	
 	//Check that inputs were deleted
 	utxo := mapper.GetUTXO(ctx, positionB)
@@ -94,13 +92,10 @@ func TestHandleSpendMessage(t *testing.T) {
 
 	// Check that outputs are valid
 	csAddress := [2]crypto.Address{privB.PubKey().Address(), privC.PubKey().Address()}
-	csPubKey := [2]crypto.PubKey{privB.PubKey(), privC.PubKey()}
 	assert.Equal(t, uint64(150), utxo1.GetDenom())
 	assert.Equal(t, uint64(50), utxo2.GetDenom())
 	assert.EqualValues(t, newownerA, utxo1.GetAddress())
 	assert.EqualValues(t, newownerB, utxo2.GetAddress())
-	assert.EqualValues(t, csAddress, utxo1.GetCSAddress())
-	assert.EqualValues(t, csAddress, utxo2.GetCSAddress())
-	assert.EqualValues(t, csPubKey, utxo1.GetCSPubKey())
-	assert.EqualValues(t, csPubKey, utxo2.GetCSPubKey())
+	assert.EqualValues(t, csAddress, utxo1.GetInputAddresses())
+	assert.EqualValues(t, csAddress, utxo2.GetInputAddresses())
 }

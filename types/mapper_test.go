@@ -37,27 +37,22 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA := crypto.GenPrivKeySecp256k1()
-	pubKeyA := privA.PubKey()
-	addrA := pubKeyA.Address()
+	addrA := privA.PubKey().Address()
 
 	privB := crypto.GenPrivKeySecp256k1()
-	pubKeyB := privB.PubKey()
-	addrB := pubKeyB.Address()
+	addrB := privB.PubKey().Address()
 
 	positionB := Position{1000, 0, 0}
 	confirmAddr := [2]crypto.Address{addrA, addrA}
-	confirmPubKey := [2]crypto.PubKey{pubKeyA, pubKeyA}
 
 	// These lines of code error. Why?
 	//utxo := mapper.GetUXTO(ctx, positionB)
 	//assert.Nil(t, utxo)
 
-	utxo := NewBaseUTXO(addrB, confirmAddr, pubKeyB, confirmPubKey, 100, positionB)
+	utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 	assert.NotNil(t, utxo)
 	assert.Equal(t, addrB, utxo.GetAddress())
-	assert.Equal(t, pubKeyB, utxo.GetPubKey())
-	assert.EqualValues(t, confirmAddr, utxo.GetCSAddress())
-	assert.EqualValues(t, confirmPubKey, utxo.GetCSPubKey())
+	assert.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
 	assert.EqualValues(t, positionB, utxo.GetPosition())
 
 	mapper.AddUTXO(ctx, utxo)
@@ -85,20 +80,17 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 
 	// These are not being tested
 	privA := crypto.GenPrivKeySecp256k1()
-	pubKeyA := privA.PubKey()
-	addrA := pubKeyA.Address()
+	addrA := privA.PubKey().Address()
 
 	privB := crypto.GenPrivKeySecp256k1()
-	pubKeyB := privB.PubKey()
-	addrB := pubKeyB.Address()
+	addrB := privB.PubKey().Address()
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
-	confirmPubKey := [2]crypto.PubKey{pubKeyA, pubKeyA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
 		positionB := Position{1000, uint16(i), 0}
-		utxo := NewBaseUTXO(addrB, confirmAddr, pubKeyB, confirmPubKey, 100, positionB)
+		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
 		assert.NotNil(t, utxo)
@@ -129,20 +121,17 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 
 	// These are not being tested
 	privA := crypto.GenPrivKeySecp256k1()
-	pubKeyA := privA.PubKey()
-	addrA := pubKeyA.Address()
+	addrA := privA.PubKey().Address()
 
 	privB := crypto.GenPrivKeySecp256k1()
-	pubKeyB := privB.PubKey()
-	addrB := pubKeyB.Address()
+	addrB := privB.PubKey().Address()
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
-	confirmPubKey := [2]crypto.PubKey{pubKeyA, pubKeyA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
 		positionB := Position{uint64(1000 * i), 0, 0}
-		utxo := NewBaseUTXO(addrB, confirmAddr, pubKeyB, confirmPubKey, 100, positionB)
+		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
 		assert.NotNil(t, utxo)
