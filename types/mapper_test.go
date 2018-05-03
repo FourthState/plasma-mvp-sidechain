@@ -9,6 +9,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/store"
+	"github.com/tendermint/go-amino" 
 
 )
 
@@ -33,7 +34,7 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
-	mapper := NewUTXOMapper(capKey)
+	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA := crypto.GenPrivKeySecp256k1()
 	pubKeyA := privA.PubKey()
@@ -80,7 +81,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
-	mapper := NewUTXOMapper(capKey)
+	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
 	privA := crypto.GenPrivKeySecp256k1()
@@ -124,7 +125,7 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
-	mapper := NewUTXOMapper(capKey)
+	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
 	privA := crypto.GenPrivKeySecp256k1()
@@ -156,4 +157,12 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 		assert.Nil(t, utxo)
 	}
 
+}
+
+func MakeCodec() *amino.Codec {
+	cdc := amino.NewCodec()
+	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
+	RegisterAmino(cdc)   
+	crypto.RegisterAmino(cdc)
+	return cdc
 }

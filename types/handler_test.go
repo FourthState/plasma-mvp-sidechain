@@ -28,7 +28,7 @@ func TestHandleSpendMessage(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil)
-	mapper := NewUTXOMapper(capKey)
+	mapper := NewUTXOMapper(capKey, MakeCodec())
 	keeper := NewUTXOKeeper(mapper)
 	handler := NewHandler(keeper)
 

@@ -183,6 +183,9 @@ func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
 
 func RegisterAmino(cdc *amino.Codec) {
 	// TODO: include option to always include prefix bytes
+	cdc.RegisterInterface((*UTXO)(nil), nil)
+	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
+	cdc.RegisterConcrete(Position{}, "types/Position", nil)
 	cdc.RegisterConcrete(SpendMsg{}, "plasma-mvp-sidechain/SpendMsg", nil)
 	cdc.RegisterConcrete(BaseTx{}, "plasma-mvp-sidechain/BaseTx", nil)
 }

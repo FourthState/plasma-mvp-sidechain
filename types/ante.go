@@ -4,7 +4,7 @@ import (
 	"bytes"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
-	"fmt"
+	//"fmt"
 	//abci "github.com/tendermint/abci/types"
 	//"github.com/spf13/viper"
 )
@@ -119,7 +119,8 @@ func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 			feeTxIndex := uint16(header.GetNumTxs()) - 1
 			feePosition := Position{uint64(ctx.BlockHeight()) * 1000, feeTxIndex, 0} //adjust based on where feeutxo is
 			feeUTXO := utxoMapper.GetUTXO(ctx, feePosition)
-			if GetTxIndex(ctx) == feeTxIndex { //is fee msg
+			// change 0 to txindex
+			if 0 == feeTxIndex { //is fee msg
 				if feeUTXO.GetDenom() != spendMsg.Denom1 {
 					return ctx, sdk.ErrUnauthorized("Fees collected does not match fees reported").Result(), true
 				}

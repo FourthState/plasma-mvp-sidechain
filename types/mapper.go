@@ -18,31 +18,12 @@ type UTXOMapper struct {
 	cdc *amino.Codec
 }
 
-func NewUTXOMapper(contextKey sdk.StoreKey, cdc amino.Codec) UTXOMapper {
+func NewUTXOMapper(contextKey sdk.StoreKey, cdc *amino.Codec) UTXOMapper {
 	return UTXOMapper{
 		contextKey: contextKey,
 		cdc:        cdc,
 	}
 
-}
-
-// Registers all interfaces and concrete types necessary for encoding/decoding
-func Register(cdc *amino.Codec) {
-	crypto.RegisterAmino(cdc)
-	cdc.RegisterInterface((*UTXO)(nil), nil)
-	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
-	cdc.RegisterConcrete(Position{}, "types/Position", nil)
-}
-
-// Returns the go-Amino codec.
-func (um UTXOMapper) AminoCodec() *amino.Codec {
-	return um.cdc
-}
-
-// Returns a "sealed" utxoMapper
-// the codec is not accessible from a sealedUTXOMapper
-func (um UTXOMapper) Seal() sealedUTXOMapper {
-	return sealedUTXOMapper{um}
 }
 
 // Returns the UTXO corresponding to the go amino encoded Position struct
@@ -83,20 +64,6 @@ func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position Position) {
 
 	store.Delete(pos)
 }
-
-//----------------------------------------
-// sealedUTXOMapper
-
-type sealedUTXOMapper struct {
-	UTXOMapper
-}
-
-// There's no way for external modules to mutate the
-// sum.utxoMapper.ctx from here, even with reflection
-func (sum sealedUTXOMapper) AminoCodec() *amino.Codec {
-	panic("utxoMapper is sealed")
-}
-
 
 func (um UTXOMapper) encodeUTXO(uh UTXO) []byte {
 	bz, err := um.cdc.MarshalBinary(uh)
@@ -160,8 +127,8 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Po
 // Creates a new utxo and adds it to the utxo store
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
 	csAddress [2]crypto.Address, csPubKey [2]crypto.PubKey, oindex uint8) sdk.Error {
-
-	position := Position{uint64(ctx.BlockHeight()) * 1000, GetTxIndex(ctx), oindex}
+	// Change 0 to tx index, quickfix
+	position := Position{uint64(ctx.BlockHeight()) * 1000, 0, oindex}
 	utxo := NewBaseUTXO(addr, csAddress, nil, csPubKey, denom, position) 
 	uk.um.AddUTXO(ctx, utxo)
 	return nil
