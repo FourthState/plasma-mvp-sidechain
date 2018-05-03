@@ -126,9 +126,19 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Po
 
 // Creates a new utxo and adds it to the utxo store
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
-	oldutxos [2]UTXO, oindex uint8) sdk.Error {
-	inputAddresses := [2]crypto.Address{oldutxos[0].GetAddress(), oldutxos[1].GetAddress()}
-	position := Position{uint64(ctx.BlockHeight()) * 1000, 0, oindex}
+	oldutxos [2]UTXO, oindex uint8, txIndex uint16) sdk.Error {
+	var inputAddr1 crypto.Address
+	var inputAddr2 crypto.Address
+	if oldutxos[0] != nil {
+		inputAddr1 = oldutxos[0].GetAddress()
+	}
+
+	if oldutxos[1] != nil {
+		inputAddr2 = oldutxos[1].GetAddress()
+	}
+
+	inputAddresses := [2]crypto.Address{inputAddr1, inputAddr2}
+	position := Position{uint64(ctx.BlockHeight()) * 1000, txIndex, oindex}
 	utxo := NewBaseUTXO(addr, inputAddresses, denom, position) 
 	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
 	return nil

@@ -38,12 +38,12 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg, txIndex *uint1
 	}
 
 	oldUTXOs := [2]UTXO{utxo1, utxo2}
-	err2 := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1, oldUTXOs, 0)
+	err2 := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1, oldUTXOs, 0, *txIndex)
 	if err2 != nil {
 		return err2.Result()
 	}
 	if msg.Newowner2 != nil && !ZeroAddress(msg.Newowner2) {
-		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2, oldUTXOs, 1)
+		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2, oldUTXOs, 1, *txIndex)
 		if err != nil {
 			return err.Result()
 		}
