@@ -62,75 +62,30 @@ func (msg SpendMsg) Type() string { return "txs" } // TODO: decide on something 
 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {
-	if msg.Newowner1 == nil && msg.Newowner2 == nil {
+	if !ValidAddress(msg.Owner1) {
+		return sdk.NewError(100, "First owner must be filled")
+	}
+	if !ValidAddress(msg.Newowner1) {
 		return sdk.NewError(100, "No recipients of transaction")
 	}
 	switch {
-	case ZeroAddress(msg.Newowner1): // address is 0x0
-		return sdk.NewError(100, "Must provide address in Owner1 field")
-	case msg.Blknum1 == 0:
-		return msg.validateDepositMsg()
-	}
-	return msg.validateSpendMsg()
-}
-
-func (msg SpendMsg) validateDepositMsg() sdk.Error {
-	switch {
-	case !ZeroAddress(msg.Owner1) || !ZeroAddress(msg.Owner2):
-		return sdk.NewError(100, "Deposit message malformed")
-	case msg.Indenom1 == 0 && msg.Indenom2 == 0:
-		return sdk.NewError(100, "Deposit message malformed")
-	case msg.Indenom1 < 0 || msg.Indenom2 < 0:
-		return sdk.NewError(100, "Deposit message malformed")
-	case msg.Txindex1 != 0 || msg.Txindex2 != 0:
-		return sdk.NewError(100, "Deposit message malformed")
-	case msg.Oindex1 != 0 || msg.Oindex2 != 0:
-		return sdk.NewError(100, "Deposit message malformed")
-	case msg.Blknum2 != 0:
-		return sdk.NewError(100, "Deposit message malformed")
-	case msg.Denom1 <= 0:
-		return sdk.NewError(100, "First denomination must be positive")
-	case msg.Denom2 != 0:
-		return sdk.NewError(100, "Deposit message malformed")
-	case msg.Fee < 0:
-		return sdk.NewError(100, "Fee cannot be negative")
-	case !msg.ConfirmSigs1[0].IsZero() || !msg.ConfirmSigs1[1].IsZero():
-		return sdk.NewError(100, "Deposit must have zero-bytes as confirm sigs")
-	case !msg.ConfirmSigs2[0].IsZero() || !msg.ConfirmSigs2[1].IsZero():
-		return sdk.NewError(100, "Deposit must have zero-bytes as confirm sigs")
-	}
-	return nil
-}
-
-// CA: Do we need the checks for < 0 if the type is uint?
-func (msg SpendMsg) validateSpendMsg() sdk.Error {
-	switch {
-	case msg.Txindex1 < 0:
-		return sdk.NewError(100, "Transaction index cannot be negative")
 	case msg.Oindex1 != 0 && msg.Oindex1 != 1:
 		return sdk.NewError(100, "Output index 1 must be either 0 or 1")
 	case msg.Blknum2 != 0:
-		if msg.Txindex2 < 0 {
-			return sdk.NewError(100, "Transaction index cannot be negative")
-		}
 		if msg.Oindex2 != 0 && msg.Oindex2 != 1 {
 			return sdk.NewError(100, "Output index 2 must be either 0 or 1")
 		}
-		if msg.Denom2 <= 0 {
+		if msg.Denom2 == 0 {
 			return sdk.NewError(100, "Second denomination must be positive")
 		}
-	case msg.Denom1 <= 0:
+	case msg.Indenom1 == 0:
+		return sdk.NewError(100, "First input denomination must be positive.")
+	case msg.Denom1 == 0:
 		return sdk.NewError(100, "First denomination must be positive")
-	case msg.Fee < 0:
-		return sdk.NewError(100, "Fee cannot be negative")
-	case msg.Indenom1 < 0 || msg.Indenom2 < 0:
-		return sdk.NewError(100, "Input denominations must be positive")
+	case msg.Indenom1 + msg.Indenom2 == msg.Denom1 + msg.Denom2 + msg.Fee:
+		return sdk.NewError(100, "Inputs do not equal outputs")
 	}
 	return nil
-}
-
-func (msg SpendMsg) IsDeposit() bool {
-	return msg.Blknum1 == 0
 }
 
 // Implements Msg.
@@ -156,7 +111,7 @@ func (msg SpendMsg) GetSignBytes() []byte {
 func (msg SpendMsg) GetSigners() []crypto.Address {
 	addrs := make([]crypto.Address, 1)
 	addrs[0] = crypto.Address(msg.Owner1)
-	if !ZeroAddress(msg.Owner2) {
+	if ValidAddress(msg.Owner2) {
 		addrs = append(addrs, crypto.Address(msg.Owner2))
 	}
 	return addrs
@@ -180,6 +135,8 @@ func NewBaseTx(msg SpendMsg, sigs []sdk.StdSignature) BaseTx {
 func (tx BaseTx) GetMsg() sdk.Msg                   { return tx.Msg }
 func (tx BaseTx) GetFeePayer() crypto.Address       { return tx.Signatures[0].PubKey.Address() }
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
+
+
 
 func RegisterAmino(cdc *amino.Codec) {
 	// TODO: include option to always include prefix bytes

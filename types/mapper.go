@@ -65,8 +65,8 @@ func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position Position) {
 	store.Delete(pos)
 }
 
-func (um UTXOMapper) encodeUTXO(uh UTXO) []byte {
-	bz, err := um.cdc.MarshalBinary(uh)
+func (um UTXOMapper) encodeUTXO(utxo UTXO) []byte {
+	bz, err := um.cdc.MarshalBinary(utxo)
 	if err != nil {
 		panic(err)
 	}
@@ -126,10 +126,10 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Po
 
 // Creates a new utxo and adds it to the utxo store
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
-	csAddress [2]crypto.Address, csPubKey [2]crypto.PubKey, oindex uint8) sdk.Error {
-	// Change 0 to tx index, quickfix
+	oldutxos [2]UTXO, oindex uint8) sdk.Error {
+	inputAddresses := [2]crypto.Address{oldutxos[0].GetAddress(), oldutxos[1].GetAddress()}
 	position := Position{uint64(ctx.BlockHeight()) * 1000, 0, oindex}
-	utxo := NewBaseUTXO(addr, csAddress, nil, csPubKey, denom, position) 
-	uk.um.AddUTXO(ctx, utxo)
+	utxo := NewBaseUTXO(addr, inputAddresses, denom, position) 
+	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
 	return nil
 }
