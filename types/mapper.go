@@ -18,28 +18,12 @@ type UTXOMapper struct {
 	cdc *amino.Codec
 }
 
-func NewUTXOMapper(contextKey sdk.StoreKey) UTXOMapper {
-	cdc := amino.NewCodec()
-	Register(cdc)
+func NewUTXOMapper(contextKey sdk.StoreKey, cdc amino.Codec) UTXOMapper {
 	return UTXOMapper{
 		contextKey: contextKey,
 		cdc:        cdc,
 	}
 
-}
-
-// Create and return a sealed utxo mapper. Not sure if necessary
-func NewUTXOMapperSealed(contextKey sdk.StoreKey) sealedUTXOMapper {
-	cdc := amino.NewCodec()
-	um := UTXOMapper{
-		contextKey: contextKey,
-		cdc:        cdc,
-	}
-	// Register for amino encoding/decoding
-	Register(cdc)
-
-	// make accountMapper's AminoCodec() inaccessible
-	return um.Seal()
 }
 
 // Registers all interfaces and concrete types necessary for encoding/decoding

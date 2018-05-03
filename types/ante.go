@@ -15,7 +15,6 @@ func NewAnteHandler(utxoMapper UTXOMapper) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
-		fmt.Println("Inside ante handler")
 		sigs := tx.GetSignatures()
 		if len(sigs) == 0 {
 			return ctx,
@@ -190,7 +189,7 @@ func processSig(
 
 		err := utxo.SetPubKey(pubKey)
 		if err != nil {
-			return sdk.ErrInternal("setting PubKey on signer's account").Result()
+			return sdk.ErrInternal("setting PubKey on signer's utxo").Result()
 		}
 	}
 
