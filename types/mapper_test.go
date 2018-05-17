@@ -10,6 +10,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/store"
 	"github.com/tendermint/go-amino" 
+	"github.com/tendermint/tmlibs/log"
 
 )
 
@@ -33,7 +34,7 @@ func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 func TestUTXOGetAddDelete(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA := crypto.GenPrivKeySecp256k1()
@@ -75,7 +76,7 @@ func TestUTXOGetAddDelete(t *testing.T) {
 func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
@@ -116,7 +117,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested

@@ -10,5 +10,5 @@ func ZeroAddress(addr crypto.Address) bool {
 }
 
 func ValidAddress(addr crypto.Address) bool {
-	return new(big.Int).SetBytes(addr.Bytes()).Sign() == 0 && len(addr) == 20
+	return new(big.Int).SetBytes(addr.Bytes()).Sign() != 0 && len(addr) == 20
 }

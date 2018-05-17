@@ -118,7 +118,7 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Po
 	utxo := uk.um.GetUTXO(ctx, position) // Get the utxo that should be spent
 	// Check to see if utxo exists, will be taken care of in ante handler
 	if utxo == nil {
-		return sdk.NewError(101, "Unrecognized UTXO. Does not exist.")
+		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(101), "Unrecognized UTXO. Does not exist.")
 	}
 	uk.um.DeleteUTXO(ctx, position) // Delete utxo from utxo store
 	return nil

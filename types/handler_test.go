@@ -7,6 +7,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 func NewUTXO(privA crypto.PrivKey, privB crypto.PrivKey, position Position) UTXO {
@@ -24,7 +25,7 @@ func NewUTXO(privA crypto.PrivKey, privB crypto.PrivKey, position Position) UTXO
 func TestHandleSpendMessage(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 	keeper := NewUTXOKeeper(mapper)
 	txIndex := new(uint16)
@@ -107,7 +108,7 @@ func TestHandleSpendMessage(t *testing.T) {
 func TestOneInput(t *testing.T) {
 	ms, capKey := setupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 	keeper := NewUTXOKeeper(mapper)
 	txIndex := new(uint16)
