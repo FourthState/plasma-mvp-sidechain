@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	crypto "github.com/tendermint/go-crypto"
+	rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 // UTXO is a standard unspent transaction output
@@ -43,9 +44,9 @@ func NewBaseUTXO(addr crypto.Address, inputaddr [2]crypto.Address, denom uint64,
 	position Position) UTXO {
 	return BaseUTXO{
 		InputAddresses:	 inputaddr,
-		Address: addr,
-		Denom:       denom,
-		Position:    position,
+		Address: 		 addr,
+		Denom:       	 denom,
+		Position:   	 position,
 	}
 }
 
@@ -133,4 +134,12 @@ func NewPosition(blknum uint64, txIndex uint16, oIndex uint8) Position {
 		TxIndex: 	txIndex,
 		Oindex: 	oIndex,
 	}
+}
+
+func (position Position) GetSignBytes() []byte {
+	b, err := rlp.EncodeToBytes(position)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }

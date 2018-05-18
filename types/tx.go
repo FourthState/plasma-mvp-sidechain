@@ -64,33 +64,33 @@ func (msg SpendMsg) Type() string { return "txs" } // TODO: decide on something 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {
 	if !ValidAddress(msg.Owner1) {
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(100), "First owner must be filled")
+		return ErrInvalidAddress(DefaultCodespace, "Input owner must have a valid address")
 	}
 	if !ValidAddress(msg.Newowner1) {
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(101), "No recipient of transaction")
+		return ErrInvalidAddress(DefaultCodespace, "No recipients of transaction")
 	}
 
 	switch {
 
 	case msg.Oindex1 != 0 && msg.Oindex1 != 1:
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(102), "Output index 1 must be either 0 or 1")
+		return ErrInvalidOIndex(DefaultCodespace, "Output index 1 must be either 0 or 1")
 
 	case msg.Blknum2 != 0 && msg.Oindex2 != 0 && msg.Oindex2 != 1:
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(102), "Output index 2 must be either 0 or 1")
+		return ErrInvalidOIndex(DefaultCodespace, "Output index 2 must be either 0 or 1")
 
 	case msg.Blknum2 != 0 && msg.Denom2 == 0:
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(103), "Second denomination must be positive")
+		return ErrInvalidDenom(DefaultCodespace, "Second denomination must be positive")
 
 	case msg.Indenom1 == 0:
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(104), "First input denomination must be positive.")
+		return ErrInvalidDenom(DefaultCodespace, "First input denomination must be positive.")
 
 	case msg.Denom1 == 0:
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(105), "First denomination must be positive")
+		return ErrInvalidDenom(DefaultCodespace, "First denomination must be positive")
 
 	case msg.Indenom1 + msg.Indenom2 != msg.Denom1 + msg.Denom2 + msg.Fee:
-		return sdk.NewError(sdk.CodespaceType(1), sdk.CodeType(106), "Inputs do not equal outputs")
-		
+		return ErrInvalidIOF(DefaultCodespace, "Inputs do not equal outputs plus fee")
 	}
+	
 	return nil
 }
 

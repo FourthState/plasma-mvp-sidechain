@@ -63,7 +63,7 @@ func GenSpendMsgWithAddresses() SpendMsg {
 func TestNoOwners(t *testing.T) {
 	var msg = GenBasicSpendMsg()
 	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(100),
+	assert.Equal(t, sdk.CodeType(101),
 				err.Code(), err.Error())
 }
 
@@ -98,7 +98,7 @@ func TestInputOutputFee(t *testing.T) {
 	msg := GenSpendMsgWithAddresses()
 	msg.Fee = 5
 	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(106),
+	assert.Equal(t, sdk.CodeType(104),
 				err.Code(), err.Error())
 }
 
@@ -107,13 +107,13 @@ func TestDenomFields(t *testing.T) {
 	
 	msg.Indenom1 = 0
 	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(104),
+	assert.Equal(t, sdk.CodeType(103),
 				err.Code(), err.Error())
 
 	msg.Indenom1 = 100
 	msg.Denom1 = 0
 	err = msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(105),
+	assert.Equal(t, sdk.CodeType(103),
 				err.Code(), err.Error())
 
 	msg.Denom1 = 150
