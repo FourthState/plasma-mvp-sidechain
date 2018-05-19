@@ -1,12 +1,12 @@
-package types 
+package types
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -18,7 +18,7 @@ func NewUTXO(privA crypto.PrivKey, privB crypto.PrivKey, position Position) UTXO
 }
 
 /*
-	Tests a valid spendmsg 
+	Tests a valid spendmsg
 	2 different inputs and 2 different outputs
 	Inputs are from the same block
 */
@@ -52,30 +52,30 @@ func TestHandleSpendMessage(t *testing.T) {
 
 	// Add in SpendMsg,
 	var msg = SpendMsg{
-		Blknum1: 		1000,
-		Txindex1: 		0,
-		Oindex1: 		0,
-		DepositNum1: 	0,
-		Owner1: 		privB.PubKey().Address(),
-		ConfirmSigs1: 	confirmSigs,
-		Blknum2:		1000,
-		Txindex2: 		1,
-		Oindex2: 		0,
-		DepositNum2: 	0,
-		Owner2: 		privC.PubKey().Address(),
-		ConfirmSigs2: 	confirmSigs,
-		Newowner1: 		newownerA,
-		Denom1: 		150,
-		Newowner2: 		newownerB,
-		Denom2: 		50,
-		Fee: 			0,
+		Blknum1:      1000,
+		Txindex1:     0,
+		Oindex1:      0,
+		DepositNum1:  0,
+		Owner1:       privB.PubKey().Address(),
+		ConfirmSigs1: confirmSigs,
+		Blknum2:      1000,
+		Txindex2:     1,
+		Oindex2:      0,
+		DepositNum2:  0,
+		Owner2:       privC.PubKey().Address(),
+		ConfirmSigs2: confirmSigs,
+		Newowner1:    newownerA,
+		Denom1:       150,
+		Newowner2:    newownerB,
+		Denom2:       50,
+		Fee:          0,
 	}
 
 	res := handler(ctx, msg)
 	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(res.Code), res.Log)
 
 	assert.Equal(t, uint16(1), *txIndex) // txIndex incremented
-	
+
 	//Check that inputs were deleted
 	utxo := mapper.GetUTXO(ctx, positionB)
 	assert.Nil(t, utxo)
@@ -102,7 +102,7 @@ func TestHandleSpendMessage(t *testing.T) {
 }
 
 /*
-	Tests a valid spendmsg 
+	Tests a valid spendmsg
 	1 input and 2 different outputs
 */
 func TestOneInput(t *testing.T) {
@@ -122,37 +122,37 @@ func TestOneInput(t *testing.T) {
 	mapper.AddUTXO(ctx, utxo1)
 	utxo1 = mapper.GetUTXO(ctx, positionB)
 	assert.NotNil(t, utxo1)
-	
+
 	newownerA := crypto.Address([]byte("newownerA"))
 	newownerB := crypto.Address([]byte("newownerB"))
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 
 	// Add in SpendMsg,
 	var msg = SpendMsg{
-		Blknum1: 		1000,
-		Txindex1: 		0,
-		Oindex1: 		0,
-		DepositNum1: 	0,
-		Owner1: 		privB.PubKey().Address(),
-		ConfirmSigs1: 	confirmSigs,
-		Blknum2:		0,
-		Txindex2: 		0,
-		Oindex2: 		0,
-		DepositNum2: 	0,
-		Owner2: 		crypto.Address([]byte("")),
-		ConfirmSigs2: 	confirmSigs,
-		Newowner1: 		newownerA,
-		Denom1: 		25,
-		Newowner2: 		newownerB,
-		Denom2: 		75,
-		Fee: 			0,
+		Blknum1:      1000,
+		Txindex1:     0,
+		Oindex1:      0,
+		DepositNum1:  0,
+		Owner1:       privB.PubKey().Address(),
+		ConfirmSigs1: confirmSigs,
+		Blknum2:      0,
+		Txindex2:     0,
+		Oindex2:      0,
+		DepositNum2:  0,
+		Owner2:       crypto.Address([]byte("")),
+		ConfirmSigs2: confirmSigs,
+		Newowner1:    newownerA,
+		Denom1:       25,
+		Newowner2:    newownerB,
+		Denom2:       75,
+		Fee:          0,
 	}
 
 	res := handler(ctx, msg)
 	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(res.Code), res.Log)
 
 	assert.Equal(t, uint16(1), *txIndex) // txIndex incremented
-	
+
 	//Check that inputs were deleted
 	utxo := mapper.GetUTXO(ctx, positionB)
 	assert.Nil(t, utxo)

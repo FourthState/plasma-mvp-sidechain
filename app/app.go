@@ -6,13 +6,13 @@ import (
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-	crypto "github.com/tendermint/go-crypto"
 	//"fmt"
-	"github.com/tendermint/go-amino" 
-	//rlp "github.com/ethereum/go-ethereum/rlp" 
+	"github.com/tendermint/go-amino"
+	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 const (
@@ -28,7 +28,7 @@ type ChildChain struct {
 	txIndex *uint16
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
-	
+
 	//capKeySigStore *sdk.KVStoreKey //capabilities key to access confirm signature store from multistore
 	//Not sure if this is needed
 	capKeyIBCStore *sdk.KVStoreKey //capabilities key to access IBC Store from multistore
@@ -40,12 +40,11 @@ type ChildChain struct {
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	cdc := MakeCodec()
 	var app = &ChildChain{
-		BaseApp:			bam.NewBaseApp(appName, logger, db),
-		cdc: 				cdc,
-		txIndex: 			new(uint16),
-		capKeyMainStore:	sdk.NewKVStoreKey("main"),
-		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
-
+		BaseApp:         bam.NewBaseApp(appName, logger, db),
+		cdc:             cdc,
+		txIndex:         new(uint16),
+		capKeyMainStore: sdk.NewKVStoreKey("main"),
+		capKeyIBCStore:  sdk.NewKVStoreKey("ibc"),
 	}
 
 	// define the utxoMapper
@@ -86,7 +85,6 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	}
 	return tx, nil
 }
-
 
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()

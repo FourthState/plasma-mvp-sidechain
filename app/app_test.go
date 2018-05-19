@@ -4,14 +4,14 @@ import (
 	"os"
 	"testing"
 	//"fmt" //for debugging
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
-	crypto "github.com/tendermint/go-crypto"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
+	crypto "github.com/tendermint/go-crypto"
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 	types "plasma-mvp-sidechain/types"
-	sdk "github.com/cosmos/cosmos-sdk/types" 
 	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -23,42 +23,42 @@ func newChildChain() *ChildChain {
 
 func TestDepositMsg(t *testing.T) {
 	cc := newChildChain()
-	
+
 	// Construct a SpendMsg
 	var msg = types.SpendMsg{
-		Blknum1: 0,
-		Txindex1: 0,
-		Oindex1: 0,
-		DepositNum1: 0
-		Owner1:crypto.Address([]byte("origin")),
-		Blknum2: 0,
-		Txindex2:0,
-		Oindex2:0,
-		DepositNum2: 0
-		Owner2: crypto.Address([]byte("")),
-		Newowner1: crypto.Address([]byte("recipient")),
-		Denom1: 1000,
-		Newowner2:crypto.Address([]byte("")),
-		Denom2:0,
-		Fee: 1,
+		Blknum1:     0,
+		Txindex1:    0,
+		Oindex1:     0,
+		DepositNum1: 0,
+		Owner1:      crypto.Address([]byte("origin")),
+		Blknum2:     0,
+		Txindex2:    0,
+		Oindex2:     0,
+		DepositNum2: 0,
+		Owner2:      crypto.Address([]byte("")),
+		Newowner1:   crypto.Address([]byte("recipient")),
+		Denom1:      1000,
+		Newowner2:   crypto.Address([]byte("")),
+		Denom2:      0,
+		Fee:         1,
 	}
 
 	priv := crypto.GenPrivKeySecp256k1()
 	sig := priv.Sign(msg.GetSignBytes())
-	tx := types.NewBaseTx(msg, []sdk.StdSignature {{
-			PubKey: 	priv.PubKey(),
-			Signature:	sig,
-		}})
-	
+	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
+		PubKey:    priv.PubKey(),
+		Signature: sig,
+	}})
+
 	cdc := MakeCodec()
 	txBytes, err := cdc.MarshalBinary(tx)
 
 	require.NoError(t, err)
 
-	// Run a check 
+	// Run a check
 	cres := cc.CheckTx(txBytes)
 	assert.Equal(t, sdk.CodeType(100),
-				sdk.CodeType(cres.Code), cres.Log)
+		sdk.CodeType(cres.Code), cres.Log)
 
 	// Simulate a Block
 	cc.BeginBlock(abci.RequestBeginBlock{})

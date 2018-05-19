@@ -1,17 +1,16 @@
 package types
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 
-	dbm "github.com/tendermint/tmlibs/db"
-	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/store"
-	"github.com/tendermint/go-amino" 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	abci "github.com/tendermint/abci/types"
+	"github.com/tendermint/go-amino"
+	crypto "github.com/tendermint/go-crypto"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-
 )
 
 func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
@@ -22,7 +21,6 @@ func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 	ms.LoadLatestVersion()
 	return ms, capKey
 }
-
 
 /*
 	Basic test of Get, Add, Delete
@@ -64,8 +62,6 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	utxo = mapper.GetUTXO(ctx, positionB)
 	assert.Nil(t, utxo)
 }
-
-
 
 /*
 	Basic test of Multiple Additions and Deletes in the same block
@@ -152,7 +148,7 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
-	RegisterAmino(cdc)   
+	RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
 }

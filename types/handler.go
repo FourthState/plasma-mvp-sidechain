@@ -48,7 +48,7 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg, txIndex *uint1
 			return err.Result()
 		}
 	}
-	
+
 	// Increment txIndex
 	if !ctx.IsCheckTx() {
 		(*txIndex)++

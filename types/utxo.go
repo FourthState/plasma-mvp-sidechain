@@ -1,9 +1,9 @@
-package types 
+package types
 
 import (
 	"errors"
-	crypto "github.com/tendermint/go-crypto"
 	rlp "github.com/ethereum/go-ethereum/rlp"
+	crypto "github.com/tendermint/go-crypto"
 )
 
 // UTXO is a standard unspent transaction output
@@ -35,18 +35,18 @@ type UTXO interface {
 // BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
 type BaseUTXO struct {
 	InputAddresses [2]crypto.Address
-	Address     crypto.Address
-	Denom       uint64
-	Position    Position
+	Address        crypto.Address
+	Denom          uint64
+	Position       Position
 }
 
-func NewBaseUTXO(addr crypto.Address, inputaddr [2]crypto.Address, denom uint64, 
+func NewBaseUTXO(addr crypto.Address, inputaddr [2]crypto.Address, denom uint64,
 	position Position) UTXO {
 	return BaseUTXO{
-		InputAddresses:	 inputaddr,
-		Address: 		 addr,
-		Denom:       	 denom,
-		Position:   	 position,
+		InputAddresses: inputaddr,
+		Address:        addr,
+		Denom:          denom,
+		Position:       position,
 	}
 }
 
@@ -123,17 +123,17 @@ func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, 
 // total position = Position.Blknum * 1000000 + Position.TxIndex * 10 + Position.Oindex
 
 type Position struct {
-	Blknum 		uint64
-	TxIndex		uint16
-	Oindex 		uint8
-	DepositNum  uint8
+	Blknum     uint64
+	TxIndex    uint16
+	Oindex     uint8
+	DepositNum uint8
 }
 
 func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint8) Position {
 	return Position{
-		Blknum: 	blknum,
-		TxIndex: 	txIndex,
-		Oindex: 	oIndex,
+		Blknum:     blknum,
+		TxIndex:    txIndex,
+		Oindex:     oIndex,
 		DepositNum: depositNum,
 	}
 }

@@ -16,13 +16,13 @@ type SpendMsg struct {
 	Txindex1     uint16
 	Oindex1      uint8
 	DepositNum1  uint8
-	Owner1		 crypto.Address
+	Owner1       crypto.Address
 	ConfirmSigs1 [2]crypto.Signature
 	Blknum2      uint64
 	Txindex2     uint16
 	Oindex2      uint8
 	DepositNum2  uint8
-	Owner2 		 crypto.Address
+	Owner2       crypto.Address
 	ConfirmSigs2 [2]crypto.Signature
 	Newowner1    crypto.Address
 	Denom1       uint64
@@ -42,14 +42,14 @@ func NewSpendMsg(blknum1 uint64, txindex1 uint16, oindex1 uint8,
 		Txindex1:     txindex1,
 		Oindex1:      oindex1,
 		DepositNum1:  depositnum1,
-		Owner1:	 	  owner1,
-		ConfirmSigs1: confirmSigs1, 
+		Owner1:       owner1,
+		ConfirmSigs1: confirmSigs1,
 		Blknum2:      blknum2,
 		Txindex2:     txindex2,
 		Oindex2:      oindex2,
 		DepositNum2:  depositnum2,
-		Owner2:	 	  owner2,
-		ConfirmSigs2: confirmSigs2, 
+		Owner2:       owner2,
+		ConfirmSigs2: confirmSigs2,
 		Newowner1:    newowner1,
 		Denom1:       denom1,
 		Newowner2:    newowner2,
@@ -77,7 +77,7 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 
 	case msg.DepositNum1 != 0 && (msg.Blknum1 != 0 || msg.Txindex1 != 0 || msg.Oindex1 != 0):
 		return ErrInvalidTransaction(DefaultCodespace, "First input is malformed. Deposit's position must be 0, 0, 0")
-		
+
 	case msg.DepositNum2 != 0 && (msg.Blknum2 != 0 || msg.Txindex2 != 0 || msg.Oindex2 != 0):
 		return ErrInvalidTransaction(DefaultCodespace, "Second input is malformed. Deposit's position must be 0, 0, 0")
 
@@ -90,7 +90,7 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	case msg.Denom1 == 0:
 		return ErrInvalidDenom(DefaultCodespace, "First denomination must be positive")
 	}
-	
+
 	return nil
 }
 
@@ -141,8 +141,6 @@ func NewBaseTx(msg SpendMsg, sigs []sdk.StdSignature) BaseTx {
 func (tx BaseTx) GetMsg() sdk.Msg                   { return tx.Msg }
 func (tx BaseTx) GetFeePayer() crypto.Address       { return tx.Signatures[0].PubKey.Address() }
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
-
-
 
 func RegisterAmino(cdc *amino.Codec) {
 	// TODO: include option to always include prefix bytes

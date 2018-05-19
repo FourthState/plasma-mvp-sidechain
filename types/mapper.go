@@ -29,37 +29,37 @@ func NewUTXOMapper(contextKey sdk.StoreKey, cdc *amino.Codec) UTXOMapper {
 // Returns the UTXO corresponding to the go amino encoded Position struct
 // Returns nil if no UTXO exists at that position
 func (um UTXOMapper) GetUTXO(ctx sdk.Context, position Position) UTXO {
-	store := ctx.KVStore(um.contextKey) 	
-	pos := um.encodePosition(position) 
-	bz := store.Get(pos)               
-	
+	store := ctx.KVStore(um.contextKey)
+	pos := um.encodePosition(position)
+	bz := store.Get(pos)
+
 	if bz == nil {
-		return nil 
+		return nil
 	}
 
-	utxo := um.decodeUTXO(bz)  
+	utxo := um.decodeUTXO(bz)
 	return utxo
 }
 
 // Adds the UTXO to the mapper
 func (um UTXOMapper) AddUTXO(ctx sdk.Context, utxo UTXO) {
-	position := utxo.GetPosition() 
+	position := utxo.GetPosition()
 	pos := um.encodePosition(position)
 
-	store := ctx.KVStore(um.contextKey) 
-	bz := um.encodeUTXO(utxo) 			
-	store.Set(pos, bz)                  
+	store := ctx.KVStore(um.contextKey)
+	bz := um.encodeUTXO(utxo)
+	store.Set(pos, bz)
 }
 
 // Deletes UTXO corresponding to the position from mapping
 func (um UTXOMapper) DeleteUTXO(ctx sdk.Context, position Position) {
-	store := ctx.KVStore(um.contextKey) 
+	store := ctx.KVStore(um.contextKey)
 	pos := um.encodePosition(position)
 	bz := store.Get(pos)
 	// NOTE: For testing, this should never happen
 	if bz == nil {
 		fmt.Println("Tried to Delete a UTXO that does not exist") // for testing
-		return 
+		return
 	}
 
 	store.Delete(pos)
@@ -114,7 +114,7 @@ func NewUTXOKeeper(um UTXOMapper) UTXOKeeper {
 
 // Delete's utxo from utxo store
 func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position Position) sdk.Error {
-	
+
 	utxo := uk.um.GetUTXO(ctx, position) // Get the utxo that should be spent
 	// Check to see if utxo exists, will be taken care of in ante handler
 	if utxo == nil {
@@ -139,7 +139,7 @@ func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uin
 
 	inputAddresses := [2]crypto.Address{inputAddr1, inputAddr2}
 	position := Position{uint64(ctx.BlockHeight()), txIndex, oindex, 0}
-	utxo := NewBaseUTXO(addr, inputAddresses, denom, position) 
-	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
+	utxo := NewBaseUTXO(addr, inputAddresses, denom, position)
+	uk.um.AddUTXO(ctx, utxo) // Adds utxo to utxo store
 	return nil
 }

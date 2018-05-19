@@ -8,11 +8,11 @@ import (
 const (
 	DefaultCodespace sdk.CodespaceType = 2
 
-	CodeInvalidAddress 		sdk.CodeType = 101
-	CodeInvalidOIndex 		sdk.CodeType = 102
+	CodeInvalidAddress      sdk.CodeType = 101
+	CodeInvalidOIndex       sdk.CodeType = 102
 	CodeInvalidDenomination sdk.CodeType = 103
-	CodeInvalidIOF 			sdk.CodeType = 104
-	CodeInvalidUTXO			sdk.CodeType = 105
+	CodeInvalidIOF          sdk.CodeType = 104
+	CodeInvalidUTXO         sdk.CodeType = 105
 	CodeInvalidTransaction  sdk.CodeType = 106
 )
 

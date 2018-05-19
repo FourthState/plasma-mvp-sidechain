@@ -16,7 +16,7 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
-		
+
 		sigs := tx.GetSignatures()
 		if len(sigs) == 0 {
 			return ctx,
@@ -51,9 +51,9 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 		if !res.IsOK() {
 			return ctx, res, true
 		}
-		
+
 		signBytes = position1.GetSignBytes()
-		
+
 		res = processConfirmSig(ctx, utxoMapper, position1, spendMsg.ConfirmSigs1, signBytes)
 		if !res.IsOK() {
 			return ctx, res, true
@@ -67,7 +67,7 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 
 		signBytes = position2.GetSignBytes()
 
-		res = processConfirmSig(ctx, utxoMapper, position2, spendMsg.ConfirmSigs2,signBytes)
+		res = processConfirmSig(ctx, utxoMapper, position2, spendMsg.ConfirmSigs2, signBytes)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -93,16 +93,16 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 					fee = fee + feeUTXO.GetDenom()
 					utxoMapper.DeleteUTXO(ctx, feePosition)
 				}
-				
-				feeUTXO = NewBaseUTXO(crypto.Address([]byte("")),[2]crypto.Address{crypto.Address([]byte("")),
-				crypto.Address([]byte(""))}, fee, feePosition)
-				
+
+				feeUTXO = NewBaseUTXO(crypto.Address([]byte("")), [2]crypto.Address{crypto.Address([]byte("")),
+					crypto.Address([]byte(""))}, fee, feePosition)
+
 				utxoMapper.AddUTXO(ctx, feeUTXO)
 			}
-		}	
-				
+		}
+
 		// TODO: tx tags (?)
-				
+
 		return ctx, sdk.Result{}, false // continue...
 	}
 }
@@ -118,7 +118,6 @@ func processSig(
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
 	}
 
-
 	if !sig.PubKey.VerifyBytes(signBytes, sig.Signature) {
 		return sdk.ErrUnauthorized("signature verification failed").Result()
 	}
@@ -130,7 +129,7 @@ func processConfirmSig(
 	ctx sdk.Context, utxoMapper UTXOMapper,
 	position Position, sig [2]crypto.Signature, signBytes []byte) (
 	res sdk.Result) {
-	
+
 	utxo := utxoMapper.GetUTXO(ctx, position)
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
@@ -153,7 +152,7 @@ func processConfirmSig(
 		pubKey2, err2 := ethcrypto.SigToPub(hash, ethsigs[1].Bytes())
 		if err2 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey2).Bytes(), inputAddresses[1].Bytes()) {
 			return sdk.ErrUnauthorized("signature verification failed").Result()
-		}	
+		}
 	}
 
 	return sdk.Result{}
