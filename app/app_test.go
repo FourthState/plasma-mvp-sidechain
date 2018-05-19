@@ -29,10 +29,12 @@ func TestDepositMsg(t *testing.T) {
 		Blknum1: 0,
 		Txindex1: 0,
 		Oindex1: 0,
+		DepositNum1: 0
 		Owner1:crypto.Address([]byte("origin")),
 		Blknum2: 0,
 		Txindex2:0,
 		Oindex2:0,
+		DepositNum2: 0
 		Owner2: crypto.Address([]byte("")),
 		Newowner1: crypto.Address([]byte("recipient")),
 		Denom1: 1000,

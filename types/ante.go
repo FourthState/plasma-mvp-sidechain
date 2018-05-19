@@ -44,9 +44,9 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 		if !ok {
 			return ctx, sdk.ErrInternal("Msg must be of type SpendMsg").Result(), true
 		}
-		signBytes := spendMsg.GetSignBytes() // should this be just the inputs
+		signBytes := spendMsg.GetSignBytes()
 
-		position1 := Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1}
+		position1 := Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
 		res := processSig(ctx, utxoMapper, position1, sigs[0], signBytes)
 		if !res.IsOK() {
 			return ctx, res, true
@@ -59,7 +59,7 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 			return ctx, res, true
 		}
 
-		position2 := Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2}
+		position2 := Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
 		res = processSig(ctx, utxoMapper, position2, sigs[1], signBytes)
 		if !res.IsOK() {
 			return ctx, res, true
@@ -77,7 +77,7 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16) sdk.AnteHandler {
 		if !ctx.IsCheckTx() {
 			header := ctx.BlockHeader()
 			feeTxIndex := uint16(header.GetNumTxs()) - 1
-			feePosition := Position{uint64(ctx.BlockHeight()) * 1000, feeTxIndex, 0}
+			feePosition := Position{uint64(ctx.BlockHeight()) * 1000, feeTxIndex, 0, 0}
 			feeUTXO := utxoMapper.GetUTXO(ctx, feePosition)
 			// change 0 to txindex
 			if *txIndex == feeTxIndex { //is fee msg

@@ -43,7 +43,7 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	privB := crypto.GenPrivKeySecp256k1()
 	addrB := privB.PubKey().Address()
 
-	positionB := Position{1000, 0, 0}
+	positionB := Position{1000, 0, 0, 0}
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
 	// These lines of code error. Why?
@@ -90,7 +90,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
-		positionB := Position{1000, uint16(i), 0}
+		positionB := Position{1000, uint16(i), 0, 0}
 		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
@@ -131,7 +131,7 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
-		positionB := Position{uint64(1000 * i), 0, 0}
+		positionB := Position{uint64(i), 0, 0, 0}
 		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
@@ -139,7 +139,7 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		position := Position{uint64(1000 * i), 0, 0}
+		position := Position{uint64(i), 0, 0, 0}
 		utxo := mapper.GetUTXO(ctx, position)
 		assert.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, position)

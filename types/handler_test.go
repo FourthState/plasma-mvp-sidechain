@@ -35,8 +35,8 @@ func TestHandleSpendMessage(t *testing.T) {
 	privA := crypto.GenPrivKeySecp256k1()
 	privB := crypto.GenPrivKeySecp256k1()
 	privC := crypto.GenPrivKeySecp256k1()
-	positionB := Position{1000, 0, 0}
-	positionC := Position{1000, 1, 0}
+	positionB := Position{1000, 0, 0, 0}
+	positionC := Position{1000, 1, 0, 0}
 	utxo1 := NewUTXO(privA, privB, positionB)
 	utxo2 := NewUTXO(privA, privC, positionC)
 	mapper.AddUTXO(ctx, utxo1)
@@ -48,22 +48,22 @@ func TestHandleSpendMessage(t *testing.T) {
 
 	newownerA := crypto.Address([]byte("newownerA"))
 	newownerB := crypto.Address([]byte("newownerB"))
-	confrimSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 
 	// Add in SpendMsg,
 	var msg = SpendMsg{
 		Blknum1: 		1000,
 		Txindex1: 		0,
 		Oindex1: 		0,
-		Indenom1: 		100,
+		DepositNum1: 	0,
 		Owner1: 		privB.PubKey().Address(),
-		ConfirmSigs1: 	confrimSigs,
+		ConfirmSigs1: 	confirmSigs,
 		Blknum2:		1000,
 		Txindex2: 		1,
 		Oindex2: 		0,
-		Indenom2: 		100,
+		DepositNum2: 	0,
 		Owner2: 		privC.PubKey().Address(),
-		ConfirmSigs2: 	confrimSigs,
+		ConfirmSigs2: 	confirmSigs,
 		Newowner1: 		newownerA,
 		Denom1: 		150,
 		Newowner2: 		newownerB,
@@ -84,8 +84,8 @@ func TestHandleSpendMessage(t *testing.T) {
 
 	// Check to see if outputs were added
 	assert.Equal(t, int64(2), ctx.BlockHeight())
-	positionD := Position{2000, 0, 0}
-	positionE := Position{2000, 0, 1}
+	positionD := Position{2000, 0, 0, 0}
+	positionE := Position{2000, 0, 1, 0}
 	utxo1 = mapper.GetUTXO(ctx, positionD)
 	assert.NotNil(t, utxo1)
 	utxo2 = mapper.GetUTXO(ctx, positionE)
@@ -117,7 +117,7 @@ func TestOneInput(t *testing.T) {
 	// Add in 2 parentUTXO
 	privA := crypto.GenPrivKeySecp256k1()
 	privB := crypto.GenPrivKeySecp256k1()
-	positionB := Position{1000, 0, 0}
+	positionB := Position{1000, 0, 0, 0}
 	utxo1 := NewUTXO(privA, privB, positionB)
 	mapper.AddUTXO(ctx, utxo1)
 	utxo1 = mapper.GetUTXO(ctx, positionB)
@@ -125,22 +125,22 @@ func TestOneInput(t *testing.T) {
 	
 	newownerA := crypto.Address([]byte("newownerA"))
 	newownerB := crypto.Address([]byte("newownerB"))
-	confrimSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 
 	// Add in SpendMsg,
 	var msg = SpendMsg{
 		Blknum1: 		1000,
 		Txindex1: 		0,
 		Oindex1: 		0,
-		Indenom1: 		100,
+		DepositNum1: 	0,
 		Owner1: 		privB.PubKey().Address(),
-		ConfirmSigs1: 	confrimSigs,
+		ConfirmSigs1: 	confirmSigs,
 		Blknum2:		0,
 		Txindex2: 		0,
 		Oindex2: 		0,
-		Indenom2: 		0,
+		DepositNum2: 	0,
 		Owner2: 		crypto.Address([]byte("")),
-		ConfirmSigs2: 	confrimSigs,
+		ConfirmSigs2: 	confirmSigs,
 		Newowner1: 		newownerA,
 		Denom1: 		25,
 		Newowner2: 		newownerB,
@@ -159,8 +159,8 @@ func TestOneInput(t *testing.T) {
 
 	// Check to see if outputs were added
 	assert.Equal(t, int64(2), ctx.BlockHeight())
-	positionD := Position{2000, 0, 0}
-	positionE := Position{2000, 0, 1}
+	positionD := Position{2000, 0, 0, 0}
+	positionE := Position{2000, 0, 1, 0}
 	utxo1 = mapper.GetUTXO(ctx, positionD)
 	assert.NotNil(t, utxo1)
 	utxo2 := mapper.GetUTXO(ctx, positionE)

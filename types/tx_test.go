@@ -10,20 +10,20 @@ import (
 
 func GenBasicSpendMsg() SpendMsg {
 	// Creates Basic Spend Msg with no owners or recipients 
-	confrimSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 	return SpendMsg{
 		Blknum1: 		1000,
 		Txindex1: 		0,
 		Oindex1: 		0,
-		Indenom1: 		100,
+		DepositNum1:    0,
 		Owner1: 		crypto.Address([]byte("")),
-		ConfirmSigs1: 	confrimSigs,
+		ConfirmSigs1: 	confirmSigs,
 		Blknum2:		1000,
 		Txindex2: 		1,
 		Oindex2: 		0,
-		Indenom2: 		100,
+		DepositNum2: 	0,
 		Owner2: 		crypto.Address([]byte("")),
-		ConfirmSigs2: 	confrimSigs,
+		ConfirmSigs2: 	confirmSigs,
 		Newowner1: 		crypto.Address([]byte("")),
 		Denom1: 		150,
 		Newowner2: 		crypto.Address([]byte("")),
@@ -34,7 +34,7 @@ func GenBasicSpendMsg() SpendMsg {
 
 func GenSpendMsgWithAddresses() SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
-	confrimSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 	privKeyA := crypto.GenPrivKeySecp256k1()
 	privKeyB := crypto.GenPrivKeySecp256k1()
 
@@ -42,15 +42,15 @@ func GenSpendMsgWithAddresses() SpendMsg {
 		Blknum1: 		1000,
 		Txindex1: 		0,
 		Oindex1: 		0,
-		Indenom1: 		100,
+		DepositNum1: 	0,
 		Owner1: 		privKeyA.PubKey().Address(),
-		ConfirmSigs1: 	confrimSigs,
+		ConfirmSigs1: 	confirmSigs,
 		Blknum2:		1000,
 		Txindex2: 		1,
 		Oindex2: 		0,
-		Indenom2: 		100,
+		DepositNum2: 	0,
 		Owner2: 		privKeyA.PubKey().Address(),
-		ConfirmSigs2: 	confrimSigs,
+		ConfirmSigs2: 	confirmSigs,
 		Newowner1: 		privKeyB.PubKey().Address(),
 		Denom1: 		150,
 		Newowner2: 		privKeyB.PubKey().Address(),
@@ -92,35 +92,6 @@ func TestIncorrectOIndex(t *testing.T) {
 	assert.Equal(t, sdk.CodeType(102),
 				err2.Code(), err2.Error())
 
-}
-
-func TestInputOutputFee(t *testing.T) {
-	msg := GenSpendMsgWithAddresses()
-	msg.Fee = 5
-	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(104),
-				err.Code(), err.Error())
-}
-
-func TestDenomFields(t *testing.T) {
-	msg := GenSpendMsgWithAddresses()
-	
-	msg.Indenom1 = 0
-	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(103),
-				err.Code(), err.Error())
-
-	msg.Indenom1 = 100
-	msg.Denom1 = 0
-	err = msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(103),
-				err.Code(), err.Error())
-
-	msg.Denom1 = 150
-	msg.Denom2 = 0
-	err = msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(103),
-				err.Code(), err.Error())
 }
 
 func TestGetSigners(t *testing.T) {

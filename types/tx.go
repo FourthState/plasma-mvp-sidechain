@@ -15,13 +15,13 @@ type SpendMsg struct {
 	Blknum1      uint64
 	Txindex1     uint16
 	Oindex1      uint8
-	Indenom1	 uint64
+	DepositNum1  uint8
 	Owner1		 crypto.Address
 	ConfirmSigs1 [2]crypto.Signature
 	Blknum2      uint64
 	Txindex2     uint16
 	Oindex2      uint8
-	Indenom2	 uint64
+	DepositNum2  uint8
 	Owner2 		 crypto.Address
 	ConfirmSigs2 [2]crypto.Signature
 	Newowner1    crypto.Address
@@ -32,22 +32,22 @@ type SpendMsg struct {
 }
 
 func NewSpendMsg(blknum1 uint64, txindex1 uint16, oindex1 uint8,
-	indenom1 uint64, owner1 crypto.Address, confirmSigs1 [2]crypto.Signature,
+	depositnum1 uint8, owner1 crypto.Address, confirmSigs1 [2]crypto.Signature,
 	blknum2 uint64, txindex2 uint16, oindex2 uint8,
-	indenom2 uint64, owner2 crypto.Address, confirmSigs2 [2]crypto.Signature,
+	depositnum2 uint8, owner2 crypto.Address, confirmSigs2 [2]crypto.Signature,
 	newowner1 crypto.Address, denom1 uint64,
 	newowner2 crypto.Address, denom2 uint64, fee uint64) SpendMsg {
 	return SpendMsg{
 		Blknum1:      blknum1,
 		Txindex1:     txindex1,
 		Oindex1:      oindex1,
-		Indenom1:     indenom1,
+		DepositNum1:  depositnum1,
 		Owner1:	 	  owner1,
 		ConfirmSigs1: confirmSigs1, 
 		Blknum2:      blknum2,
 		Txindex2:     txindex2,
 		Oindex2:      oindex2,
-		Indenom2:     indenom2,
+		DepositNum2:  depositnum2,
 		Owner2:	 	  owner2,
 		ConfirmSigs2: confirmSigs2, 
 		Newowner1:    newowner1,
@@ -75,20 +75,20 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	case msg.Oindex1 != 0 && msg.Oindex1 != 1:
 		return ErrInvalidOIndex(DefaultCodespace, "Output index 1 must be either 0 or 1")
 
+	case msg.DepositNum1 != 0 && (msg.Blknum1 != 0 || msg.Txindex1 != 0 || msg.Oindex1 != 0):
+		return ErrInvalidTransaction(DefaultCodespace, "First input is malformed. Deposit's position must be 0, 0, 0")
+		
+	case msg.DepositNum2 != 0 && (msg.Blknum2 != 0 || msg.Txindex2 != 0 || msg.Oindex2 != 0):
+		return ErrInvalidTransaction(DefaultCodespace, "Second input is malformed. Deposit's position must be 0, 0, 0")
+
 	case msg.Blknum2 != 0 && msg.Oindex2 != 0 && msg.Oindex2 != 1:
 		return ErrInvalidOIndex(DefaultCodespace, "Output index 2 must be either 0 or 1")
 
 	case msg.Blknum2 != 0 && msg.Denom2 == 0:
 		return ErrInvalidDenom(DefaultCodespace, "Second denomination must be positive")
 
-	case msg.Indenom1 == 0:
-		return ErrInvalidDenom(DefaultCodespace, "First input denomination must be positive.")
-
 	case msg.Denom1 == 0:
 		return ErrInvalidDenom(DefaultCodespace, "First denomination must be positive")
-
-	case msg.Indenom1 + msg.Indenom2 != msg.Denom1 + msg.Denom2 + msg.Fee:
-		return ErrInvalidIOF(DefaultCodespace, "Inputs do not equal outputs plus fee")
 	}
 	
 	return nil

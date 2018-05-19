@@ -138,7 +138,7 @@ func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uin
 	}
 
 	inputAddresses := [2]crypto.Address{inputAddr1, inputAddr2}
-	position := Position{uint64(ctx.BlockHeight()) * 1000, txIndex, oindex}
+	position := Position{uint64(ctx.BlockHeight()), txIndex, oindex, 0}
 	utxo := NewBaseUTXO(addr, inputAddresses, denom, position) 
 	uk.um.AddUTXO(ctx, utxo)      // Adds utxo to utxo store
 	return nil

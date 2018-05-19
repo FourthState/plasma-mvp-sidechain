@@ -21,7 +21,7 @@ type UTXO interface {
 	SetDenom(uint64) error //errors if already set
 
 	GetPosition() Position
-	SetPosition(uint64, uint16, uint8) error
+	SetPosition(uint64, uint16, uint8, uint8) error
 
 	Get(key interface{}) (value interface{}, err error)
 	Set(key interface{}, value interface{}) error
@@ -110,11 +110,11 @@ func (utxo BaseUTXO) GetPosition() Position {
 	return utxo.Position
 }
 
-func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8) error {
+func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, depositNum uint8) error {
 	if utxo.Position.Blknum != 0 {
 		return errors.New("Cannot override BaseUTXO Position")
 	}
-	utxo.Position = Position{blockNum, txIndex, oIndex}
+	utxo.Position = Position{blockNum, txIndex, oIndex, depositNum}
 	return nil
 }
 
@@ -126,16 +126,19 @@ type Position struct {
 	Blknum 		uint64
 	TxIndex		uint16
 	Oindex 		uint8
+	DepositNum  uint8
 }
 
-func NewPosition(blknum uint64, txIndex uint16, oIndex uint8) Position {
+func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint8) Position {
 	return Position{
 		Blknum: 	blknum,
 		TxIndex: 	txIndex,
 		Oindex: 	oIndex,
+		DepositNum: depositNum,
 	}
 }
 
+// Used to determine Sign Bytes for confirm signatures
 func (position Position) GetSignBytes() []byte {
 	b, err := rlp.EncodeToBytes(position)
 	if err != nil {

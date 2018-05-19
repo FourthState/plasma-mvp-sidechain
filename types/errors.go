@@ -13,6 +13,7 @@ const (
 	CodeInvalidDenomination sdk.CodeType = 103
 	CodeInvalidIOF 			sdk.CodeType = 104
 	CodeInvalidUTXO			sdk.CodeType = 105
+	CodeInvalidTransaction  sdk.CodeType = 106
 )
 
 func codeToDefaultMsg(code sdk.CodeType) string {
@@ -24,6 +25,9 @@ func codeToDefaultMsg(code sdk.CodeType) string {
 
 //----------------------------------------
 // Error constructors
+func ErrInvalidTransaction(codespace sdk.CodespaceType, msg string) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidTransaction, msg)
+}
 
 func ErrInvalidAddress(codespace sdk.CodespaceType, msg string) sdk.Error {
 	return sdk.NewError(codespace, CodeInvalidAddress, msg)

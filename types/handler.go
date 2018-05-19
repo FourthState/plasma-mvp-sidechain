@@ -19,7 +19,7 @@ func NewHandler(uk UTXOKeeper, txIndex *uint16) sdk.Handler {
 
 // Handle SpendMsg.
 func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg, txIndex *uint16) sdk.Result {
-	position1 := Position{msg.Blknum1, msg.Txindex1, msg.Oindex1}
+	position1 := Position{msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1}
 	utxo1 := uk.um.GetUTXO(ctx, position1)
 	var position2 Position
 	var utxo2 UTXO
@@ -29,7 +29,7 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg, txIndex *uint1
 	}
 
 	if msg.Owner2 != nil && !ZeroAddress(msg.Owner2) {
-		position2 = Position{msg.Blknum2, msg.Txindex2, msg.Oindex2}
+		position2 = Position{msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2}
 		utxo2 = uk.um.GetUTXO(ctx, position2)
 		err := uk.SpendUTXO(ctx, msg.Owner2, position2)
 		if err != nil {
