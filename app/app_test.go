@@ -24,23 +24,29 @@ func newChildChain() *ChildChain {
 func TestDepositMsg(t *testing.T) {
 	cc := newChildChain()
 
+	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	privKeyA := crypto.GenPrivKeySecp256k1()
+	privKeyB := crypto.GenPrivKeySecp256k1()
+
 	// Construct a SpendMsg
 	var msg = types.SpendMsg{
-		Blknum1:     0,
-		Txindex1:    0,
-		Oindex1:     0,
-		DepositNum1: 0,
-		Owner1:      crypto.Address([]byte("origin")),
-		Blknum2:     0,
-		Txindex2:    0,
-		Oindex2:     0,
-		DepositNum2: 0,
-		Owner2:      crypto.Address([]byte("")),
-		Newowner1:   crypto.Address([]byte("recipient")),
-		Denom1:      1000,
-		Newowner2:   crypto.Address([]byte("")),
-		Denom2:      0,
-		Fee:         1,
+		Blknum1:      0,
+		Txindex1:     0,
+		Oindex1:      0,
+		DepositNum1:  0,
+		Owner1:       privKeyA.PubKey().Address(),
+		ConfirmSigs1: confirmSigs,
+		Blknum2:      0,
+		Txindex2:     0,
+		Oindex2:      0,
+		DepositNum2:  0,
+		Owner2:       crypto.Address([]byte("")),
+		ConfirmSigs2: confirmSigs,
+		Newowner1:    privKeyB.PubKey().Address(),
+		Denom1:       1000,
+		Newowner2:    crypto.Address([]byte("")),
+		Denom2:       0,
+		Fee:          1,
 	}
 
 	priv := crypto.GenPrivKeySecp256k1()
@@ -57,12 +63,12 @@ func TestDepositMsg(t *testing.T) {
 
 	// Run a check
 	cres := cc.CheckTx(txBytes)
-	assert.Equal(t, sdk.CodeType(100),
+	assert.Equal(t, sdk.CodeType(6),
 		sdk.CodeType(cres.Code), cres.Log)
 
 	// Simulate a Block
 	cc.BeginBlock(abci.RequestBeginBlock{})
 	dres := cc.DeliverTx(txBytes)
-	assert.Equal(t, sdk.CodeType(100), sdk.CodeType(dres.Code), dres.Log)
+	assert.Equal(t, sdk.CodeType(6), sdk.CodeType(dres.Code), dres.Log)
 
 }

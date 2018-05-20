@@ -94,7 +94,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		position := Position{1000, uint16(i), 0}
+		position := Position{1000, uint16(i), 0, 0}
 		utxo := mapper.GetUTXO(ctx, position)
 		assert.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, position)

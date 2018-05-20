@@ -26,6 +26,9 @@ type ChildChain struct {
 	cdc *amino.Codec
 
 	txIndex *uint16
+
+	feeAmount *uint64
+
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
 
@@ -40,9 +43,10 @@ type ChildChain struct {
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	cdc := MakeCodec()
 	var app = &ChildChain{
-		BaseApp:         bam.NewBaseApp(appName, logger, db),
+		BaseApp:         bam.NewBaseApp(appName, cdc, logger, db),
 		cdc:             cdc,
 		txIndex:         new(uint16),
+		feeAmount:       new(uint64),
 		capKeyMainStore: sdk.NewKVStoreKey("main"),
 		capKeyIBCStore:  sdk.NewKVStoreKey("ibc"),
 	}
@@ -65,7 +69,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	app.MountStoresIAVL(app.capKeyMainStore)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(types.NewAnteHandler(app.utxoMapper, app.txIndex))
+	app.SetAnteHandler(types.NewAnteHandler(app.utxoMapper, app.txIndex, app.feeAmount))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -81,7 +85,7 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// BaseTx is struct for Msg wrapped with authentication data
 	err := app.cdc.UnmarshalBinary(txBytes, &tx)
 	if err != nil {
-		return nil, sdk.ErrTxDecode("").TraceCause(err, "")
+		return nil, sdk.ErrTxDecode("")
 	}
 	return tx, nil
 }

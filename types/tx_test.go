@@ -93,10 +93,10 @@ func TestIncorrectOIndex(t *testing.T) {
 }
 
 func TestInvalidSpendDeposit(t *testing.T) {
-	var msg1 = GenBasicSpendMsgWithAddresses()
+	var msg1 = GenSpendMsgWithAddresses()
 	msg1.DepositNum1 = 5
 
-	err := msg.ValidateBasic()
+	err := msg1.ValidateBasic()
 	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 

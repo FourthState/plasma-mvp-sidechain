@@ -10,6 +10,8 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+/// @param privA confirmSig Address
+/// @param privB owner address
 func NewUTXO(privA crypto.PrivKey, privB crypto.PrivKey, position Position) UTXO {
 	addrA := privA.PubKey().Address()
 	addrB := privB.PubKey().Address()
@@ -84,8 +86,8 @@ func TestHandleSpendMessage(t *testing.T) {
 
 	// Check to see if outputs were added
 	assert.Equal(t, int64(2), ctx.BlockHeight())
-	positionD := Position{2000, 0, 0, 0}
-	positionE := Position{2000, 0, 1, 0}
+	positionD := Position{2, 0, 0, 0}
+	positionE := Position{2, 0, 1, 0}
 	utxo1 = mapper.GetUTXO(ctx, positionD)
 	assert.NotNil(t, utxo1)
 	utxo2 = mapper.GetUTXO(ctx, positionE)
@@ -159,8 +161,8 @@ func TestOneInput(t *testing.T) {
 
 	// Check to see if outputs were added
 	assert.Equal(t, int64(2), ctx.BlockHeight())
-	positionD := Position{2000, 0, 0, 0}
-	positionE := Position{2000, 0, 1, 0}
+	positionD := Position{2, 0, 0, 0}
+	positionE := Position{2, 0, 1, 0}
 	utxo1 = mapper.GetUTXO(ctx, positionD)
 	assert.NotNil(t, utxo1)
 	utxo2 := mapper.GetUTXO(ctx, positionE)
