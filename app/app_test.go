@@ -26,8 +26,8 @@ func TestDepositMsg(t *testing.T) {
 	cc := newChildChain()
 
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
-	privKeyA := ethcrypto.GenerateKey()
-	privKeyB := ethcrypto.GenerateKey()
+	privKeyA, _ := ethcrypto.GenerateKey()
+	privKeyB, _ := ethcrypto.GenerateKey()
 
 	// Construct a SpendMsg
 	var msg = types.SpendMsg{
@@ -50,10 +50,11 @@ func TestDepositMsg(t *testing.T) {
 		Fee:          1,
 	}
 
-	sig := ethcrypto.Sign(msg.GetSignBytes(), privKeyA).(crypto.Signature)
+	hash := ethcrypto.Keccak256(msg.GetSignBytes())
+	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
-		PubKey:    privKeyA.Public().(crypto.PubKey()),
-		Signature: sig,
+		PubKey:    nil,
+		Signature: crypto.SignatureSecp256k1(sig),
 	}})
 
 	cdc := MakeCodec()
