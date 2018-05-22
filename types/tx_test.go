@@ -68,7 +68,7 @@ func TestNoOwners(t *testing.T) {
 }
 
 func TestNoRecipients(t *testing.T) {
-	privKeyA := crypto.GenerateKey()
+	privKeyA, _ := ethcrypto.GenerateKey()
 	var msg = GenBasicSpendMsg()
 	msg.Owner1 = EthPrivKeyToSDKAddress(privKeyA)
 	msg.Owner2 = EthPrivKeyToSDKAddress(privKeyA)

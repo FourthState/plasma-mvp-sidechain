@@ -16,7 +16,7 @@ func ValidAddress(addr crypto.Address) bool {
 }
 
 func EthPrivKeyToSDKAddress(p *ecdsa.PrivateKey) crypto.Address {
-	return ethcrypto.PubkeyToAddress(p.Public().(ecdsa.PublicKey)).Bytes()
+	return ethcrypto.PubkeyToAddress(ecdsa.PublicKey(p.PublicKey)).Bytes()
 }
 
 func GenerateAddress() crypto.Address {
@@ -26,3 +26,5 @@ func GenerateAddress() crypto.Address {
 	}
 	return EthPrivKeyToSDKAddress(priv)
 }
+
+

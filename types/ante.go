@@ -2,7 +2,6 @@ package types
 
 import (
 	"reflect"
-	//"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	crypto "github.com/tendermint/go-crypto"
@@ -101,10 +100,14 @@ func processSig(
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
 	}
 
+	//Checks that utxo owner equals address in the spendmsg
+	if !reflect.DeepEqual(utxo.GetAddress().Bytes(), addr.Bytes()) {
+		return sdk.ErrUnauthorized("signer does not match utxo owner").Result()
+	}
+
 	hash := ethcrypto.Keccak256(signBytes)
-
-	pubKey1, err1 := ethcrypto.SigToPub(hash, sig.Signature.Bytes())
-
+	pubKey1, err1 := ethcrypto.SigToPub(hash, sig.Signature.Bytes()[5:])
+	
 	if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), addr.Bytes()) {
 		return sdk.ErrUnauthorized("signature 1 verification failed").Result()
 	}
@@ -130,13 +133,13 @@ func processConfirmSig(
 
 	hash := ethcrypto.Keccak256(signBytes)
 
-	pubKey1, err1 := ethcrypto.SigToPub(hash, ethsigs[0].Bytes())
+	pubKey1, err1 := ethcrypto.SigToPub(hash, ethsigs[0].Bytes()[5:])
 	if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), inputAddresses[0].Bytes()) {
 		return sdk.ErrUnauthorized("confirm signature 1 verification failed").Result()
 	}
 
 	if ValidAddress(inputAddresses[1]) {
-		pubKey2, err2 := ethcrypto.SigToPub(hash, ethsigs[1].Bytes())
+		pubKey2, err2 := ethcrypto.SigToPub(hash, ethsigs[1].Bytes()[5:])
 		if err2 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey2).Bytes(), inputAddresses[1].Bytes()) {
 			return sdk.ErrUnauthorized("confirm signature 2 verification failed").Result()
 		}

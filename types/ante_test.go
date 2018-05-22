@@ -23,10 +23,11 @@ func setup() (sdk.Context, UTXOMapper, *uint16, *uint64) {
 
 /// @param privA confirmSig Address
 /// @param privB owner address
-func newUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position Position) UTXO {
+/// single input
+func newSingleInputUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position Position) UTXO {
 	addrA := EthPrivKeyToSDKAddress(privA)
 	addrB := EthPrivKeyToSDKAddress(privB)
-	confirmAddr := [2]crypto.Address{addrA, addrA}
+	confirmAddr := [2]crypto.Address{addrA, crypto.Address([]byte(""))}
 	return NewBaseUTXO(addrB, confirmAddr, 100, position)
 }
 
@@ -48,10 +49,11 @@ func TestNotEnoughSigs(t *testing.T) {
 
 	var msg = GenSpendMsgWithAddresses()
 	priv, _ := ethcrypto.GenerateKey()
-	sig := priv.Sign(msg.GetSignBytes())
+	hash := ethcrypto.Keccak256(msg.GetSignBytes()) 
+	sig, _ := ethcrypto.Sign(hash, priv)
 	tx := NewBaseTx(msg, []sdk.StdSignature{{
-		PubKey:    priv.PubKey(),
-		Signature: sig,
+		PubKey:     nil,
+		Signature:  crypto.SignatureSecp256k1(sig),
 	}})
 
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
@@ -76,13 +78,14 @@ func TestWrongSigner(t *testing.T) {
 	msg.Owner1 = EthPrivKeyToSDKAddress(privB)
 	msg.Owner2 = EthPrivKeyToSDKAddress(privB)
 	priv, _ := ethcrypto.GenerateKey()
-	sig := ethcrypto.Sign(msg.GetSignBytes(), priv)
+	hash := ethcrypto.Keccak256(msg.GetSignBytes()) 
+	sig, _ := ethcrypto.Sign(hash, priv)
 	tx := NewBaseTx(msg, []sdk.StdSignature{{
-		PubKey:    priv.Public().(crypto.PubKey),
-		Signature: sig,
+		PubKey:    nil,
+		Signature:  crypto.SignatureSecp256k1(sig),
 	}, {
-		PubKey:    priv.Public().(crypto.PubKey),
-		Signature: sig,
+		PubKey:    nil,
+		Signature:  crypto.SignatureSecp256k1(sig),
 	}})
 
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
@@ -99,8 +102,9 @@ func TestValidSingleInput(t *testing.T) {
 	privKeyA, _ := ethcrypto.GenerateKey() //Input Owner
 	privKeyB, _ := ethcrypto.GenerateKey() //ConfirmSig owner and recipient
 
-	position1 := Position{1, 0, 0}
-	confirmSig, _ := ethcrypto.Sign(position1.GetSignBytes(), privKeyB)
+	position1 := Position{1, 0, 0, 0}
+	confirmSigHash := ethcrypto.Keccak256(position1.GetSignBytes())
+	confirmSig, _ := ethcrypto.Sign(confirmSigHash, privKeyB)
 	confirmSig1 := crypto.SignatureSecp256k1(confirmSig)
 	confirmSigs := [2]crypto.Signature{confirmSig1, crypto.SignatureSecp256k1{}}
 
@@ -109,28 +113,28 @@ func TestValidSingleInput(t *testing.T) {
 		Blknum1:      1,
 		Txindex1:     0,
 		Oindex1:      0,
-		Indenom1:     200,
+		DepositNum1:  0,
 		Owner1:       EthPrivKeyToSDKAddress(privKeyA),
-		ConfirmSigs1: confrimSigs,
+		ConfirmSigs1: confirmSigs,
 		Blknum2:      0,
 		Txindex2:     0,
 		Oindex2:      0,
-		Indenom2:     0,
+		DepositNum2:  0,
 		Owner2:       crypto.Address([]byte("")),
 		ConfirmSigs2: confirmSigs,
 		Newowner1:    EthPrivKeyToSDKAddress(privKeyA),
 		Denom1:       150,
-		Newowner2:    EthPrivKeyToSDKAddress(privKeyA)
+		Newowner2:    EthPrivKeyToSDKAddress(privKeyA),
 		Denom2:       45,
 		Fee:          5,
 	}
-	sig, _ := ethcrypto.Sign(msg.GetSignBytes(), privKeyA)
+	hash := ethcrypto.Keccak256(msg.GetSignBytes())
+	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	sig1 := crypto.SignatureSecp256k1(sig)
-	pk := privKeyA.Public()
-	tx := NewBaseTx(msg, []sdk.StdSignature {{
-			PubKey: 	pk.(crypto.PubKey()),
+	tx := NewBaseTx(msg, []sdk.StdSignature{{
+			PubKey: 	nil,
 			Signature:	sig1,
-		},})
+		}})
 
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
@@ -138,7 +142,7 @@ func TestValidSingleInput(t *testing.T) {
 	assert.Equal(t, true, abort, "Did not abort on utxo that does not exist")
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
-	utxo1 := newUTXO(privKeyB, privKeyA, position1)
+	utxo1 := newSingleInputUTXO(privKeyB, privKeyA, position1) 
 	mapper.AddUTXO(ctx, utxo1)
 
 	_, res, abort = handler(ctx, tx)
