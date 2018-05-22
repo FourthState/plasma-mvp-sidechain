@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"reflect"
 	//"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -78,17 +77,12 @@ func NewAnteHandler(utxoMapper UTXOMapper, txIndex *uint16, feeAmount *uint64) s
 		// If DeliverTx() update fee
 		if !ctx.IsCheckTx() {
 			header := ctx.BlockHeader()
-			feeTxIndex := uint16(header.GetNumTxs()) - 1
-			if *txIndex == feeTxIndex {
-				//Assert Denom1 contains correct amount of fees
-				if *feeAmount != spendMsg.Denom1 {
-					return ctx, sdk.ErrUnauthorized("Fees collected does not match fees reported").Result(), true
-				}
-
-			} else {
-
-				//Increment amount of fees collected
-				(*feeAmount) += spendMsg.Fee
+			feeTxIndex := uint16(header.GetNumTxs())
+			(*feeAmount) += spendMsg.Fee
+			if *txIndex == feeTxIndex - 1 {
+				feeUTXO := BaseUTXO{[2]crypto.Address{crypto.Address([]byte("")), crypto.Address([]byte(""))},
+							crypto.Address([]byte("Validator")), *feeAmount, Position{uint64(ctx.BlockHeight()), feeTxIndex, 0, 0}}
+				utxoMapper.AddUTXO(ctx, feeUTXO)
 			}
 		}
 
@@ -105,10 +99,6 @@ func processSig(
 	utxo := um.GetUTXO(ctx, position)
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
-	}
-
-	if !bytes.Equal(sig.PubKey.Bytes(), addr.Bytes()) {
-		return sdk.ErrUnauthorized("Signer Address does not match owner").Result()
 	}
 
 	hash := ethcrypto.Keccak256(signBytes)

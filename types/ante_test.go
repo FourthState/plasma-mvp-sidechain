@@ -24,8 +24,8 @@ func setup() (sdk.Context, UTXOMapper, *uint16, *uint64) {
 /// @param privA confirmSig Address
 /// @param privB owner address
 func newUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position Position) UTXO {
-	addrA := ethcrypto.PubkeyToAddress(privA.PublicKey).Bytes()
-	addrB := ethcrypto.PubkeyToAddress(privB.PublicKey).Bytes()
+	addrA := EthPrivKeyToSDKAddress(privA)
+	addrB := EthPrivKeyToSDKAddress(privB)
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 	return NewBaseUTXO(addrB, confirmAddr, 100, position)
 }
@@ -47,7 +47,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
 	var msg = GenSpendMsgWithAddresses()
-	priv := crypto.GenPrivKeySecp256k1()
+	priv, _ := ethcrypto.GenerateKey()
 	sig := priv.Sign(msg.GetSignBytes())
 	tx := NewBaseTx(msg, []sdk.StdSignature{{
 		PubKey:    priv.PubKey(),
@@ -66,22 +66,22 @@ func TestWrongSigner(t *testing.T) {
 
 	position1 := Position{1000, 0, 0, 0}
 	position2 := Position{1000, 1, 0, 0}
-	privA := crypto.GenPrivKeySecp256k1()
-	privB := crypto.GenPrivKeySecp256k1()
+	privA, _ := ethcrypto.GenerateKey()
+	privB, _ := ethcrypto.GenerateKey()
 	utxo1 := NewUTXO(privA, privB, position1)
 	utxo2 := NewUTXO(privA, privB, position2)
 	mapper.AddUTXO(ctx, utxo1)
 	mapper.AddUTXO(ctx, utxo2)
 	var msg = GenSpendMsgWithAddresses()
-	msg.Owner1 = privB.PubKey().Address()
-	msg.Owner2 = privB.PubKey().Address()
-	priv := crypto.GenPrivKeySecp256k1()
-	sig := priv.Sign(msg.GetSignBytes())
+	msg.Owner1 = EthPrivKeyToSDKAddress(privB)
+	msg.Owner2 = EthPrivKeyToSDKAddress(privB)
+	priv, _ := ethcrypto.GenerateKey()
+	sig := ethcrypto.Sign(msg.GetSignBytes(), priv)
 	tx := NewBaseTx(msg, []sdk.StdSignature{{
-		PubKey:    priv.PubKey(),
+		PubKey:    priv.Public().(crypto.PubKey),
 		Signature: sig,
 	}, {
-		PubKey:    priv.PubKey(),
+		PubKey:    priv.Public().(crypto.PubKey),
 		Signature: sig,
 	}})
 
@@ -93,7 +93,7 @@ func TestWrongSigner(t *testing.T) {
 }
 
 //Tests a valid single input transaction
-/*func TestValidSingleInput(t *testing.T) {
+func TestValidSingleInput(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
 	privKeyA, _ := ethcrypto.GenerateKey() //Input Owner
@@ -102,7 +102,7 @@ func TestWrongSigner(t *testing.T) {
 	position1 := Position{1, 0, 0}
 	confirmSig, _ := ethcrypto.Sign(position1.GetSignBytes(), privKeyB)
 	confirmSig1 := crypto.SignatureSecp256k1(confirmSig)
-	confrimSigs := [2]crypto.Signature{confirmSig1, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]crypto.Signature{confirmSig1, crypto.SignatureSecp256k1{}}
 
 	//Single input
 	var msg = SpendMsg{
@@ -110,26 +110,25 @@ func TestWrongSigner(t *testing.T) {
 		Txindex1:     0,
 		Oindex1:      0,
 		Indenom1:     200,
-		Owner1:       ethcrypto.PubkeyToAddress(privKeyA.PublicKey).Bytes(),
+		Owner1:       EthPrivKeyToSDKAddress(privKeyA),
 		ConfirmSigs1: confrimSigs,
 		Blknum2:      0,
 		Txindex2:     0,
 		Oindex2:      0,
 		Indenom2:     0,
 		Owner2:       crypto.Address([]byte("")),
-		ConfirmSigs2: confrimSigs,
-		Newowner1:    ethcrypto.PubkeyToAddress(privKeyA.PublicKey).Bytes(),
+		ConfirmSigs2: confirmSigs,
+		Newowner1:    EthPrivKeyToSDKAddress(privKeyA),
 		Denom1:       150,
-		Newowner2:    ethcrypto.PubkeyToAddress(privKeyA.PublicKey).Bytes(),
+		Newowner2:    EthPrivKeyToSDKAddress(privKeyA)
 		Denom2:       45,
 		Fee:          5,
 	}
 	sig, _ := ethcrypto.Sign(msg.GetSignBytes(), privKeyA)
 	sig1 := crypto.SignatureSecp256k1(sig)
-	priv, _ := crypto.PrivKeyFromBytes(ethcrypto.FromECDSA(privKeyA))
-	pk := priv.PubKey()
+	pk := privKeyA.Public()
 	tx := NewBaseTx(msg, []sdk.StdSignature {{
-			PubKey: 	pk,
+			PubKey: 	pk.(crypto.PubKey()),
 			Signature:	sig1,
 		},})
 
@@ -146,4 +145,4 @@ func TestWrongSigner(t *testing.T) {
 
 	assert.Equal(t, false, abort, "aborted with valid transaction")
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1),sdk.CodeType(0)), res.Code, res.Log)
-}*/
+}

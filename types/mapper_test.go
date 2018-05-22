@@ -11,6 +11,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
@@ -35,11 +36,11 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
-	privA := crypto.GenPrivKeySecp256k1()
-	addrA := privA.PubKey().Address()
+	privA, _ := ethcrypto.GenerateKey()
+	addrA := EthPrivKeyToSDKAddress(privA)
 
-	privB := crypto.GenPrivKeySecp256k1()
-	addrB := privB.PubKey().Address()
+	privB, _ := ethcrypto.GenerateKey()
+	addrB := EthPrivKeyToSDKAddress(privB)
 
 	positionB := Position{1000, 0, 0, 0}
 	confirmAddr := [2]crypto.Address{addrA, addrA}
@@ -76,11 +77,12 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
-	privA := crypto.GenPrivKeySecp256k1()
-	addrA := privA.PubKey().Address()
+	privA, _ := ethcrypto.GenerateKey()
+	addrA := EthPrivKeyToSDKAddress(privA)
 
-	privB := crypto.GenPrivKeySecp256k1()
-	addrB := privB.PubKey().Address()
+	privB, _ := ethcrypto.GenerateKey()
+	addrB := EthPrivKeyToSDKAddress(privB)
+
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
@@ -117,11 +119,12 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
-	privA := crypto.GenPrivKeySecp256k1()
-	addrA := privA.PubKey().Address()
+	privA, _ := ethcrypto.GenerateKey()
+	addrA := EthPrivKeyToSDKAddress(privA)
 
-	privB := crypto.GenPrivKeySecp256k1()
-	addrB := privB.PubKey().Address()
+	privB, _ := ethcrypto.GenerateKey()
+	addrB := EthPrivKeyToSDKAddress(privB)
+
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 

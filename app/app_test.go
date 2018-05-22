@@ -12,6 +12,7 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 	types "plasma-mvp-sidechain/types"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -25,8 +26,8 @@ func TestDepositMsg(t *testing.T) {
 	cc := newChildChain()
 
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
-	privKeyA := crypto.GenPrivKeySecp256k1()
-	privKeyB := crypto.GenPrivKeySecp256k1()
+	privKeyA := ethcrypto.GenerateKey()
+	privKeyB := ethcrypto.GenerateKey()
 
 	// Construct a SpendMsg
 	var msg = types.SpendMsg{
@@ -34,7 +35,7 @@ func TestDepositMsg(t *testing.T) {
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       privKeyA.PubKey().Address(),
+		Owner1:       types.EthPrivKeyToSDKAddress(privKeyA),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      0,
 		Txindex2:     0,
@@ -42,17 +43,16 @@ func TestDepositMsg(t *testing.T) {
 		DepositNum2:  0,
 		Owner2:       crypto.Address([]byte("")),
 		ConfirmSigs2: confirmSigs,
-		Newowner1:    privKeyB.PubKey().Address(),
+		Newowner1:    types.EthPrivKeyToSDKAddress(privKeyB),
 		Denom1:       1000,
 		Newowner2:    crypto.Address([]byte("")),
 		Denom2:       0,
 		Fee:          1,
 	}
 
-	priv := crypto.GenPrivKeySecp256k1()
-	sig := priv.Sign(msg.GetSignBytes())
+	sig := ethcrypto.Sign(msg.GetSignBytes(), privKeyA).(crypto.Signature)
 	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
-		PubKey:    priv.PubKey(),
+		PubKey:    privKeyA.Public().(crypto.PubKey()),
 		Signature: sig,
 	}})
 

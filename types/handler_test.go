@@ -3,18 +3,20 @@ package types
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"crypto/ecdsa"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/tendermint/tmlibs/log"
 )
 
 /// @param privA confirmSig Address
 /// @param privB owner address
-func NewUTXO(privA crypto.PrivKey, privB crypto.PrivKey, position Position) UTXO {
-	addrA := privA.PubKey().Address()
-	addrB := privB.PubKey().Address()
+func NewUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position Position) UTXO {
+	addrA := EthPrivKeyToSDKAddress(privA)
+	addrB := EthPrivKeyToSDKAddress(privB)
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 	return NewBaseUTXO(addrB, confirmAddr, 100, position)
 }
@@ -34,9 +36,9 @@ func TestHandleSpendMessage(t *testing.T) {
 	handler := NewHandler(keeper, txIndex)
 
 	// Add in 2 parentUTXO
-	privA := crypto.GenPrivKeySecp256k1()
-	privB := crypto.GenPrivKeySecp256k1()
-	privC := crypto.GenPrivKeySecp256k1()
+	privA, _ := ethcrypto.GenerateKey()
+	privB, _ := ethcrypto.GenerateKey()
+	privC, _ := ethcrypto.GenerateKey()
 	positionB := Position{1000, 0, 0, 0}
 	positionC := Position{1000, 1, 0, 0}
 	utxo1 := NewUTXO(privA, privB, positionB)
@@ -48,8 +50,8 @@ func TestHandleSpendMessage(t *testing.T) {
 	assert.NotNil(t, utxo1)
 	assert.NotNil(t, utxo2)
 
-	newownerA := crypto.Address([]byte("newownerA"))
-	newownerB := crypto.Address([]byte("newownerB"))
+	newownerA := GenerateAddress()
+	newownerB := GenerateAddress()
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 
 	// Add in SpendMsg,
@@ -58,13 +60,13 @@ func TestHandleSpendMessage(t *testing.T) {
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       privB.PubKey().Address(),
+		Owner1:       EthPrivKeyToSDKAddress(privB),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      1000,
 		Txindex2:     1,
 		Oindex2:      0,
 		DepositNum2:  0,
-		Owner2:       privC.PubKey().Address(),
+		Owner2:       EthPrivKeyToSDKAddress(privC),
 		ConfirmSigs2: confirmSigs,
 		Newowner1:    newownerA,
 		Denom1:       150,
@@ -94,7 +96,7 @@ func TestHandleSpendMessage(t *testing.T) {
 	assert.NotNil(t, utxo2)
 
 	// Check that outputs are valid
-	inputAddresses := [2]crypto.Address{privB.PubKey().Address(), privC.PubKey().Address()}
+	inputAddresses := [2]crypto.Address{EthPrivKeyToSDKAddress(privB), EthPrivKeyToSDKAddress(privC)}
 	assert.Equal(t, uint64(150), utxo1.GetDenom())
 	assert.Equal(t, uint64(50), utxo2.GetDenom())
 	assert.EqualValues(t, newownerA, utxo1.GetAddress())
@@ -117,16 +119,16 @@ func TestOneInput(t *testing.T) {
 	handler := NewHandler(keeper, txIndex)
 
 	// Add in 2 parentUTXO
-	privA := crypto.GenPrivKeySecp256k1()
-	privB := crypto.GenPrivKeySecp256k1()
+	privA, _ := ethcrypto.GenerateKey()
+	privB, _ := ethcrypto.GenerateKey()
 	positionB := Position{1000, 0, 0, 0}
 	utxo1 := NewUTXO(privA, privB, positionB)
 	mapper.AddUTXO(ctx, utxo1)
 	utxo1 = mapper.GetUTXO(ctx, positionB)
 	assert.NotNil(t, utxo1)
 
-	newownerA := crypto.Address([]byte("newownerA"))
-	newownerB := crypto.Address([]byte("newownerB"))
+	newownerA := GenerateAddress()
+	newownerB := GenerateAddress()
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 
 	// Add in SpendMsg,
@@ -135,7 +137,7 @@ func TestOneInput(t *testing.T) {
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       privB.PubKey().Address(),
+		Owner1:       EthPrivKeyToSDKAddress(privB),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      0,
 		Txindex2:     0,
