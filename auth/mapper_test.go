@@ -1,4 +1,4 @@
-package types
+package auth
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -6,12 +6,15 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+
+	types "plasma-mvp-sidechain/types"
+	utils "plasma-mvp-sidechain/utils"
 )
 
 func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
@@ -21,6 +24,13 @@ func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 	ms.MountStoreWithDB(capKey, sdk.StoreTypeIAVL, db)
 	ms.LoadLatestVersion()
 	return ms, capKey
+}
+
+func MakeCodec() *amino.Codec {
+	cdc := amino.NewCodec()
+	types.RegisterAmino(cdc)
+	crypto.RegisterAmino(cdc)
+	return cdc
 }
 
 /*
@@ -37,19 +47,19 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA, _ := ethcrypto.GenerateKey()
-	addrA := EthPrivKeyToSDKAddress(privA)
+	addrA := utils.EthPrivKeyToSDKAddress(privA)
 
 	privB, _ := ethcrypto.GenerateKey()
-	addrB := EthPrivKeyToSDKAddress(privB)
+	addrB := utils.EthPrivKeyToSDKAddress(privB)
 
-	positionB := Position{1000, 0, 0, 0}
+	positionB := types.Position{1000, 0, 0, 0}
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
 	// These lines of code error. Why?
 	//utxo := mapper.GetUXTO(ctx, positionB)
 	//assert.Nil(t, utxo)
 
-	utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 	assert.NotNil(t, utxo)
 	assert.Equal(t, addrB, utxo.GetAddress())
 	assert.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
@@ -78,25 +88,24 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 
 	// These are not being tested
 	privA, _ := ethcrypto.GenerateKey()
-	addrA := EthPrivKeyToSDKAddress(privA)
+	addrA := utils.EthPrivKeyToSDKAddress(privA)
 
 	privB, _ := ethcrypto.GenerateKey()
-	addrB := EthPrivKeyToSDKAddress(privB)
-
+	addrB := utils.EthPrivKeyToSDKAddress(privB)
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
-		positionB := Position{1000, uint16(i), 0, 0}
-		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+		positionB := types.Position{1000, uint16(i), 0, 0}
+		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
 		assert.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
-		position := Position{1000, uint16(i), 0, 0}
+		position := types.Position{1000, uint16(i), 0, 0}
 		utxo := mapper.GetUTXO(ctx, position)
 		assert.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, position)
@@ -120,25 +129,24 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 
 	// These are not being tested
 	privA, _ := ethcrypto.GenerateKey()
-	addrA := EthPrivKeyToSDKAddress(privA)
+	addrA := utils.EthPrivKeyToSDKAddress(privA)
 
 	privB, _ := ethcrypto.GenerateKey()
-	addrB := EthPrivKeyToSDKAddress(privB)
-
+	addrB := utils.EthPrivKeyToSDKAddress(privB)
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
-		positionB := Position{uint64(i), 0, 0, 0}
-		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+		positionB := types.Position{uint64(i), 0, 0, 0}
+		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
 		assert.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
-		position := Position{uint64(i), 0, 0, 0}
+		position := types.Position{uint64(i), 0, 0, 0}
 		utxo := mapper.GetUTXO(ctx, position)
 		assert.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, position)
@@ -146,12 +154,4 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 		assert.Nil(t, utxo)
 	}
 
-}
-
-func MakeCodec() *amino.Codec {
-	cdc := amino.NewCodec()
-	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
-	RegisterAmino(cdc)
-	crypto.RegisterAmino(cdc)
-	return cdc
 }

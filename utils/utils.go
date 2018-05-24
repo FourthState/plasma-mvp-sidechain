@@ -1,10 +1,10 @@
-package types
+package utils
 
 import (
 	ecdsa "crypto/ecdsa"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	crypto "github.com/tendermint/go-crypto"
 	"math/big"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 func ZeroAddress(addr crypto.Address) bool {
@@ -26,5 +26,3 @@ func GenerateAddress() crypto.Address {
 	}
 	return EthPrivKeyToSDKAddress(priv)
 }
-
-

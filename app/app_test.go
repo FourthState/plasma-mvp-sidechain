@@ -5,14 +5,16 @@ import (
 	"testing"
 	//"fmt" //for debugging
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-	types "plasma-mvp-sidechain/types"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+
+	db "plasma-mvp-sidechain/db"
+	utils "plasma-mvp-sidechain/utils"
 	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -30,12 +32,12 @@ func TestDepositMsg(t *testing.T) {
 	privKeyB, _ := ethcrypto.GenerateKey()
 
 	// Construct a SpendMsg
-	var msg = types.SpendMsg{
+	var msg = db.SpendMsg{
 		Blknum1:      0,
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       types.EthPrivKeyToSDKAddress(privKeyA),
+		Owner1:       utils.EthPrivKeyToSDKAddress(privKeyA),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      0,
 		Txindex2:     0,
@@ -43,7 +45,7 @@ func TestDepositMsg(t *testing.T) {
 		DepositNum2:  0,
 		Owner2:       crypto.Address([]byte("")),
 		ConfirmSigs2: confirmSigs,
-		Newowner1:    types.EthPrivKeyToSDKAddress(privKeyB),
+		Newowner1:    utils.EthPrivKeyToSDKAddress(privKeyB),
 		Denom1:       1000,
 		Newowner2:    crypto.Address([]byte("")),
 		Denom2:       0,
@@ -52,7 +54,7 @@ func TestDepositMsg(t *testing.T) {
 
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
-	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
+	tx := db.NewBaseTx(msg, []sdk.StdSignature{{
 		PubKey:    nil,
 		Signature: crypto.SignatureSecp256k1(sig),
 	}})

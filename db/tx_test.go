@@ -1,13 +1,24 @@
-package types
+package db
 
 import (
-	"github.com/stretchr/testify/assert"
-	"testing"
-	//"fmt"
+	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	crypto "github.com/tendermint/go-crypto"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/stretchr/testify/assert"
+	crypto "github.com/tendermint/go-crypto"
+	dbm "github.com/tendermint/tmlibs/db"
+	utils "plasma-mvp-sidechain/utils"
+	"testing"
 )
+
+func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
+	db := dbm.NewMemDB()
+	capKey := sdk.NewKVStoreKey("capkey")
+	ms := store.NewCommitMultiStore(db)
+	ms.MountStoreWithDB(capKey, sdk.StoreTypeIAVL, db)
+	ms.LoadLatestVersion()
+	return ms, capKey
+}
 
 func GenBasicSpendMsg() SpendMsg {
 	// Creates Basic Spend Msg with no owners or recipients
@@ -38,23 +49,23 @@ func GenSpendMsgWithAddresses() SpendMsg {
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
-	
+
 	return SpendMsg{
 		Blknum1:      1000,
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       EthPrivKeyToSDKAddress(privKeyA),
+		Owner1:       utils.EthPrivKeyToSDKAddress(privKeyA),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      1000,
 		Txindex2:     1,
 		Oindex2:      0,
 		DepositNum2:  0,
-		Owner2:       EthPrivKeyToSDKAddress(privKeyA),
+		Owner2:       utils.EthPrivKeyToSDKAddress(privKeyA),
 		ConfirmSigs2: confirmSigs,
-		Newowner1:    EthPrivKeyToSDKAddress(privKeyB),
+		Newowner1:    utils.EthPrivKeyToSDKAddress(privKeyB),
 		Denom1:       150,
-		Newowner2:    EthPrivKeyToSDKAddress(privKeyB),
+		Newowner2:    utils.EthPrivKeyToSDKAddress(privKeyB),
 		Denom2:       50,
 		Fee:          0,
 	}
@@ -70,8 +81,8 @@ func TestNoOwners(t *testing.T) {
 func TestNoRecipients(t *testing.T) {
 	privKeyA, _ := ethcrypto.GenerateKey()
 	var msg = GenBasicSpendMsg()
-	msg.Owner1 = EthPrivKeyToSDKAddress(privKeyA)
-	msg.Owner2 = EthPrivKeyToSDKAddress(privKeyA)
+	msg.Owner1 = utils.EthPrivKeyToSDKAddress(privKeyA)
+	msg.Owner2 = utils.EthPrivKeyToSDKAddress(privKeyA)
 	err := msg.ValidateBasic()
 	assert.Equal(t, sdk.CodeType(101),
 		err.Code(), err.Error())
@@ -106,12 +117,12 @@ func TestGetSigners(t *testing.T) {
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
-	msg.Owner1 = EthPrivKeyToSDKAddress(privKeyA)
+	msg.Owner1 = utils.EthPrivKeyToSDKAddress(privKeyA)
 	addrs := []crypto.Address{msg.Owner1}
 	signers := msg.GetSigners()
 	assert.Equal(t, addrs, signers, "Signer Address do not match")
 
-	msg.Owner2 = EthPrivKeyToSDKAddress(privKeyB)
+	msg.Owner2 = utils.EthPrivKeyToSDKAddress(privKeyB)
 	addrs = []crypto.Address{msg.Owner1, msg.Owner2}
 	signers = msg.GetSigners()
 	assert.Equal(t, addrs, signers, "Signer Addresses do not match")

@@ -3,7 +3,9 @@ package types
 import (
 	"errors"
 	rlp "github.com/ethereum/go-ethereum/rlp"
+	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
+	utils "plasma-mvp-sidechain/utils"
 )
 
 // UTXO is a standard unspent transaction output
@@ -70,7 +72,7 @@ func (utxo BaseUTXO) SetAddress(addr crypto.Address) error {
 	if utxo.Address != nil {
 		return errors.New("cannot override BaseUTXO Address")
 	}
-	if addr == nil || ZeroAddress(addr) {
+	if addr == nil || utils.ZeroAddress(addr) {
 		return errors.New("address provided is nil")
 	}
 	utxo.Address = addr
@@ -81,7 +83,7 @@ func (utxo BaseUTXO) SetInputAddresses(addrs [2]crypto.Address) error {
 	if utxo.InputAddresses[0] != nil {
 		return errors.New("cannot override BaseUTXO Address")
 	}
-	if addrs[0] == nil || ZeroAddress(addrs[0]) {
+	if addrs[0] == nil || utils.ZeroAddress(addrs[0]) {
 		return errors.New("address provided is nil")
 	}
 	utxo.InputAddresses = addrs
@@ -145,4 +147,12 @@ func (position Position) GetSignBytes() []byte {
 		panic(err)
 	}
 	return b
+}
+
+//-------------------------------------------------------
+
+func RegisterAmino(cdc *amino.Codec) {
+	cdc.RegisterInterface((*UTXO)(nil), nil)
+	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
+	cdc.RegisterConcrete(Position{}, "types/Position", nil)
 }

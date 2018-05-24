@@ -1,16 +1,13 @@
-package types
+package db
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	rlp "github.com/ethereum/go-ethereum/rlp"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
-	//"fmt"
+	utils "plasma-mvp-sidechain/utils"
 )
 
-// Consider correct types to use
-// ConfirmSig1 has confirm signatures from spenders of transaction located at [Blknum1, Txindex1, Oindex1] with signatures in order
-// ConfirmSig2 has confirm signatures from spenders of transaction located at [Blknum2, Txindex2, Oindex2] with signatures in order
 type SpendMsg struct {
 	Blknum1      uint64
 	Txindex1     uint16
@@ -63,10 +60,10 @@ func (msg SpendMsg) Type() string { return "txs" } // TODO: decide on something 
 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {
-	if !ValidAddress(msg.Owner1) {
+	if !utils.ValidAddress(msg.Owner1) {
 		return ErrInvalidAddress(DefaultCodespace, "Input owner must have a valid address")
 	}
-	if !ValidAddress(msg.Newowner1) {
+	if !utils.ValidAddress(msg.Newowner1) {
 		return ErrInvalidAddress(DefaultCodespace, "No recipients of transaction")
 	}
 
@@ -117,14 +114,14 @@ func (msg SpendMsg) GetSignBytes() []byte {
 func (msg SpendMsg) GetSigners() []crypto.Address {
 	addrs := make([]crypto.Address, 1)
 	addrs[0] = crypto.Address(msg.Owner1)
-	if ValidAddress(msg.Owner2) {
+	if utils.ValidAddress(msg.Owner2) {
 		addrs = append(addrs, crypto.Address(msg.Owner2))
 	}
 	return addrs
 }
 
 //----------------------------------------
-// BaseTx (Transaction wrapper for depositmsg and spendmsg)
+// BaseTx
 
 type BaseTx struct {
 	sdk.Msg
@@ -142,11 +139,9 @@ func (tx BaseTx) GetMsg() sdk.Msg                   { return tx.Msg }
 func (tx BaseTx) GetFeePayer() crypto.Address       { return tx.Signatures[0].PubKey.Address() }
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
 
+//-------------------------------------------------------
+
 func RegisterAmino(cdc *amino.Codec) {
-	// TODO: include option to always include prefix bytes
-	cdc.RegisterInterface((*UTXO)(nil), nil)
-	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
-	cdc.RegisterConcrete(Position{}, "types/Position", nil)
-	cdc.RegisterConcrete(SpendMsg{}, "plasma-mvp-sidechain/SpendMsg", nil)
-	cdc.RegisterConcrete(BaseTx{}, "plasma-mvp-sidechain/BaseTx", nil)
+	cdc.RegisterConcrete(BaseTx{}, "db/BaseTX", nil)
+	cdc.RegisterConcrete(SpendMsg{}, "db/SpendMsg", nil)
 }

@@ -1,4 +1,4 @@
-package types
+package db
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
