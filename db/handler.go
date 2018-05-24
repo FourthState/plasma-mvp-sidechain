@@ -1,7 +1,9 @@
-package types
+package db
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	types "plasma-mvp-sidechain/types"
+	utils "plasma-mvp-sidechain/utils"
 	"reflect"
 )
 
@@ -19,17 +21,17 @@ func NewHandler(uk UTXOKeeper, txIndex *uint16) sdk.Handler {
 
 // Handle SpendMsg.
 func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg, txIndex *uint16) sdk.Result {
-	position1 := Position{msg.Blknum1, msg.Txindex1, msg.Oindex1}
+	position1 := types.Position{msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1}
 	utxo1 := uk.um.GetUTXO(ctx, position1)
-	var position2 Position
-	var utxo2 UTXO
+	var position2 types.Position
+	var utxo2 types.UTXO
 	err := uk.SpendUTXO(ctx, msg.Owner1, position1)
 	if err != nil {
 		return err.Result()
 	}
 
-	if msg.Owner2 != nil && !ZeroAddress(msg.Owner2) {
-		position2 = Position{msg.Blknum2, msg.Txindex2, msg.Oindex2}
+	if msg.Owner2 != nil && !utils.ZeroAddress(msg.Owner2) {
+		position2 = types.Position{msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2}
 		utxo2 = uk.um.GetUTXO(ctx, position2)
 		err := uk.SpendUTXO(ctx, msg.Owner2, position2)
 		if err != nil {
@@ -37,18 +39,18 @@ func handleSpendMsg(ctx sdk.Context, uk UTXOKeeper, msg SpendMsg, txIndex *uint1
 		}
 	}
 
-	oldUTXOs := [2]UTXO{utxo1, utxo2}
+	oldUTXOs := [2]types.UTXO{utxo1, utxo2}
 	err2 := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1, oldUTXOs, 0, *txIndex)
 	if err2 != nil {
 		return err2.Result()
 	}
-	if msg.Newowner2 != nil && !ZeroAddress(msg.Newowner2) {
+	if msg.Newowner2 != nil && !utils.ZeroAddress(msg.Newowner2) {
 		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2, oldUTXOs, 1, *txIndex)
 		if err != nil {
 			return err.Result()
 		}
 	}
-	
+
 	// Increment txIndex
 	if !ctx.IsCheckTx() {
 		(*txIndex)++
