@@ -35,6 +35,8 @@ type ChildChain struct {
 
 	// Manage addition and deletion of unspent utxo's
 	utxoMapper types.UTXOMapper
+
+	txHash []byte
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
