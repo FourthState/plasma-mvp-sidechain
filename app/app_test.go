@@ -13,8 +13,8 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
-	utils "plasma-mvp-sidechain/utils"
 	types "plasma-mvp-sidechain/types"
+	utils "plasma-mvp-sidechain/utils"
 	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 

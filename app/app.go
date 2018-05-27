@@ -8,6 +8,7 @@ import (
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -35,6 +36,8 @@ type ChildChain struct {
 
 	// Manage addition and deletion of unspent utxo's
 	utxoMapper types.UTXOMapper
+
+	txHash []byte
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
@@ -45,6 +48,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 		txIndex:         new(uint16),
 		feeAmount:       new(uint64),
 		capKeyMainStore: sdk.NewKVStoreKey("main"),
+		txHash:          nil,
 	}
 
 	// define the utxoMapper
@@ -84,6 +88,11 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 		return nil, sdk.ErrTxDecode("")
 	}
 	return tx, nil
+}
+
+func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) {
+	header := ctx.BlockHeader()
+	app.txHash = header.GetDataHash()
 }
 
 func MakeCodec() *amino.Codec {
