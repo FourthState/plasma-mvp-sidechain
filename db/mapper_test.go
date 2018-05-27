@@ -1,27 +1,18 @@
-package types
+package db
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 
-	dbm "github.com/tendermint/tmlibs/db"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/store"
-	"github.com/tendermint/go-amino" 
+	"github.com/tendermint/tmlibs/log"
 
+	types "plasma-mvp-sidechain/types"
+	utils "plasma-mvp-sidechain/utils"
 )
-
-func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
-	db := dbm.NewMemDB()
-	capKey := sdk.NewKVStoreKey("capkey")
-	ms := store.NewCommitMultiStore(db)
-	ms.MountStoreWithDB(capKey, sdk.StoreTypeIAVL, db)
-	ms.LoadLatestVersion()
-	return ms, capKey
-}
-
 
 /*
 	Basic test of Get, Add, Delete
@@ -31,25 +22,25 @@ func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 */
 
 func TestUTXOGetAddDelete(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
-	privA := crypto.GenPrivKeySecp256k1()
-	addrA := privA.PubKey().Address()
+	privA, _ := ethcrypto.GenerateKey()
+	addrA := utils.EthPrivKeyToSDKAddress(privA)
 
-	privB := crypto.GenPrivKeySecp256k1()
-	addrB := privB.PubKey().Address()
+	privB, _ := ethcrypto.GenerateKey()
+	addrB := utils.EthPrivKeyToSDKAddress(privB)
 
-	positionB := Position{1000, 0, 0}
+	positionB := types.Position{1000, 0, 0, 0}
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
 	// These lines of code error. Why?
 	//utxo := mapper.GetUXTO(ctx, positionB)
 	//assert.Nil(t, utxo)
 
-	utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 	assert.NotNil(t, utxo)
 	assert.Equal(t, addrB, utxo.GetAddress())
 	assert.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
@@ -64,8 +55,6 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	assert.Nil(t, utxo)
 }
 
-
-
 /*
 	Basic test of Multiple Additions and Deletes in the same block
 	Creates a valid UTXOs and adds them to the uxto mapping.
@@ -73,31 +62,31 @@ func TestUTXOGetAddDelete(t *testing.T) {
 */
 
 func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
-	privA := crypto.GenPrivKeySecp256k1()
-	addrA := privA.PubKey().Address()
+	privA, _ := ethcrypto.GenerateKey()
+	addrA := utils.EthPrivKeyToSDKAddress(privA)
 
-	privB := crypto.GenPrivKeySecp256k1()
-	addrB := privB.PubKey().Address()
+	privB, _ := ethcrypto.GenerateKey()
+	addrB := utils.EthPrivKeyToSDKAddress(privB)
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
-		positionB := Position{1000, uint16(i), 0}
-		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+		positionB := types.Position{1000, uint16(i), 0, 0}
+		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
 		assert.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
-		position := Position{1000, uint16(i), 0}
+		position := types.Position{1000, uint16(i), 0, 0}
 		utxo := mapper.GetUTXO(ctx, position)
 		assert.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, position)
@@ -114,31 +103,31 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 */
 
 func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil)
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
-	privA := crypto.GenPrivKeySecp256k1()
-	addrA := privA.PubKey().Address()
+	privA, _ := ethcrypto.GenerateKey()
+	addrA := utils.EthPrivKeyToSDKAddress(privA)
 
-	privB := crypto.GenPrivKeySecp256k1()
-	addrB := privB.PubKey().Address()
+	privB, _ := ethcrypto.GenerateKey()
+	addrB := utils.EthPrivKeyToSDKAddress(privB)
 
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
-		positionB := Position{uint64(1000 * i), 0, 0}
-		utxo := NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+		positionB := types.Position{uint64(i), 0, 0, 0}
+		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
 		utxo = mapper.GetUTXO(ctx, positionB)
 		assert.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
-		position := Position{uint64(1000 * i), 0, 0}
+		position := types.Position{uint64(i), 0, 0, 0}
 		utxo := mapper.GetUTXO(ctx, position)
 		assert.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, position)
@@ -146,12 +135,4 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 		assert.Nil(t, utxo)
 	}
 
-}
-
-func MakeCodec() *amino.Codec {
-	cdc := amino.NewCodec()
-	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
-	RegisterAmino(cdc)   
-	crypto.RegisterAmino(cdc)
-	return cdc
 }

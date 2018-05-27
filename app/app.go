@@ -2,17 +2,19 @@ package app
 
 import (
 	// TODO: Change to import from FourthState repo (currently not on there)
-	types "plasma-mvp-sidechain/types" //points to a local package
+	auth "plasma-mvp-sidechain/auth" //points to a local package
+	plasmaDB "plasma-mvp-sidechain/db"
+	types "plasma-mvp-sidechain/types"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	abci "github.com/tendermint/abci/types"
+	"github.com/tendermint/go-amino"
+	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-	crypto "github.com/tendermint/go-crypto"
-	//"fmt"
-	"github.com/tendermint/go-amino" 
-	//rlp "github.com/ethereum/go-ethereum/rlp" 
+	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 const (
@@ -25,39 +27,40 @@ type ChildChain struct {
 
 	cdc *amino.Codec
 
-	txIndex *uint64
+	txIndex *uint16
+
+	feeAmount *uint64
+
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
-	
-	//capKeySigStore *sdk.KVStoreKey //capabilities key to access confirm signature store from multistore
-	//Not sure if this is needed
-	capKeyIBCStore *sdk.KVStoreKey //capabilities key to access IBC Store from multistore
 
 	// Manage addition and deletion of unspent utxo's
 	utxoMapper types.UTXOMapper
+
+	txHash []byte
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
-	cdc := MakeCodec
+	cdc := MakeCodec()
 	var app = &ChildChain{
-		BaseApp:			bam.NewBaseApp(appName, logger, db),
-		cdc: 				cdc,
-		txIndex: 			0,
-		capKeyMainStore:	sdk.NewKVStoreKey("main"),
-		capKeyIBCStore:  	sdk.NewKVStoreKey("ibc"),
-
+		BaseApp:         bam.NewBaseApp(appName, cdc, logger, db),
+		cdc:             cdc,
+		txIndex:         new(uint16),
+		feeAmount:       new(uint64),
+		capKeyMainStore: sdk.NewKVStoreKey("main"),
+		txHash:          nil,
 	}
 
 	// define the utxoMapper
-	app.utxoMapper = types.NewUTXOMapper(
+	app.utxoMapper = plasmaDB.NewUTXOMapper(
 		app.capKeyMainStore, // target store
 		cdc,
 	)
 
 	// UTXOKeeper to adjust spending and recieving of utxo's
-	UTXOKeeper := types.NewUTXOKeeper(app.utxoMapper)
+	UTXOKeeper := plasmaDB.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
-		AddRoute("txs", types.NewHandler(UTXOKeeper, &txIndex))
+		AddRoute("txs", auth.NewHandler(UTXOKeeper, app.txIndex))
 
 	// initialize BaseApp
 	// set the BaseApp txDecoder to use txDecoder with RLP
@@ -66,7 +69,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	app.MountStoresIAVL(app.capKeyMainStore)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(types.NewAnteHandler(app.utxoMapper, &txIndex))
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.txIndex, app.feeAmount))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -82,11 +85,15 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// BaseTx is struct for Msg wrapped with authentication data
 	err := app.cdc.UnmarshalBinary(txBytes, &tx)
 	if err != nil {
-		return nil, sdk.ErrTxDecode("").TraceCause(err, "")
+		return nil, sdk.ErrTxDecode("")
 	}
 	return tx, nil
 }
 
+func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) {
+	header := ctx.BlockHeader()
+	app.txHash = header.GetDataHash()
+}
 
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
