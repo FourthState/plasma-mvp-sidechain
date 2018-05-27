@@ -15,6 +15,9 @@ Add this repository into your $GOPATH/src/github.com/FourthState directory:
 
 `go get "github.com/FourthState/plasma-mvp-sidechain"`
 
+To get dependencies:
+`dep ensure"`
+
 ### Forking
 
 Using `go get` on a forked repository will result in all the import paths being wrong. So instead we will add a new remote for the original repo.
