@@ -4,7 +4,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	crypto "github.com/tendermint/go-crypto"
-	db "plasma-mvp-sidechain/db"
 	types "plasma-mvp-sidechain/types"
 	utils "plasma-mvp-sidechain/utils"
 	"reflect"
@@ -26,7 +25,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 		msg := tx.GetMsg()
 
-		_, ok := tx.(db.BaseTx)
+		_, ok := tx.(types.BaseTx)
 		if !ok {
 			return ctx, sdk.ErrInternal("tx must be in form of BaseTx").Result(), true
 		}
@@ -40,7 +39,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 				true
 		}
 
-		spendMsg, ok := msg.(db.SpendMsg)
+		spendMsg, ok := msg.(types.SpendMsg)
 		if !ok {
 			return ctx, sdk.ErrInternal("Msg must be of type SpendMsg").Result(), true
 		}

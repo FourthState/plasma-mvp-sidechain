@@ -15,10 +15,10 @@ import (
 )
 
 func setup() (sdk.Context, types.UTXOMapper, *uint16, *uint64) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := db.SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
+	mapper := db.NewUTXOMapper(capKey, db.MakeCodec())
 
 	return ctx, mapper, new(uint16), new(uint64)
 
@@ -44,10 +44,10 @@ func newUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position types.Po
 	return types.NewBaseUTXO(addrB, confirmAddr, 100, position)
 }
 
-func GenBasicSpendMsg() db.SpendMsg {
+func GenBasicSpendMsg() types.SpendMsg {
 	// Creates Basic Spend Msg with no owners or recipients
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
-	return db.SpendMsg{
+	return types.SpendMsg{
 		Blknum1:      1000,
 		Txindex1:     0,
 		Oindex1:      0,
@@ -68,13 +68,13 @@ func GenBasicSpendMsg() db.SpendMsg {
 	}
 }
 
-func GenSpendMsgWithAddresses() db.SpendMsg {
+func GenSpendMsgWithAddresses() types.SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
-	return db.SpendMsg{
+	return types.SpendMsg{
 		Blknum1:      1000,
 		Txindex1:     0,
 		Oindex1:      0,
@@ -99,7 +99,7 @@ func TestNoSigs(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
 	var msg = GenSpendMsgWithAddresses()
-	tx := db.NewBaseTx(msg, []sdk.StdSignature{})
+	tx := types.NewBaseTx(msg, []sdk.StdSignature{})
 
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
@@ -115,7 +115,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	priv, _ := ethcrypto.GenerateKey()
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, priv)
-	tx := db.NewBaseTx(msg, []sdk.StdSignature{{
+	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
 		PubKey:    nil,
 		Signature: crypto.SignatureSecp256k1(sig),
 	}})
@@ -144,7 +144,7 @@ func TestWrongSigner(t *testing.T) {
 	priv, _ := ethcrypto.GenerateKey()
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, priv)
-	tx := db.NewBaseTx(msg, []sdk.StdSignature{{
+	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
 		PubKey:    nil,
 		Signature: crypto.SignatureSecp256k1(sig),
 	}, {
@@ -173,7 +173,7 @@ func TestValidSingleInput(t *testing.T) {
 	confirmSigs := [2]crypto.Signature{confirmSig1, crypto.SignatureSecp256k1{}}
 
 	//Single input
-	var msg = db.SpendMsg{
+	var msg = types.SpendMsg{
 		Blknum1:      1,
 		Txindex1:     0,
 		Oindex1:      0,
@@ -195,7 +195,7 @@ func TestValidSingleInput(t *testing.T) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	sig1 := crypto.SignatureSecp256k1(sig)
-	tx := db.NewBaseTx(msg, []sdk.StdSignature{{
+	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
 		PubKey:    nil,
 		Signature: sig1,
 	}})
@@ -234,7 +234,7 @@ func TestValidTransaction(t *testing.T) {
 	confirmSigs2 := [2]crypto.Signature{confirmSig2, confirmSig2}
 
 	//Single input
-	var msg = db.SpendMsg{
+	var msg = types.SpendMsg{
 		Blknum1:      1,
 		Txindex1:     0,
 		Oindex1:      0,
@@ -256,7 +256,7 @@ func TestValidTransaction(t *testing.T) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	sig1 := crypto.SignatureSecp256k1(sig)
-	tx := db.NewBaseTx(msg, []sdk.StdSignature{{
+	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
 		PubKey:    nil,
 		Signature: sig1,
 	}, {

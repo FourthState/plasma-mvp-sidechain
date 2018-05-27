@@ -1,9 +1,8 @@
-package db
+package types
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	rlp "github.com/ethereum/go-ethereum/rlp"
-	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
 	utils "plasma-mvp-sidechain/utils"
 )
@@ -138,10 +137,3 @@ func NewBaseTx(msg SpendMsg, sigs []sdk.StdSignature) BaseTx {
 func (tx BaseTx) GetMsg() sdk.Msg                   { return tx.Msg }
 func (tx BaseTx) GetFeePayer() crypto.Address       { return tx.Signatures[0].PubKey.Address() }
 func (tx BaseTx) GetSignatures() []sdk.StdSignature { return tx.Signatures }
-
-//-------------------------------------------------------
-
-func RegisterAmino(cdc *amino.Codec) {
-	cdc.RegisterConcrete(BaseTx{}, "db/BaseTX", nil)
-	cdc.RegisterConcrete(SpendMsg{}, "db/SpendMsg", nil)
-}

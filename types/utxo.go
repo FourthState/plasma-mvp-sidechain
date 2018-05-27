@@ -155,4 +155,6 @@ func RegisterAmino(cdc *amino.Codec) {
 	cdc.RegisterInterface((*UTXO)(nil), nil)
 	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
 	cdc.RegisterConcrete(Position{}, "types/Position", nil)
+	cdc.RegisterConcrete(BaseTx{}, "types/BaseTX", nil)
+	cdc.RegisterConcrete(SpendMsg{}, "types/SpendMsg", nil)
 }

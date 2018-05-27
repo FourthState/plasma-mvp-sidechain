@@ -1,37 +1,18 @@
-package auth
+package db
 
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
 	types "plasma-mvp-sidechain/types"
 	utils "plasma-mvp-sidechain/utils"
 )
-
-func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
-	db := dbm.NewMemDB()
-	capKey := sdk.NewKVStoreKey("capkey")
-	ms := store.NewCommitMultiStore(db)
-	ms.MountStoreWithDB(capKey, sdk.StoreTypeIAVL, db)
-	ms.LoadLatestVersion()
-	return ms, capKey
-}
-
-func MakeCodec() *amino.Codec {
-	cdc := amino.NewCodec()
-	types.RegisterAmino(cdc)
-	crypto.RegisterAmino(cdc)
-	return cdc
-}
 
 /*
 	Basic test of Get, Add, Delete
@@ -41,7 +22,7 @@ func MakeCodec() *amino.Codec {
 */
 
 func TestUTXOGetAddDelete(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
@@ -81,7 +62,7 @@ func TestUTXOGetAddDelete(t *testing.T) {
 */
 
 func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
@@ -122,7 +103,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 */
 
 func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())

@@ -31,13 +31,13 @@ func NewUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position types.Po
 	Inputs are from the same block
 */
 func TestHandleSpendMessage(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := db.SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
+	mapper := db.NewUTXOMapper(capKey, db.MakeCodec())
 	keeper := db.NewUTXOKeeper(mapper)
 	txIndex := new(uint16)
-	handler := db.NewHandler(keeper, txIndex)
+	handler := NewHandler(keeper, txIndex)
 
 	// Add in 2 parentUTXO
 	privA, _ := ethcrypto.GenerateKey()
@@ -59,7 +59,7 @@ func TestHandleSpendMessage(t *testing.T) {
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 
 	// Add in SpendMsg,
-	var msg = db.SpendMsg{
+	var msg = types.SpendMsg{
 		Blknum1:      1000,
 		Txindex1:     0,
 		Oindex1:      0,
@@ -114,13 +114,13 @@ func TestHandleSpendMessage(t *testing.T) {
 	1 input and 2 different outputs
 */
 func TestOneInput(t *testing.T) {
-	ms, capKey := setupMultiStore()
+	ms, capKey := db.SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
+	mapper := db.NewUTXOMapper(capKey, db.MakeCodec())
 	keeper := db.NewUTXOKeeper(mapper)
 	txIndex := new(uint16)
-	handler := db.NewHandler(keeper, txIndex)
+	handler := NewHandler(keeper, txIndex)
 
 	// Add in 2 parentUTXO
 	privA, _ := ethcrypto.GenerateKey()
@@ -136,7 +136,7 @@ func TestOneInput(t *testing.T) {
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
 
 	// Add in SpendMsg,
-	var msg = db.SpendMsg{
+	var msg = types.SpendMsg{
 		Blknum1:      1000,
 		Txindex1:     0,
 		Oindex1:      0,

@@ -7,23 +7,23 @@ import (
 )
 
 type UTXOKeeper struct {
-	um types.UTXOMapper
+	UM types.UTXOMapper
 }
 
 // NewUTXOKeeper returns a new UTXOKeeper
 func NewUTXOKeeper(um types.UTXOMapper) UTXOKeeper {
-	return UTXOKeeper{um: um}
+	return UTXOKeeper{UM: um}
 }
 
 // Delete's utxo from utxo store
 func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position types.Position) sdk.Error {
 
-	utxo := uk.um.GetUTXO(ctx, position) // Get the utxo that should be spent
+	utxo := uk.UM.GetUTXO(ctx, position) // Get the utxo that should be spent
 	// Check to see if utxo exists, will be taken care of in ante handler
 	if utxo == nil {
-		return ErrInvalidUTXO(DefaultCodespace, "Unrecognized UTXO. Does not exist.")
+		return types.ErrInvalidUTXO(types.DefaultCodespace, "Unrecognized UTXO. Does not exist.")
 	}
-	uk.um.DeleteUTXO(ctx, position) // Delete utxo from utxo store
+	uk.UM.DeleteUTXO(ctx, position) // Delete utxo from utxo store
 	return nil
 }
 
@@ -43,6 +43,6 @@ func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uin
 	inputAddresses := [2]crypto.Address{inputAddr1, inputAddr2}
 	position := types.Position{uint64(ctx.BlockHeight()), txIndex, oindex, 0}
 	utxo := types.NewBaseUTXO(addr, inputAddresses, denom, position)
-	uk.um.AddUTXO(ctx, utxo) // Adds utxo to utxo store
+	uk.UM.AddUTXO(ctx, utxo) // Adds utxo to utxo store
 	return nil
 }

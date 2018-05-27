@@ -1,10 +1,11 @@
-package auth
+package db
 
 import (
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	amino "github.com/tendermint/go-amino"
 	types "plasma-mvp-sidechain/types"
+
 )
 
 // Maps Position struct to UTXO
