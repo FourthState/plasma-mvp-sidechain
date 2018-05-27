@@ -25,6 +25,24 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/ethereum/go-ethereum"
+  packages = [
+    "common",
+    "common/hexutil",
+    "common/math",
+    "crypto",
+    "crypto/secp256k1",
+    "crypto/secp256k1/libsecp256k1",
+    "crypto/secp256k1/libsecp256k1/include",
+    "crypto/secp256k1/libsecp256k1/src",
+    "crypto/secp256k1/libsecp256k1/src/modules/recovery",
+    "crypto/sha3",
+    "rlp"
+  ]
+  revision = "2688dab48c9b8ae71b8d95c7678817eaa17f2b53"
+  version = "v1.8.8"
+
+[[projects]]
   name = "github.com/go-kit/kit"
   packages = [
     "log",
@@ -264,6 +282,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "896ba6dab328e9cddd02fdf8d90c1441aff4b801299138d985d683458b38f215"
+  inputs-digest = "ad3a9cf7e50962c88160138f12d34810f2461c211dfba29e5ed38a8f97af8aff"
   solver-name = "gps-cdcl"
   solver-version = 1

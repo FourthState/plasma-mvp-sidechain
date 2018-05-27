@@ -49,6 +49,10 @@
   name = "github.com/tendermint/tmlibs"
   version = "0.8.3"
 
+[[constraint]]
+  name = "github.com/ethereum/go-ethereum"
+  version = "1.8.8"
+
 [[override]]
   name = "github.com/tendermint/go-wire"
   version = "0.7.3"
