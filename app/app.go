@@ -48,7 +48,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	}
 
 	// define the utxoMapper
-	app.utxoMapper = auth.NewUTXOMapper(
+	app.utxoMapper = plasmaDB.NewUTXOMapper(
 		app.capKeyMainStore, // target store
 		cdc,
 	)
@@ -56,7 +56,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// UTXOKeeper to adjust spending and recieving of utxo's
 	UTXOKeeper := plasmaDB.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
-		AddRoute("txs", plasmaDB.NewHandler(UTXOKeeper, app.txIndex))
+		AddRoute("txs", auth.NewHandler(UTXOKeeper, app.txIndex))
 
 	// initialize BaseApp
 	// set the BaseApp txDecoder to use txDecoder with RLP
@@ -77,7 +77,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 
 func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	// TODO: implement method with RLP
-	var tx = plasmaDB.BaseTx{}
+	var tx = types.BaseTx{}
 	// BaseTx is struct for Msg wrapped with authentication data
 	err := app.cdc.UnmarshalBinary(txBytes, &tx)
 	if err != nil {
@@ -90,7 +90,6 @@ func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
 	types.RegisterAmino(cdc)
-	plasmaDB.RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
 }

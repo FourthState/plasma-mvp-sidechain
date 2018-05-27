@@ -13,8 +13,8 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
-	db "plasma-mvp-sidechain/db"
 	utils "plasma-mvp-sidechain/utils"
+	types "plasma-mvp-sidechain/types"
 	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -32,7 +32,7 @@ func TestDepositMsg(t *testing.T) {
 	privKeyB, _ := ethcrypto.GenerateKey()
 
 	// Construct a SpendMsg
-	var msg = db.SpendMsg{
+	var msg = types.SpendMsg{
 		Blknum1:      0,
 		Txindex1:     0,
 		Oindex1:      0,
@@ -54,7 +54,7 @@ func TestDepositMsg(t *testing.T) {
 
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
-	tx := db.NewBaseTx(msg, []sdk.StdSignature{{
+	tx := types.NewBaseTx(msg, []sdk.StdSignature{{
 		PubKey:    nil,
 		Signature: crypto.SignatureSecp256k1(sig),
 	}})
