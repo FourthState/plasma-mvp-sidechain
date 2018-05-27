@@ -16,7 +16,8 @@ Add this repository into your $GOPATH/src/github.com/FourthState directory:
 `go get "github.com/FourthState/plasma-mvp-sidechain"`
 
 To get dependencies:
-`dep ensure"`
+
+`dep ensure`
 
 ### Forking
 
