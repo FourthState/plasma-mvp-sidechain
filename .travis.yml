@@ -6,8 +6,6 @@ go:
 env:
   - DEP_VERSION="0.4.1"
 
-go_import_path: github.com/FourthState/plasma-mvp-sidechain
-
 before_install:
   # Download the binary to bin folder in $GOPATH
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
@@ -16,3 +14,6 @@ before_install:
 
 install:
   - dep ensure
+
+script:
+  - go build ./...
