@@ -9,8 +9,8 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/log"
 	db "plasma-mvp-sidechain/db"
-	types "plasma-mvp-sidechain/types"
-	utils "plasma-mvp-sidechain/utils"
+	types "github.com/FourthState/plasma-mvp-sidechain/types"
+	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	"testing"
 )
 
