@@ -2,3 +2,13 @@ language: go
 
 go:
   - "1.10.x"
+
+before_install:
+  - go get github.com/FourthState/plasma-mvp-sidechain
+  - go get github.com/tools/godep
+
+install:
+  - godep restore
+
+script:
+  - go test -v ./...
