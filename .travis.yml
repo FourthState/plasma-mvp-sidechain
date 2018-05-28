@@ -12,6 +12,9 @@ before_install:
   # Make the binary executable
   - chmod +x $GOPATH/bin/dep
 
+install:
+  - dep ensure
+
 script:
   - go test -race -coverprofile=coverage.txt -covermode=atomic
 
