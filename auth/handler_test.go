@@ -25,11 +25,9 @@ func NewUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position types.Po
 	return types.NewBaseUTXO(addrB, confirmAddr, 100, position)
 }
 
-/*
-	Tests a valid spendmsg
-	2 different inputs and 2 different outputs
-	Inputs are from the same block
-*/
+
+// Tests a valid spendmsg
+// 2 different inputs and 2 different outputs
 func TestHandleSpendMessage(t *testing.T) {
 	ms, capKey := db.SetupMultiStore()
 
@@ -109,10 +107,9 @@ func TestHandleSpendMessage(t *testing.T) {
 	assert.EqualValues(t, inputAddresses, utxo2.GetInputAddresses())
 }
 
-/*
-	Tests a valid spendmsg
-	1 input and 2 different outputs
-*/
+
+// Tests a valid spendmsg
+// 1 input and 2 different outputs
 func TestOneInput(t *testing.T) {
 	ms, capKey := db.SetupMultiStore()
 

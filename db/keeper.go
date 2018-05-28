@@ -19,7 +19,7 @@ func NewUTXOKeeper(um types.UTXOMapper) UTXOKeeper {
 func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position types.Position) sdk.Error {
 
 	utxo := uk.UM.GetUTXO(ctx, position) // Get the utxo that should be spent
-	// Check to see if utxo exists, will be taken care of in ante handler
+	
 	if utxo == nil {
 		return types.ErrInvalidUTXO(types.DefaultCodespace, "Unrecognized UTXO. Does not exist.")
 	}
@@ -30,12 +30,11 @@ func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr crypto.Address, position ty
 // Creates a new utxo and adds it to the utxo store
 func (uk UTXOKeeper) RecieveUTXO(ctx sdk.Context, addr crypto.Address, denom uint64,
 	oldutxos [2]types.UTXO, oindex uint8, txIndex uint16) sdk.Error {
-	var inputAddr1 crypto.Address
-	var inputAddr2 crypto.Address
-	if oldutxos[0] != nil {
-		inputAddr1 = oldutxos[0].GetAddress()
-	}
 
+	inputAddr1 := oldutxos[0].GetAddress()
+	var inputAddr2 crypto.Address
+
+	// oldutxo[1] may be nil
 	if oldutxos[1] != nil {
 		inputAddr2 = oldutxos[1].GetAddress()
 	}

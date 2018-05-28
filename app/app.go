@@ -23,7 +23,7 @@ const (
 
 // Extended ABCI application
 type ChildChain struct {
-	*bam.BaseApp // Pointer to the Base App
+	*bam.BaseApp
 
 	cdc *amino.Codec
 
@@ -32,9 +32,9 @@ type ChildChain struct {
 	feeAmount *uint64
 
 	// keys to access the substores
-	capKeyMainStore *sdk.KVStoreKey //capabilities key to access main store from multistore
+	capKeyMainStore *sdk.KVStoreKey
 
-	// Manage addition and deletion of unspent utxo's
+	// Manage addition and deletion of utxo's
 	utxoMapper types.UTXOMapper
 
 	txHash []byte
@@ -62,7 +62,6 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	app.Router().
 		AddRoute("txs", auth.NewHandler(UTXOKeeper, app.txIndex))
 
-	// initialize BaseApp
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
 

@@ -21,7 +21,9 @@ func NewHandler(uk db.UTXOKeeper, txIndex *uint16) sdk.Handler {
 }
 
 // Handle SpendMsg.
+// Spends inputs, creates new outputs
 func handleSpendMsg(ctx sdk.Context, uk db.UTXOKeeper, msg types.SpendMsg, txIndex *uint16) sdk.Result {
+	
 	position1 := types.Position{msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1}
 	utxo1 := uk.UM.GetUTXO(ctx, position1)
 	var position2 types.Position
