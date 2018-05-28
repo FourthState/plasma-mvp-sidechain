@@ -1,15 +1,9 @@
 package app
 
 import (
-<<<<<<< HEAD
-	auth "plasma-mvp-sidechain/auth"
-	plasmaDB "plasma-mvp-sidechain/db"
-	types "plasma-mvp-sidechain/types"
-=======
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth" 
 	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
->>>>>>> c997d2bec0da49441b0cfd12776325b92e0108d9
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
