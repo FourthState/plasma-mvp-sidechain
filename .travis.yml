@@ -3,6 +3,8 @@ language: go
 go:
   - "1.10.x"
 
+os: osx
+
 env:
   - DEP_VERSION="0.4.1"
 
