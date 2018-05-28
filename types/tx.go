@@ -97,7 +97,7 @@ func (msg SpendMsg) String() string {
 
 // Implements Msg.
 func (msg SpendMsg) Get(key interface{}) (value interface{}) {
-	return nil // TODO: Implement
+	return nil
 }
 
 // Implements Msg.

@@ -36,10 +36,6 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	positionB := types.Position{1000, 0, 0, 0}
 	confirmAddr := [2]crypto.Address{addrA, addrA}
 
-	// These lines of code error. Why?
-	//utxo := mapper.GetUXTO(ctx, positionB)
-	//assert.Nil(t, utxo)
-
 	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 	assert.NotNil(t, utxo)
 	assert.Equal(t, addrB, utxo.GetAddress())

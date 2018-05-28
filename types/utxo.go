@@ -9,7 +9,6 @@ import (
 )
 
 // UTXO is a standard unspent transaction output
-// Has pubkey for authentication
 type UTXO interface {
 	// Address to which UTXO's are sent
 	GetAddress() crypto.Address
@@ -18,7 +17,6 @@ type UTXO interface {
 	GetInputAddresses() [2]crypto.Address
 	SetInputAddresses([2]crypto.Address) error
 
-	//Get and Set denomination of the utxo. Is uint64 appropriate type?
 	GetDenom() uint64
 	SetDenom(uint64) error //errors if already set
 
@@ -27,14 +25,9 @@ type UTXO interface {
 
 	Get(key interface{}) (value interface{}, err error)
 	Set(key interface{}, value interface{}) error
-
-	//TODO: ADD SUPPORT FOR DIFFERENT COINS
-	//Will possibly have to add support for input positions
-	//Do not need to add Pubkey to struct. Instead client ecrecovers confirm signature to get Pubkey. Then call PubKey.Address() to verify and verify against InputAddresses.
-
 }
 
-// BaseUTXO must have all confirm signatures in order of most recent up until the signatures of the original depsosits.
+// Implements UTXO interface
 type BaseUTXO struct {
 	InputAddresses [2]crypto.Address
 	Address        crypto.Address
@@ -122,7 +115,6 @@ func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, 
 
 //----------------------------------------
 // misc
-// total position = Position.Blknum * 1000000 + Position.TxIndex * 10 + Position.Oindex
 
 type Position struct {
 	Blknum     uint64

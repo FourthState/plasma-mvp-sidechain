@@ -1,8 +1,7 @@
 package app
 
 import (
-	// TODO: Change to import from FourthState repo (currently not on there)
-	auth "plasma-mvp-sidechain/auth" //points to a local package
+	auth "plasma-mvp-sidechain/auth"
 	plasmaDB "plasma-mvp-sidechain/db"
 	types "plasma-mvp-sidechain/types"
 

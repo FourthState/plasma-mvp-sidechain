@@ -95,7 +95,7 @@ func GenSpendMsgWithAddresses() types.SpendMsg {
 	}
 }
 
-// No signatures are provided 
+// No signatures are provided
 func TestNoSigs(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 

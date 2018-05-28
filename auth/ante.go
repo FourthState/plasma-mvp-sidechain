@@ -56,7 +56,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 		posSignBytes := position1.GetSignBytes()
 
-		// Verify that confirmation signature 
+		// Verify that confirmation signature
 		res = processConfirmSig(ctx, utxoMapper, position1, spendMsg.ConfirmSigs1, posSignBytes)
 		if !res.IsOK() {
 			return ctx, res, true
@@ -103,7 +103,7 @@ func processSig(
 	if !reflect.DeepEqual(utxo.GetAddress().Bytes(), addr.Bytes()) {
 		return sdk.ErrUnauthorized("signer does not match utxo owner").Result()
 	}
-	
+
 	// sig.Signature.Bytes() returns amino encoded signature
 	// the first 5 bytes represent the encoding for the signature
 	// Bytes 1-4: prefix bytes (crypto.SignatureSecp256k1 has prefix of 0x16E1FEEA)
