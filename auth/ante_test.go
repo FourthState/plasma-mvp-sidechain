@@ -95,6 +95,7 @@ func GenSpendMsgWithAddresses() types.SpendMsg {
 	}
 }
 
+// No signatures are provided
 func TestNoSigs(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
@@ -108,6 +109,7 @@ func TestNoSigs(t *testing.T) {
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "Tx had processed with no signatures")
 }
 
+// The wrong amount of signatures are provided
 func TestNotEnoughSigs(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
@@ -127,9 +129,11 @@ func TestNotEnoughSigs(t *testing.T) {
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "Tx had processed with incorrect number of signatures")
 }
 
+// The transaction is not signed by the utxo owner
 func TestWrongSigner(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
+	// Generate input utxos
 	position1 := types.Position{1000, 0, 0, 0}
 	position2 := types.Position{1000, 1, 0, 0}
 	privA, _ := ethcrypto.GenerateKey()
@@ -138,6 +142,8 @@ func TestWrongSigner(t *testing.T) {
 	utxo2 := NewUTXO(privA, privB, position2)
 	mapper.AddUTXO(ctx, utxo1)
 	mapper.AddUTXO(ctx, utxo2)
+
+	// Signature by non owner
 	var msg = GenSpendMsgWithAddresses()
 	msg.Owner1 = utils.EthPrivKeyToSDKAddress(privB)
 	msg.Owner2 = utils.EthPrivKeyToSDKAddress(privB)
@@ -159,7 +165,7 @@ func TestWrongSigner(t *testing.T) {
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "Signer address does not match owner address")
 }
 
-//Tests a valid single input transaction
+// Tests a valid single input transaction
 func TestValidSingleInput(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
@@ -192,6 +198,8 @@ func TestValidSingleInput(t *testing.T) {
 		Denom2:       45,
 		Fee:          5,
 	}
+
+	// Sign transaction
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	sig1 := crypto.SignatureSecp256k1(sig)
@@ -215,13 +223,14 @@ func TestValidSingleInput(t *testing.T) {
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
 }
 
-//Tests a valid transaction
+// Tests a valid transaction
 func TestValidTransaction(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
 
 	privKeyA, _ := ethcrypto.GenerateKey() //Input Owner
 	privKeyB, _ := ethcrypto.GenerateKey() //ConfirmSig owner and recipient
 
+	// Generate valid inputs
 	position1 := types.Position{1, 0, 0, 0}
 	position2 := types.Position{1, 1, 0, 0}
 	confirmSigHash1 := ethcrypto.Keccak256(position1.GetSignBytes())

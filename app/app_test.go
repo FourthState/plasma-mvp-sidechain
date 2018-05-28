@@ -3,7 +3,7 @@ package app
 import (
 	"os"
 	"testing"
-	//"fmt" //for debugging
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +24,9 @@ func newChildChain() *ChildChain {
 	return NewChildChain(logger, db)
 }
 
-func TestDepositMsg(t *testing.T) {
+// Attempts to spend a non-existent utxo
+// without depositing first.
+func TestBadSpendMsg(t *testing.T) {
 	cc := newChildChain()
 
 	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
@@ -52,6 +54,7 @@ func TestDepositMsg(t *testing.T) {
 		Fee:          1,
 	}
 
+	// Signs the hash of the transaction
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	tx := types.NewBaseTx(msg, []sdk.StdSignature{{

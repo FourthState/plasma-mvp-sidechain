@@ -10,12 +10,13 @@ import (
 )
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
-// and deducts fees from the first signer.
+// confirm signatures, and increments the feeAmount
 func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uint64) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
 
+		// Assert that there are signatures
 		sigs := tx.GetSignatures()
 		if len(sigs) == 0 {
 			return ctx,
@@ -45,7 +46,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		}
 		signBytes := spendMsg.GetSignBytes()
 
-		//Check that inputs are valid and having valid signatures
+		// Verify the first input signature
 		position1 := types.Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
 		res := processSig(ctx, utxoMapper, position1, signerAddrs[0], sigs[0], signBytes)
 
@@ -55,12 +56,13 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 		posSignBytes := position1.GetSignBytes()
 
-		//Check that confirm signature is valid
+		// Verify that confirmation signature
 		res = processConfirmSig(ctx, utxoMapper, position1, spendMsg.ConfirmSigs1, posSignBytes)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
-		//Verify validity of second input
+
+		// Verify the second input
 		if utils.ValidAddress(spendMsg.Owner2) {
 			position2 := types.Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
 			res = processSig(ctx, utxoMapper, position2, signerAddrs[1], sigs[1], signBytes)
@@ -76,9 +78,8 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 			}
 		}
 
-		// If DeliverTx() update fee
+		// Increment amount of fees collected
 		if !ctx.IsCheckTx() {
-			//Increment amount of fees collected
 			(*feeAmount) += spendMsg.Fee
 		}
 
@@ -91,17 +92,22 @@ func processSig(
 	ctx sdk.Context, um types.UTXOMapper,
 	position types.Position, addr crypto.Address, sig sdk.StdSignature, signBytes []byte) (
 	res sdk.Result) {
-	// Check UTXO is not nil.
+
+	// Verify utxo exists
 	utxo := um.GetUTXO(ctx, position)
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
 	}
 
-	//Checks that utxo owner equals address in the spendmsg
+	// Verify that utxo owner equals input address in the transaction
 	if !reflect.DeepEqual(utxo.GetAddress().Bytes(), addr.Bytes()) {
 		return sdk.ErrUnauthorized("signer does not match utxo owner").Result()
 	}
 
+	// sig.Signature.Bytes() returns amino encoded signature
+	// the first 5 bytes represent the encoding for the signature
+	// Bytes 1-4: prefix bytes (crypto.SignatureSecp256k1 has prefix of 0x16E1FEEA)
+	// Byte 5: byte array length (should be 0x41 or 65)
 	hash := ethcrypto.Keccak256(signBytes)
 	pubKey1, err1 := ethcrypto.SigToPub(hash, sig.Signature.Bytes()[5:])
 
@@ -117,6 +123,7 @@ func processConfirmSig(
 	position types.Position, sig [2]crypto.Signature, signBytes []byte) (
 	res sdk.Result) {
 
+	// Verify utxo exists
 	utxo := utxoMapper.GetUTXO(ctx, position)
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
@@ -130,6 +137,10 @@ func processConfirmSig(
 
 	hash := ethcrypto.Keccak256(signBytes)
 
+	// sig.Signature.Bytes() returns amino encoded signature
+	// the first 5 bytes represent the encoding for the signature
+	// Bytes 1-4: prefix bytes (crypto.SignatureSecp256k1 has prefix of 0x16E1FEEA)
+	// Byte 5: byte array length (should be 0x41 or 65)
 	pubKey1, err1 := ethcrypto.SigToPub(hash, ethsigs[0].Bytes()[5:])
 	if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), inputAddresses[0].Bytes()) {
 		return sdk.ErrUnauthorized("confirm signature 1 verification failed").Result()

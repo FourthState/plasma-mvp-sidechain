@@ -71,6 +71,7 @@ func GenSpendMsgWithAddresses() SpendMsg {
 	}
 }
 
+// Creates a transaction with no owners
 func TestNoOwners(t *testing.T) {
 	var msg = GenBasicSpendMsg()
 	err := msg.ValidateBasic()
@@ -78,6 +79,7 @@ func TestNoOwners(t *testing.T) {
 		err.Code(), err.Error())
 }
 
+// Creates a transaction with no recipients
 func TestNoRecipients(t *testing.T) {
 	privKeyA, _ := ethcrypto.GenerateKey()
 	var msg = GenBasicSpendMsg()
@@ -88,6 +90,7 @@ func TestNoRecipients(t *testing.T) {
 		err.Code(), err.Error())
 }
 
+// The oindex is neither 0 or 1
 func TestIncorrectOIndex(t *testing.T) {
 	var msg1 = GenSpendMsgWithAddresses()
 	msg1.Oindex1 = 2
@@ -104,6 +107,7 @@ func TestIncorrectOIndex(t *testing.T) {
 
 }
 
+// Creates an invalid transaction referencing utxo and deposit
 func TestInvalidSpendDeposit(t *testing.T) {
 	var msg1 = GenSpendMsgWithAddresses()
 	msg1.DepositNum1 = 5
@@ -112,6 +116,7 @@ func TestInvalidSpendDeposit(t *testing.T) {
 	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 
+// Tests GetSigners method
 func TestGetSigners(t *testing.T) {
 	msg := GenBasicSpendMsg()
 	privKeyA, _ := ethcrypto.GenerateKey()
