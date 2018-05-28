@@ -5,7 +5,7 @@ import (
 	rlp "github.com/ethereum/go-ethereum/rlp"
 	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
-	utils "plasma-mvp-sidechain/utils"
+	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
 // UTXO is a standard unspent transaction output
