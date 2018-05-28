@@ -1,10 +1,9 @@
 package app
 
 import (
-	// TODO: Change to import from FourthState repo (currently not on there)
-	auth "plasma-mvp-sidechain/auth" //points to a local package
-	plasmaDB "plasma-mvp-sidechain/db"
-	types "plasma-mvp-sidechain/types"
+	auth "github.com/FourthState/plasma-mvp-sidechain/auth" 
+	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
+	types "github.com/FourthState/plasma-mvp-sidechain/types"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"

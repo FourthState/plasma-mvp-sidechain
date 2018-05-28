@@ -4,8 +4,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	crypto "github.com/tendermint/go-crypto"
-	types "plasma-mvp-sidechain/types"
-	utils "plasma-mvp-sidechain/utils"
+	types "github.com/FourthState/plasma-mvp-sidechain/types"
+	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	"reflect"
 )
 

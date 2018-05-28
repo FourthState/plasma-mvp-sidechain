@@ -2,9 +2,9 @@ package auth
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	db "plasma-mvp-sidechain/db"
-	types "plasma-mvp-sidechain/types"
-	utils "plasma-mvp-sidechain/utils"
+	db "github.com/FourthState/plasma-mvp-sidechain/db"
+	types "github.com/FourthState/plasma-mvp-sidechain/types"
+	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	"reflect"
 )
 

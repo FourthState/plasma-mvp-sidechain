@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
-	utils "plasma-mvp-sidechain/utils"
+	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	"testing"
 )
 

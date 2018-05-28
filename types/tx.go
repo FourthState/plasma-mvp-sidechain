@@ -4,7 +4,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 	crypto "github.com/tendermint/go-crypto"
-	utils "plasma-mvp-sidechain/utils"
+	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
 type SpendMsg struct {
