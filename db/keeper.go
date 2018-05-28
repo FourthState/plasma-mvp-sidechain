@@ -3,7 +3,7 @@ package db
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	crypto "github.com/tendermint/go-crypto"
-	types "plasma-mvp-sidechain/types"
+	types "github.com/FourthState/plasma-mvp-sidechain/types"
 )
 
 type UTXOKeeper struct {
