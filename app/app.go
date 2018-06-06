@@ -1,7 +1,8 @@
 package app
 
 import (
-	auth "github.com/FourthState/plasma-mvp-sidechain/auth" 
+	"encoding/json"
+	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 
@@ -99,4 +100,11 @@ func MakeCodec() *amino.Codec {
 	types.RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
+}
+
+func (app *ChildChain) ExportAppStateJSON() (appState json.RawMessage, err error) {
+	// TODO: Implement
+	// Currently non-functional, just enough to compile
+	tx := types.BaseTx{}
+	return app.cdc.MarshalJSONIndent(tx, "", "\t")
 }
