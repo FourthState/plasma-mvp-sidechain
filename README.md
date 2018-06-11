@@ -18,6 +18,26 @@ Computation is handled off chain by a sidechain. This sidechain levarges the Cos
 
 We are using a UTXO model for this blockchain. This allows us to do secure and compact proofs when interacting with the rootchain contract. 
 
+## Starting a sidechain
+
+In order to run a sidechain with tendermint consensus and a client to form transaction, a plasma node and light client will need to be initialized. 
+
+**Note**: The following assumes you have [golang](https://golang.org/) properly setup and all dependecies have already been installed. See [Contribution Guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md) for more information.
+
+Plasma Node:
+
+- Navigate to `plasmad/` directory
+- Run `go build` via command line
+- Run `go install` via command line
+
+The plasma node (plasmad) is now installed and can be called from any directory with `plasmad`
+
+Run `plasmad init` via command line to start an instance of a plasma node with a connection to a tendermint validator.
+
+Run `plasmad start' via command line to begin running the plasma node. You should see empty blocks being proposed and committed.
+
+Plasma Light Client:
+
 ### Plasma Architecture 
 See our [research repository](https://github.com/FourthState/plasma-research) for architectural explanations of our Plasma implementation. 
 
