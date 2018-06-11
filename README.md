@@ -34,7 +34,7 @@ The plasma node (plasmad) is now installed and can be called from any directory 
 
 Run `plasmad init` via command line to start an instance of a plasma node with a connection to a tendermint validator.
 
-Run `plasmad start' via command line to begin running the plasma node. You should see empty blocks being proposed and committed.
+Run `plasmad start` via command line to begin running the plasma node. You should see empty blocks being proposed and committed.
 
 Plasma Light Client:
 
