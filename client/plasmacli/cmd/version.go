@@ -14,6 +14,6 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of the plasma client",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Plasma Client v0.1")
+		fmt.Println("Plasma Client v0.1.0")
 	},
 }
