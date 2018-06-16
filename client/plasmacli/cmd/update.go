@@ -1,9 +1,12 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
+	"github.com/ethereum/go-ethereum/accounts"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -11,11 +14,15 @@ func init() {
 }
 
 var updateKeysCmd = &cobra.Command{
-	Use:   "update <name",
-	Short: "Change the password used to protect private key",
+	Use:   "update <address>",
+	Short: "Change the password used to protect the account",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name := args[0]
+		addrStr := args[0]
+		addr, err := client.StrToAddress(addrStr)
+		if err != nil {
+			return err
+		}
 
 		buf := client.BufferStdin()
 		oldpass, err := client.GetPassword("Enter the current passphrase:", buf)
@@ -27,11 +34,13 @@ var updateKeysCmd = &cobra.Command{
 			return err
 		}
 
-		kb, err := client.GetKeyBase()
-		if err != nil {
-			return err
+		dir := viper.GetString(FlagHomeDir)
+		ks := client.GetKeyStore(dir)
+
+		acc := accounts.Account{
+			Address: addr,
 		}
-		err = kb.Update(name, oldpass, newpass)
+		err = ks.Update(acc, oldpass, newpass)
 		if err != nil {
 			return err
 		}

@@ -1,28 +1,28 @@
 package utils
 
 import (
-	ecdsa "crypto/ecdsa"
+	"crypto/ecdsa"
+	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	crypto "github.com/tendermint/go-crypto"
 	"math/big"
 )
 
-func ZeroAddress(addr crypto.Address) bool {
+func ZeroAddress(addr common.Address) bool {
 	return new(big.Int).SetBytes(addr.Bytes()).Sign() == 0
 }
 
-func ValidAddress(addr crypto.Address) bool {
+func ValidAddress(addr common.Address) bool {
 	return new(big.Int).SetBytes(addr.Bytes()).Sign() != 0 && len(addr) == 20
 }
 
-func EthPrivKeyToSDKAddress(p *ecdsa.PrivateKey) crypto.Address {
-	return ethcrypto.PubkeyToAddress(ecdsa.PublicKey(p.PublicKey)).Bytes()
+func PrivKeyToAddress(p *ecdsa.PrivateKey) common.Address {
+	return ethcrypto.PubkeyToAddress(ecdsa.PublicKey(p.PublicKey))
 }
 
-func GenerateAddress() crypto.Address {
+func GenerateAddress() common.Address {
 	priv, err := ethcrypto.GenerateKey()
 	if err != nil {
 		panic(err)
 	}
-	return EthPrivKeyToSDKAddress(priv)
+	return PrivKeyToAddress(priv)
 }

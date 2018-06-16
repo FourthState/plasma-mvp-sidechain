@@ -9,13 +9,13 @@ import (
 type UTXODecoder func(utxoBytes []byte) (types.UTXO, error)
 
 type ClientContext struct {
-	Height          int64
-	TrustNode       bool
-	NodeURI         string
-	FromAddressName string
-	Client          rpcclient.Client
-	Decoder         UTXODecoder
-	UTXOStore       string
+	Height      int64
+	TrustNode   bool
+	NodeURI     string
+	FromAddress string
+	Client      rpcclient.Client
+	Decoder     UTXODecoder
+	UTXOStore   string
 }
 
 // Returns a copy of the context with an updated height
@@ -38,8 +38,8 @@ func (c ClientContext) WithNodeURI(nodeURI string) ClientContext {
 }
 
 // Returns a copy of the context with an updated from address
-func (c ClientContext) WithFromAddressName(fromAddressName string) ClientContext {
-	c.FromAddressName = fromAddressName
+func (c ClientContext) WithFromAddress(fromAddress string) ClientContext {
+	c.FromAddress = fromAddress
 	return c
 }
 

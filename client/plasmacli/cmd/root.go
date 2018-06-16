@@ -8,6 +8,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	FlagHomeDir = "home"
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "plasmacli",
 	Short: "Plasma Client",
@@ -23,6 +27,7 @@ func Execute() {
 func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().StringP(FlagHomeDir, "", os.ExpandEnv("$HOME/.plasmacli"), "directory for keystore")
 }
 
 // initConfig reads in config file and ENV variables if set

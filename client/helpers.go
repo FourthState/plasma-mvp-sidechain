@@ -2,20 +2,17 @@ package client
 
 import (
 	"bufio"
+	"fmt"
 	"os"
-	"path/filename"
+	"strconv"
+	"strings"
 
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/bgentry/speakeasy"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	isatty "github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
-	"github.com/tendermint/cli"
-	crypto "github.com/tendermint/go-crypto"
-	keys "github.com/tendermint/go-crypto/keys"
-	"github.com/tendermint/go-crypto/keys/words"
-	dbm "github.com/tendermint/tmlibs/db"
 )
 
 const (
@@ -23,9 +20,15 @@ const (
 	MinPassLength = 8
 	// Directory under root where we store the keys
 	KeyDBName = "keys"
+
+	// Flags
+	FlagNode      = "node"
+	FlagHeight    = "height"
+	FlagTrustNode = "trust-node"
+	FlagAddress   = "address"
 )
 
-var keybase keys.Keybase
+var ks *keystore.KeyStore
 
 // Allows for reading prompts for stdin
 func BufferStdin() *bufio.Reader {
@@ -33,23 +36,16 @@ func BufferStdin() *bufio.Reader {
 }
 
 // Build SpendMsg
-func BuildMsg(from, addr1, addr2 common.Address, position1, position2 types.Position, confirmSigs1, confirmSigs2 [2]crypto.Signature, amount1, amount2, fee uint64) types.SpendMsg {
-	return types.NewSpendMsg(position1.Blknum, position1.TxIndex, position1.Oindex, position1.DepositNum, from, confirmSigs1, position2.Blknum, position2.TxIndex, position.Oindex, from, confirmSigs2, addr1, amount1, addr2, amount2, fee)
+func BuildMsg(from, addr1, addr2 common.Address, position1, position2 types.Position, confirmSigs1, confirmSigs2 [2]types.Signature, amount1, amount2, fee uint64) types.SpendMsg {
+	return types.NewSpendMsg(position1.Blknum, position1.TxIndex, position1.Oindex, position1.DepositNum, from, confirmSigs1, position2.Blknum, position2.TxIndex, position2.Oindex, position2.DepositNum, from, confirmSigs2, addr1, amount1, addr2, amount2, fee)
 }
 
-// initialize a keybase on the confirguration
-func GetKeyBase() (keys.Keybase, error) {
-	rootDir := viper.GetString(cli.HomeFlag)
-	if keybase == nil {
-		db, err := dbm.NewGoLevelDB(KeyDBName, filepath.Join(rootDir, "keys"))
-		if err != nil {
-			return nil, err
-		}
-
-		keybase = New(db, words.MustLoadCodec("english"))
+// initialize a keystore in the specified directory
+func GetKeyStore(dir string) *keystore.KeyStore {
+	if ks == nil {
+		ks = keystore.NewKeyStore(dir, keystore.StandardScryptN, keystore.StandardScryptP)
 	}
-	return keybase, nil
-
+	return ks
 }
 
 // Prompts for a password one-time
@@ -64,7 +60,7 @@ func GetPassword(prompt string, buf *bufio.Reader) (pass string, err error) {
 		return "", err
 	}
 	if len(pass) < MinPassLength {
-		return "", errors.New("Password must be at least %d characters", MinPassLength)
+		return "", fmt.Errorf("Password must be at least %d characters", MinPassLength)
 	}
 	return pass, nil
 }
@@ -89,12 +85,52 @@ func GetCheckPassword(prompt, prompt2 string, buf *bufio.Reader) (string, error)
 	return pass, nil
 }
 
+// value in a position defaults to 0 if not provided
+func ParsePositions(posStr string) (position [2]types.Position, err error) {
+	for i, v := range strings.Split(posStr, "::") {
+		var pos [4]uint64
+		for k, number := range strings.Split(v, ".") {
+			pos[k], err = strconv.ParseUint(strings.TrimSpace(number), 0, 64)
+			if err != nil {
+				return [2]types.Position{}, err
+			}
+		}
+		position[i] = types.NewPosition(pos[0], uint16(pos[1]), uint8(pos[2]), uint8(pos[3]))
+	}
+	return position, nil
+}
+
+// Amounts will default to 0 if not provided
+func ParseAmounts(amtStr string) (amount [3]uint64, err error) {
+	for i, v := range strings.Split(amtStr, ",") {
+		amount[i], err = strconv.ParseUint(strings.TrimSpace(v), 0, 64)
+		if err != nil {
+			return [3]uint64{}, err
+		}
+	}
+	return amount, nil
+
+}
+
+// Convert string to Ethereum Address
+func StrToAddress(addrStr string) (common.Address, error) {
+	fmt.Println(addrStr)
+	if !common.IsHexAddress(strings.TrimSpace(addrStr)) {
+		return common.Address{}, errors.New("invalid address provided, please use hex format")
+	}
+	return common.HexToAddress(addrStr), nil
+}
+
 // Returns true iff we have an interactive prompt
 func inputIsTty() bool {
 	return isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd())
 }
 
-func printInfo(info keys.Info) {
-	fmt.Printf("NAME:\tADDRESS:\t\t\t\t\t\tPUBKEY:\n")
-	fmt.Printf("%s\t%s\t%s\n", info.Name, info.PubKey.Address().Bytes(), info.PubKey)
+// reads one line from stdin
+func readLineFromBuf(buf *bufio.Reader) (string, error) {
+	pass, err := buf.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(pass), nil
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/server"
 	abci "github.com/tendermint/abci/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/cli"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -39,7 +40,8 @@ func newApp(logger log.Logger, db dbm.DB) abci.Application {
 	return app.NewChildChain(logger, db)
 }
 
-func exportAppState(logger log.Logger, db dbm.DB) (json.RawMessage, error) {
+// non-functional
+func exportAppState(logger log.Logger, db dbm.DB) (json.RawMessage, []tmtypes.GenesisValidator, error) {
 	papp := app.NewChildChain(logger, db)
 	return papp.ExportAppStateJSON()
 }

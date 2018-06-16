@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/log"
 
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
-	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
 /*
@@ -28,13 +28,13 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.EthPrivKeyToSDKAddress(privA)
+	addrA := utils.PrivKeyToAddress(privA)
 
 	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.EthPrivKeyToSDKAddress(privB)
+	addrB := utils.PrivKeyToAddress(privB)
 
 	positionB := types.Position{1000, 0, 0, 0}
-	confirmAddr := [2]crypto.Address{addrA, addrA}
+	confirmAddr := [2]common.Address{addrA, addrA}
 
 	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 	assert.NotNil(t, utxo)
@@ -65,12 +65,12 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 
 	// These are not being tested
 	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.EthPrivKeyToSDKAddress(privA)
+	addrA := utils.PrivKeyToAddress(privA)
 
 	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.EthPrivKeyToSDKAddress(privB)
+	addrB := utils.PrivKeyToAddress(privB)
 
-	confirmAddr := [2]crypto.Address{addrA, addrA}
+	confirmAddr := [2]common.Address{addrA, addrA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {
@@ -106,12 +106,12 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 
 	// These are not being tested
 	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.EthPrivKeyToSDKAddress(privA)
+	addrA := utils.PrivKeyToAddress(privA)
 
 	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.EthPrivKeyToSDKAddress(privB)
+	addrB := utils.PrivKeyToAddress(privB)
 
-	confirmAddr := [2]crypto.Address{addrA, addrA}
+	confirmAddr := [2]common.Address{addrA, addrA}
 
 	// Main part being tested
 	for i := 0; i < 10; i++ {

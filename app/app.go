@@ -4,17 +4,17 @@ import (
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/types"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	abci "github.com/tendermint/abci/types"
+	rlp "github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
+	tmtypes "github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-	//rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 const (
@@ -36,8 +36,6 @@ type ChildChain struct {
 
 	// Manage addition and deletion of utxo's
 	utxoMapper types.UTXOMapper
-
-	txHash []byte
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
@@ -48,7 +46,6 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 		txIndex:         new(uint16),
 		feeAmount:       new(uint64),
 		capKeyMainStore: sdk.NewKVStoreKey("main"),
-		txHash:          nil,
 	}
 
 	// define the utxoMapper
@@ -60,7 +57,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	// UTXOKeeper to adjust spending and recieving of utxo's
 	UTXOKeeper := plasmaDB.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
-		AddRoute("txs", auth.NewHandler(UTXOKeeper, app.txIndex))
+		AddRoute("spend", auth.NewHandler(UTXOKeeper, app.txIndex))
 
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
@@ -78,20 +75,15 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	return app
 }
 
+// RLP decodes the txBytes to a BaseTx
 func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
-	// TODO: implement method with RLP
 	var tx = types.BaseTx{}
-	// BaseTx is struct for Msg wrapped with authentication data
-	err := app.cdc.UnmarshalBinary(txBytes, &tx)
+
+	err := rlp.DecodeBytes(txBytes, &tx)
 	if err != nil {
-		return nil, sdk.ErrTxDecode("")
+		return nil, sdk.ErrTxDecode(err.Error())
 	}
 	return tx, nil
-}
-
-func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) {
-	header := ctx.BlockHeader()
-	app.txHash = header.GetDataHash()
 }
 
 func MakeCodec() *amino.Codec {
@@ -102,9 +94,11 @@ func MakeCodec() *amino.Codec {
 	return cdc
 }
 
-func (app *ChildChain) ExportAppStateJSON() (appState json.RawMessage, err error) {
+func (app *ChildChain) ExportAppStateJSON() (appState json.RawMessage, validators []tmtypes.GenesisValidator, err error) {
 	// TODO: Implement
 	// Currently non-functional, just enough to compile
 	tx := types.BaseTx{}
-	return app.cdc.MarshalJSONIndent(tx, "", "\t")
+	appState, err = app.cdc.MarshalJSONIndent(tx, "", "\t")
+	validators = []tmtypes.GenesisValidator{}
+	return appState, validators, err
 }

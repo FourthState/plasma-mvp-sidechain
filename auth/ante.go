@@ -1,11 +1,11 @@
 package auth
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	crypto "github.com/tendermint/go-crypto"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"reflect"
 )
 
@@ -16,20 +16,20 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
 
+		baseTx, ok := tx.(types.BaseTx)
+		if !ok {
+			return ctx, sdk.ErrInternal("tx must be in form of BaseTx").Result(), true
+		}
+
 		// Assert that there are signatures
-		sigs := tx.GetSignatures()
+		sigs := baseTx.GetSignatures()
 		if len(sigs) == 0 {
 			return ctx,
 				sdk.ErrUnauthorized("no signers").Result(),
 				true
 		}
 
-		msg := tx.GetMsg()
-
-		_, ok := tx.(types.BaseTx)
-		if !ok {
-			return ctx, sdk.ErrInternal("tx must be in form of BaseTx").Result(), true
-		}
+		msg := baseTx.GetMsg()
 
 		// Assert that number of signatures is correct.
 		var signerAddrs = msg.GetSigners()
@@ -42,13 +42,13 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 		spendMsg, ok := msg.(types.SpendMsg)
 		if !ok {
-			return ctx, sdk.ErrInternal("Msg must be of type SpendMsg").Result(), true
+			return ctx, sdk.ErrInternal("msg must be of type SpendMsg").Result(), true
 		}
 		signBytes := spendMsg.GetSignBytes()
 
 		// Verify the first input signature
 		position1 := types.Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
-		res := processSig(ctx, utxoMapper, position1, signerAddrs[0], sigs[0], signBytes)
+		res := processSig(ctx, utxoMapper, position1, common.BytesToAddress(signerAddrs[0].Bytes()), sigs[0], signBytes)
 
 		if !res.IsOK() {
 			return ctx, res, true
@@ -65,7 +65,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		// Verify the second input
 		if utils.ValidAddress(spendMsg.Owner2) {
 			position2 := types.Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
-			res = processSig(ctx, utxoMapper, position2, signerAddrs[1], sigs[1], signBytes)
+			res = processSig(ctx, utxoMapper, position2, common.BytesToAddress(signerAddrs[1].Bytes()), sigs[1], signBytes)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -90,7 +90,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 func processSig(
 	ctx sdk.Context, um types.UTXOMapper,
-	position types.Position, addr crypto.Address, sig sdk.StdSignature, signBytes []byte) (
+	position types.Position, addr common.Address, sig types.Signature, signBytes []byte) (
 	res sdk.Result) {
 
 	// Verify utxo exists
@@ -104,12 +104,8 @@ func processSig(
 		return sdk.ErrUnauthorized("signer does not match utxo owner").Result()
 	}
 
-	// sig.Signature.Bytes() returns amino encoded signature
-	// the first 5 bytes represent the encoding for the signature
-	// Bytes 1-4: prefix bytes (crypto.SignatureSecp256k1 has prefix of 0x16E1FEEA)
-	// Byte 5: byte array length (should be 0x41 or 65)
 	hash := ethcrypto.Keccak256(signBytes)
-	pubKey1, err1 := ethcrypto.SigToPub(hash, sig.Signature.Bytes()[5:])
+	pubKey1, err1 := ethcrypto.SigToPub(hash, sig.Bytes())
 
 	if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), addr.Bytes()) {
 		return sdk.ErrUnauthorized("signature verification failed").Result()
@@ -120,7 +116,7 @@ func processSig(
 
 func processConfirmSig(
 	ctx sdk.Context, utxoMapper types.UTXOMapper,
-	position types.Position, sig [2]crypto.Signature, signBytes []byte) (
+	position types.Position, sigs [2]types.Signature, signBytes []byte) (
 	res sdk.Result) {
 
 	// Verify utxo exists
@@ -130,24 +126,15 @@ func processConfirmSig(
 	}
 	inputAddresses := utxo.GetInputAddresses()
 
-	ethsigs := make([]crypto.SignatureSecp256k1, 2)
-	for i, s := range sig {
-		ethsigs[i] = s.(crypto.SignatureSecp256k1)
-	}
-
 	hash := ethcrypto.Keccak256(signBytes)
 
-	// sig.Signature.Bytes() returns amino encoded signature
-	// the first 5 bytes represent the encoding for the signature
-	// Bytes 1-4: prefix bytes (crypto.SignatureSecp256k1 has prefix of 0x16E1FEEA)
-	// Byte 5: byte array length (should be 0x41 or 65)
-	pubKey1, err1 := ethcrypto.SigToPub(hash, ethsigs[0].Bytes()[5:])
+	pubKey1, err1 := ethcrypto.SigToPub(hash, sigs[0].Bytes())
 	if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), inputAddresses[0].Bytes()) {
 		return sdk.ErrUnauthorized("confirm signature 1 verification failed").Result()
 	}
 
 	if utils.ValidAddress(inputAddresses[1]) {
-		pubKey2, err2 := ethcrypto.SigToPub(hash, ethsigs[1].Bytes()[5:])
+		pubKey2, err2 := ethcrypto.SigToPub(hash, sigs[1].Bytes())
 		if err2 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey2).Bytes(), inputAddresses[1].Bytes()) {
 			return sdk.ErrUnauthorized("confirm signature 2 verification failed").Result()
 		}

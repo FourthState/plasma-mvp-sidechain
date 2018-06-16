@@ -1,10 +1,10 @@
 package auth
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	db "github.com/FourthState/plasma-mvp-sidechain/db"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"reflect"
 )
 
@@ -28,30 +28,18 @@ func handleSpendMsg(ctx sdk.Context, uk db.UTXOKeeper, msg types.SpendMsg, txInd
 	utxo1 := uk.UM.GetUTXO(ctx, position1)
 	var position2 types.Position
 	var utxo2 types.UTXO
-	err := uk.SpendUTXO(ctx, msg.Owner1, position1)
-	if err != nil {
-		return err.Result()
-	}
+	uk.SpendUTXO(ctx, position1)
 
-	if msg.Owner2 != nil && !utils.ZeroAddress(msg.Owner2) {
+	if !utils.ZeroAddress(msg.Owner2) {
 		position2 = types.Position{msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2}
 		utxo2 = uk.UM.GetUTXO(ctx, position2)
-		err := uk.SpendUTXO(ctx, msg.Owner2, position2)
-		if err != nil {
-			return err.Result()
-		}
+		uk.SpendUTXO(ctx, position2)
 	}
 
 	oldUTXOs := [2]types.UTXO{utxo1, utxo2}
-	err2 := uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1, oldUTXOs, 0, *txIndex)
-	if err2 != nil {
-		return err2.Result()
-	}
-	if msg.Newowner2 != nil && !utils.ZeroAddress(msg.Newowner2) {
-		err := uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2, oldUTXOs, 1, *txIndex)
-		if err != nil {
-			return err.Result()
-		}
+	uk.RecieveUTXO(ctx, msg.Newowner1, msg.Denom1, oldUTXOs, 0, *txIndex)
+	if !utils.ZeroAddress(msg.Newowner2) {
+		uk.RecieveUTXO(ctx, msg.Newowner2, msg.Denom2, oldUTXOs, 1, *txIndex)
 	}
 
 	// Increment txIndex

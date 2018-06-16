@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/log"
 
 	db "github.com/FourthState/plasma-mvp-sidechain/db"
@@ -19,9 +19,9 @@ import (
 /// @param privA confirmSig Address
 /// @param privB owner address
 func NewUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position types.Position) types.UTXO {
-	addrA := utils.EthPrivKeyToSDKAddress(privA)
-	addrB := utils.EthPrivKeyToSDKAddress(privB)
-	confirmAddr := [2]crypto.Address{addrA, addrA}
+	addrA := utils.PrivKeyToAddress(privA)
+	addrB := utils.PrivKeyToAddress(privB)
+	confirmAddr := [2]common.Address{addrA, addrA}
 	return types.NewBaseUTXO(addrB, confirmAddr, 100, position)
 }
 
@@ -53,7 +53,7 @@ func TestHandleSpendMessage(t *testing.T) {
 
 	newownerA := utils.GenerateAddress()
 	newownerB := utils.GenerateAddress()
-	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]types.Signature{types.Signature{}, types.Signature{}}
 
 	// Add in SpendMsg,
 	var msg = types.SpendMsg{
@@ -61,13 +61,13 @@ func TestHandleSpendMessage(t *testing.T) {
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       utils.EthPrivKeyToSDKAddress(privB),
+		Owner1:       utils.PrivKeyToAddress(privB),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      1000,
 		Txindex2:     1,
 		Oindex2:      0,
 		DepositNum2:  0,
-		Owner2:       utils.EthPrivKeyToSDKAddress(privC),
+		Owner2:       utils.PrivKeyToAddress(privC),
 		ConfirmSigs2: confirmSigs,
 		Newowner1:    newownerA,
 		Denom1:       150,
@@ -97,7 +97,7 @@ func TestHandleSpendMessage(t *testing.T) {
 	assert.NotNil(t, utxo2)
 
 	// Check that outputs are valid
-	inputAddresses := [2]crypto.Address{utils.EthPrivKeyToSDKAddress(privB), utils.EthPrivKeyToSDKAddress(privC)}
+	inputAddresses := [2]common.Address{utils.PrivKeyToAddress(privB), utils.PrivKeyToAddress(privC)}
 	assert.Equal(t, uint64(150), utxo1.GetDenom())
 	assert.Equal(t, uint64(50), utxo2.GetDenom())
 	assert.EqualValues(t, newownerA, utxo1.GetAddress())
@@ -128,7 +128,7 @@ func TestOneInput(t *testing.T) {
 
 	newownerA := utils.GenerateAddress()
 	newownerB := utils.GenerateAddress()
-	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]types.Signature{types.Signature{}, types.Signature{}}
 
 	// Add in SpendMsg,
 	var msg = types.SpendMsg{
@@ -136,13 +136,13 @@ func TestOneInput(t *testing.T) {
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       utils.EthPrivKeyToSDKAddress(privB),
+		Owner1:       utils.PrivKeyToAddress(privB),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      0,
 		Txindex2:     0,
 		Oindex2:      0,
 		DepositNum2:  0,
-		Owner2:       crypto.Address([]byte("")),
+		Owner2:       common.Address{},
 		ConfirmSigs2: confirmSigs,
 		Newowner1:    newownerA,
 		Denom1:       25,

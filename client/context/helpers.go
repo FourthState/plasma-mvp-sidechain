@@ -1,12 +1,13 @@
 package context
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 
-	"github.com/cosmos/cosmos-sdk/client/keys"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	rlp "github.com/ethereum/go-ethereum/rlp"
-	crypto "github.com/tendermint/go-crypto"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
@@ -39,14 +40,14 @@ func (ctx ClientContext) BroadcastTx(tx []byte) (*ctypes.ResultBroadcastTxCommit
 }
 
 // sign and build the transaction from the msg
-func (ctx ClientContext) SignBuildBroadcast(name string, msg sdk.Msg) (res *ctypes.ResultBroadcastTxCommit, err error) {
+func (ctx ClientContext) SignBuildBroadcast(addr common.Address, msg types.SpendMsg, dir string) (res *ctypes.ResultBroadcastTxCommit, err error) {
 
-	passphrase, err := ctx.GetPassphraseFromStdin(name)
+	passphrase, err := ctx.GetPassphraseFromStdin(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	txBytes, err := ctx.SignAndBuild(name, passphrase, msg)
+	txBytes, err := ctx.SignAndBuild(addr, passphrase, msg, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -55,42 +56,48 @@ func (ctx ClientContext) SignBuildBroadcast(name string, msg sdk.Msg) (res *ctyp
 }
 
 // Get the from address from the name flag
-func (ctx ClientContext) GetFromAddress() (from common.Address, err error) {
+func (ctx ClientContext) GetFromAddress(dir string) (from common.Address, err error) {
 
-	keybase, err := keys.GetKeyBase()
+	ks := client.GetKeyStore(dir)
+
+	addrStr := ctx.FromAddress
+	if addrStr == "" {
+		return common.Address{}, errors.Errorf("must provide an address to send from")
+	}
+	addr, err := client.StrToAddress(addrStr)
 	if err != nil {
-		return nil, err
+		return common.Address{}, err
 	}
 
-	name := ctx.FromAddressName
-	if name == "" {
-		return nil, errors.Errorf("must provide a from address name")
+	if !ks.HasAddress(addr) {
+		return common.Address{}, errors.Errorf("No account for: %X", addr)
 	}
 
-	info, err := keybase.Get(name)
-	if err != nil {
-		return nil, errors.Errorf("No key for: %s", name)
-	}
-
-	return info.PubKey.Address(), nil
+	return addr, nil
 }
 
 // Sign and build the transaction
-func (ctx ClientContext) SignAndBuild(name, passphrase string, msg types.SpendMsg) ([]byte, error) {
+func (ctx ClientContext) SignAndBuild(addr common.Address, passphrase string, msg types.SpendMsg, dir string) ([]byte, error) {
 
-	keybase, err := client.GetKeyBase()
+	ks := client.GetKeyStore(dir)
+	acc := accounts.Account{
+		Address: addr,
+	}
+	acct, err := ks.Find(acc)
 	if err != nil {
 		return nil, err
 	}
 
 	bz := msg.GetSignBytes()
+	// May need to change so hash is done in sendtx.go
+	hash := ethcrypto.Keccak256(bz)
 
-	sig, pubkey, err := keybase.Sign(name, passphrase, bz)
+	sig, err := ks.SignHashWithPassphrase(acct, passphrase, hash)
 	if err != nil {
 		return nil, err
 	}
 
-	sigs := [2]crypto.Signature{sig, sig}
+	sigs := []types.Signature{types.Signature{sig}, types.Signature{sig}}
 
 	tx := types.NewBaseTx(msg, sigs)
 
@@ -102,16 +109,16 @@ func (ctx ClientContext) SignAndBuild(name, passphrase string, msg types.SpendMs
 }
 
 // Get passphrase from std input
-func (ctx ClientContext) GetPassphraseFromStdin(name string) (pass string, err error) {
+func (ctx ClientContext) GetPassphraseFromStdin(addr common.Address) (pass string, err error) {
 	buf := client.BufferStdin()
-	prompt := fmt.Sprintf("Password to sign with '%s':", name)
+	prompt := fmt.Sprintf("Password to sign with '%X':", addr)
 	return client.GetPassword(prompt, buf)
 }
 
 // Prepares a simple rpc.Client
 func (ctx ClientContext) GetNode() (rpcclient.Client, error) {
 	if ctx.Client == nil {
-		return nil, errors.New("Must define node URI")
+		return nil, errors.New("must define node URI")
 	}
 	return ctx.Client, nil
 }
