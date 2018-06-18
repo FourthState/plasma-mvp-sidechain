@@ -18,8 +18,6 @@ import (
 const (
 	// Minimum acceptable password length
 	MinPassLength = 8
-	// Directory under root where we store the keys
-	KeyDBName = "keys"
 
 	// Flags
 	FlagNode      = "node"
