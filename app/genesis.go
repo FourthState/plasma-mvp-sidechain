@@ -12,22 +12,36 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/wire"
-
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 // State to Unmarshal
 type GenesisState struct {
-	UTXOs  []types.BaseUTXO   `json:"UTXOs"`
+	UTXOs  []GenesisUTXO   `json:"UTXOs"`
 }
 
-func NewGenesisUTXO(addr common.Address, amount uint64, position [4]uint64) types.BaseUTXO {
-	utxo := types.BaseUTXO{
+type GenesisUTXO struct {
+	Address string
+	Denom uint64
+	Position [4]uint64
+}
+
+func NewGenesisUTXO(addr string, amount uint64, position [4]uint64) GenesisUTXO {
+	utxo := GenesisUTXO{
 		Address: addr,
-		Denom: amount,
+		Denom: 100,
+		Position: position,
 	}
-	utxo.SetPosition(position[0], uint16(position[1]), uint8(position[2]), position[3])
+	return utxo
+}
+
+func ToUTXO(gutxo GenesisUTXO) types.UTXO {
+	utxo := &types.BaseUTXO{
+		Address: common.HexToAddress(gutxo.Address),
+		Denom: gutxo.Denom,
+	}
+	utxo.SetPosition(gutxo.Position[0], uint16(gutxo.Position[1]), uint8(gutxo.Position[2]), gutxo.Position[3])
 	return utxo
 }
 
@@ -111,7 +125,7 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 	}
 
 	// get genesis flag account information
-	genUTXO := make([]types.BaseUTXO, len(appGenTxs))
+	genUTXO := make([]GenesisUTXO, len(appGenTxs))
 	for i, appGenTx := range appGenTxs {
 
 		var genTx PlasmaGenTx
@@ -120,9 +134,7 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 			return
 		}
 
-		addr := common.HexToAddress(genTx.Address)
-
-		genUTXO[i] = NewGenesisUTXO(addr, 100, [4]uint64{0, 0, 0, uint64(i + 5)})
+		genUTXO[i] = NewGenesisUTXO(genTx.Address, 100, [4]uint64{0, 0, 0, uint64(i + 1)})
 	}
 
 	// create the final app state

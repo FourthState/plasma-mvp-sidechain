@@ -91,7 +91,8 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 
 	// load the accounts
 	for _, gutxo := range genesisState.UTXOs {
-		app.utxoMapper.AddUTXO(ctx, &gutxo)
+		utxo := ToUTXO(gutxo)
+		app.utxoMapper.AddUTXO(ctx, utxo)
 	}
 
 	// load the initial stake information
