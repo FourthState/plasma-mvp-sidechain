@@ -1,36 +1,36 @@
 package app
 
 import (
-	"os"
 	"encoding/json"
 	"errors"
+	"os"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	crypto "github.com/tendermint/go-crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/wire"
-	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 // State to Unmarshal
 type GenesisState struct {
-	UTXOs  []GenesisUTXO   `json:"UTXOs"`
+	UTXOs []GenesisUTXO `json:"UTXOs"`
 }
 
 type GenesisUTXO struct {
-	Address string
-	Denom uint64
+	Address  string
+	Denom    uint64
 	Position [4]uint64
 }
 
 func NewGenesisUTXO(addr string, amount uint64, position [4]uint64) GenesisUTXO {
 	utxo := GenesisUTXO{
-		Address: addr,
-		Denom: 100,
+		Address:  addr,
+		Denom:    100,
 		Position: position,
 	}
 	return utxo
@@ -39,19 +39,19 @@ func NewGenesisUTXO(addr string, amount uint64, position [4]uint64) GenesisUTXO 
 func ToUTXO(gutxo GenesisUTXO) types.UTXO {
 	utxo := &types.BaseUTXO{
 		Address: common.HexToAddress(gutxo.Address),
-		Denom: gutxo.Denom,
+		Denom:   gutxo.Denom,
 	}
 	utxo.SetPosition(gutxo.Position[0], uint16(gutxo.Position[1]), uint8(gutxo.Position[2]), gutxo.Position[3])
 	return utxo
 }
 
 var (
-	flagAddress = "address"
+	flagAddress    = "address"
 	flagClientHome = "home-client"
-	flagOWK = "owk"
+	flagOWK        = "owk"
 
 	// UTXO amount awarded
-	freeEtherVal    = int64(100)
+	freeEtherVal = int64(100)
 
 	// default home directories for expected binaries
 	DefaultCLIHome  = os.ExpandEnv("$HOME/.plasmacli")
@@ -79,7 +79,7 @@ func PlasmaAppInit() server.AppInit {
 // simple genesis tx
 type PlasmaGenTx struct {
 	// currently takes address as string because unmarshaling Ether address fails
-	Address string   `json:"address"`
+	Address string `json:"address"`
 }
 
 // Generate a gaia genesis transaction with flags
@@ -90,7 +90,7 @@ func PlasmaAppGenTx(cdc *wire.Codec, pk crypto.PubKey) (
 
 	bz, err := cdc.MarshalJSON("success")
 	cliPrint = json.RawMessage(bz)
-	appGenTx,_,validator,err = PlasmaAppGenTxNF(cdc, pk, addrString, overwrite)
+	appGenTx, _, validator, err = PlasmaAppGenTxNF(cdc, pk, addrString, overwrite)
 	return
 }
 
