@@ -5,6 +5,7 @@ import (
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	abci "github.com/tendermint/abci/types"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -73,6 +74,26 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	}
 
 	return app
+}
+
+func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
+	stateJSON := req.AppStateBytes
+	// TODO is this now the whole genesis file?
+
+	var genesisState GenesisState
+	err := app.cdc.UnmarshalJSON(stateJSON, &genesisState)
+	if err != nil {
+		panic(err) // TODO https://github.com/cosmos/cosmos-sdk/issues/468
+		// return sdk.ErrGenesisParse("").TraceCause(err, "")
+	}
+
+	// load the accounts
+	for _, gutxo := range genesisState.UTXOs {
+		app.utxoMapper.AddUTXO(ctx, gutxo)
+	}
+
+	// load the initial stake information
+	return abci.ResponseInitChain{}
 }
 
 // RLP decodes the txBytes to a BaseTx

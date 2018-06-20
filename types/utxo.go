@@ -11,7 +11,7 @@ import (
 
 // UTXO is a standard unspent transaction output
 type UTXO interface {
-	// Address to which UTXO's are sent
+	// Address that owns UTXO
 	GetAddress() common.Address
 	SetAddress(common.Address) error // errors if already set
 
@@ -22,7 +22,7 @@ type UTXO interface {
 	SetDenom(uint64) error //errors if already set
 
 	GetPosition() Position
-	SetPosition(uint64, uint16, uint8, uint8) error
+	SetPosition(uint64, uint16, uint8, uint64) error
 }
 
 // Implements UTXO interface
@@ -93,7 +93,7 @@ func (utxo BaseUTXO) GetPosition() Position {
 	return utxo.Position
 }
 
-func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, depositNum uint8) error {
+func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, depositNum uint64) error {
 	if utxo.Position.Blknum != 0 {
 		return errors.New("cannot override BaseUTXO Position")
 	}
@@ -108,10 +108,10 @@ type Position struct {
 	Blknum     uint64
 	TxIndex    uint16
 	Oindex     uint8
-	DepositNum uint8
+	DepositNum uint64
 }
 
-func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint8) Position {
+func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint64) Position {
 	return Position{
 		Blknum:     blknum,
 		TxIndex:    txIndex,

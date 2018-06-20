@@ -14,13 +14,13 @@ type SpendMsg struct {
 	Blknum1      uint64
 	Txindex1     uint16
 	Oindex1      uint8
-	DepositNum1  uint8
+	DepositNum1  uint64
 	Owner1       common.Address
 	ConfirmSigs1 [2]Signature
 	Blknum2      uint64
 	Txindex2     uint16
 	Oindex2      uint8
-	DepositNum2  uint8
+	DepositNum2  uint64
 	Owner2       common.Address
 	ConfirmSigs2 [2]Signature
 	Newowner1    common.Address
@@ -31,9 +31,9 @@ type SpendMsg struct {
 }
 
 func NewSpendMsg(blknum1 uint64, txindex1 uint16, oindex1 uint8,
-	depositnum1 uint8, owner1 common.Address, confirmSigs1 [2]Signature,
+	depositnum1 uint64, owner1 common.Address, confirmSigs1 [2]Signature,
 	blknum2 uint64, txindex2 uint16, oindex2 uint8,
-	depositnum2 uint8, owner2 common.Address, confirmSigs2 [2]Signature,
+	depositnum2 uint64, owner2 common.Address, confirmSigs2 [2]Signature,
 	newowner1 common.Address, denom1 uint64,
 	newowner2 common.Address, denom2 uint64, fee uint64) SpendMsg {
 	return SpendMsg{
