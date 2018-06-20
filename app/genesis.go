@@ -19,10 +19,10 @@ import (
 
 // State to Unmarshal
 type GenesisState struct {
-	UTXOs  []types.UTXO   `json:"UTXOs"`
+	UTXOs  []types.BaseUTXO   `json:"UTXOs"`
 }
 
-func NewGenesisUTXO(addr common.Address, amount uint64, position [4]uint64) types.UTXO {
+func NewGenesisUTXO(addr common.Address, amount uint64, position [4]uint64) types.BaseUTXO {
 	utxo := types.BaseUTXO{
 		Address: addr,
 		Denom: amount,
@@ -58,13 +58,14 @@ func PlasmaAppInit() server.AppInit {
 		FlagsAppGenState: fsAppGenState,
 		FlagsAppGenTx:    fsAppGenTx,
 		AppGenTx:         PlasmaAppGenTx,
-		AppGenState:      GaiaAppGenStateJSON,
+		AppGenState:      PlasmaAppGenStateJSON,
 	}
 }
 
 // simple genesis tx
 type PlasmaGenTx struct {
-	Address common.Address   `json:"address"`
+	// currently takes address as string because unmarshaling Ether address fails
+	Address string   `json:"address"`
 }
 
 // Generate a gaia genesis transaction with flags
@@ -73,17 +74,14 @@ func PlasmaAppGenTx(cdc *wire.Codec, pk crypto.PubKey) (
 	addrString := viper.GetString(flagAddress)
 	overwrite := viper.GetBool(flagOWK)
 
-	addr := common.HexToAddress(addrString)
-	if err != nil {
-		return
-	}
-	cliPrint = json.RawMessage("success")
-	appGenTx,_,validator,err = PlasmaAppGenTxNF(cdc, pk, addr, overwrite)
+	bz, err := cdc.MarshalJSON("success")
+	cliPrint = json.RawMessage(bz)
+	appGenTx,_,validator,err = PlasmaAppGenTxNF(cdc, pk, addrString, overwrite)
 	return
 }
 
 // Generate a gaia genesis transaction without flags
-func PlasmaAppGenTxNF(cdc *wire.Codec, pk crypto.PubKey, addr common.Address, overwrite bool) (
+func PlasmaAppGenTxNF(cdc *wire.Codec, pk crypto.PubKey, addr string, overwrite bool) (
 	appGenTx, cliPrint json.RawMessage, validator tmtypes.GenesisValidator, err error) {
 
 	var bz []byte
@@ -113,7 +111,7 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 	}
 
 	// get genesis flag account information
-	genUTXO := make([]types.UTXO, len(appGenTxs))
+	genUTXO := make([]types.BaseUTXO, len(appGenTxs))
 	for i, appGenTx := range appGenTxs {
 
 		var genTx PlasmaGenTx
@@ -122,7 +120,9 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 			return
 		}
 
-		genUTXO[i] = NewGenesisUTXO(genTx.Address, 100, [4]uint64{0, 0, 0, uint64(i + 1)})
+		addr := common.HexToAddress(genTx.Address)
+
+		genUTXO[i] = NewGenesisUTXO(addr, 100, [4]uint64{0, 0, 0, uint64(i + 5)})
 	}
 
 	// create the final app state
@@ -132,8 +132,8 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 	return
 }
 
-// GaiaAppGenState but with JSON
-func GaiaAppGenStateJSON(cdc *wire.Codec, appGenTxs []json.RawMessage) (appState json.RawMessage, err error) {
+// PlasmaAppGenState but with JSON
+func PlasmaAppGenStateJSON(cdc *wire.Codec, appGenTxs []json.RawMessage) (appState json.RawMessage, err error) {
 
 	// create the final app state
 	genesisState, err := PlasmaAppGenState(cdc, appGenTxs)

@@ -65,6 +65,8 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 
 	app.MountStoresIAVL(app.capKeyMainStore)
 
+	app.SetInitChainer(app.initChainer)
+
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
 	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.txIndex, app.feeAmount))
 
@@ -89,7 +91,7 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 
 	// load the accounts
 	for _, gutxo := range genesisState.UTXOs {
-		app.utxoMapper.AddUTXO(ctx, gutxo)
+		app.utxoMapper.AddUTXO(ctx, &gutxo)
 	}
 
 	// load the initial stake information
@@ -110,6 +112,7 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
+	cdc.RegisterConcrete(PlasmaGenTx{}, "app/PlasmaGenTx", nil)
 	types.RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
