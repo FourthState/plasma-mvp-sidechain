@@ -11,7 +11,7 @@ import (
 
 // UTXO is a standard unspent transaction output
 type UTXO interface {
-	// Address to which UTXO's are sent
+	// Address that owns UTXO
 	GetAddress() common.Address
 	SetAddress(common.Address) error // errors if already set
 
@@ -22,7 +22,7 @@ type UTXO interface {
 	SetDenom(uint64) error //errors if already set
 
 	GetPosition() Position
-	SetPosition(uint64, uint16, uint8, uint8) error
+	SetPosition(uint64, uint16, uint8, uint64) error
 }
 
 // Implements UTXO interface
@@ -35,7 +35,7 @@ type BaseUTXO struct {
 
 func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, denom uint64,
 	position Position) UTXO {
-	return BaseUTXO{
+	return &BaseUTXO{
 		InputAddresses: inputaddr,
 		Address:        addr,
 		Denom:          denom,
@@ -44,12 +44,12 @@ func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, denom uint64,
 }
 
 //Implements UTXO
-func (utxo BaseUTXO) GetAddress() common.Address {
+func (utxo *BaseUTXO) GetAddress() common.Address {
 	return utxo.Address
 }
 
 //Implements UTXO
-func (utxo BaseUTXO) SetAddress(addr common.Address) error {
+func (utxo *BaseUTXO) SetAddress(addr common.Address) error {
 	if utils.ZeroAddress(utxo.Address) {
 		return errors.New("cannot override BaseUTXO Address")
 	}
@@ -60,7 +60,7 @@ func (utxo BaseUTXO) SetAddress(addr common.Address) error {
 	return nil
 }
 
-func (utxo BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
+func (utxo *BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
 	if utils.ZeroAddress(utxo.InputAddresses[0]) {
 		return errors.New("cannot override BaseUTXO Address")
 	}
@@ -71,17 +71,17 @@ func (utxo BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
 	return nil
 }
 
-func (utxo BaseUTXO) GetInputAddresses() [2]common.Address {
+func (utxo *BaseUTXO) GetInputAddresses() [2]common.Address {
 	return utxo.InputAddresses
 }
 
 //Implements UTXO
-func (utxo BaseUTXO) GetDenom() uint64 {
+func (utxo *BaseUTXO) GetDenom() uint64 {
 	return utxo.Denom
 }
 
 //Implements UTXO
-func (utxo BaseUTXO) SetDenom(denom uint64) error {
+func (utxo *BaseUTXO) SetDenom(denom uint64) error {
 	if utxo.Denom != 0 {
 		return errors.New("Cannot override BaseUTXO denomination")
 	}
@@ -89,11 +89,11 @@ func (utxo BaseUTXO) SetDenom(denom uint64) error {
 	return nil
 }
 
-func (utxo BaseUTXO) GetPosition() Position {
+func (utxo *BaseUTXO) GetPosition() Position {
 	return utxo.Position
 }
 
-func (utxo BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, depositNum uint8) error {
+func (utxo *BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, depositNum uint64) error {
 	if utxo.Position.Blknum != 0 {
 		return errors.New("cannot override BaseUTXO Position")
 	}
@@ -108,10 +108,10 @@ type Position struct {
 	Blknum     uint64
 	TxIndex    uint16
 	Oindex     uint8
-	DepositNum uint8
+	DepositNum uint64
 }
 
-func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint8) Position {
+func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint64) Position {
 	return Position{
 		Blknum:     blknum,
 		TxIndex:    txIndex,

@@ -93,7 +93,7 @@ func ParsePositions(posStr string) (position [2]types.Position, err error) {
 				return [2]types.Position{}, err
 			}
 		}
-		position[i] = types.NewPosition(pos[0], uint16(pos[1]), uint8(pos[2]), uint8(pos[3]))
+		position[i] = types.NewPosition(pos[0], uint16(pos[1]), uint8(pos[2]), uint64(pos[3]))
 	}
 	return position, nil
 }

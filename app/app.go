@@ -5,6 +5,7 @@ import (
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	abci "github.com/tendermint/abci/types"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -64,6 +65,8 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 
 	app.MountStoresIAVL(app.capKeyMainStore)
 
+	app.SetInitChainer(app.initChainer)
+
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
 	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.txIndex, app.feeAmount))
 
@@ -73,6 +76,27 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	}
 
 	return app
+}
+
+func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
+	stateJSON := req.AppStateBytes
+	// TODO is this now the whole genesis file?
+
+	var genesisState GenesisState
+	err := app.cdc.UnmarshalJSON(stateJSON, &genesisState)
+	if err != nil {
+		panic(err) // TODO https://github.com/cosmos/cosmos-sdk/issues/468
+		// return sdk.ErrGenesisParse("").TraceCause(err, "")
+	}
+
+	// load the accounts
+	for _, gutxo := range genesisState.UTXOs {
+		utxo := ToUTXO(gutxo)
+		app.utxoMapper.AddUTXO(ctx, utxo)
+	}
+
+	// load the initial stake information
+	return abci.ResponseInitChain{}
 }
 
 // RLP decodes the txBytes to a BaseTx
@@ -89,6 +113,7 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
+	cdc.RegisterConcrete(PlasmaGenTx{}, "app/PlasmaGenTx", nil)
 	types.RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
