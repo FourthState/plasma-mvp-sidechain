@@ -83,9 +83,6 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	case msg.Blknum2 != 0 && msg.Oindex2 != 0 && msg.Oindex2 != 1:
 		return ErrInvalidOIndex(DefaultCodespace, "output index 2 must be either 0 or 1")
 
-	case msg.Blknum2 != 0 && msg.Denom2 == 0:
-		return ErrInvalidDenom(DefaultCodespace, "second denomination must be positive")
-
 	case msg.Denom1 == 0:
 		return ErrInvalidDenom(DefaultCodespace, "first denomination must be positive")
 	}
