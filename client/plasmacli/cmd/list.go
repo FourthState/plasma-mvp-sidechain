@@ -23,10 +23,10 @@ var listKeysCmd = &cobra.Command{
 		ks := client.GetKeyStore(dir)
 
 		accounts := ks.Accounts()
-		for _, acc := range accounts {
+		for i, acc := range accounts {
 			// TODO: Create nice printing format
 			fmt.Println()
-			fmt.Println(acc)
+			fmt.Printf("Account Number %d, Address: %X", i, acc.Address)
 			fmt.Println()
 		}
 		return nil
