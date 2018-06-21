@@ -37,9 +37,11 @@ func NewGenesisUTXO(addr string, amount uint64, position [4]uint64) GenesisUTXO 
 }
 
 func ToUTXO(gutxo GenesisUTXO) types.UTXO {
+	addr := common.HexToAddress(gutxo.Address)
 	utxo := &types.BaseUTXO{
-		Address: common.HexToAddress(gutxo.Address),
-		Denom:   gutxo.Denom,
+		InputAddresses: [2]common.Address{addr, addr},
+		Address:        addr,
+		Denom:          gutxo.Denom,
 	}
 	utxo.SetPosition(gutxo.Position[0], uint16(gutxo.Position[1]), uint8(gutxo.Position[2]), gutxo.Position[3])
 	return utxo
