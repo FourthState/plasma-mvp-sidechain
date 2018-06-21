@@ -4,12 +4,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -79,6 +80,8 @@ var sendTxCmd = &cobra.Command{
 			return err
 		}
 		cs2, err := hex.DecodeString(cs[1])
+		fmt.Println(cs1)
+		fmt.Println(cs2)
 		confirmSigs := [2]types.Signature{types.Signature{cs1}, types.Signature{cs2}}
 		// END
 
@@ -92,7 +95,9 @@ var sendTxCmd = &cobra.Command{
 		// Get amounts and fee
 		amtStr := viper.GetString(flagAmounts)
 		amounts, err := client.ParseAmounts(amtStr)
-
+		fmt.Println(position[1].DepositNum)
+		fmt.Println(addr2)
+		fmt.Println(utils.ValidAddress(addr2))
 		msg := client.BuildMsg(from, addr1, addr2, position[0], position[1], confirmSigs, confirmSigs, amounts[0], amounts[1], amounts[2])
 		res, err := ctx.SignBuildBroadcast(from, msg, dir)
 		if err != nil {

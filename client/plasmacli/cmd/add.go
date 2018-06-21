@@ -32,7 +32,7 @@ var addKeyCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Println("**Important** do not lose your passphrase.")
+		fmt.Println("\n**Important** do not lose your passphrase.")
 		fmt.Println("It is the only way to recover your account")
 		fmt.Println("You should export this account and store it in a secure location")
 		fmt.Printf("Your new account address is: %s\n", acc.Address.Hex())

@@ -39,7 +39,7 @@ var deleteKeyCmd = &cobra.Command{
 		}
 
 		if !ks.HasAddress(addr) {
-			return errors.New("The account trying to be deleted does not exist")
+			return errors.New("the account trying to be deleted does not exist")
 		}
 
 		acc := accounts.Account{

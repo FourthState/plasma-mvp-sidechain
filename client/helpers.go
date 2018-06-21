@@ -112,7 +112,6 @@ func ParseAmounts(amtStr string) (amount [3]uint64, err error) {
 
 // Convert string to Ethereum Address
 func StrToAddress(addrStr string) (common.Address, error) {
-	fmt.Println(addrStr)
 	if !common.IsHexAddress(strings.TrimSpace(addrStr)) {
 		return common.Address{}, errors.New("invalid address provided, please use hex format")
 	}

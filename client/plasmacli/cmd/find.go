@@ -33,9 +33,8 @@ var showKeysCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		// TODO: Add nice formatting for printing account details
 		fmt.Println("Your account has been found!")
-		fmt.Println(acc)
+		fmt.Printf("Account Address: %s\nAccount Location:%s\n", acc.Address.Hex(), acc.URL.String())
 		return nil
 	},
 }
