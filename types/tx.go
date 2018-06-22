@@ -68,6 +68,9 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	if !utils.ValidAddress(msg.Newowner1) {
 		return ErrInvalidAddress(DefaultCodespace, "no recipients of transaction")
 	}
+	if msg.Blknum1 == msg.Blknum2 && msg.Txindex1 == msg.Txindex2 && msg.Oindex1 == msg.Oindex2 && msg.DepositNum1 == msg.DepositNum2 {
+		return ErrInvalidTransaction(DefaultCodespace, "Cannot spend same position twice")
+	}
 
 	switch {
 
