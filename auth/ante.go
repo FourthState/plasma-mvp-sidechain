@@ -53,7 +53,6 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		if !res.IsOK() {
 			return ctx, res, true
 		}
-
 		posSignBytes := position1.GetSignBytes()
 
 		// Verify that confirmation signature
@@ -61,7 +60,6 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		if !res.IsOK() {
 			return ctx, res, true
 		}
-
 		// Verify the second input
 		if utils.ValidAddress(spendMsg.Owner2) {
 			position2 := types.Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}

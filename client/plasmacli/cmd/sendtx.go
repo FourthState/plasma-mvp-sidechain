@@ -8,7 +8,6 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"strings"
 
@@ -47,7 +46,7 @@ var sendTxCmd = &cobra.Command{
 		dir := viper.GetString(FlagHomeDir)
 
 		// get the from/to address
-		from, err := ctx.GetFromAddress(dir)
+		from, err := ctx.GetInputAddresses(dir)
 		if err != nil {
 			return err
 		}
@@ -72,18 +71,25 @@ var sendTxCmd = &cobra.Command{
 				return err
 			}
 		}
-		// TODO: Implement confirmSigs START
+
 		csStr := viper.GetString(flagConfirmSigs)
 		cs := strings.Split(csStr, ",")
-		cs1, err := hex.DecodeString(cs[0])
+		switch len(cs) {
+		case 1:
+			cs = append(cs, "", "", "")
+		case 2:
+			cs = append(cs, "", "")
+		case 3:
+			cs = append(cs, "")
+		}
+		confirmSigs1, err := getConfirmSigs(cs[0], cs[1])
 		if err != nil {
 			return err
 		}
-		cs2, err := hex.DecodeString(cs[1])
-		fmt.Println(cs1)
-		fmt.Println(cs2)
-		confirmSigs := [2]types.Signature{types.Signature{cs1}, types.Signature{cs2}}
-		// END
+		confirmSigs2, err := getConfirmSigs(cs[2], cs[3])
+		if err != nil {
+			return err
+		}
 
 		// Get positions for transaction inputs
 		posStr := viper.GetString(flagPositions)
@@ -95,10 +101,7 @@ var sendTxCmd = &cobra.Command{
 		// Get amounts and fee
 		amtStr := viper.GetString(flagAmounts)
 		amounts, err := client.ParseAmounts(amtStr)
-		fmt.Println(position[1].DepositNum)
-		fmt.Println(addr2)
-		fmt.Println(utils.ValidAddress(addr2))
-		msg := client.BuildMsg(from, addr1, addr2, position[0], position[1], confirmSigs, confirmSigs, amounts[0], amounts[1], amounts[2])
+		msg := client.BuildMsg(from[0], from[1], addr1, addr2, position[0], position[1], confirmSigs1, confirmSigs2, amounts[0], amounts[1], amounts[2])
 		res, err := ctx.SignBuildBroadcast(from, msg, dir)
 		if err != nil {
 			return err
@@ -106,4 +109,22 @@ var sendTxCmd = &cobra.Command{
 		fmt.Printf("Committed at block %d. Hash %s\n", res.Height, res.Hash.String())
 		return nil
 	},
+}
+
+func getConfirmSigs(sig1, sig2 string) (sigs [2]types.Signature, err error) {
+	var cs1, cs2 []byte
+	if sig1 != "" {
+		cs1, err = hex.DecodeString(strings.TrimSpace(sig1))
+		if err != nil {
+			return sigs, err
+		}
+	}
+	if sig2 != "" {
+		cs2, err = hex.DecodeString(strings.TrimSpace(sig2))
+		if err != nil {
+			return sigs, err
+		}
+	}
+	sigs = [2]types.Signature{types.Signature{cs1}, types.Signature{cs2}}
+	return sigs, nil
 }

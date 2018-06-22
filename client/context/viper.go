@@ -16,12 +16,12 @@ func NewClientContextFromViper() ClientContext {
 		rpc = rpcclient.NewHTTP(nodeURI, "/websocket")
 	}
 	return ClientContext{
-		Height:      viper.GetInt64(client.FlagHeight),
-		TrustNode:   viper.GetBool(client.FlagTrustNode),
-		FromAddress: viper.GetString(client.FlagAddress),
-		NodeURI:     nodeURI,
-		Client:      rpc,
-		Decoder:     nil,
-		UTXOStore:   "utxo",
+		Height:         viper.GetInt64(client.FlagHeight),
+		TrustNode:      viper.GetBool(client.FlagTrustNode),
+		InputAddresses: viper.GetString(client.FlagAddress),
+		NodeURI:        nodeURI,
+		Client:         rpc,
+		Decoder:        nil,
+		UTXOStore:      "utxo",
 	}
 }
