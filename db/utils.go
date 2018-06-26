@@ -1,12 +1,12 @@
 package db
 
 import (
+	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
 )
 
 func SetupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {

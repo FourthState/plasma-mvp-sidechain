@@ -1,10 +1,9 @@
 package db
 
 import (
-	"fmt"
+	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	amino "github.com/tendermint/go-amino"
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
 )
 
 // Maps Position struct to UTXO
@@ -56,13 +55,6 @@ func (um utxoMapper) AddUTXO(ctx sdk.Context, utxo types.UTXO) {
 func (um utxoMapper) DeleteUTXO(ctx sdk.Context, position types.Position) {
 	store := ctx.KVStore(um.contextKey)
 	pos := um.encodePosition(position)
-	bz := store.Get(pos)
-	// NOTE: For testing, this should never happen
-	if bz == nil {
-		fmt.Println("Tried to Delete a UTXO that does not exist") // for testing
-		return
-	}
-
 	store.Delete(pos)
 }
 
@@ -89,13 +81,4 @@ func (um utxoMapper) encodePosition(pos types.Position) []byte {
 		panic(err)
 	}
 	return bz
-}
-
-func (um utxoMapper) decodePosition(bz []byte) types.Position {
-	pos := types.Position{}
-	err := um.cdc.UnmarshalBinary(bz, pos)
-	if err != nil {
-		panic(err)
-	}
-	return pos
 }
