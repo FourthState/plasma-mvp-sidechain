@@ -30,33 +30,6 @@ type SpendMsg struct {
 	Fee          uint64
 }
 
-func NewSpendMsg(blknum1 uint64, txindex1 uint16, oindex1 uint8,
-	depositnum1 uint64, owner1 common.Address, confirmSigs1 [2]Signature,
-	blknum2 uint64, txindex2 uint16, oindex2 uint8,
-	depositnum2 uint64, owner2 common.Address, confirmSigs2 [2]Signature,
-	newowner1 common.Address, denom1 uint64,
-	newowner2 common.Address, denom2 uint64, fee uint64) SpendMsg {
-	return SpendMsg{
-		Blknum1:      blknum1,
-		Txindex1:     txindex1,
-		Oindex1:      oindex1,
-		DepositNum1:  depositnum1,
-		Owner1:       owner1,
-		ConfirmSigs1: confirmSigs1,
-		Blknum2:      blknum2,
-		Txindex2:     txindex2,
-		Oindex2:      oindex2,
-		DepositNum2:  depositnum2,
-		Owner2:       owner2,
-		ConfirmSigs2: confirmSigs2,
-		Newowner1:    newowner1,
-		Denom1:       denom1,
-		Newowner2:    newowner2,
-		Denom2:       denom2,
-		Fee:          fee,
-	}
-}
-
 // Implements Msg.
 func (msg SpendMsg) Type() string { return "spend" }
 
@@ -67,6 +40,9 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	}
 	if !utils.ValidAddress(msg.Newowner1) {
 		return ErrInvalidAddress(DefaultCodespace, "no recipients of transaction")
+	}
+	if msg.Blknum1 == msg.Blknum2 && msg.Txindex1 == msg.Txindex2 && msg.Oindex1 == msg.Oindex2 && msg.DepositNum1 == msg.DepositNum2 {
+		return ErrInvalidTransaction(DefaultCodespace, "Cannot spend same position twice")
 	}
 
 	switch {

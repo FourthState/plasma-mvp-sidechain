@@ -35,7 +35,25 @@ func BufferStdin() *bufio.Reader {
 
 // Build SpendMsg
 func BuildMsg(inaddr1, inaddr2, addr1, addr2 common.Address, position1, position2 types.Position, confirmSigs1, confirmSigs2 [2]types.Signature, amount1, amount2, fee uint64) types.SpendMsg {
-	return types.NewSpendMsg(position1.Blknum, position1.TxIndex, position1.Oindex, position1.DepositNum, inaddr1, confirmSigs1, position2.Blknum, position2.TxIndex, position2.Oindex, position2.DepositNum, inaddr2, confirmSigs2, addr1, amount1, addr2, amount2, fee)
+	return types.SpendMsg{
+		Blknum1:      position1.Blknum,
+		Txindex1:     position1.TxIndex,
+		Oindex1:      position1.Oindex,
+		DepositNum1:  position1.DepositNum,
+		Owner1:       inaddr1,
+		ConfirmSigs1: confirmSigs1,
+		Blknum2:      position2.Blknum,
+		Txindex2:     position2.TxIndex,
+		Oindex2:      position2.Oindex,
+		DepositNum2:  position2.DepositNum,
+		Owner2:       inaddr2,
+		ConfirmSigs2: confirmSigs2,
+		Newowner1:    addr1,
+		Denom1:       amount1,
+		Newowner2:    addr2,
+		Denom2:       amount2,
+		Fee:          fee,
+	}
 }
 
 // initialize a keystore in the specified directory

@@ -66,12 +66,12 @@ func TestBadSpendMsg(t *testing.T) {
 
 	// Run a check
 	cres := cc.CheckTx(txBytes)
-	assert.Equal(t, sdk.CodeType(6),
+	assert.Equal(t, sdk.CodeType(106),
 		sdk.CodeType(cres.Code), cres.Log)
 
 	// Simulate a Block
 	cc.BeginBlock(abci.RequestBeginBlock{})
 	dres := cc.DeliverTx(txBytes)
-	assert.Equal(t, sdk.CodeType(6), sdk.CodeType(dres.Code), dres.Log)
+	assert.Equal(t, sdk.CodeType(106), sdk.CodeType(dres.Code), dres.Log)
 
 }
