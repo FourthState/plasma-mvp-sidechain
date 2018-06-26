@@ -47,7 +47,7 @@
 
 [[override]]
   name = "github.com/tendermint/tmlibs"
-  branch = "develop"
+  revision = "0c98d10b4ffbd87978d79c160e835b3d3df241ec"
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"

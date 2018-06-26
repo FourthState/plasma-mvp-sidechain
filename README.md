@@ -7,7 +7,9 @@ Branch    | Tests | Coverage
 develop   | [![Build Status](https://travis-ci.org/FourthState/plasma-mvp-sidechain.svg?branch=develop)](https://travis-ci.org/FourthState/plasma-mvp-sidechain) | [![codecov](https://codecov.io/gh/FourthState/plasma-mvp-sidechain/branch/develop/graph/badge.svg)](https://codecov.io/gh/FourthState/plasma-mvp-sidechain)
 master	  | [![Build Status](https://travis-ci.org/FourthState/plasma-mvp-sidechain.svg?branch=master)](https://travis-ci.org/FourthState/plasma-mvp-sidechain) | [![codecov](https://codecov.io/gh/FourthState/plasma-mvp-sidechain/branch/master/graph/badge.svg)](https://codecov.io/gh/FourthState/plasma-mvp-sidechain)
 
-We're implementing [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) 
+This is the latest [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) version.  
+
+We have decided to modify our implementation by removing confirmation signatures as described in the [More Viable Plasma](https://ethresear.ch/t/more-viable-plasma/2160) construction.
 
 **Note**: This sidechain is being constructed to be compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain/master)  
 

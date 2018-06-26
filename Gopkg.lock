@@ -425,8 +425,7 @@
     "merkle",
     "merkle/tmhash"
   ]
-  revision = "fb7ec62b2925f48de159aeea73b254ae8c58a738"
-  version = "v0.9.0-rc1"
+  revision = "0c98d10b4ffbd87978d79c160e835b3d3df241ec"
 
 [[projects]]
   branch = "master"
@@ -538,6 +537,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "12f4b50ee1f4eea50f92802fb6659be23657688f11c18a60cb84832e6573cbb6"
+  inputs-digest = "2bc05636f5819cb15029b71f8c84044a7644bac7ee3cad5bbbb72e1f1a36da4e"
   solver-name = "gps-cdcl"
   solver-version = 1
