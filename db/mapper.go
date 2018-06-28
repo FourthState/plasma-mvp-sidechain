@@ -3,6 +3,7 @@ package db
 import (
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	amino "github.com/tendermint/go-amino"
 )
 
@@ -28,9 +29,10 @@ func NewUTXOMapper(contextKey sdk.StoreKey, cdc *amino.Codec) types.UTXOMapper {
 
 // Returns the UTXO corresponding to the go amino encoded Position struct
 // Returns nil if no UTXO exists at that position
-func (um utxoMapper) GetUTXO(ctx sdk.Context, position types.Position) types.UTXO {
+func (um utxoMapper) GetUTXO(ctx sdk.Context, address common.Address, position types.Position) types.UTXO {
 	store := ctx.KVStore(um.contextKey)
 	pos := um.encodePosition(position)
+	pos = append(address.Bytes(), pos...)
 	bz := store.Get(pos)
 
 	if bz == nil {
@@ -46,15 +48,19 @@ func (um utxoMapper) AddUTXO(ctx sdk.Context, utxo types.UTXO) {
 	position := utxo.GetPosition()
 	pos := um.encodePosition(position)
 
+	addr := utxo.GetAddress().Bytes()
+	pos = append(addr, pos...)
+
 	store := ctx.KVStore(um.contextKey)
 	bz := um.encodeUTXO(utxo)
 	store.Set(pos, bz)
 }
 
 // Deletes UTXO corresponding to the position from mapping
-func (um utxoMapper) DeleteUTXO(ctx sdk.Context, position types.Position) {
+func (um utxoMapper) DeleteUTXO(ctx sdk.Context, address common.Address, position types.Position) {
 	store := ctx.KVStore(um.contextKey)
 	pos := um.encodePosition(position)
+	pos = append(address.Bytes(), pos...)
 	store.Delete(pos)
 }
 
