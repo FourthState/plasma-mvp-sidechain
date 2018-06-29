@@ -29,10 +29,10 @@ func NewUTXOMapper(contextKey sdk.StoreKey, cdc *amino.Codec) types.UTXOMapper {
 
 // Returns the UTXO corresponding to the go amino encoded Position struct
 // Returns nil if no UTXO exists at that position
-func (um utxoMapper) GetUTXO(ctx sdk.Context, address common.Address, position types.Position) types.UTXO {
+func (um utxoMapper) GetUTXO(ctx sdk.Context, addr common.Address, position types.Position) types.UTXO {
 	store := ctx.KVStore(um.contextKey)
 	pos := um.encodePosition(position)
-	pos = append(address.Bytes(), pos...)
+	pos = append(addr.Bytes(), pos...)
 	bz := store.Get(pos)
 
 	if bz == nil {
@@ -57,10 +57,10 @@ func (um utxoMapper) AddUTXO(ctx sdk.Context, utxo types.UTXO) {
 }
 
 // Deletes UTXO corresponding to the position from mapping
-func (um utxoMapper) DeleteUTXO(ctx sdk.Context, address common.Address, position types.Position) {
+func (um utxoMapper) DeleteUTXO(ctx sdk.Context, addr common.Address, position types.Position) {
 	store := ctx.KVStore(um.contextKey)
 	pos := um.encodePosition(position)
-	pos = append(address.Bytes(), pos...)
+	pos = append(addr.Bytes(), pos...)
 	store.Delete(pos)
 }
 

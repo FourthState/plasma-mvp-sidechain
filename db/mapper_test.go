@@ -43,11 +43,11 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	assert.EqualValues(t, positionB, utxo.GetPosition())
 
 	mapper.AddUTXO(ctx, utxo)
-	utxo = mapper.GetUTXO(ctx, positionB)
+	utxo = mapper.GetUTXO(ctx, addrB, positionB)
 	assert.NotNil(t, utxo)
 
-	mapper.DeleteUTXO(ctx, positionB)
-	utxo = mapper.GetUTXO(ctx, positionB)
+	mapper.DeleteUTXO(ctx, addrB, positionB)
+	utxo = mapper.GetUTXO(ctx, addrB, positionB)
 	assert.Nil(t, utxo)
 }
 
@@ -77,16 +77,16 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 		positionB := types.Position{1000, uint16(i), 0, 0}
 		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
-		utxo = mapper.GetUTXO(ctx, positionB)
+		utxo = mapper.GetUTXO(ctx, addrB, positionB)
 		assert.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
 		position := types.Position{1000, uint16(i), 0, 0}
-		utxo := mapper.GetUTXO(ctx, position)
+		utxo := mapper.GetUTXO(ctx, addrB, position)
 		assert.NotNil(t, utxo)
-		mapper.DeleteUTXO(ctx, position)
-		utxo = mapper.GetUTXO(ctx, position)
+		mapper.DeleteUTXO(ctx, addrB, position)
+		utxo = mapper.GetUTXO(ctx, addrB, position)
 		assert.Nil(t, utxo)
 	}
 
@@ -118,16 +118,16 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 		positionB := types.Position{uint64(i), 0, 0, 0}
 		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
-		utxo = mapper.GetUTXO(ctx, positionB)
+		utxo = mapper.GetUTXO(ctx, addrB, positionB)
 		assert.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
 		position := types.Position{uint64(i), 0, 0, 0}
-		utxo := mapper.GetUTXO(ctx, position)
+		utxo := mapper.GetUTXO(ctx, addrB, position)
 		assert.NotNil(t, utxo)
-		mapper.DeleteUTXO(ctx, position)
-		utxo = mapper.GetUTXO(ctx, position)
+		mapper.DeleteUTXO(ctx, addrB, position)
+		utxo = mapper.GetUTXO(ctx, addrB, position)
 		assert.Nil(t, utxo)
 	}
 
