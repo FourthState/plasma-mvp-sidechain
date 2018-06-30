@@ -92,6 +92,46 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 
 }
 
+func TestInvalidAddress(t *testing.T) {
+	ms, capKey := SetupMultiStore()
+
+	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
+	mapper := NewUTXOMapper(capKey, MakeCodec())
+
+	privA, _ := ethcrypto.GenerateKey()
+	addrA := utils.PrivKeyToAddress(privA)
+
+	privB, _ := ethcrypto.GenerateKey()
+	addrB := utils.PrivKeyToAddress(privB)
+
+	positionB := types.Position{1000, 0, 0, 0}
+	confirmAddr := [2]common.Address{addrA, addrA}
+
+	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+	assert.NotNil(t, utxo)
+	assert.Equal(t, addrB, utxo.GetAddress())
+	assert.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
+	assert.EqualValues(t, positionB, utxo.GetPosition())
+
+	mapper.AddUTXO(ctx, utxo)
+
+	// GetUTXO with correct position but wrong address
+	utxo = mapper.GetUTXO(ctx, addrA, positionB)
+	assert.Nil(t, utxo)
+
+	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	assert.NotNil(t, utxo)
+
+	// DeleteUTXO with correct position but wrong address
+	mapper.DeleteUTXO(ctx, addrA, positionB)
+	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	assert.NotNil(t, utxo)
+
+	mapper.DeleteUTXO(ctx, addrB, positionB)
+	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	assert.Nil(t, utxo)
+}
+
 /*
 	Basic test of Multiple Additions and Deletes in the different block
 	Creates a valid UTXOs and adds them to the uxto mapping.
