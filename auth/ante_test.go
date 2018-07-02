@@ -186,7 +186,7 @@ func TestValidSingleInput(t *testing.T) {
 		Owner2:       common.Address{},
 		ConfirmSigs2: confirmSigs,
 		Newowner1:    utils.PrivKeyToAddress(privKeyA),
-		Denom1:       150,
+		Denom1:       50,
 		Newowner2:    utils.PrivKeyToAddress(privKeyA),
 		Denom2:       45,
 		Fee:          5,

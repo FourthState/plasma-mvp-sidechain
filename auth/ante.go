@@ -47,9 +47,11 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		signBytes := spendMsg.GetSignBytes()
 
 		// Verify the first input signature
+		addr1 := common.BytesToAddress(signerAddrs[0].Bytes())
 		position1 := types.Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
-		res := processSig(ctx, utxoMapper, position1, common.BytesToAddress(signerAddrs[0].Bytes()), sigs[0], signBytes)
-
+		indenom1, res := checkUTXO(ctx, utxoMapper, position1, addr1)
+		res = processSig(ctx, utxoMapper, addr1, sigs[0], signBytes)
+		
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -60,10 +62,15 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		if !res.IsOK() {
 			return ctx, res, true
 		}
+
+		inputs := indenom1
+
 		// Verify the second input
 		if utils.ValidAddress(spendMsg.Owner2) {
 			position2 := types.Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
-			res = processSig(ctx, utxoMapper, position2, common.BytesToAddress(signerAddrs[1].Bytes()), sigs[1], signBytes)
+			addr2 := common.BytesToAddress(signerAddrs[1].Bytes())
+			indenom2, res := checkUTXO(ctx, utxoMapper, position2, addr2)
+			res = processSig(ctx, utxoMapper, addr2, sigs[1], signBytes)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -74,7 +81,13 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 			if !res.IsOK() {
 				return ctx, res, true
 			}
+			
+			inputs += indenom2
 		}
+		
+		if inputs != spendMsg.Denom1 + spendMsg.Denom2 + spendMsg.Fee {
+			return ctx, sdk.ErrUnauthorized("inputs are not equal to outputs plus the fee").Result(), true
+		} 
 
 		// Increment amount of fees collected
 		if !ctx.IsCheckTx() {
@@ -88,19 +101,8 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 func processSig(
 	ctx sdk.Context, um types.UTXOMapper,
-	position types.Position, addr common.Address, sig types.Signature, signBytes []byte) (
+ 	addr common.Address, sig types.Signature, signBytes []byte) (
 	res sdk.Result) {
-
-	// Verify utxo exists
-	utxo := um.GetUTXO(ctx, position)
-	if utxo == nil {
-		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
-	}
-
-	// Verify that utxo owner equals input address in the transaction
-	if !reflect.DeepEqual(utxo.GetAddress().Bytes(), addr.Bytes()) {
-		return sdk.ErrUnauthorized("signer does not match utxo owner").Result()
-	}
 
 	hash := ethcrypto.Keccak256(signBytes)
 	pubKey1, err1 := ethcrypto.SigToPub(hash, sig.Bytes())
@@ -140,3 +142,18 @@ func processConfirmSig(
 
 	return sdk.Result{}
 }
+
+func checkUTXO(ctx sdk.Context, utxoMapper types.UTXOMapper, position types.Position, addr common.Address) (indenom uint64, res sdk.Result) {
+	utxo := utxoMapper.GetUTXO(ctx, position)
+	if utxo == nil {
+		return 0, sdk.ErrUnknownRequest("UTXO trying to be spend, does not exist").Result()
+	}
+
+	// Verify that utxo owner equals input address in the transaction
+	if !reflect.DeepEqual(utxo.GetAddress().Bytes(), addr.Bytes()) {
+		return 0, sdk.ErrUnauthorized("signer does not match utxo owner").Result()
+	}
+
+	return utxo.GetDenom(), sdk.Result{}
+}
+
