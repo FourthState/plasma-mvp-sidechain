@@ -50,7 +50,11 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		addr1 := common.BytesToAddress(signerAddrs[0].Bytes())
 		position1 := types.Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
 		indenom1, res := checkUTXO(ctx, utxoMapper, position1, addr1)
-		res = processSig(ctx, utxoMapper, addr1, sigs[0], signBytes)
+		if !res.IsOK() {
+			return ctx, res, true
+		}
+
+		res = processSig(addr1, sigs[0], signBytes)
 		
 		if !res.IsOK() {
 			return ctx, res, true
@@ -67,10 +71,14 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 		// Verify the second input
 		if utils.ValidAddress(spendMsg.Owner2) {
-			position2 := types.Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
 			addr2 := common.BytesToAddress(signerAddrs[1].Bytes())
+			position2 := types.Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
 			indenom2, res := checkUTXO(ctx, utxoMapper, position2, addr2)
-			res = processSig(ctx, utxoMapper, addr2, sigs[1], signBytes)
+			if !res.IsOK() {
+				return ctx, res, true
+			}
+
+			res = processSig(addr2, sigs[1], signBytes)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -100,7 +108,6 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 }
 
 func processSig(
-	ctx sdk.Context, um types.UTXOMapper,
  	addr common.Address, sig types.Signature, signBytes []byte) (
 	res sdk.Result) {
 
@@ -143,8 +150,10 @@ func processConfirmSig(
 	return sdk.Result{}
 }
 
-func checkUTXO(ctx sdk.Context, utxoMapper types.UTXOMapper, position types.Position, addr common.Address) (indenom uint64, res sdk.Result) {
-	utxo := utxoMapper.GetUTXO(ctx, position)
+// Checks that utxo at the position specified exists, matches the address in the SpendMsg
+// and returns the denomination associated with the utxo
+func checkUTXO(ctx sdk.Context, mapper types.UTXOMapper, position types.Position, addr common.Address) (indenom uint64, res sdk.Result) {
+	utxo := mapper.GetUTXO(ctx, position)
 	if utxo == nil {
 		return 0, sdk.ErrUnknownRequest("UTXO trying to be spend, does not exist").Result()
 	}
