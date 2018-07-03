@@ -93,7 +93,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 			inputs += indenom2
 		}
 
-		if inputs != spendMsg.Denom1+spendMsg.Denom2+spendMsg.Fee {
+		if inputs != (spendMsg.Denom1 + spendMsg.Denom2 + spendMsg.Fee) {
 			return ctx, sdk.ErrUnauthorized("inputs are not equal to outputs plus the fee").Result(), true
 		}
 
