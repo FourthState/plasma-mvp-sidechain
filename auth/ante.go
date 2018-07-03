@@ -55,7 +55,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 		}
 
 		res = processSig(addr1, sigs[0], signBytes)
-		
+
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -89,13 +89,13 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 			if !res.IsOK() {
 				return ctx, res, true
 			}
-			
+
 			inputs += indenom2
 		}
-		
-		if inputs != spendMsg.Denom1 + spendMsg.Denom2 + spendMsg.Fee {
+
+		if inputs != spendMsg.Denom1+spendMsg.Denom2+spendMsg.Fee {
 			return ctx, sdk.ErrUnauthorized("inputs are not equal to outputs plus the fee").Result(), true
-		} 
+		}
 
 		// Increment amount of fees collected
 		if !ctx.IsCheckTx() {
@@ -108,7 +108,7 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 }
 
 func processSig(
- 	addr common.Address, sig types.Signature, signBytes []byte) (
+	addr common.Address, sig types.Signature, signBytes []byte) (
 	res sdk.Result) {
 
 	hash := ethcrypto.Keccak256(signBytes)
@@ -165,4 +165,3 @@ func checkUTXO(ctx sdk.Context, mapper types.UTXOMapper, position types.Position
 
 	return utxo.GetDenom(), sdk.Result{}
 }
-

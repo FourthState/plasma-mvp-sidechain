@@ -275,7 +275,7 @@ func TestValidTransaction(t *testing.T) {
 }
 
 // Check for double input that ante handler will
-// prevent any malformed transactions with unequal 
+// prevent any malformed transactions with unequal
 // input output fee balance from being spent
 func TestDenomEquality(t *testing.T) {
 	ctx, mapper, txIndex, feeAmount := setup()
@@ -336,4 +336,3 @@ func TestDenomEquality(t *testing.T) {
 	assert.Equal(t, true, abort, "did not abort with invalid transaction")
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, res.Log)
 }
-
