@@ -186,7 +186,7 @@ func TestValidSingleInput(t *testing.T) {
 		Owner2:       common.Address{},
 		ConfirmSigs2: confirmSigs,
 		Newowner1:    utils.PrivKeyToAddress(privKeyA),
-		Denom1:       150,
+		Denom1:       50,
 		Newowner2:    utils.PrivKeyToAddress(privKeyA),
 		Denom2:       45,
 		Fee:          5,
@@ -272,4 +272,67 @@ func TestValidTransaction(t *testing.T) {
 
 	assert.Equal(t, false, abort, "aborted with valid transaction")
 	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+}
+
+// Check for double input that ante handler will
+// prevent any malformed transactions with unequal
+// input output fee balance from being spent
+func TestDenomEquality(t *testing.T) {
+	ctx, mapper, txIndex, feeAmount := setup()
+
+	privKeyA, _ := ethcrypto.GenerateKey() //Input Owner
+	privKeyB, _ := ethcrypto.GenerateKey() //ConfirmSig owner and recipient
+
+	// Generate valid inputs
+	position1 := types.Position{1, 0, 0, 0}
+	position2 := types.Position{1, 1, 0, 0}
+	confirmSigHash1 := ethcrypto.Keccak256(position1.GetSignBytes())
+	confirmSigHash2 := ethcrypto.Keccak256(position2.GetSignBytes())
+	confirmSig1, err := ethcrypto.Sign(confirmSigHash1, privKeyB)
+	require.NoError(t, err)
+	confirmSig2, err := ethcrypto.Sign(confirmSigHash2, privKeyB)
+	require.NoError(t, err)
+	confirmSigs1 := [2]types.Signature{types.Signature{confirmSig1}, types.Signature{confirmSig1}}
+	confirmSigs2 := [2]types.Signature{types.Signature{confirmSig2}, types.Signature{confirmSig2}}
+
+	//Single input
+	var msg = types.SpendMsg{
+		Blknum1:      1,
+		Txindex1:     0,
+		Oindex1:      0,
+		DepositNum1:  0,
+		Owner1:       utils.PrivKeyToAddress(privKeyA),
+		ConfirmSigs1: confirmSigs1,
+		Blknum2:      1,
+		Txindex2:     1,
+		Oindex2:      0,
+		DepositNum2:  0,
+		Owner2:       utils.PrivKeyToAddress(privKeyA),
+		ConfirmSigs2: confirmSigs2,
+		Newowner1:    utils.PrivKeyToAddress(privKeyB),
+		Denom1:       150,
+		Newowner2:    utils.PrivKeyToAddress(privKeyB),
+		Denom2:       50,
+		Fee:          5,
+	}
+	hash := ethcrypto.Keccak256(msg.GetSignBytes())
+	sig, err := ethcrypto.Sign(hash, privKeyA)
+	require.NoError(t, err)
+	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}, types.Signature{sig}})
+
+	handler := NewAnteHandler(mapper, txIndex, feeAmount)
+	_, res, abort := handler(ctx, tx)
+
+	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
+	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
+
+	utxo1 := newUTXO(privKeyB, privKeyA, position1)
+	utxo2 := newUTXO(privKeyB, privKeyA, position2)
+	mapper.AddUTXO(ctx, utxo1)
+	mapper.AddUTXO(ctx, utxo2)
+
+	_, res, abort = handler(ctx, tx)
+
+	assert.Equal(t, true, abort, "did not abort with invalid transaction")
+	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, res.Log)
 }
