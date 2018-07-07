@@ -116,6 +116,16 @@ func TestInvalidSpendDeposit(t *testing.T) {
 	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 
+// Creates an invalid transaction spending same position twice
+func TestInvalidPosition(t *testing.T) {
+	var msg1 = GenSpendMsgWithAddresses()
+	// Set second position equal to first position
+	msg1.Txindex2 = 0
+
+	err := msg1.ValidateBasic()
+	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
+}
+
 // Tests GetSigners method
 func TestGetSigners(t *testing.T) {
 	msg := GenBasicSpendMsg()
