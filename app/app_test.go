@@ -2,6 +2,8 @@ package app
 
 import (
 	"os"
+	"fmt"
+	"encoding/json"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -24,6 +26,25 @@ func newChildChain() *ChildChain {
 	return NewChildChain(logger, db)
 }
 
+func InitTestChain(addr common.Address, cc ChildChain) {
+	// Currently only initialize chain with one UTXO
+	genState := GenesisUTXO{
+		Address: addr.Hex(),
+		Denom: 100,
+		Position: [4]uint64{1, 0, 0, 0},
+	}
+	genBytes, err := json.Marshal(genState)
+	if err != nil {
+		panic(err)
+	}
+	appStateBytes := []byte(fmt.Sprint("\"UTXOs\": [%s,]", string(genBytes)))
+
+	initRequest := abci.RequestInitChain{AppStateBytes: appStateBytes}
+	cc.InitChain(initRequest)
+}
+
+func GenerateSimpleMsg()
+
 // Attempts to spend a non-existent utxo
 // without depositing first.
 func TestBadSpendMsg(t *testing.T) {
@@ -35,7 +56,7 @@ func TestBadSpendMsg(t *testing.T) {
 
 	// Construct a SpendMsg
 	var msg = types.SpendMsg{
-		Blknum1:      0,
+		Blknum1:      1,
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
@@ -73,5 +94,9 @@ func TestBadSpendMsg(t *testing.T) {
 	cc.BeginBlock(abci.RequestBeginBlock{})
 	dres := cc.DeliverTx(txBytes)
 	assert.Equal(t, sdk.CodeType(106), sdk.CodeType(dres.Code), dres.Log)
+
+}
+
+func TestSpendDeposit(t *testing.T) {
 
 }
