@@ -35,7 +35,7 @@ func TestBadSpendMsg(t *testing.T) {
 
 	// Construct a SpendMsg
 	var msg = types.SpendMsg{
-		Blknum1:      0,
+		Blknum1:      1,
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
