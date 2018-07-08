@@ -9,7 +9,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
@@ -92,13 +91,13 @@ func TestBadSpendMsg(t *testing.T) {
 
 	// Run a check
 	cres := cc.CheckTx(txBytes)
-	assert.Equal(t, sdk.CodeType(6),
+	require.Equal(t, sdk.CodeType(6),
 		sdk.CodeType(cres.Code), cres.Log)
 
 	// Simulate a Block
 	cc.BeginBlock(abci.RequestBeginBlock{})
 	dres := cc.DeliverTx(txBytes)
-	assert.Equal(t, sdk.CodeType(6), sdk.CodeType(dres.Code), dres.Log)
+	require.Equal(t, sdk.CodeType(6), sdk.CodeType(dres.Code), dres.Log)
 
 }
 
@@ -137,13 +136,13 @@ func TestSpendDeposit(t *testing.T) {
 
 	// Run a check
 	cres := cc.Check(tx)
-	assert.Equal(t, sdk.CodeType(0),
+	require.Equal(t, sdk.CodeType(0),
 		sdk.CodeType(cres.Code), cres.Log)
 
 	// Deliver tx, updates states
 	dres := cc.Deliver(tx)
 
-	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
+	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
 	// Create context
 	ctx := cc.NewContext(false, abci.Header{})
@@ -152,7 +151,7 @@ func TestSpendDeposit(t *testing.T) {
 	utxo := cc.utxoMapper.GetUTXO(ctx, types.NewPosition(1, 0, 0, 0))
 	expected := types.NewBaseUTXO(addrB, [2]common.Address{addrA, common.Address{}}, 100, types.NewPosition(1, 0, 0, 0))
 
-	assert.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
+	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 
 }
 
@@ -213,12 +212,12 @@ func TestSpendTx(t *testing.T) {
 
 	// Run a check
 	cres := cc.Check(tx)
-	assert.Equal(t, sdk.CodeType(0),
+	require.Equal(t, sdk.CodeType(0),
 		sdk.CodeType(cres.Code), cres.Log)
 
 	dres := cc.Deliver(tx)
 
-	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
+	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
 	// Create context
 	ctx := cc.NewContext(false, abci.Header{})
@@ -227,6 +226,6 @@ func TestSpendTx(t *testing.T) {
 	utxo := cc.utxoMapper.GetUTXO(ctx, types.NewPosition(5, 0, 0, 0))
 	expected := types.NewBaseUTXO(addrA, [2]common.Address{addrB, common.Address{}}, 100, types.NewPosition(5, 0, 0, 0))
 
-	assert.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
+	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 
 }

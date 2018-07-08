@@ -2,7 +2,7 @@ package auth
 
 import (
 	"crypto/ecdsa"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -48,8 +48,8 @@ func TestHandleSpendMessage(t *testing.T) {
 	mapper.AddUTXO(ctx, utxo2)
 	utxo1 = mapper.GetUTXO(ctx, positionB)
 	utxo2 = mapper.GetUTXO(ctx, positionC)
-	assert.NotNil(t, utxo1)
-	assert.NotNil(t, utxo2)
+	require.NotNil(t, utxo1)
+	require.NotNil(t, utxo2)
 
 	newownerA := utils.GenerateAddress()
 	newownerB := utils.GenerateAddress()
@@ -77,33 +77,33 @@ func TestHandleSpendMessage(t *testing.T) {
 	}
 
 	res := handler(ctx, msg)
-	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(res.Code), res.Log)
+	require.Equal(t, sdk.CodeType(0), sdk.CodeType(res.Code), res.Log)
 
-	assert.Equal(t, uint16(1), *txIndex) // txIndex incremented
+	require.Equal(t, uint16(1), *txIndex) // txIndex incremented
 
 	//Check that inputs were deleted
 	utxo := mapper.GetUTXO(ctx, positionB)
-	assert.Nil(t, utxo)
+	require.Nil(t, utxo)
 	utxo = mapper.GetUTXO(ctx, positionC)
-	assert.Nil(t, utxo)
+	require.Nil(t, utxo)
 
 	// Check to see if outputs were added
-	assert.Equal(t, int64(2), ctx.BlockHeight())
+	require.Equal(t, int64(2), ctx.BlockHeight())
 	positionD := types.Position{2, 0, 0, 0}
 	positionE := types.Position{2, 0, 1, 0}
 	utxo1 = mapper.GetUTXO(ctx, positionD)
-	assert.NotNil(t, utxo1)
+	require.NotNil(t, utxo1)
 	utxo2 = mapper.GetUTXO(ctx, positionE)
-	assert.NotNil(t, utxo2)
+	require.NotNil(t, utxo2)
 
 	// Check that outputs are valid
 	inputAddresses := [2]common.Address{utils.PrivKeyToAddress(privB), utils.PrivKeyToAddress(privC)}
-	assert.Equal(t, uint64(150), utxo1.GetDenom())
-	assert.Equal(t, uint64(50), utxo2.GetDenom())
-	assert.EqualValues(t, newownerA, utxo1.GetAddress())
-	assert.EqualValues(t, newownerB, utxo2.GetAddress())
-	assert.EqualValues(t, inputAddresses, utxo1.GetInputAddresses())
-	assert.EqualValues(t, inputAddresses, utxo2.GetInputAddresses())
+	require.Equal(t, uint64(150), utxo1.GetDenom())
+	require.Equal(t, uint64(50), utxo2.GetDenom())
+	require.EqualValues(t, newownerA, utxo1.GetAddress())
+	require.EqualValues(t, newownerB, utxo2.GetAddress())
+	require.EqualValues(t, inputAddresses, utxo1.GetInputAddresses())
+	require.EqualValues(t, inputAddresses, utxo2.GetInputAddresses())
 }
 
 // Tests a valid spendmsg
@@ -124,7 +124,7 @@ func TestOneInput(t *testing.T) {
 	utxo1 := NewUTXO(privA, privB, positionB)
 	mapper.AddUTXO(ctx, utxo1)
 	utxo1 = mapper.GetUTXO(ctx, positionB)
-	assert.NotNil(t, utxo1)
+	require.NotNil(t, utxo1)
 
 	newownerA := utils.GenerateAddress()
 	newownerB := utils.GenerateAddress()
@@ -152,26 +152,26 @@ func TestOneInput(t *testing.T) {
 	}
 
 	res := handler(ctx, msg)
-	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(res.Code), res.Log)
+	require.Equal(t, sdk.CodeType(0), sdk.CodeType(res.Code), res.Log)
 
-	assert.Equal(t, uint16(1), *txIndex) // txIndex incremented
+	require.Equal(t, uint16(1), *txIndex) // txIndex incremented
 
 	//Check that inputs were deleted
 	utxo := mapper.GetUTXO(ctx, positionB)
-	assert.Nil(t, utxo)
+	require.Nil(t, utxo)
 
 	// Check to see if outputs were added
-	assert.Equal(t, int64(2), ctx.BlockHeight())
+	require.Equal(t, int64(2), ctx.BlockHeight())
 	positionD := types.Position{2, 0, 0, 0}
 	positionE := types.Position{2, 0, 1, 0}
 	utxo1 = mapper.GetUTXO(ctx, positionD)
-	assert.NotNil(t, utxo1)
+	require.NotNil(t, utxo1)
 	utxo2 := mapper.GetUTXO(ctx, positionE)
-	assert.NotNil(t, utxo2)
+	require.NotNil(t, utxo2)
 
 	// Check that outputs are valid
-	assert.Equal(t, uint64(25), utxo1.GetDenom())
-	assert.Equal(t, uint64(75), utxo2.GetDenom())
-	assert.EqualValues(t, newownerA, utxo1.GetAddress())
-	assert.EqualValues(t, newownerB, utxo2.GetAddress())
+	require.Equal(t, uint64(25), utxo1.GetDenom())
+	require.Equal(t, uint64(75), utxo2.GetDenom())
+	require.EqualValues(t, newownerA, utxo1.GetAddress())
+	require.EqualValues(t, newownerB, utxo2.GetAddress())
 }
