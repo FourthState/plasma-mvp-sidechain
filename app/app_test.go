@@ -165,6 +165,7 @@ func TestSpendTx(t *testing.T) {
 	addrB := utils.PrivKeyToAddress(privKeyB)
 
 	InitTestChain(addrA, cc)
+	cc.Commit()
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
 
@@ -181,23 +182,11 @@ func TestSpendTx(t *testing.T) {
 		Sig: crypto.SignatureSecp256k1(sig),
 	}})
 
-	// Must commit for checkState to be set correctly. Should be fixed in next version of SDK
-	cc.BeginBlock(abci.RequestBeginBlock{})
-	cc.EndBlock(abci.RequestEndBlock{})
-	cc.Commit()
-
 	// Simulate a block
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
 
-	// Run a check
-	cres := cc.Check(tx)
-	assert.Equal(t, sdk.CodeType(0),
-		sdk.CodeType(cres.Code), cres.Log)
-
 	// Deliver tx, updates states
-	dres := cc.Deliver(tx)
-
-	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
+	cc.Deliver(tx)
 
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
@@ -223,11 +212,11 @@ func TestSpendTx(t *testing.T) {
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 5}})
 
 	// Run a check
-	cres = cc.Check(tx)
+	cres := cc.Check(tx)
 	assert.Equal(t, sdk.CodeType(0),
 		sdk.CodeType(cres.Code), cres.Log)
 
-	dres = cc.Deliver(tx)
+	dres := cc.Deliver(tx)
 
 	assert.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
