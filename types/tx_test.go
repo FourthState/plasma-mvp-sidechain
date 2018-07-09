@@ -126,7 +126,7 @@ func TestInvalidPosition(t *testing.T) {
 	msg1.Txindex2 = 0
 
 	err := msg1.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
+	require.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 
 // Tests GetSigners method
