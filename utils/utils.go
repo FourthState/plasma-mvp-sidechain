@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"math/big"
+	"reflect"
 )
 
 func ZeroAddress(addr common.Address) bool {
@@ -12,7 +13,7 @@ func ZeroAddress(addr common.Address) bool {
 }
 
 func ValidAddress(addr common.Address) bool {
-	return new(big.Int).SetBytes(addr.Bytes()).Sign() != 0 && len(addr) == 20
+	return !reflect.DeepEqual(addr, common.Address{})
 }
 
 func PrivKeyToAddress(p *ecdsa.PrivateKey) common.Address {

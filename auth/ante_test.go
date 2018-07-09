@@ -107,7 +107,7 @@ func TestNoSigs(t *testing.T) {
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort with no signatures")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with no signatures")
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with no signatures")
 }
 
 // The wrong amount of signatures are provided
@@ -124,7 +124,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with incorrect number of signatures")
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with incorrect number of signatures")
 }
 
 // The transaction is not signed by the utxo owner
@@ -155,7 +155,7 @@ func TestWrongSigner(t *testing.T) {
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort on wrong signer")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "signer address does not match owner address")
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "signer address does not match owner address")
 }
 
 // Tests a valid single input transaction
@@ -202,7 +202,7 @@ func TestValidSingleInput(t *testing.T) {
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 	utxo1 := newSingleInputUTXO(privKeyB, privKeyA, position1)
 	mapper.AddUTXO(ctx, utxo1)
@@ -210,7 +210,7 @@ func TestValidSingleInput(t *testing.T) {
 	_, res, abort = handler(ctx, tx)
 
 	assert.Equal(t, false, abort, "aborted with valid transaction")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
 }
 
 // Tests a valid transaction
@@ -261,7 +261,7 @@ func TestValidTransaction(t *testing.T) {
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 	utxo1 := newUTXO(privKeyB, privKeyA, position1)
 	utxo2 := newUTXO(privKeyB, privKeyA, position2)
@@ -271,7 +271,7 @@ func TestValidTransaction(t *testing.T) {
 	_, res, abort = handler(ctx, tx)
 
 	assert.Equal(t, false, abort, "aborted with valid transaction")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
 }
 
 // Check for double input that ante handler will
@@ -323,8 +323,8 @@ func TestDenomEquality(t *testing.T) {
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
 
-	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
+	require.Equal(t, true, abort, "did not abort on utxo that does not exist")
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 	utxo1 := newUTXO(privKeyB, privKeyA, position1)
 	utxo2 := newUTXO(privKeyB, privKeyA, position2)
@@ -334,5 +334,5 @@ func TestDenomEquality(t *testing.T) {
 	_, res, abort = handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort with invalid transaction")
-	assert.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, res.Log)
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, res.Log)
 }

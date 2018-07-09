@@ -66,6 +66,7 @@ func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
 	app.MountStoresIAVL(app.capKeyMainStore)
 
 	app.SetInitChainer(app.initChainer)
+	app.SetEndBlocker(app.endBlocker)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
 	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.txIndex, app.feeAmount))
@@ -97,6 +98,14 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 
 	// load the initial stake information
 	return abci.ResponseInitChain{}
+}
+
+func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+	// reset txIndex and fee
+	*app.txIndex = 0
+	*app.feeAmount = 0
+
+	return abci.ResponseEndBlock{}
 }
 
 // RLP decodes the txBytes to a BaseTx

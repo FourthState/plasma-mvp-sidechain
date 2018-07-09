@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -37,18 +37,19 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	confirmAddr := [2]common.Address{addrA, addrA}
 
 	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
-	assert.NotNil(t, utxo)
-	assert.Equal(t, addrB, utxo.GetAddress())
-	assert.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
-	assert.EqualValues(t, positionB, utxo.GetPosition())
+	require.NotNil(t, utxo)
+	require.Equal(t, addrB, utxo.GetAddress())
+	require.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
+	require.EqualValues(t, positionB, utxo.GetPosition())
 
 	mapper.AddUTXO(ctx, utxo)
+
 	utxo = mapper.GetUTXO(ctx, addrB, positionB)
-	assert.NotNil(t, utxo)
+	require.NotNil(t, utxo)
 
 	mapper.DeleteUTXO(ctx, addrB, positionB)
 	utxo = mapper.GetUTXO(ctx, addrB, positionB)
-	assert.Nil(t, utxo)
+	require.Nil(t, utxo)
 }
 
 /*
@@ -77,17 +78,19 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 		positionB := types.Position{1000, uint16(i), 0, 0}
 		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
+
 		utxo = mapper.GetUTXO(ctx, addrB, positionB)
-		assert.NotNil(t, utxo)
+		require.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
 		position := types.Position{1000, uint16(i), 0, 0}
+
 		utxo := mapper.GetUTXO(ctx, addrB, position)
-		assert.NotNil(t, utxo)
+		require.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, addrB, position)
 		utxo = mapper.GetUTXO(ctx, addrB, position)
-		assert.Nil(t, utxo)
+		require.Nil(t, utxo)
 	}
 
 }
@@ -108,28 +111,28 @@ func TestInvalidAddress(t *testing.T) {
 	confirmAddr := [2]common.Address{addrA, addrA}
 
 	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
-	assert.NotNil(t, utxo)
-	assert.Equal(t, addrB, utxo.GetAddress())
-	assert.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
-	assert.EqualValues(t, positionB, utxo.GetPosition())
+	require.NotNil(t, utxo)
+	require.Equal(t, addrB, utxo.GetAddress())
+	require.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
+	require.EqualValues(t, positionB, utxo.GetPosition())
 
 	mapper.AddUTXO(ctx, utxo)
 
 	// GetUTXO with correct position but wrong address
 	utxo = mapper.GetUTXO(ctx, addrA, positionB)
-	assert.Nil(t, utxo)
+	require.Nil(t, utxo)
 
 	utxo = mapper.GetUTXO(ctx, addrB, positionB)
-	assert.NotNil(t, utxo)
+	require.NotNil(t, utxo)
 
 	// DeleteUTXO with correct position but wrong address
 	mapper.DeleteUTXO(ctx, addrA, positionB)
 	utxo = mapper.GetUTXO(ctx, addrB, positionB)
-	assert.NotNil(t, utxo)
+	require.NotNil(t, utxo)
 
 	mapper.DeleteUTXO(ctx, addrB, positionB)
 	utxo = mapper.GetUTXO(ctx, addrB, positionB)
-	assert.Nil(t, utxo)
+	require.Nil(t, utxo)
 }
 
 /*
@@ -158,17 +161,19 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 		positionB := types.Position{uint64(i), 0, 0, 0}
 		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 		mapper.AddUTXO(ctx, utxo)
+
 		utxo = mapper.GetUTXO(ctx, addrB, positionB)
-		assert.NotNil(t, utxo)
+		require.NotNil(t, utxo)
 	}
 
 	for i := 0; i < 10; i++ {
 		position := types.Position{uint64(i), 0, 0, 0}
+
 		utxo := mapper.GetUTXO(ctx, addrB, position)
-		assert.NotNil(t, utxo)
+		require.NotNil(t, utxo)
 		mapper.DeleteUTXO(ctx, addrB, position)
 		utxo = mapper.GetUTXO(ctx, addrB, position)
-		assert.Nil(t, utxo)
+		require.Nil(t, utxo)
 	}
 
 }
@@ -206,21 +211,21 @@ func TestGetUTXOsForAddress(t *testing.T) {
 	mapper.AddUTXO(ctx, utxo3)
 
 	utxosForAddressB := mapper.GetUTXOsForAddress(ctx, addrB)
-	assert.NotNil(t, utxosForAddressB)
-	assert.Equal(t, 3, len(utxosForAddressB))
-	assert.Equal(t, utxo1, utxosForAddressB[0])
-	assert.Equal(t, utxo2, utxosForAddressB[1])
-	assert.Equal(t, utxo3, utxosForAddressB[2])
+	require.NotNil(t, utxosForAddressB)
+	require.Equal(t, 3, len(utxosForAddressB))
+	require.Equal(t, utxo1, utxosForAddressB[0])
+	require.Equal(t, utxo2, utxosForAddressB[1])
+	require.Equal(t, utxo3, utxosForAddressB[2])
 
 	positionC1 := types.Position{1002, 3, 0, 0}
 	utxo4 := types.NewBaseUTXO(addrC, confirmAddr, 300, positionC1)
 	mapper.AddUTXO(ctx, utxo4)
 	utxosForAddressC := mapper.GetUTXOsForAddress(ctx, addrC)
-	assert.NotNil(t, utxosForAddressC)
-	assert.Equal(t, 1, len(utxosForAddressC))
-	assert.Equal(t, utxo4, utxosForAddressC[0])
+	require.NotNil(t, utxosForAddressC)
+	require.Equal(t, 1, len(utxosForAddressC))
+	require.Equal(t, utxo4, utxosForAddressC[0])
 
 	// check returns empty slice if no UTXOs exist for address
 	utxosForAddressA := mapper.GetUTXOsForAddress(ctx, addrA)
-	assert.Empty(t, utxosForAddressA)
+	require.Empty(t, utxosForAddressA)
 }

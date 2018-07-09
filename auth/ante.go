@@ -132,7 +132,7 @@ func processConfirmSig(
 	// Verify utxo exists
 	utxo := utxoMapper.GetUTXO(ctx, addr, position)
 	if utxo == nil {
-		return sdk.ErrUnknownRequest("UTXO trying to be spent, does not exist").Result()
+		return sdk.ErrUnknownRequest("Confirm Sig verification failed: UTXO trying to be spent, does not exist").Result()
 	}
 	inputAddresses := utxo.GetInputAddresses()
 

@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/cosmos/cosmos-sdk/store"
@@ -78,7 +78,7 @@ func GenSpendMsgWithAddresses() SpendMsg {
 func TestNoOwners(t *testing.T) {
 	var msg = GenBasicSpendMsg()
 	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(101),
+	require.Equal(t, sdk.CodeType(101),
 		err.Code(), err.Error())
 }
 
@@ -89,7 +89,7 @@ func TestNoRecipients(t *testing.T) {
 	msg.Owner1 = utils.PrivKeyToAddress(privKeyA)
 	msg.Owner2 = utils.PrivKeyToAddress(privKeyA)
 	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(101),
+	require.Equal(t, sdk.CodeType(101),
 		err.Code(), err.Error())
 }
 
@@ -101,11 +101,11 @@ func TestIncorrectOIndex(t *testing.T) {
 	msg2.Oindex2 = 2
 
 	err1 := msg1.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(102),
+	require.Equal(t, sdk.CodeType(102),
 		err1.Code(), err1.Error())
 
 	err2 := msg2.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(102),
+	require.Equal(t, sdk.CodeType(102),
 		err2.Code(), err2.Error())
 
 }
@@ -116,7 +116,7 @@ func TestInvalidSpendDeposit(t *testing.T) {
 	msg1.DepositNum1 = 5
 
 	err := msg1.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
+	require.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 
 // Tests GetSigners method
@@ -128,10 +128,10 @@ func TestGetSigners(t *testing.T) {
 	msg.Owner1 = utils.PrivKeyToAddress(privKeyA)
 	addrs := []crypto.Address{crypto.Address(msg.Owner1.Bytes())}
 	signers := msg.GetSigners() // GetSigners() returns []crypto.Address by interface constraint
-	assert.Equal(t, addrs, signers, "signer Address do not match")
+	require.Equal(t, addrs, signers, "signer Address do not match")
 
 	msg.Owner2 = utils.PrivKeyToAddress(privKeyB)
 	addrs = []crypto.Address{crypto.Address(msg.Owner1.Bytes()), crypto.Address(msg.Owner2.Bytes())}
 	signers = msg.GetSigners()
-	assert.Equal(t, addrs, signers, "signer Addresses do not match")
+	require.Equal(t, addrs, signers, "signer Addresses do not match")
 }
