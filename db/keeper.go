@@ -17,8 +17,8 @@ func NewUTXOKeeper(um types.UTXOMapper) UTXOKeeper {
 
 // Delete's utxo from utxo store
 // AnteHandler should have already checked existence of the utxo
-func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, position types.Position) {
-	uk.UM.DeleteUTXO(ctx, position)
+func (uk UTXOKeeper) SpendUTXO(ctx sdk.Context, addr common.Address, position types.Position) {
+	uk.UM.DeleteUTXO(ctx, addr, position)
 }
 
 // Creates a new utxo and adds it to the utxo store

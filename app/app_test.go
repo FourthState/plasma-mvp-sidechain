@@ -148,7 +148,7 @@ func TestSpendDeposit(t *testing.T) {
 	ctx := cc.NewContext(false, abci.Header{})
 
 	// Retrieve UTXO from context
-	utxo := cc.utxoMapper.GetUTXO(ctx, types.NewPosition(1, 0, 0, 0))
+	utxo := cc.utxoMapper.GetUTXO(ctx, addrB, types.NewPosition(1, 0, 0, 0))
 	expected := types.NewBaseUTXO(addrB, [2]common.Address{addrA, common.Address{}}, 100, types.NewPosition(1, 0, 0, 0))
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
@@ -223,7 +223,7 @@ func TestSpendTx(t *testing.T) {
 	ctx := cc.NewContext(false, abci.Header{})
 
 	// Retrieve UTXO from context
-	utxo := cc.utxoMapper.GetUTXO(ctx, types.NewPosition(5, 0, 0, 0))
+	utxo := cc.utxoMapper.GetUTXO(ctx, addrA, types.NewPosition(5, 0, 0, 0))
 	expected := types.NewBaseUTXO(addrA, [2]common.Address{addrB, common.Address{}}, 100, types.NewPosition(5, 0, 0, 0))
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")

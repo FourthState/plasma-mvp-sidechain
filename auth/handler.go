@@ -25,15 +25,17 @@ func NewHandler(uk db.UTXOKeeper, txIndex *uint16) sdk.Handler {
 func handleSpendMsg(ctx sdk.Context, uk db.UTXOKeeper, msg types.SpendMsg, txIndex *uint16) sdk.Result {
 
 	position1 := types.Position{msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1}
-	utxo1 := uk.UM.GetUTXO(ctx, position1)
+	inputAddr1 := msg.Owner1
+	utxo1 := uk.UM.GetUTXO(ctx, inputAddr1, position1)
+	uk.SpendUTXO(ctx, inputAddr1, position1)
+
 	var position2 types.Position
 	var utxo2 types.UTXO
-	uk.SpendUTXO(ctx, position1)
-
-	if !utils.ZeroAddress(msg.Owner2) {
+	inputAddr2 := msg.Owner2
+	if !utils.ZeroAddress(inputAddr2) {
 		position2 = types.Position{msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2}
-		utxo2 = uk.UM.GetUTXO(ctx, position2)
-		uk.SpendUTXO(ctx, position2)
+		utxo2 = uk.UM.GetUTXO(ctx, inputAddr2, position2)
+		uk.SpendUTXO(ctx, inputAddr2, position2)
 	}
 
 	oldUTXOs := [2]types.UTXO{utxo1, utxo2}

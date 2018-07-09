@@ -46,8 +46,8 @@ func TestHandleSpendMessage(t *testing.T) {
 	utxo2 := NewUTXO(privA, privC, positionC)
 	mapper.AddUTXO(ctx, utxo1)
 	mapper.AddUTXO(ctx, utxo2)
-	utxo1 = mapper.GetUTXO(ctx, positionB)
-	utxo2 = mapper.GetUTXO(ctx, positionC)
+	utxo1 = mapper.GetUTXO(ctx, utils.PrivKeyToAddress(privB), positionB)
+	utxo2 = mapper.GetUTXO(ctx, utils.PrivKeyToAddress(privC), positionC)
 	require.NotNil(t, utxo1)
 	require.NotNil(t, utxo2)
 
@@ -82,18 +82,18 @@ func TestHandleSpendMessage(t *testing.T) {
 	require.Equal(t, uint16(1), *txIndex) // txIndex incremented
 
 	//Check that inputs were deleted
-	utxo := mapper.GetUTXO(ctx, positionB)
+	utxo := mapper.GetUTXO(ctx, utils.PrivKeyToAddress(privB), positionB)
 	require.Nil(t, utxo)
-	utxo = mapper.GetUTXO(ctx, positionC)
+	utxo = mapper.GetUTXO(ctx, utils.PrivKeyToAddress(privC), positionC)
 	require.Nil(t, utxo)
 
 	// Check to see if outputs were added
 	require.Equal(t, int64(2), ctx.BlockHeight())
 	positionD := types.Position{2, 0, 0, 0}
 	positionE := types.Position{2, 0, 1, 0}
-	utxo1 = mapper.GetUTXO(ctx, positionD)
+	utxo1 = mapper.GetUTXO(ctx, newownerA, positionD)
 	require.NotNil(t, utxo1)
-	utxo2 = mapper.GetUTXO(ctx, positionE)
+	utxo2 = mapper.GetUTXO(ctx, newownerB, positionE)
 	require.NotNil(t, utxo2)
 
 	// Check that outputs are valid
@@ -123,7 +123,7 @@ func TestOneInput(t *testing.T) {
 	positionB := types.Position{1000, 0, 0, 0}
 	utxo1 := NewUTXO(privA, privB, positionB)
 	mapper.AddUTXO(ctx, utxo1)
-	utxo1 = mapper.GetUTXO(ctx, positionB)
+	utxo1 = mapper.GetUTXO(ctx, utils.PrivKeyToAddress(privB), positionB)
 	require.NotNil(t, utxo1)
 
 	newownerA := utils.GenerateAddress()
@@ -157,16 +157,16 @@ func TestOneInput(t *testing.T) {
 	require.Equal(t, uint16(1), *txIndex) // txIndex incremented
 
 	//Check that inputs were deleted
-	utxo := mapper.GetUTXO(ctx, positionB)
+	utxo := mapper.GetUTXO(ctx, utils.PrivKeyToAddress(privB), positionB)
 	require.Nil(t, utxo)
 
 	// Check to see if outputs were added
 	require.Equal(t, int64(2), ctx.BlockHeight())
 	positionD := types.Position{2, 0, 0, 0}
 	positionE := types.Position{2, 0, 1, 0}
-	utxo1 = mapper.GetUTXO(ctx, positionD)
+	utxo1 = mapper.GetUTXO(ctx, newownerA, positionD)
 	require.NotNil(t, utxo1)
-	utxo2 := mapper.GetUTXO(ctx, positionE)
+	utxo2 := mapper.GetUTXO(ctx, newownerB, positionE)
 	require.NotNil(t, utxo2)
 
 	// Check that outputs are valid
