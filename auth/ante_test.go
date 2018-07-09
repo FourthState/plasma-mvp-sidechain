@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tmlibs/log"
 	"testing"
@@ -105,7 +106,7 @@ func TestNoSigs(t *testing.T) {
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
 
-	require.Equal(t, true, abort, "did not abort with no signatures")
+	assert.Equal(t, true, abort, "did not abort with no signatures")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with no signatures")
 }
 
@@ -122,7 +123,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
 
-	require.Equal(t, true, abort, "did not abort with incorrect number of signatures")
+	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with incorrect number of signatures")
 }
 
@@ -153,7 +154,7 @@ func TestWrongSigner(t *testing.T) {
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
 
-	require.Equal(t, true, abort, "did not abort on wrong signer")
+	assert.Equal(t, true, abort, "did not abort on wrong signer")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "signer address does not match owner address")
 }
 
@@ -200,7 +201,7 @@ func TestValidSingleInput(t *testing.T) {
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
 
-	require.Equal(t, true, abort, "did not abort on utxo that does not exist")
+	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 	utxo1 := newSingleInputUTXO(privKeyB, privKeyA, position1)
@@ -208,7 +209,7 @@ func TestValidSingleInput(t *testing.T) {
 
 	_, res, abort = handler(ctx, tx)
 
-	require.Equal(t, false, abort, "aborted with valid transaction")
+	assert.Equal(t, false, abort, "aborted with valid transaction")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
 }
 
@@ -259,7 +260,7 @@ func TestValidTransaction(t *testing.T) {
 	handler := NewAnteHandler(mapper, txIndex, feeAmount)
 	_, res, abort := handler(ctx, tx)
 
-	require.Equal(t, true, abort, "did not abort on utxo that does not exist")
+	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 	utxo1 := newUTXO(privKeyB, privKeyA, position1)
@@ -269,7 +270,7 @@ func TestValidTransaction(t *testing.T) {
 
 	_, res, abort = handler(ctx, tx)
 
-	require.Equal(t, false, abort, "aborted with valid transaction")
+	assert.Equal(t, false, abort, "aborted with valid transaction")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
 }
 
@@ -332,6 +333,6 @@ func TestDenomEquality(t *testing.T) {
 
 	_, res, abort = handler(ctx, tx)
 
-	require.Equal(t, true, abort, "did not abort with invalid transaction")
+	assert.Equal(t, true, abort, "did not abort with invalid transaction")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, res.Log)
 }
