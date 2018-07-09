@@ -1,9 +1,9 @@
 package app
 
 import (
-	"os"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"os"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -29,8 +29,8 @@ func newChildChain() *ChildChain {
 func InitTestChain(addr common.Address, cc *ChildChain) {
 	// Currently only initialize chain with one deposited UTXO
 	genState := GenesisUTXO{
-		Address: addr.Hex(),
-		Denom: 100,
+		Address:  addr.Hex(),
+		Denom:    100,
 		Position: [4]uint64{0, 0, 0, 1},
 	}
 	genBytes, err := json.Marshal(genState)
@@ -76,7 +76,7 @@ func TestBadSpendMsg(t *testing.T) {
 
 	// Construct a SpendMsg
 	msg := GenerateSimpleMsg(utils.PrivKeyToAddress(privKeyA), utils.PrivKeyToAddress(privKeyB),
-	                        	[4]uint64{1, 0, 0, 0}, 1000, 1)
+		[4]uint64{1, 0, 0, 0}, 1000, 1)
 
 	// Signs the hash of the transaction
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())

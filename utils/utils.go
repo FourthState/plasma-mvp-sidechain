@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"reflect"
 	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"math/big"
+	"reflect"
 )
 
 func ZeroAddress(addr common.Address) bool {
