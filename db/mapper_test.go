@@ -177,7 +177,7 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 	Test getting all UTXOs for an Address.
 */
 
-func TestGetAllUTXOsForAddress(t *testing.T) {
+func TestGetUTXOsForAddress(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
@@ -205,7 +205,7 @@ func TestGetAllUTXOsForAddress(t *testing.T) {
 	mapper.AddUTXO(ctx, utxo2)
 	mapper.AddUTXO(ctx, utxo3)
 
-	utxosForAddressB := mapper.GetAllUTXOsForAddress(ctx, addrB)
+	utxosForAddressB := mapper.GetUTXOsForAddress(ctx, addrB)
 	assert.NotNil(t, utxosForAddressB)
 	assert.Equal(t, 3, len(utxosForAddressB))
 	assert.Equal(t, utxo1, utxosForAddressB[0])
@@ -215,12 +215,12 @@ func TestGetAllUTXOsForAddress(t *testing.T) {
 	positionC1 := types.Position{1002, 3, 0, 0}
 	utxo4 := types.NewBaseUTXO(addrC, confirmAddr, 300, positionC1)
 	mapper.AddUTXO(ctx, utxo4)
-	utxosForAddressC := mapper.GetAllUTXOsForAddress(ctx, addrC)
+	utxosForAddressC := mapper.GetUTXOsForAddress(ctx, addrC)
 	assert.NotNil(t, utxosForAddressC)
 	assert.Equal(t, 1, len(utxosForAddressC))
 	assert.Equal(t, utxo4, utxosForAddressC[0])
 
 	// check returns empty slice if no UTXOs exist for address
-	utxosForAddressA := mapper.GetAllUTXOsForAddress(ctx, addrA)
+	utxosForAddressA := mapper.GetUTXOsForAddress(ctx, addrA)
 	assert.Empty(t, utxosForAddressA)
 }
