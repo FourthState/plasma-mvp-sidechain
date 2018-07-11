@@ -29,7 +29,8 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 				true
 		}
 
-		msg := baseTx.GetMsg()
+		// Base Tx must have only one msg
+		msg := baseTx.GetMsgs()[0]
 
 		// Assert that number of signatures is correct.
 		var signerAddrs = msg.GetSigners()

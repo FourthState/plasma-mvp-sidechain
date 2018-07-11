@@ -10,10 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	abci "github.com/tendermint/tendermint/abci/types"
+	crypto "github.com/tendermint/tendermint/crypto"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -30,8 +30,8 @@ func InitTestChain(addr common.Address, cc *ChildChain) {
 	// Currently only initialize chain with one deposited UTXO
 	genState := GenesisUTXO{
 		Address:  addr.Hex(),
-		Denom:    100,
-		Position: [4]uint64{0, 0, 0, 1},
+		Denom:    "100",
+		Position: [4]string{"0", "0", "0", "1"},
 	}
 	genBytes, err := json.Marshal(genState)
 	if err != nil {
@@ -88,6 +88,11 @@ func TestBadSpendMsg(t *testing.T) {
 	txBytes, err := rlp.EncodeToBytes(tx)
 
 	require.NoError(t, err)
+
+	// Must Commit to set checkState
+	cc.BeginBlock(abci.RequestBeginBlock{})
+	cc.EndBlock(abci.RequestEndBlock{})
+	cc.Commit()
 
 	// Run a check
 	cres := cc.CheckTx(txBytes)
@@ -185,7 +190,9 @@ func TestSpendTx(t *testing.T) {
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
 
 	// Deliver tx, updates states
-	cc.Deliver(tx)
+	res := cc.Deliver(tx)
+
+	require.True(t, res.IsOK(), res.Log)
 
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()

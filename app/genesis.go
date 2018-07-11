@@ -4,15 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strconv"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/wire"
+	"github.com/cosmos/cosmos-sdk/server/config"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -23,27 +25,34 @@ type GenesisState struct {
 
 type GenesisUTXO struct {
 	Address  string
-	Denom    uint64
-	Position [4]uint64
+	Denom    string
+	Position [4]string
 }
 
-func NewGenesisUTXO(addr string, amount uint64, position [4]uint64) GenesisUTXO {
+func NewGenesisUTXO(addr string, amount string, position [4]string) GenesisUTXO {
 	utxo := GenesisUTXO{
 		Address:  addr,
-		Denom:    100,
+		Denom:    amount,
 		Position: position,
 	}
 	return utxo
 }
 
 func ToUTXO(gutxo GenesisUTXO) types.UTXO {
+	// Any failed str conversion defaults to 0
 	addr := common.HexToAddress(gutxo.Address)
+	denom, _ := strconv.ParseUint(gutxo.Denom, 10, 64)
 	utxo := &types.BaseUTXO{
 		InputAddresses: [2]common.Address{addr, addr},
 		Address:        addr,
-		Denom:          gutxo.Denom,
+		Denom:          denom,
 	}
-	utxo.SetPosition(gutxo.Position[0], uint16(gutxo.Position[1]), uint8(gutxo.Position[2]), gutxo.Position[3])
+	blkNum, _ := strconv.ParseUint(gutxo.Position[0], 10, 64)
+	txIndex, _ := strconv.ParseUint(gutxo.Position[1], 10, 16)
+	oIndex, _ := strconv.ParseUint(gutxo.Position[2], 10, 8)
+	depNum, _ := strconv.ParseUint(gutxo.Position[3], 10, 64)
+
+	utxo.SetPosition(blkNum, uint16(txIndex), uint8(oIndex), depNum)
 	return utxo
 }
 
@@ -85,7 +94,7 @@ type PlasmaGenTx struct {
 }
 
 // Generate a gaia genesis transaction with flags
-func PlasmaAppGenTx(cdc *wire.Codec, pk crypto.PubKey) (
+func PlasmaAppGenTx(cdc *wire.Codec, pk crypto.PubKey, gentTxConfig config.GenTx) (
 	appGenTx, cliPrint json.RawMessage, validator tmtypes.GenesisValidator, err error) {
 	addrString := viper.GetString(flagAddress)
 	overwrite := viper.GetBool(flagOWK)
@@ -136,7 +145,7 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 			return
 		}
 
-		genUTXO[i] = NewGenesisUTXO(genTx.Address, 100, [4]uint64{0, 0, 0, uint64(i + 1)})
+		genUTXO[i] = NewGenesisUTXO(genTx.Address, "100", [4]string{"0", "0", "0", string(i + 1)})
 	}
 
 	// create the final app state
