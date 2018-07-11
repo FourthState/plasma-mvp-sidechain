@@ -1,10 +1,10 @@
 package db
 
 import (
-	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	amino "github.com/tendermint/go-amino"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
+	amino "github.com/tendermint/go-amino"
 )
 
 // Maps Position struct to UTXO
@@ -27,12 +27,13 @@ func NewUTXOMapper(contextKey sdk.StoreKey, cdc *amino.Codec) types.UTXOMapper {
 
 }
 
-// Returns the UTXO corresponding to the go amino encoded Position struct
+// Returns the UTXO corresponding to the address + go amino encoded Position struct
 // Returns nil if no UTXO exists at that position
-func (um utxoMapper) GetUTXO(ctx sdk.Context, position types.Position) types.UTXO {
+func (um utxoMapper) GetUTXO(ctx sdk.Context, addr common.Address, position types.Position) types.UTXO {
 	store := ctx.KVStore(um.contextKey)
-	pos := um.encodePosition(position)
-	bz := store.Get(pos)
+	key := um.constructKey(addr, position)
+
+	bz := store.Get(key)
 
 	if bz == nil {
 		return nil
@@ -42,28 +43,45 @@ func (um utxoMapper) GetUTXO(ctx sdk.Context, position types.Position) types.UTX
 	return utxo
 }
 
+// Returns all the UTXOs owned by an address.
+// Returns empty slice if no UTXO exists for the address.
+func (um utxoMapper) GetUTXOsForAddress(ctx sdk.Context, addr common.Address) []types.UTXO {
+	store := ctx.KVStore(um.contextKey)
+	iterator := sdk.KVStorePrefixIterator(store, addr.Bytes())
+	utxos := make([]types.UTXO, 0)
+
+	for ; iterator.Valid(); iterator.Next() {
+		utxo := um.decodeUTXO(iterator.Value())
+		utxos = append(utxos, utxo)
+	}
+	iterator.Close()
+
+	return utxos
+}
+
 // Adds the UTXO to the mapper
 func (um utxoMapper) AddUTXO(ctx sdk.Context, utxo types.UTXO) {
 	position := utxo.GetPosition()
-	pos := um.encodePosition(position)
-
+	address := utxo.GetAddress()
 	store := ctx.KVStore(um.contextKey)
+
+	key := um.constructKey(address, position)
 	bz := um.encodeUTXO(utxo)
-	store.Set(pos, bz)
+	store.Set(key, bz)
 }
 
-// Deletes UTXO corresponding to the position from mapping
-func (um utxoMapper) DeleteUTXO(ctx sdk.Context, position types.Position) {
+// Deletes UTXO corresponding to address + position from mapping
+func (um utxoMapper) DeleteUTXO(ctx sdk.Context, addr common.Address, position types.Position) {
 	store := ctx.KVStore(um.contextKey)
-	pos := um.encodePosition(position)
-	bz := store.Get(pos)
-	// NOTE: For testing, this should never happen
-	if bz == nil {
-		fmt.Println("Tried to Delete a UTXO that does not exist") // for testing
-		return
-	}
+	key := um.constructKey(addr, position)
+	store.Delete(key)
+}
 
-	store.Delete(pos)
+// (<address> + <encoded position>) forms the unique key that maps to an UTXO.
+func (um utxoMapper) constructKey(address common.Address, position types.Position) []byte {
+	pos := um.encodePosition(position)
+	key := append(address.Bytes(), pos...)
+	return key
 }
 
 func (um utxoMapper) encodeUTXO(utxo types.UTXO) []byte {
@@ -89,13 +107,4 @@ func (um utxoMapper) encodePosition(pos types.Position) []byte {
 		panic(err)
 	}
 	return bz
-}
-
-func (um utxoMapper) decodePosition(bz []byte) types.Position {
-	pos := types.Position{}
-	err := um.cdc.UnmarshalBinary(bz, pos)
-	if err != nil {
-		panic(err)
-	}
-	return pos
 }

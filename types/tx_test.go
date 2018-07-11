@@ -1,14 +1,16 @@
 package types
 
 import (
+	"github.com/stretchr/testify/require"
+	"testing"
+
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
-	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/tmlibs/db"
-	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
-	"testing"
+	dbm "github.com/tendermint/tendermint/libs/db"
+
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
 func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
@@ -22,23 +24,23 @@ func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 
 func GenBasicSpendMsg() SpendMsg {
 	// Creates Basic Spend Msg with no owners or recipients
-	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]Signature{Signature{}, Signature{}}
 	return SpendMsg{
 		Blknum1:      1000,
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       crypto.Address([]byte("")),
+		Owner1:       common.Address{},
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      1000,
 		Txindex2:     1,
 		Oindex2:      0,
 		DepositNum2:  0,
-		Owner2:       crypto.Address([]byte("")),
+		Owner2:       common.Address{},
 		ConfirmSigs2: confirmSigs,
-		Newowner1:    crypto.Address([]byte("")),
+		Newowner1:    common.Address{},
 		Denom1:       150,
-		Newowner2:    crypto.Address([]byte("")),
+		Newowner2:    common.Address{},
 		Denom2:       50,
 		Fee:          0,
 	}
@@ -46,7 +48,7 @@ func GenBasicSpendMsg() SpendMsg {
 
 func GenSpendMsgWithAddresses() SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
-	confirmSigs := [2]crypto.Signature{crypto.SignatureSecp256k1{}, crypto.SignatureSecp256k1{}}
+	confirmSigs := [2]Signature{Signature{}, Signature{}}
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
@@ -55,17 +57,17 @@ func GenSpendMsgWithAddresses() SpendMsg {
 		Txindex1:     0,
 		Oindex1:      0,
 		DepositNum1:  0,
-		Owner1:       utils.EthPrivKeyToSDKAddress(privKeyA),
+		Owner1:       utils.PrivKeyToAddress(privKeyA),
 		ConfirmSigs1: confirmSigs,
 		Blknum2:      1000,
 		Txindex2:     1,
 		Oindex2:      0,
 		DepositNum2:  0,
-		Owner2:       utils.EthPrivKeyToSDKAddress(privKeyA),
+		Owner2:       utils.PrivKeyToAddress(privKeyA),
 		ConfirmSigs2: confirmSigs,
-		Newowner1:    utils.EthPrivKeyToSDKAddress(privKeyB),
+		Newowner1:    utils.PrivKeyToAddress(privKeyB),
 		Denom1:       150,
-		Newowner2:    utils.EthPrivKeyToSDKAddress(privKeyB),
+		Newowner2:    utils.PrivKeyToAddress(privKeyB),
 		Denom2:       50,
 		Fee:          0,
 	}
@@ -75,7 +77,7 @@ func GenSpendMsgWithAddresses() SpendMsg {
 func TestNoOwners(t *testing.T) {
 	var msg = GenBasicSpendMsg()
 	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(101),
+	require.Equal(t, sdk.CodeType(101),
 		err.Code(), err.Error())
 }
 
@@ -83,10 +85,10 @@ func TestNoOwners(t *testing.T) {
 func TestNoRecipients(t *testing.T) {
 	privKeyA, _ := ethcrypto.GenerateKey()
 	var msg = GenBasicSpendMsg()
-	msg.Owner1 = utils.EthPrivKeyToSDKAddress(privKeyA)
-	msg.Owner2 = utils.EthPrivKeyToSDKAddress(privKeyA)
+	msg.Owner1 = utils.PrivKeyToAddress(privKeyA)
+	msg.Owner2 = utils.PrivKeyToAddress(privKeyA)
 	err := msg.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(101),
+	require.Equal(t, sdk.CodeType(101),
 		err.Code(), err.Error())
 }
 
@@ -98,11 +100,11 @@ func TestIncorrectOIndex(t *testing.T) {
 	msg2.Oindex2 = 2
 
 	err1 := msg1.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(102),
+	require.Equal(t, sdk.CodeType(102),
 		err1.Code(), err1.Error())
 
 	err2 := msg2.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(102),
+	require.Equal(t, sdk.CodeType(102),
 		err2.Code(), err2.Error())
 
 }
@@ -113,7 +115,7 @@ func TestInvalidSpendDeposit(t *testing.T) {
 	msg1.DepositNum1 = 5
 
 	err := msg1.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
+	require.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 
 // Creates an invalid transaction spending same position twice
@@ -123,7 +125,7 @@ func TestInvalidPosition(t *testing.T) {
 	msg1.Txindex2 = 0
 
 	err := msg1.ValidateBasic()
-	assert.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
+	require.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 
 // Tests GetSigners method
@@ -132,13 +134,13 @@ func TestGetSigners(t *testing.T) {
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
-	msg.Owner1 = utils.EthPrivKeyToSDKAddress(privKeyA)
-	addrs := []crypto.Address{msg.Owner1}
-	signers := msg.GetSigners()
-	assert.Equal(t, addrs, signers, "Signer Address do not match")
+	msg.Owner1 = utils.PrivKeyToAddress(privKeyA)
+	addrs := []sdk.AccAddress{sdk.AccAddress(msg.Owner1.Bytes())}
+	signers := msg.GetSigners() // GetSigners() returns []sdk.AccAddress by interface constraint
+	require.Equal(t, addrs, signers, "signer Address do not match")
 
-	msg.Owner2 = utils.EthPrivKeyToSDKAddress(privKeyB)
-	addrs = []crypto.Address{msg.Owner1, msg.Owner2}
+	msg.Owner2 = utils.PrivKeyToAddress(privKeyB)
+	addrs = []sdk.AccAddress{sdk.AccAddress(msg.Owner1.Bytes()), sdk.AccAddress(msg.Owner2.Bytes())}
 	signers = msg.GetSigners()
-	assert.Equal(t, addrs, signers, "Signer Addresses do not match")
+	require.Equal(t, addrs, signers, "signer Addresses do not match")
 }
