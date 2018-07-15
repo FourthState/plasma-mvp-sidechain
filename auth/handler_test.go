@@ -8,8 +8,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tmlibs/log"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 
 	db "github.com/FourthState/plasma-mvp-sidechain/db"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
@@ -30,7 +30,7 @@ func NewUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position types.Po
 func TestHandleSpendMessage(t *testing.T) {
 	ms, capKey := db.SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, log.NewNopLogger())
 	mapper := db.NewUTXOMapper(capKey, db.MakeCodec())
 	keeper := db.NewUTXOKeeper(mapper)
 	txIndex := new(uint16)
@@ -111,7 +111,7 @@ func TestHandleSpendMessage(t *testing.T) {
 func TestOneInput(t *testing.T) {
 	ms, capKey := db.SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{Height: 2}, false, log.NewNopLogger())
 	mapper := db.NewUTXOMapper(capKey, db.MakeCodec())
 	keeper := db.NewUTXOKeeper(mapper)
 	txIndex := new(uint16)
