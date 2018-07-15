@@ -23,7 +23,7 @@ import (
 func newChildChain() *ChildChain {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
-	return NewChildChain(logger, db)
+	return NewChildChain(logger, db, nil)
 }
 
 func InitTestChain(addr common.Address, cc *ChildChain) {
@@ -31,7 +31,7 @@ func InitTestChain(addr common.Address, cc *ChildChain) {
 	genState := GenesisUTXO{
 		Address:  addr.Hex(),
 		Denom:    "100",
-		Position: [4]string{"0", "0", "0", "1"},
+		Position: [4]string{"0", "0", "0", fmt.Sprintf("%d", 1)},
 	}
 	genBytes, err := json.Marshal(genState)
 	if err != nil {

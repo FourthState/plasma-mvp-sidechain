@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"encoding/json"
 	"errors"
 	"os"
@@ -145,7 +146,7 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 			return
 		}
 
-		genUTXO[i] = NewGenesisUTXO(genTx.Address, "100", [4]string{"0", "0", "0", string(i + 1)})
+		genUTXO[i] = NewGenesisUTXO(genTx.Address, "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i + 1)})
 	}
 
 	// create the final app state

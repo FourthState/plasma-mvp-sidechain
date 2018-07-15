@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"encoding/json"
 	"os"
 
@@ -36,12 +37,12 @@ func main() {
 	executor.Execute()
 }
 
-func newApp(logger log.Logger, db dbm.DB) abci.Application {
-	return app.NewChildChain(logger, db)
+func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
+	return app.NewChildChain(logger, db, traceStore)
 }
 
 // non-functional
-func exportAppState(logger log.Logger, db dbm.DB) (json.RawMessage, []tmtypes.GenesisValidator, error) {
-	papp := app.NewChildChain(logger, db)
+func exportAppState(logger log.Logger, db dbm.DB, traceStore io.Writer) (json.RawMessage, []tmtypes.GenesisValidator, error) {
+	papp := app.NewChildChain(logger, db, traceStore)
 	return papp.ExportAppStateJSON()
 }

@@ -62,8 +62,8 @@
     "wire",
     "x/auth"
   ]
-  revision = "080dd5b97a90005cac0c730a81fd1d6864b9fd3e"
-  version = "v0.20.0"
+  revision = "1a1373cc220e402397ad536aee6b8f5b068914c6"
+  version = "v0.21.0"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -589,6 +589,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d7f79d4e1fddb4f8fac9aa1deb38a26a007dc2a568fd22cf841f3d2ed8391684"
+  inputs-digest = "8b9532ebad7981b844bc5b9bc8324da20eaad15e1168b825fbde2422cdeba4fe"
   solver-name = "gps-cdcl"
   solver-version = 1

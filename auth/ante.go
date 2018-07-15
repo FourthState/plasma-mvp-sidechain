@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -159,7 +160,7 @@ func processConfirmSig(
 func checkUTXO(ctx sdk.Context, mapper types.UTXOMapper, position types.Position, addr common.Address) (indenom uint64, res sdk.Result) {
 	utxo := mapper.GetUTXO(ctx, addr, position)
 	if utxo == nil {
-		return 0, sdk.ErrUnknownRequest("UTXO trying to be spend, does not exist").Result()
+		return 0, sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, does not exist: %v.", position)).Result()
 	}
 
 	// Verify that utxo owner equals input address in the transaction

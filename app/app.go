@@ -1,6 +1,7 @@
 package app
 
 import (
+	"io"
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
@@ -39,10 +40,14 @@ type ChildChain struct {
 	utxoMapper types.UTXOMapper
 }
 
-func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
+func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
 	cdc := MakeCodec()
+
+	bapp := bam.NewBaseApp(appName, cdc, logger, db)
+	bapp.SetCommitMultiStoreTracer(traceStore)
+
 	var app = &ChildChain{
-		BaseApp:         bam.NewBaseApp(appName, cdc, logger, db),
+		BaseApp:         bapp,
 		cdc:             cdc,
 		txIndex:         new(uint16),
 		feeAmount:       new(uint64),

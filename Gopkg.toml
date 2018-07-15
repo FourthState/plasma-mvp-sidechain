@@ -27,7 +27,7 @@
 
 [[constraint]]
   name = "github.com/cosmos/cosmos-sdk"
-  version = "0.20.0"
+  version = "0.21.0"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
