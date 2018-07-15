@@ -10,15 +10,15 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tmlibs/log"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"testing"
 )
 
 func setup() (sdk.Context, types.UTXOMapper, *uint16, *uint64) {
 	ms, capKey := db.SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	mapper := db.NewUTXOMapper(capKey, db.MakeCodec())
 
 	return ctx, mapper, new(uint16), new(uint64)

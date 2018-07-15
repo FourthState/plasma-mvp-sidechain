@@ -1,21 +1,22 @@
 package app
 
 import (
+	"io"
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 const (
@@ -39,10 +40,14 @@ type ChildChain struct {
 	utxoMapper types.UTXOMapper
 }
 
-func NewChildChain(logger log.Logger, db dbm.DB) *ChildChain {
+func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
 	cdc := MakeCodec()
+
+	bapp := bam.NewBaseApp(appName, cdc, logger, db)
+	bapp.SetCommitMultiStoreTracer(traceStore)
+
 	var app = &ChildChain{
-		BaseApp:         bam.NewBaseApp(appName, cdc, logger, db),
+		BaseApp:         bapp,
 		cdc:             cdc,
 		txIndex:         new(uint16),
 		feeAmount:       new(uint64),

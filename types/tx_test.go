@@ -8,8 +8,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	crypto "github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/tmlibs/db"
+	dbm "github.com/tendermint/tendermint/libs/db"
 
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
@@ -136,12 +135,12 @@ func TestGetSigners(t *testing.T) {
 	privKeyB, _ := ethcrypto.GenerateKey()
 
 	msg.Owner1 = utils.PrivKeyToAddress(privKeyA)
-	addrs := []crypto.Address{crypto.Address(msg.Owner1.Bytes())}
-	signers := msg.GetSigners() // GetSigners() returns []crypto.Address by interface constraint
+	addrs := []sdk.AccAddress{sdk.AccAddress(msg.Owner1.Bytes())}
+	signers := msg.GetSigners() // GetSigners() returns []sdk.AccAddress by interface constraint
 	require.Equal(t, addrs, signers, "signer Address do not match")
 
 	msg.Owner2 = utils.PrivKeyToAddress(privKeyB)
-	addrs = []crypto.Address{crypto.Address(msg.Owner1.Bytes()), crypto.Address(msg.Owner2.Bytes())}
+	addrs = []sdk.AccAddress{sdk.AccAddress(msg.Owner1.Bytes()), sdk.AccAddress(msg.Owner2.Bytes())}
 	signers = msg.GetSigners()
 	require.Equal(t, addrs, signers, "signer Addresses do not match")
 }

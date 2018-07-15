@@ -31,7 +31,7 @@ func init() {
 	// ConfirmSigs possibly to be taken out
 	sendTxCmd.Flags().String(flagConfirmSigs, "", "Confirmation Signatures for inputs to be spent")
 	sendTxCmd.Flags().String(flagAmounts, "", "Amounts to be spent, format: amount1, amount2, fee")
-	sendTxCmd.Flags().String(client.FlagNode, "tcp://localhost:46657", "<host>:<port> to tendermint rpc interface for this chain")
+	sendTxCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	sendTxCmd.Flags().String(client.FlagAddress, "", "Address to sign with")
 	viper.BindPFlags(sendTxCmd.Flags())
 }

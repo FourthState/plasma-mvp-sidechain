@@ -7,8 +7,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tmlibs/log"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -24,7 +24,7 @@ import (
 func TestUTXOGetAddDelete(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA, _ := ethcrypto.GenerateKey()
@@ -61,7 +61,7 @@ func TestUTXOGetAddDelete(t *testing.T) {
 func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
@@ -98,7 +98,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 func TestInvalidAddress(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA, _ := ethcrypto.GenerateKey()
@@ -144,7 +144,7 @@ func TestInvalidAddress(t *testing.T) {
 func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	// These are not being tested
@@ -185,7 +185,7 @@ func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
 func TestGetUTXOsForAddress(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
-	ctx := sdk.NewContext(ms, abci.Header{}, false, nil, log.NewNopLogger())
+	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	mapper := NewUTXOMapper(capKey, MakeCodec())
 
 	privA, _ := ethcrypto.GenerateKey()

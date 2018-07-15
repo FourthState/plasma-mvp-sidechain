@@ -5,7 +5,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	rlp "github.com/ethereum/go-ethereum/rlp"
-	crypto "github.com/tendermint/go-crypto"
 )
 
 var _ sdk.Msg = SpendMsg{}
@@ -79,11 +78,11 @@ func (msg SpendMsg) GetSignBytes() []byte {
 }
 
 // Implements Msg.
-func (msg SpendMsg) GetSigners() []crypto.Address {
-	addrs := make([]crypto.Address, 1)
-	addrs[0] = crypto.Address(msg.Owner1.Bytes())
+func (msg SpendMsg) GetSigners() []sdk.AccAddress {
+	addrs := make([]sdk.AccAddress, 1)
+	addrs[0] =sdk.AccAddress(msg.Owner1.Bytes())
 	if utils.ValidAddress(msg.Owner2) {
-		addrs = append(addrs, crypto.Address(msg.Owner2.Bytes()))
+		addrs = append(addrs, sdk.AccAddress(msg.Owner2.Bytes()))
 	}
 	return addrs
 }
@@ -104,7 +103,7 @@ func NewBaseTx(msg SpendMsg, sigs []Signature) BaseTx {
 	}
 }
 
-func (tx BaseTx) GetMsg() sdk.Msg            { return tx.Msg }
+func (tx BaseTx) GetMsgs() []sdk.Msg            { return []sdk.Msg{tx.Msg} }
 func (tx BaseTx) GetSignatures() []Signature { return tx.Signatures }
 
 //-----------------------------------------
