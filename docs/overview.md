@@ -55,7 +55,7 @@ ZeroAddress(common.Address) returns true if the address provided is the zero add
 
 ValidAddress(common.Address) returns true if the address provided is properly formatted and false otherwise.
 
-EthPrivKeyToSDKAddress(*ecdsa.PrivateKey) returns the common.Address corresponding to the private key provided.
+PrivKeyToAddress(*ecdsa.PrivateKey) returns the common.Address corresponding to the private key provided.
 
 GenerateAddress() generates a random common.Address
 
