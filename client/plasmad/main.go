@@ -1,18 +1,18 @@
 package main
 
 import (
-	"io"
 	"encoding/json"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/server"
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/libs/cli"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/FourthState/plasma-mvp-sidechain/app"
 )

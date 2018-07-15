@@ -80,7 +80,7 @@ func (msg SpendMsg) GetSignBytes() []byte {
 // Implements Msg.
 func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 	addrs := make([]sdk.AccAddress, 1)
-	addrs[0] =sdk.AccAddress(msg.Owner1.Bytes())
+	addrs[0] = sdk.AccAddress(msg.Owner1.Bytes())
 	if utils.ValidAddress(msg.Owner2) {
 		addrs = append(addrs, sdk.AccAddress(msg.Owner2.Bytes()))
 	}
@@ -103,7 +103,7 @@ func NewBaseTx(msg SpendMsg, sigs []Signature) BaseTx {
 	}
 }
 
-func (tx BaseTx) GetMsgs() []sdk.Msg            { return []sdk.Msg{tx.Msg} }
+func (tx BaseTx) GetMsgs() []sdk.Msg         { return []sdk.Msg{tx.Msg} }
 func (tx BaseTx) GetSignatures() []Signature { return tx.Signatures }
 
 //-----------------------------------------
