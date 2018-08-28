@@ -44,7 +44,7 @@ func ToUTXO(gutxo GenesisUTXO) types.UTXO {
 	addr := common.HexToAddress(gutxo.Address)
 	denom, _ := strconv.ParseUint(gutxo.Denom, 10, 64)
 	utxo := &types.BaseUTXO{
-		InputAddresses: [2]common.Address{addr, addr},
+		InputAddresses: [2]common.Address{addr, common.Address{}},
 		Address:        addr,
 		Denom:          denom,
 	}
