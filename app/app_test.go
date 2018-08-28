@@ -501,3 +501,93 @@ func TestDifferentTxForms(t *testing.T) {
 
 	require.Equal(t, expected1, utxo1, "First UTXO created from merge tx did not get added to the store correctly")
 }
+
+// Test that several txs can go into a block and that txindex increments correctly
+// Change value of N to increase or decrease txs in the block
+func TestMultiTxBlocks(t *testing.T) {
+	const N = 10
+	// Initialize child chain with deposit
+	cc := newChildChain()
+	var keys [N]*ecdsa.PrivateKey
+	var addrs [N]common.Address
+	var msgs [N]types.SpendMsg
+	var txs [N]sdk.Tx
+
+	for i := 0; i < N; i++ {
+		keys[i], _ = ethcrypto.GenerateKey()
+		addrs[i] = utils.PrivKeyToAddress(keys[i])
+	}
+
+	// Make genesis state with several txs
+	var genUTXOs []GenesisUTXO
+	for i := 0; i < N; i++ {
+		genUTXOs = append(genUTXOs, NewGenesisUTXO(addrs[i].Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
+	}
+
+	genState := GenesisState{
+		UTXOs: genUTXOs,
+	}
+
+	genBytes, err := json.Marshal(genState)
+	if err != nil {
+		panic(err)
+	}
+
+	initRequest := abci.RequestInitChain{AppStateBytes: genBytes}
+	cc.InitChain(initRequest)
+	cc.Commit()
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
+
+	for i := uint64(0); i < N; i++ {
+		msgs[i] = GenerateSimpleMsg(addrs[i], addrs[i], [4]uint64{0, 0, 0, i + 1}, 100, 0)
+		msgs[i].ConfirmSigs1 = CreateConfirmSig(types.NewPosition(0, 0, 0, i+1), keys[i], &ecdsa.PrivateKey{}, false)
+		txs[i] = GetTx(msgs[i], keys[i])
+
+		cres := cc.Check(txs[i])
+		require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
+
+		dres := cc.Deliver(txs[i])
+		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
+
+	}
+	ctx := cc.NewContext(false, abci.Header{})
+
+	// Retrieve and check UTXO from context
+	for i := uint16(0); i < N; i++ {
+		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[i], types.NewPosition(1, i, 0, 0))
+		expected := types.NewBaseUTXO(addrs[i], [2]common.Address{addrs[i], common.Address{}}, 100, types.NewPosition(1, i, 0, 0))
+
+		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
+	}
+
+	cc.EndBlock(abci.RequestEndBlock{})
+	cc.Commit()
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 2}})
+
+	// send to different address
+	for i := uint16(0); i < N; i++ {
+		msgs[i].Blknum1 = 1
+		msgs[i].Txindex1 = i
+		msgs[i].DepositNum1 = 0
+		msgs[i].ConfirmSigs1 = CreateConfirmSig(types.NewPosition(1, i, 0, 0), keys[i], &ecdsa.PrivateKey{}, false)
+		msgs[i].Newowner1 = addrs[(i+1)%N]
+		txs[i] = GetTx(msgs[i], keys[i])
+
+		cres := cc.Check(txs[i])
+		require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
+
+		dres := cc.Deliver(txs[i])
+		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
+	}
+
+	ctx = cc.NewContext(false, abci.Header{})
+
+	// Retrieve and check UTXO from context
+	for i := uint16(0); i < N; i++ {
+		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[(i+1)%N], types.NewPosition(2, i, 0, 0))
+		expected := types.NewBaseUTXO(addrs[(i+1)%N], [2]common.Address{addrs[i], common.Address{}}, 100, types.NewPosition(2, i, 0, 0))
+
+		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
+	}
+
+}
