@@ -275,6 +275,7 @@ func TestDifferentTxForms(t *testing.T) {
 	confirmSig1 := CreateConfirmSig(types.NewPosition(0, 0, 0, 1), keys[0], &ecdsa.PrivateKey{}, false)
 
 	// Create first tx, 1 input 2 output
+	// Block 7
 	msg := types.SpendMsg{
 		Blknum1:      0,
 		Txindex1:     uint16(0),
@@ -320,10 +321,14 @@ func TestDifferentTxForms(t *testing.T) {
 	require.Equal(t, expected1, utxo1, "First UTXO did not get added to store correctly")
 	require.Equal(t, expected2, utxo2, "Second UTXO did not get added to store correctly")
 
+	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[0], types.NewPosition(0, 0, 0, 1))
+	require.Nil(t, utxo1, "Deposit was not removed from utxo store")
+
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
 
 	// 2 different inputs 1 output
+	// Block 8
 	confirmSig1 = CreateConfirmSig(types.NewPosition(7, 0, 0, 0), keys[0], &ecdsa.PrivateKey{}, false)
 	confirmSig2 := CreateConfirmSig(types.NewPosition(7, 0, 1, 0), keys[0], &ecdsa.PrivateKey{}, false)
 
@@ -374,10 +379,18 @@ func TestDifferentTxForms(t *testing.T) {
 
 	require.Equal(t, expected1, utxo1, "UTXO with 2 different inputs did not get added to the store correctly")
 
+	// Check that utxo's were removed
+	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[1], types.NewPosition(7, 0, 0, 0))
+	require.Nil(t, utxo1, "UTXO spent in block 8 was not removed correctly from the utxo store")
+
+	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[2], types.NewPosition(7, 0, 1, 0))
+	require.Nil(t, utxo2)
+
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
 
 	// split utxo up so 4 outputs can be used
+	// Block 9
 	confirmSig1 = CreateConfirmSig(types.NewPosition(8, 0, 0, 0), keys[1], keys[2], true)
 
 	msg = types.SpendMsg{
@@ -421,11 +434,15 @@ func TestDifferentTxForms(t *testing.T) {
 	require.Equal(t, expected1, utxo1, "First UTXO created from split did not get added to the store correctly")
 	require.Equal(t, expected2, utxo2, "Second UTXO created from split did not get added to the store correctly")
 
+	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(8, 0, 0, 0))
+	require.Nil(t, utxo1, "first UTXO spent in block 9 was not removed correctly from the utxo store")
+
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 10}})
 
 	// 2 different inputs, 2 outputs (same)
+	// Block 10
 	confirmSig1 = CreateConfirmSig(types.NewPosition(9, 0, 0, 0), keys[3], &ecdsa.PrivateKey{}, false)
 	confirmSig2 = CreateConfirmSig(types.NewPosition(9, 0, 1, 0), keys[3], &ecdsa.PrivateKey{}, false)
 
@@ -463,11 +480,18 @@ func TestDifferentTxForms(t *testing.T) {
 	require.Equal(t, expected1, utxo1, "First UTXO created from 2 differnet inputs 2 outputs did not get added to the store correctly")
 	require.Equal(t, expected2, utxo2, "Second UTXO created from 2 different inputs 2 outputs did not get added to the store correctly")
 
+	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(9, 0, 0, 0))
+	require.Nil(t, utxo1, "first UTXO spent in block 10 was not removed correctly from the utxo store")
+
+	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[4], types.NewPosition(9, 0, 1, 0))
+	require.Nil(t, utxo2, "second UTXO spent in block 10 was not removed correctly from the utxo store")
+
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 11}})
 
 	// merge utxos
+	// Block 11
 	confirmSig1 = CreateConfirmSig(types.NewPosition(10, 0, 0, 0), keys[3], keys[4], true)
 	confirmSig2 = CreateConfirmSig(types.NewPosition(10, 0, 1, 0), keys[3], keys[4], true)
 
@@ -500,12 +524,18 @@ func TestDifferentTxForms(t *testing.T) {
 	expected1 = types.NewBaseUTXO(addrs[3], [2]common.Address{addrs[3], addrs[3]}, 100, types.NewPosition(11, 0, 0, 0))
 
 	require.Equal(t, expected1, utxo1, "First UTXO created from merge tx did not get added to the store correctly")
+
+	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(10, 0, 0, 0))
+	require.Nil(t, utxo1, "first UTXO spent in block 11 was not removed correctly from the utxo store")
+
+	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(10, 0, 1, 0))
+	require.Nil(t, utxo2, "second UTXO spent in block 11 was not removed correctly from the utxo store")
 }
 
 // Test that several txs can go into a block and that txindex increments correctly
 // Change value of N to increase or decrease txs in the block
 func TestMultiTxBlocks(t *testing.T) {
-	const N = 10
+	const N = 20
 	// Initialize child chain with deposit
 	cc := newChildChain()
 	var keys [N]*ecdsa.PrivateKey
@@ -558,6 +588,9 @@ func TestMultiTxBlocks(t *testing.T) {
 		expected := types.NewBaseUTXO(addrs[i], [2]common.Address{addrs[i], common.Address{}}, 100, types.NewPosition(1, i, 0, 0))
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
+
+		utxo = cc.utxoMapper.GetUTXO(ctx, addrs[i], types.NewPosition(0, 0, 0, uint64(i)+1))
+		require.Nil(t, utxo, fmt.Sprintf("deposit %d did not get removed correctly from the utxo store", i+1))
 	}
 
 	cc.EndBlock(abci.RequestEndBlock{})
@@ -588,6 +621,9 @@ func TestMultiTxBlocks(t *testing.T) {
 		expected := types.NewBaseUTXO(addrs[(i+1)%N], [2]common.Address{addrs[i], common.Address{}}, 100, types.NewPosition(2, i, 0, 0))
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
+
+		utxo = cc.utxoMapper.GetUTXO(ctx, addrs[i], types.NewPosition(1, i, 0, 0))
+		require.Nil(t, utxo, fmt.Sprintf("UTXO %d  did not get removed from the utxo store correctly", i))
 	}
 
 }
