@@ -27,18 +27,21 @@ func newChildChain() *ChildChain {
 	return NewChildChain(logger, db, nil)
 }
 
-func InitTestChain(addr common.Address, cc *ChildChain) {
-	// Currently only initialize chain with one deposited UTXO
-	genState := GenesisUTXO{
-		Address:  addr.Hex(),
-		Denom:    "100",
-		Position: [4]string{"0", "0", "0", fmt.Sprintf("%d", 1)},
+// Creates a deposit of value 100 for each address in input
+func InitTestChain(addrs []common.Address, cc *ChildChain) {
+	var genUTXOs []GenesisUTXO
+	for i := 0; i < len(addrs); i++ {
+		genUTXOs = append(genUTXOs, NewGenesisUTXO(addrs[i].Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
 	}
-	genBytes, err := json.Marshal(genState)
+
+	genState := GenesisState{
+		UTXOs: genUTXOs,
+	}
+
+	appStateBytes, err := json.Marshal(genState)
 	if err != nil {
 		panic(err)
 	}
-	appStateBytes := []byte(fmt.Sprintf("{\"UTXOs\": [%s]}", string(genBytes)))
 
 	initRequest := abci.RequestInitChain{AppStateBytes: appStateBytes}
 	cc.InitChain(initRequest)
@@ -67,29 +70,34 @@ func GenerateSimpleMsg(Owner1, NewOwner1 common.Address, position [4]uint64, den
 	}
 }
 
-// Returns a confirmsig array signed by privKey. two should be true if two positions are passed in.
-// Assumes at least first position is passed in
-func CreateConfirmSig(position1 types.Position, privKey1, privKey2 *ecdsa.PrivateKey, two bool) (confirmSigs [2]types.Signature) {
+// Returns a confirmsig array signed by privKey1 and privKey2
+func CreateConfirmSig(position1 types.Position, privKey1, privKey2 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
 	confirmBytes := position1.GetSignBytes()
 	hash := ethcrypto.Keccak256(confirmBytes)
 	confirmSig, _ := ethcrypto.Sign(hash, privKey1)
-	if two {
-		confirmSig2, _ := ethcrypto.Sign(hash, privKey2)
-		confirmSigs = [2]types.Signature{types.Signature{confirmSig}, types.Signature{confirmSig2}}
-	} else {
-		confirmSigs = [2]types.Signature{types.Signature{confirmSig}, types.Signature{}}
-	}
 
+	var confirmSig2 []byte
+	if two_inputs {
+		confirmSig2, _ = ethcrypto.Sign(hash, privKey2)
+	}
+	confirmSigs = [2]types.Signature{types.Signature{confirmSig}, types.Signature{confirmSig2}}
 	return confirmSigs
 }
 
-// helper for constructing single input tx
-func GetTx(msg types.SpendMsg, privKey *ecdsa.PrivateKey) (tx sdk.Tx) {
+// helper for constructing single or double input tx
+func GetTx(msg types.SpendMsg, privKeyA, privKeyB *ecdsa.PrivateKey, two_sigs bool) (tx types.BaseTx) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	sig, _ := ethcrypto.Sign(hash, privKey)
+	sig1, _ := ethcrypto.Sign(hash, privKeyA)
+
 	tx = types.NewBaseTx(msg, []types.Signature{{
-		Sig: sig,
+		Sig: sig1,
 	}})
+
+	if two_sigs {
+		sig2, _ := ethcrypto.Sign(hash, privKeyB)
+		tx.Signatures = append(tx.Signatures, types.Signature{sig2})
+	}
+
 	return tx
 }
 
@@ -141,7 +149,7 @@ func TestSpendDeposit(t *testing.T) {
 	addrA := utils.PrivKeyToAddress(privKeyA)
 	addrB := utils.PrivKeyToAddress(privKeyB)
 
-	InitTestChain(addrA, cc)
+	InitTestChain([]common.Address{addrA}, cc)
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
 
@@ -192,7 +200,7 @@ func TestSpendTx(t *testing.T) {
 	addrA := utils.PrivKeyToAddress(privKeyA)
 	addrB := utils.PrivKeyToAddress(privKeyB)
 
-	InitTestChain(addrA, cc)
+	InitTestChain([]common.Address{addrA}, cc)
 	cc.Commit()
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
@@ -261,275 +269,102 @@ func TestDifferentTxForms(t *testing.T) {
 	// Initialize child chain with deposit
 	cc := newChildChain()
 	var keys [6]*ecdsa.PrivateKey
-	var addrs [6]common.Address
+	var addrs []common.Address
 
 	for i := 0; i < 6; i++ {
 		keys[i], _ = ethcrypto.GenerateKey()
-		addrs[i] = utils.PrivKeyToAddress(keys[i])
+		addrs = append(addrs, utils.PrivKeyToAddress(keys[i]))
 	}
 
-	InitTestChain(addrs[0], cc)
+	InitTestChain(addrs, cc)
 	cc.Commit()
 
-	// Create confirm signature
-	confirmSig1 := CreateConfirmSig(types.NewPosition(0, 0, 0, 1), keys[0], &ecdsa.PrivateKey{}, false)
-
-	// Create first tx, 1 input 2 output
-	// Block 7
-	msg := types.SpendMsg{
-		Blknum1:      0,
-		Txindex1:     uint16(0),
-		Oindex1:      uint8(0),
-		DepositNum1:  1,
-		Owner1:       addrs[0],
-		ConfirmSigs1: confirmSig1,
-		Blknum2:      0,
-		Txindex2:     0,
-		Oindex2:      0,
-		DepositNum2:  0,
-		Owner2:       common.Address{},
-		ConfirmSigs2: [2]types.Signature{types.Signature{}, types.Signature{}},
-		Newowner1:    addrs[1],
-		Denom1:       20,
-		Newowner2:    addrs[2],
-		Denom2:       80,
-		Fee:          0,
+	cases := []struct {
+		owner_index1   uint64
+		position1      types.Position
+		input_index1_1 uint64
+		input_index1_2 uint64
+		owner_index2   uint64
+		addr2          common.Address
+		position2      types.Position
+		input_index2_1 uint64
+		input_index2_2 uint64
+		newowner1      common.Address
+		denom1         uint64
+		newowner2      common.Address
+		denom2         uint64
+	}{
+		// 1 input 2 output
+		{0, types.NewPosition(0, 0, 0, 1), 0, 0, 0, common.Address{}, types.Position{}, 0, 0, addrs[1], 20, addrs[2], 80},
+		// 2 different inputs, 1 output
+		{1, types.NewPosition(7, 0, 0, 0), 0, 0, 2, addrs[2], types.NewPosition(7, 0, 1, 0), 0, 0, addrs[3], 100, common.Address{}, 0},
+		// 1 input 2 ouput
+		{3, types.NewPosition(8, 0, 0, 0), 1, 2, 0, common.Address{}, types.Position{}, 0, 0, addrs[3], 75, addrs[4], 25},
+		// 2 different inputs 2 outputs
+		{3, types.NewPosition(9, 0, 0, 0), 3, 0, 4, addrs[4], types.NewPosition(9, 0, 1, 0), 3, 0, addrs[3], 70, addrs[3], 30},
+		// 2 same inputs, 1 output (merge)
+		{3, types.NewPosition(10, 0, 0, 0), 3, 4, 3, addrs[3], types.NewPosition(10, 0, 1, 0), 3, 4, addrs[3], 100, common.Address{}, 0},
 	}
 
-	// Sign the hash of the transaction
-	tx := GetTx(msg, keys[0])
+	for index, tc := range cases {
+		cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 7 + int64(index)}})
 
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 7}})
+		msg := types.SpendMsg{
+			Blknum1:      tc.position1.Blknum,
+			Txindex1:     tc.position1.TxIndex,
+			Oindex1:      tc.position1.Oindex,
+			DepositNum1:  tc.position1.DepositNum,
+			Owner1:       addrs[tc.owner_index1],
+			ConfirmSigs1: CreateConfirmSig(tc.position1, keys[tc.input_index1_1], keys[tc.input_index1_2], true),
+			Blknum2:      tc.position2.Blknum,
+			Txindex2:     tc.position2.TxIndex,
+			Oindex2:      tc.position2.Oindex,
+			DepositNum2:  tc.position2.DepositNum,
+			Owner2:       tc.addr2,
+			ConfirmSigs2: CreateConfirmSig(tc.position2, keys[tc.input_index2_1], keys[tc.input_index2_2], true),
+			Newowner1:    tc.newowner1,
+			Denom1:       tc.denom1,
+			Newowner2:    tc.newowner2,
+			Denom2:       tc.denom2,
+			Fee:          0,
+		}
 
-	// Run a check
-	cres := cc.Check(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
+		tx := GetTx(msg, keys[tc.owner_index1], keys[tc.owner_index2], !utils.ZeroAddress(msg.Owner2))
 
-	dres := cc.Deliver(tx)
+		// Run a check
+		cres := cc.Check(tx)
+		require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
 
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
+		dres := cc.Deliver(tx)
 
-	// Create context
-	ctx := cc.NewContext(false, abci.Header{})
+		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
-	// Retrieve UTXO from context
-	utxo1 := cc.utxoMapper.GetUTXO(ctx, addrs[1], types.NewPosition(7, 0, 0, 0))
-	expected1 := types.NewBaseUTXO(addrs[1], [2]common.Address{addrs[0], common.Address{}}, 20, types.NewPosition(7, 0, 0, 0))
-	utxo2 := cc.utxoMapper.GetUTXO(ctx, addrs[2], types.NewPosition(7, 0, 1, 0))
-	expected2 := types.NewBaseUTXO(addrs[2], [2]common.Address{addrs[0], common.Address{}}, 80, types.NewPosition(7, 0, 1, 0))
+		// Create context
+		ctx := cc.NewContext(false, abci.Header{})
 
-	require.Equal(t, expected1, utxo1, "First UTXO did not get added to store correctly")
-	require.Equal(t, expected2, utxo2, "Second UTXO did not get added to store correctly")
+		// Retrieve utxo from context
+		utxo := cc.utxoMapper.GetUTXO(ctx, tc.newowner1, types.NewPosition(uint64(index)+7, 0, 0, 0))
+		expected := types.NewBaseUTXO(tc.newowner1, [2]common.Address{msg.Owner1, msg.Owner2}, tc.denom1, types.NewPosition(uint64(index)+7, 0, 0, 0))
+		require.Equal(t, expected, utxo, "First UTXO did not get added to the utxo store correctly")
 
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[0], types.NewPosition(0, 0, 0, 1))
-	require.Nil(t, utxo1, "Deposit was not removed from utxo store")
+		if !utils.ZeroAddress(msg.Newowner2) {
+			utxo = cc.utxoMapper.GetUTXO(ctx, tc.newowner2, types.NewPosition(uint64(index)+7, 0, 1, 0))
+			expected = types.NewBaseUTXO(tc.newowner2, [2]common.Address{msg.Owner1, msg.Owner2}, tc.denom2, types.NewPosition(uint64(index)+7, 0, 1, 0))
+			require.Equal(t, expected, utxo, "Second UTXO did not get added to the utxo store correctly")
+		}
 
-	cc.EndBlock(abci.RequestEndBlock{})
-	cc.Commit()
+		// Check that inputs were removed
+		utxo = cc.utxoMapper.GetUTXO(ctx, msg.Owner1, tc.position1)
+		require.Nil(t, utxo, "first input was not removed from the utxo store")
 
-	// 2 different inputs 1 output
-	// Block 8
-	confirmSig1 = CreateConfirmSig(types.NewPosition(7, 0, 0, 0), keys[0], &ecdsa.PrivateKey{}, false)
-	confirmSig2 := CreateConfirmSig(types.NewPosition(7, 0, 1, 0), keys[0], &ecdsa.PrivateKey{}, false)
+		if !utils.ZeroAddress(msg.Owner2) {
+			utxo = cc.utxoMapper.GetUTXO(ctx, msg.Owner2, tc.position2)
+			require.Nil(t, utxo, "second input was not removed from the utxo store")
+		}
 
-	msg = types.SpendMsg{
-		Blknum1:      7,
-		Txindex1:     uint16(0),
-		Oindex1:      uint8(0),
-		DepositNum1:  0,
-		Owner1:       addrs[1],
-		ConfirmSigs1: confirmSig1,
-		Blknum2:      7,
-		Txindex2:     uint16(0),
-		Oindex2:      uint8(1),
-		DepositNum2:  0,
-		Owner2:       addrs[2],
-		ConfirmSigs2: confirmSig2,
-		Newowner1:    addrs[3],
-		Denom1:       100,
-		Newowner2:    common.Address{},
-		Denom2:       0,
-		Fee:          0,
+		cc.EndBlock(abci.RequestEndBlock{})
+		cc.Commit()
 	}
-
-	// Sign the hash of the transaction
-	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	sig1, _ := ethcrypto.Sign(hash, keys[1])
-	sig2, _ := ethcrypto.Sign(hash, keys[2])
-	tx = types.NewBaseTx(msg, []types.Signature{{
-		Sig: sig1,
-	}, {
-		Sig: sig2,
-	}})
-
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 8}})
-
-	// Run a check
-	cres = cc.Check(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
-
-	dres = cc.Deliver(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
-
-	ctx = cc.NewContext(false, abci.Header{})
-
-	// Retrieve UTXO from context
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(8, 0, 0, 0))
-	expected1 = types.NewBaseUTXO(addrs[3], [2]common.Address{addrs[1], addrs[2]}, 100, types.NewPosition(8, 0, 0, 0))
-
-	require.Equal(t, expected1, utxo1, "UTXO with 2 different inputs did not get added to the store correctly")
-
-	// Check that utxo's were removed
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[1], types.NewPosition(7, 0, 0, 0))
-	require.Nil(t, utxo1, "UTXO spent in block 8 was not removed correctly from the utxo store")
-
-	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[2], types.NewPosition(7, 0, 1, 0))
-	require.Nil(t, utxo2)
-
-	cc.EndBlock(abci.RequestEndBlock{})
-	cc.Commit()
-
-	// split utxo up so 4 outputs can be used
-	// Block 9
-	confirmSig1 = CreateConfirmSig(types.NewPosition(8, 0, 0, 0), keys[1], keys[2], true)
-
-	msg = types.SpendMsg{
-		Blknum1:      8,
-		Txindex1:     uint16(0),
-		Oindex1:      uint8(0),
-		DepositNum1:  0,
-		Owner1:       addrs[3],
-		ConfirmSigs1: confirmSig1,
-		Blknum2:      0,
-		Txindex2:     uint16(0),
-		Oindex2:      uint8(0),
-		DepositNum2:  0,
-		Owner2:       common.Address{},
-		ConfirmSigs2: [2]types.Signature{types.Signature{}, types.Signature{}},
-		Newowner1:    addrs[3],
-		Denom1:       75,
-		Newowner2:    addrs[4],
-		Denom2:       25,
-		Fee:          0,
-	}
-
-	tx = GetTx(msg, keys[3])
-
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 9}})
-
-	// Run a check
-	cres = cc.Check(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
-
-	dres = cc.Deliver(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
-
-	ctx = cc.NewContext(false, abci.Header{})
-
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(9, 0, 0, 0))
-	expected1 = types.NewBaseUTXO(addrs[3], [2]common.Address{addrs[3], common.Address{}}, 75, types.NewPosition(9, 0, 0, 0))
-	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[4], types.NewPosition(9, 0, 1, 0))
-	expected2 = types.NewBaseUTXO(addrs[4], [2]common.Address{addrs[3], common.Address{}}, 25, types.NewPosition(9, 0, 1, 0))
-
-	require.Equal(t, expected1, utxo1, "First UTXO created from split did not get added to the store correctly")
-	require.Equal(t, expected2, utxo2, "Second UTXO created from split did not get added to the store correctly")
-
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(8, 0, 0, 0))
-	require.Nil(t, utxo1, "first UTXO spent in block 9 was not removed correctly from the utxo store")
-
-	cc.EndBlock(abci.RequestEndBlock{})
-	cc.Commit()
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 10}})
-
-	// 2 different inputs, 2 outputs (same)
-	// Block 10
-	confirmSig1 = CreateConfirmSig(types.NewPosition(9, 0, 0, 0), keys[3], &ecdsa.PrivateKey{}, false)
-	confirmSig2 = CreateConfirmSig(types.NewPosition(9, 0, 1, 0), keys[3], &ecdsa.PrivateKey{}, false)
-
-	msg.Blknum1 = 9
-	msg.ConfirmSigs1 = confirmSig1
-	msg.Blknum2 = 9
-	msg.Oindex2 = uint8(1)
-	msg.Owner2 = addrs[4]
-	msg.ConfirmSigs2 = confirmSig2
-	msg.Denom1 = 70
-	msg.Newowner2 = addrs[3]
-	msg.Denom2 = 30
-
-	hash = ethcrypto.Keccak256(msg.GetSignBytes())
-	sig1, _ = ethcrypto.Sign(hash, keys[3])
-	sig2, _ = ethcrypto.Sign(hash, keys[4])
-	tx = types.NewBaseTx(msg, []types.Signature{{
-		Sig: sig1,
-	}, {
-		Sig: sig2,
-	}})
-
-	cres = cc.Check(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
-
-	dres = cc.Deliver(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
-	ctx = cc.NewContext(false, abci.Header{})
-
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(10, 0, 0, 0))
-	expected1 = types.NewBaseUTXO(addrs[3], [2]common.Address{addrs[3], addrs[4]}, 70, types.NewPosition(10, 0, 0, 0))
-	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(10, 0, 1, 0))
-	expected2 = types.NewBaseUTXO(addrs[3], [2]common.Address{addrs[3], addrs[4]}, 30, types.NewPosition(10, 0, 1, 0))
-
-	require.Equal(t, expected1, utxo1, "First UTXO created from 2 differnet inputs 2 outputs did not get added to the store correctly")
-	require.Equal(t, expected2, utxo2, "Second UTXO created from 2 different inputs 2 outputs did not get added to the store correctly")
-
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(9, 0, 0, 0))
-	require.Nil(t, utxo1, "first UTXO spent in block 10 was not removed correctly from the utxo store")
-
-	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[4], types.NewPosition(9, 0, 1, 0))
-	require.Nil(t, utxo2, "second UTXO spent in block 10 was not removed correctly from the utxo store")
-
-	cc.EndBlock(abci.RequestEndBlock{})
-	cc.Commit()
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 11}})
-
-	// merge utxos
-	// Block 11
-	confirmSig1 = CreateConfirmSig(types.NewPosition(10, 0, 0, 0), keys[3], keys[4], true)
-	confirmSig2 = CreateConfirmSig(types.NewPosition(10, 0, 1, 0), keys[3], keys[4], true)
-
-	msg.Blknum1 = 10
-	msg.ConfirmSigs1 = confirmSig1
-	msg.Blknum2 = 10
-	msg.Owner2 = addrs[3]
-	msg.ConfirmSigs2 = confirmSig2
-	msg.Denom1 = 100
-	msg.Newowner2 = common.Address{}
-	msg.Denom2 = 0
-
-	hash = ethcrypto.Keccak256(msg.GetSignBytes())
-	sig1, _ = ethcrypto.Sign(hash, keys[3])
-	tx = types.NewBaseTx(msg, []types.Signature{{
-		Sig: sig1,
-	}, {
-		Sig: sig1,
-	}})
-
-	cres = cc.Check(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
-
-	dres = cc.Deliver(tx)
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
-
-	ctx = cc.NewContext(false, abci.Header{})
-
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(11, 0, 0, 0))
-	expected1 = types.NewBaseUTXO(addrs[3], [2]common.Address{addrs[3], addrs[3]}, 100, types.NewPosition(11, 0, 0, 0))
-
-	require.Equal(t, expected1, utxo1, "First UTXO created from merge tx did not get added to the store correctly")
-
-	utxo1 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(10, 0, 0, 0))
-	require.Nil(t, utxo1, "first UTXO spent in block 11 was not removed correctly from the utxo store")
-
-	utxo2 = cc.utxoMapper.GetUTXO(ctx, addrs[3], types.NewPosition(10, 0, 1, 0))
-	require.Nil(t, utxo2, "second UTXO spent in block 11 was not removed correctly from the utxo store")
 }
 
 // Test that several txs can go into a block and that txindex increments correctly
@@ -539,39 +374,23 @@ func TestMultiTxBlocks(t *testing.T) {
 	// Initialize child chain with deposit
 	cc := newChildChain()
 	var keys [N]*ecdsa.PrivateKey
-	var addrs [N]common.Address
+	var addrs []common.Address
 	var msgs [N]types.SpendMsg
 	var txs [N]sdk.Tx
 
 	for i := 0; i < N; i++ {
 		keys[i], _ = ethcrypto.GenerateKey()
-		addrs[i] = utils.PrivKeyToAddress(keys[i])
+		addrs = append(addrs, utils.PrivKeyToAddress(keys[i]))
 	}
 
-	// Make genesis state with several txs
-	var genUTXOs []GenesisUTXO
-	for i := 0; i < N; i++ {
-		genUTXOs = append(genUTXOs, NewGenesisUTXO(addrs[i].Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
-	}
-
-	genState := GenesisState{
-		UTXOs: genUTXOs,
-	}
-
-	genBytes, err := json.Marshal(genState)
-	if err != nil {
-		panic(err)
-	}
-
-	initRequest := abci.RequestInitChain{AppStateBytes: genBytes}
-	cc.InitChain(initRequest)
+	InitTestChain(addrs, cc)
 	cc.Commit()
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
 
 	for i := uint64(0); i < N; i++ {
 		msgs[i] = GenerateSimpleMsg(addrs[i], addrs[i], [4]uint64{0, 0, 0, i + 1}, 100, 0)
 		msgs[i].ConfirmSigs1 = CreateConfirmSig(types.NewPosition(0, 0, 0, i+1), keys[i], &ecdsa.PrivateKey{}, false)
-		txs[i] = GetTx(msgs[i], keys[i])
+		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
 
 		cres := cc.Check(txs[i])
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
@@ -604,7 +423,7 @@ func TestMultiTxBlocks(t *testing.T) {
 		msgs[i].DepositNum1 = 0
 		msgs[i].ConfirmSigs1 = CreateConfirmSig(types.NewPosition(1, i, 0, 0), keys[i], &ecdsa.PrivateKey{}, false)
 		msgs[i].Newowner1 = addrs[(i+1)%N]
-		txs[i] = GetTx(msgs[i], keys[i])
+		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
 
 		cres := cc.Check(txs[i])
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(cres.Code), cres.Log)
