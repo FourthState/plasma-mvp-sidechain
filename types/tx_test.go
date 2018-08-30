@@ -116,6 +116,11 @@ func TestInvalidSpendDeposit(t *testing.T) {
 
 	err := msg1.ValidateBasic()
 	require.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
+
+	msg1.DepositNum1 = 0
+	msg1.DepositNum2 = 123
+	err = msg1.ValidateBasic()
+	require.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
 }
 
 // Creates an invalid transaction spending same position twice
@@ -126,6 +131,15 @@ func TestInvalidPosition(t *testing.T) {
 
 	err := msg1.ValidateBasic()
 	require.Equal(t, sdk.CodeType(106), err.Code(), err.Error())
+}
+
+// Try to spend with 0 denomination for first output
+func TestInvalidDenomination(t *testing.T) {
+	var msg1 = GenSpendMsgWithAddresses()
+	msg1.Denom1 = 0
+
+	err := msg1.ValidateBasic()
+	require.Equal(t, sdk.CodeType(103), err.Code(), err.Error())
 }
 
 // Tests GetSigners method

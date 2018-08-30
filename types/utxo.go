@@ -50,7 +50,7 @@ func (utxo *BaseUTXO) GetAddress() common.Address {
 
 //Implements UTXO
 func (utxo *BaseUTXO) SetAddress(addr common.Address) error {
-	if utils.ZeroAddress(utxo.Address) {
+	if !utils.ZeroAddress(utxo.Address) {
 		return errors.New("cannot override BaseUTXO Address")
 	}
 	if utils.ZeroAddress(addr) {
@@ -60,8 +60,9 @@ func (utxo *BaseUTXO) SetAddress(addr common.Address) error {
 	return nil
 }
 
+//Implements UTXO
 func (utxo *BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
-	if utils.ZeroAddress(utxo.InputAddresses[0]) {
+	if !utils.ZeroAddress(utxo.InputAddresses[0]) {
 		return errors.New("cannot override BaseUTXO Address")
 	}
 	if utils.ZeroAddress(addrs[0]) {
@@ -71,6 +72,7 @@ func (utxo *BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
 	return nil
 }
 
+//Implements UTXO
 func (utxo *BaseUTXO) GetInputAddresses() [2]common.Address {
 	return utxo.InputAddresses
 }
@@ -83,19 +85,24 @@ func (utxo *BaseUTXO) GetDenom() uint64 {
 //Implements UTXO
 func (utxo *BaseUTXO) SetDenom(denom uint64) error {
 	if utxo.Denom != 0 {
-		return errors.New("Cannot override BaseUTXO denomination")
+		return errors.New("cannot override BaseUTXO denomination")
 	}
 	utxo.Denom = denom
 	return nil
 }
 
+//Implements UTXO
 func (utxo *BaseUTXO) GetPosition() Position {
 	return utxo.Position
 }
 
+//Implements UTXO
 func (utxo *BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, depositNum uint64) error {
-	if utxo.Position.Blknum != 0 {
+	if utxo.Position.Blknum != 0 || utxo.Position.DepositNum != 0 {
 		return errors.New("cannot override BaseUTXO Position")
+	}
+	if blockNum == 0 && txIndex == 0 && oIndex == 0 && depositNum == 0 {
+		return errors.New("position cannot be set to 0, 0, 0, 0")
 	}
 	utxo.Position = Position{blockNum, txIndex, oIndex, depositNum}
 	return nil
