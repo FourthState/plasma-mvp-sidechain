@@ -28,10 +28,10 @@ func newChildChain() *ChildChain {
 }
 
 // Creates a deposit of value 100 for each address in input
-func InitTestChain(addrs []common.Address, cc *ChildChain) {
+func InitTestChain(cc *ChildChain, addrs ...common.Address) {
 	var genUTXOs []GenesisUTXO
-	for i := 0; i < len(addrs); i++ {
-		genUTXOs = append(genUTXOs, NewGenesisUTXO(addrs[i].Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
+	for i, addr := range addrs {
+		genUTXOs = append(genUTXOs, NewGenesisUTXO(addr.Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
 	}
 
 	genState := GenesisState{
@@ -149,7 +149,7 @@ func TestSpendDeposit(t *testing.T) {
 	addrA := utils.PrivKeyToAddress(privKeyA)
 	addrB := utils.PrivKeyToAddress(privKeyB)
 
-	InitTestChain([]common.Address{addrA}, cc)
+	InitTestChain(cc, addrA)
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
 
@@ -200,7 +200,7 @@ func TestSpendTx(t *testing.T) {
 	addrA := utils.PrivKeyToAddress(privKeyA)
 	addrB := utils.PrivKeyToAddress(privKeyB)
 
-	InitTestChain([]common.Address{addrA}, cc)
+	InitTestChain(cc, addrA)
 	cc.Commit()
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
@@ -276,7 +276,7 @@ func TestDifferentTxForms(t *testing.T) {
 		addrs = append(addrs, utils.PrivKeyToAddress(keys[i]))
 	}
 
-	InitTestChain(addrs, cc)
+	InitTestChain(cc, addrs...)
 	cc.Commit()
 
 	cases := []struct {
@@ -392,7 +392,7 @@ func TestMultiTxBlocks(t *testing.T) {
 		addrs = append(addrs, utils.PrivKeyToAddress(keys[i]))
 	}
 
-	InitTestChain(addrs, cc)
+	InitTestChain(cc, addrs...)
 	cc.Commit()
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
 
