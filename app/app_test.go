@@ -294,15 +294,24 @@ func TestDifferentTxForms(t *testing.T) {
 		newowner2      common.Address
 		denom2         uint64
 	}{
-		// 1 input 2 output
+		// Test Case 0: 1 input 2 output
+		// Tx spends the genesis deposit and creates 2 new ouputs for addr[1] and addr[2]
 		{0, types.NewPosition(0, 0, 0, 1), 0, 0, 0, common.Address{}, types.Position{}, 0, 0, addrs[1], 20, addrs[2], 80},
-		// 2 different inputs, 1 output
+
+		// Test Case 1: 2 different inputs, 1 output
+		// Tx spends outputs from test case 0 and creates 1 output for addr[3]
 		{1, types.NewPosition(7, 0, 0, 0), 0, 0, 2, addrs[2], types.NewPosition(7, 0, 1, 0), 0, 0, addrs[3], 100, common.Address{}, 0},
-		// 1 input 2 ouput
+
+		// Test Case 2: 1 input 2 ouput
+		// Tx spends output from test case 1 and creates 2 new outputs for addr[3] and addr[4]
 		{3, types.NewPosition(8, 0, 0, 0), 1, 2, 0, common.Address{}, types.Position{}, 0, 0, addrs[3], 75, addrs[4], 25},
-		// 2 different inputs 2 outputs
+
+		// Test Case 3: 2 different inputs 2 outputs
+		// Tx spends outputs from test case 2 and creates 2 new outputs both for addr[3]
 		{3, types.NewPosition(9, 0, 0, 0), 3, 0, 4, addrs[4], types.NewPosition(9, 0, 1, 0), 3, 0, addrs[3], 70, addrs[3], 30},
-		// 2 same inputs, 1 output (merge)
+
+		// Test Case 4: 2 same inputs, 1 output (merge)
+		// Tx spends outputs from test case 3 and creates 1 new output for addr[3]
 		{3, types.NewPosition(10, 0, 0, 0), 3, 4, 3, addrs[3], types.NewPosition(10, 0, 1, 0), 3, 4, addrs[3], 100, common.Address{}, 0},
 	}
 
@@ -345,21 +354,21 @@ func TestDifferentTxForms(t *testing.T) {
 		// Retrieve utxo from context
 		utxo := cc.utxoMapper.GetUTXO(ctx, tc.newowner1, types.NewPosition(uint64(index)+7, 0, 0, 0))
 		expected := types.NewBaseUTXO(tc.newowner1, [2]common.Address{msg.Owner1, msg.Owner2}, tc.denom1, types.NewPosition(uint64(index)+7, 0, 0, 0))
-		require.Equal(t, expected, utxo, "First UTXO did not get added to the utxo store correctly")
+		require.Equal(t, expected, utxo, fmt.Sprintf("First UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 
 		if !utils.ZeroAddress(msg.Newowner2) {
 			utxo = cc.utxoMapper.GetUTXO(ctx, tc.newowner2, types.NewPosition(uint64(index)+7, 0, 1, 0))
 			expected = types.NewBaseUTXO(tc.newowner2, [2]common.Address{msg.Owner1, msg.Owner2}, tc.denom2, types.NewPosition(uint64(index)+7, 0, 1, 0))
-			require.Equal(t, expected, utxo, "Second UTXO did not get added to the utxo store correctly")
+			require.Equal(t, expected, utxo, fmt.Sprintf("Second UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 		}
 
 		// Check that inputs were removed
 		utxo = cc.utxoMapper.GetUTXO(ctx, msg.Owner1, tc.position1)
-		require.Nil(t, utxo, "first input was not removed from the utxo store")
+		require.Nil(t, utxo, fmt.Sprintf("first input was not removed from the utxo store. Failed on test case: %d", index))
 
 		if !utils.ZeroAddress(msg.Owner2) {
 			utxo = cc.utxoMapper.GetUTXO(ctx, msg.Owner2, tc.position2)
-			require.Nil(t, utxo, "second input was not removed from the utxo store")
+			require.Nil(t, utxo, fmt.Sprintf("second input was not removed from the utxo store. Failed on test case: %d", index))
 		}
 
 		cc.EndBlock(abci.RequestEndBlock{})
