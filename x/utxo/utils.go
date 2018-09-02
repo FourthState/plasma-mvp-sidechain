@@ -1,4 +1,4 @@
-package db
+package utxo
 
 import (
 	types "github.com/FourthState/plasma-mvp-sidechain/types"

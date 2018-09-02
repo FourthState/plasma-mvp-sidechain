@@ -1,4 +1,4 @@
-package db
+package utxo
 
 import (
 	"github.com/stretchr/testify/require"

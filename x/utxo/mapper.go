@@ -1,4 +1,4 @@
-package db
+package utxo
 
 import (
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
@@ -92,9 +92,8 @@ func (um utxoMapper) encodeUTXO(utxo types.UTXO) []byte {
 	return bz
 }
 
-func (um utxoMapper) decodeUTXO(bz []byte) types.UTXO {
-	utxo := &types.BaseUTXO{}
-	err := um.cdc.UnmarshalBinary(bz, utxo)
+func (um utxoMapper) decodeUTXO(bz []byte) (utxo types.UTXO) {
+	err := um.cdc.UnmarshalBinary(bz, &utxo)
 	if err != nil {
 		panic(err)
 	}
