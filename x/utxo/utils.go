@@ -1,7 +1,6 @@
 package utxo
 
 import (
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/go-amino"
