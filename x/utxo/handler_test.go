@@ -1,4 +1,4 @@
-package auth
+package utxo
 
 import (
 	"crypto/ecdsa"
@@ -11,8 +11,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 
-	db "github.com/FourthState/plasma-mvp-sidechain/db"
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 

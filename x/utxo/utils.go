@@ -19,7 +19,12 @@ func SetupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
-	types.RegisterAmino(cdc)
+	RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
+}
+
+func RegisterAmino(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Position)(nil), nil)
+	cdc.RegisterInterface((*UTXO)(nil), nil)
 }

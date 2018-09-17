@@ -8,11 +8,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"reflect"
+
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 )
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
 // confirm signatures, and increments the feeAmount
-func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uint64) sdk.AnteHandler {
+func NewAnteHandler(utxoMapper utxo.Mapper, feeUpdater utxo.FeeUpdater) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
@@ -50,9 +52,9 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 
 		// Verify the first input signature
 		addr1 := common.BytesToAddress(signerAddrs[0].Bytes())
-		position1 := types.Position{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
+		position1 := types.PlasmaPosition{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
 
-		indenom1, res := checkUTXO(ctx, utxoMapper, position1, addr1)
+		res := checkUTXO(ctx, utxoMapper, position1, addr1)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -70,14 +72,12 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 			return ctx, res, true
 		}
 
-		inputs := indenom1
-
 		// Verify the second input
 		if utils.ValidAddress(spendMsg.Owner2) {
 			addr2 := common.BytesToAddress(signerAddrs[1].Bytes())
-			position2 := types.Position{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
+			position2 := types.PlasmaPosition{spendMsg.Blknum2, spendMsg.Txindex2, spendMsg.Oindex2, spendMsg.DepositNum2}
 
-			indenom2, res := checkUTXO(ctx, utxoMapper, position2, addr2)
+			res := checkUTXO(ctx, utxoMapper, position2, addr2)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -94,17 +94,11 @@ func NewAnteHandler(utxoMapper types.UTXOMapper, txIndex *uint16, feeAmount *uin
 			if !res.IsOK() {
 				return ctx, res, true
 			}
-
-			inputs += indenom2
 		}
 
-		if inputs != (spendMsg.Denom1 + spendMsg.Denom2 + spendMsg.Fee) {
-			return ctx, sdk.ErrUnauthorized("inputs are not equal to outputs plus the fee").Result(), true
-		}
-
-		// Increment amount of fees collected
-		if !ctx.IsCheckTx() {
-			(*feeAmount) += spendMsg.Fee
+		balanceErr := utxo.AnteHelper(ctx, utxoMapper, tx, feeUpdater)
+		if balanceErr != nil {
+			return ctx, balanceErr.Result(), true
 		}
 
 		// TODO: tx tags (?)
@@ -127,16 +121,20 @@ func processSig(
 }
 
 func processConfirmSig(
-	ctx sdk.Context, utxoMapper types.UTXOMapper,
-	position types.Position, addr common.Address, sigs [2]types.Signature, signBytes []byte) (
+	ctx sdk.Context, utxoMapper utxo.Mapper,
+	position types.PlasmaPosition, addr common.Address, sigs [2]types.Signature, signBytes []byte) (
 	res sdk.Result) {
 
 	// Verify utxo exists
-	utxo := utxoMapper.GetUTXO(ctx, addr, position)
+	utxo := utxoMapper.GetUTXO(ctx, addr.Bytes(), &position)
 	if utxo == nil {
 		return sdk.ErrUnknownRequest("Confirm Sig verification failed: UTXO trying to be spent, does not exist").Result()
 	}
-	inputAddresses := utxo.GetInputAddresses()
+	plasmaUTXO, ok := utxo.(*types.BaseUTXO)
+	if !ok {
+		return sdk.ErrInternal("utxo must be of type BaseUTXO").Result()
+	}
+	inputAddresses := plasmaUTXO.GetInputAddresses()
 
 	hash := ethcrypto.Keccak256(signBytes)
 
@@ -157,16 +155,16 @@ func processConfirmSig(
 
 // Checks that utxo at the position specified exists, matches the address in the SpendMsg
 // and returns the denomination associated with the utxo
-func checkUTXO(ctx sdk.Context, mapper types.UTXOMapper, position types.Position, addr common.Address) (indenom uint64, res sdk.Result) {
-	utxo := mapper.GetUTXO(ctx, addr, position)
+func checkUTXO(ctx sdk.Context, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
+	utxo := mapper.GetUTXO(ctx, addr.Bytes(), &position)
 	if utxo == nil {
-		return 0, sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, does not exist: %v.", position)).Result()
+		return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, does not exist: %v.", position)).Result()
 	}
 
 	// Verify that utxo owner equals input address in the transaction
-	if !reflect.DeepEqual(utxo.GetAddress().Bytes(), addr.Bytes()) {
-		return 0, sdk.ErrUnauthorized("signer does not match utxo owner").Result()
+	if !reflect.DeepEqual(utxo.GetAddress(), addr.Bytes()) {
+		return sdk.ErrUnauthorized("signer does not match utxo owner").Result()
 	}
 
-	return utxo.GetDenom(), sdk.Result{}
+	return sdk.Result{}
 }

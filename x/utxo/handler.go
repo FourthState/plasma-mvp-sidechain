@@ -5,7 +5,9 @@ import (
 )
 
 // Return the next position for handler to store newly created UTXOs
-type NextPosition func(ctx sdk.Context) Position
+// Secondary is true if NextPosition is meant to return secondary output positions for a single multioutput transaction
+// If false, NextPosition will increment position to accomadate outputs for a new transaction
+type NextPosition func(ctx sdk.Context, secondary bool) Position
 
 // Proto function to create application's UTXO implementation
 type ProtoUTXO func() UTXO
@@ -27,8 +29,13 @@ func NewSpendHandler(um Mapper, nextPos NextPosition, proto ProtoUTXO) sdk.Handl
 		}
 
 		// Add outputs from store
-		for _, o := range spendMsg.Outputs() {
-			next := nextPos(ctx)
+		for i, o := range spendMsg.Outputs() {
+			var next Position
+			if i == 0 {
+				next = nextPos(ctx, false)
+			} else {
+				next = nextPos(ctx, true)
+			}
 			utxo := proto()
 			utxo.SetPosition(next)
 			utxo.SetAddress(o.Owner)
@@ -65,8 +72,8 @@ func AnteHelper(ctx sdk.Context, um Mapper, tx sdk.Tx, feeUpdater FeeUpdater) sd
 	for _, fee := range spendMsg.Fee() {
 		totalOutput[fee.Denom] += fee.Amount
 	}
-	
-	for denom, amount := range totalInput {
+
+	for denom, _ := range totalInput {
 		if totalInput[denom] != totalOutput[denom] {
 			return ErrInvalidTransaction(2, "Inputs do not equal Outputs")
 		}
