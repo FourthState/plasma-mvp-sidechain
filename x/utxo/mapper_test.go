@@ -14,6 +14,88 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
+type testPosition struct {
+	BlockNumber uint64
+	TxIndex     uint32
+	OutputIndex uint8
+}
+
+func newTestPosition() testPosition {
+	return testPosition{}
+}
+
+func (pos testPosition) Get() []uint64 {
+	return []uint64{pos.BlockNumber, uint64(pos.TxIndex), uint64(pos.OutputIndex)}
+}
+
+func (pos testPosition) Set(newPos []uint64) error {
+	pos.BlockNumber = newPos[0]
+	pos.TxIndex = uint32(newPos[1])
+	pos.OutputIndex = uint8(newPos[2])
+}
+
+func (pos testPosition) IsValid() []byte {
+	if pos.OutputIndex > 4 {
+		return false
+	}
+	return true
+}
+
+type testUTXO struct {
+	Owner    []byte
+	Amount   uint64
+	Denom    string
+	Position testPosition
+}
+
+func (utxo testUTXO) GetAddress() []byte {
+	return utxo.Owner
+}
+
+func (utxo testUTXO) SetAddress(address []byte) error {
+	if utxo.Owner != nil {
+		return errors.New("Owner already set")
+	}
+	utxo.Amount = amount
+	return nil
+}
+
+func (utxo testUTXO) GetAmount() uint64 {
+	return utxo.Amount
+}
+
+func (utxo testUTXO) SetAmount(amount uint64) error {
+	if utxo.Amount != 0 {
+		return errors.New("Owner already set")
+	}
+	utxo.Amount = amount
+	return nil
+}
+
+func (utxo testUTXO) GetDenom() string {
+	return utxo.Denom
+}
+
+func (utxo testUTXO) SetDenom(denom string) error {
+	if utxo.Denom != "" {
+		return errors.New("Owner already set")
+	}
+	utxo.Denom = denom
+	return nil
+}
+
+func (utxo testUTXO) GetPosition() Position {
+	return utxo.Position
+}
+
+func (utxo testUTXO) SetDenom(pos Position) error {
+	if utxo.Position != nil {
+		return errors.New("Owner already set")
+	}
+	utxo.Position = pos
+	return nil
+}
+
 /*
 	Basic test of Get, Add, Delete
 	Creates a valid UTXO and adds it to the uxto mapping.

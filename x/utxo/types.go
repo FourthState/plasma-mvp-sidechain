@@ -23,12 +23,10 @@ type UTXO interface {
 // Positions must be unqiue or a collision may result when using mapper.go
 type Position interface {
 	// Position is a uint slice
-	Get()         []uint64 // get position int slice. Return nil if unset.
-	Set([]uint64) error    // errors if already set
-	// Used to convert Position to Bytes to store in mapper
-	Bytes()       []byte 
+	Get() []uint64      // get position int slice. Return nil if unset.
+	Set([]uint64) error // errors if already set
 	// returns true if the position is valid, false otherwise
-	IsValid()     bool
+	IsValid() bool
 }
 
 // SpendMsg is an interface that wraps sdk.Msg with additional information
@@ -36,9 +34,9 @@ type Position interface {
 type SpendMsg interface {
 	sdk.Msg
 
-	Inputs()  []Input
-	Outputs() []Output	
-	Fee()     []Output // Owner is nil
+	Inputs() []Input
+	Outputs() []Output
+	Fee() []Output // Owner is nil
 }
 
 type Input struct {
