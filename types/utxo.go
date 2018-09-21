@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 	amino "github.com/tendermint/go-amino"
 
@@ -44,11 +45,11 @@ func (baseutxo BaseUTXO) GetAddress() []byte {
 //Implements UTXO
 func (baseutxo *BaseUTXO) SetAddress(addr []byte) error {
 	if !utils.ZeroAddress(baseutxo.Address) {
-		return errors.New("cannot override BaseUTXO Address")
+		return fmt.Errorf("address already set to: %X", baseutxo.Address)
 	}
 	address := common.BytesToAddress(addr)
 	if utils.ZeroAddress(address) {
-		return errors.New("address provided is nil")
+		return fmt.Errorf("invalid address provided: %X", address)
 	}
 	baseutxo.Address = address
 	return nil
@@ -57,10 +58,10 @@ func (baseutxo *BaseUTXO) SetAddress(addr []byte) error {
 //Implements UTXO
 func (baseutxo *BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
 	if !utils.ZeroAddress(baseutxo.InputAddresses[0]) {
-		return errors.New("cannot override BaseUTXO Address")
+		return fmt.Errorf("input addresses already set to: %X, %X", baseutxo.InputAddresses[0], baseutxo.InputAddresses[1])
 	}
 	if utils.ZeroAddress(addrs[0]) {
-		return errors.New("address provided is nil")
+		return fmt.Errorf("invalid address provided: %X", addrs[0])
 	}
 	baseutxo.InputAddresses = addrs
 	return nil
@@ -79,7 +80,7 @@ func (baseutxo BaseUTXO) GetAmount() uint64 {
 //Implements UTXO
 func (baseutxo *BaseUTXO) SetAmount(amount uint64) error {
 	if baseutxo.Amount != 0 {
-		return errors.New("cannot override BaseUTXO amount")
+		return fmt.Errorf("amount already set to: %d", baseutxo.Amount)
 	}
 	baseutxo.Amount = amount
 	return nil
@@ -91,11 +92,14 @@ func (baseutxo BaseUTXO) GetPosition() utxo.Position {
 
 func (baseutxo *BaseUTXO) SetPosition(position utxo.Position) error {
 	if baseutxo.Position.IsValid() {
-		return errors.New("cannot override BaseUTXO position")
+		return fmt.Errorf("position already set to: %v", baseutxo.Position)
+	} else if !position.IsValid() {
+		return errors.New("invalid position provided")
 	}
+
 	plasmaposition, ok := position.(*PlasmaPosition)
 	if !ok {
-		return errors.New("Position must be of type PlasmaPosition")
+		return errors.New("position must be of type PlasmaPosition")
 	}
 	baseutxo.Position = *plasmaposition
 	return nil
@@ -106,7 +110,7 @@ func (baseutxo BaseUTXO) GetDenom() string {
 }
 
 func (baseutxo *BaseUTXO) SetDenom(denom string) error {
-	return errors.New("Cannot set denom")
+	return errors.New("cannot set denomination")
 }
 
 //----------------------------------------
@@ -136,7 +140,7 @@ func (position PlasmaPosition) Get() []uint64 {
 
 func (position *PlasmaPosition) Set(fields []uint64) error {
 	if position.IsValid() {
-		return errors.New("Position already set")
+		return fmt.Errorf("position already set to: %v", position)
 	}
 	position.Blknum = fields[0]
 	position.TxIndex = uint16(fields[1])

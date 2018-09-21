@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	utxo "github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -11,22 +12,22 @@ import (
 var _ utxo.SpendMsg = SpendMsg{}
 
 type SpendMsg struct {
+	Blknum0      uint64
+	Txindex0     uint16
+	Oindex0      uint8
+	DepositNum0  uint64
+	Owner0       common.Address
+	ConfirmSigs0 [2]Signature
 	Blknum1      uint64
 	Txindex1     uint16
 	Oindex1      uint8
 	DepositNum1  uint64
 	Owner1       common.Address
 	ConfirmSigs1 [2]Signature
-	Blknum2      uint64
-	Txindex2     uint16
-	Oindex2      uint8
-	DepositNum2  uint64
-	Owner2       common.Address
-	ConfirmSigs2 [2]Signature
+	Newowner0    common.Address
+	Amount0      uint64
 	Newowner1    common.Address
 	Amount1      uint64
-	Newowner2    common.Address
-	Amount2      uint64
 	FeeAmount    uint64
 }
 
@@ -35,32 +36,33 @@ func (msg SpendMsg) Type() string { return "spend" }
 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {
-	if !utils.ValidAddress(msg.Owner1) {
-		return ErrInvalidAddress(DefaultCodespace, "input owner must have a valid address")
+	if !utils.ValidAddress(msg.Owner0) {
+		return ErrInvalidAddress(DefaultCodespace, "input owner must have a valid address", msg.Owner0)
 	}
-	if !utils.ValidAddress(msg.Newowner1) {
+	if !utils.ValidAddress(msg.Newowner0) {
 		return ErrInvalidAddress(DefaultCodespace, "no recipients of transaction")
 	}
-	if msg.Blknum1 == msg.Blknum2 && msg.Txindex1 == msg.Txindex2 && msg.Oindex1 == msg.Oindex2 && msg.DepositNum1 == msg.DepositNum2 {
-		return ErrInvalidTransaction(DefaultCodespace, "Cannot spend same position twice")
+	if msg.Blknum0 == msg.Blknum1 && msg.Txindex0 == msg.Txindex1 && msg.Oindex0 == msg.Oindex1 && msg.DepositNum0 == msg.DepositNum1 {
+		return ErrInvalidTransaction(DefaultCodespace, fmt.Sprintf("cannot spend same position twice: (%d, %d, %d, %d)", msg.Blknum0, msg.Txindex0, msg.Oindex0, msg.DepositNum0))
+
 	}
 
 	switch {
 
-	case msg.Oindex1 != 0 && msg.Oindex1 != 1:
-		return ErrInvalidOIndex(DefaultCodespace, "output index 1 must be either 0 or 1")
+	case msg.Oindex0 != 0 && msg.Oindex0 != 1:
+		return ErrInvalidOIndex(DefaultCodespace, "output index 0 must be either 0 or 1")
 
-	case msg.DepositNum1 != 0 && (msg.Blknum1 != 0 || msg.Txindex1 != 0 || msg.Oindex1 != 0):
+	case msg.DepositNum0 != 0 && (msg.Blknum0 != 0 || msg.Txindex0 != 0 || msg.Oindex0 != 0):
 		return ErrInvalidTransaction(DefaultCodespace, "first input is malformed. Deposit's position must be 0, 0, 0")
 
-	case msg.DepositNum2 != 0 && (msg.Blknum2 != 0 || msg.Txindex2 != 0 || msg.Oindex2 != 0):
+	case msg.DepositNum1 != 0 && (msg.Blknum1 != 0 || msg.Txindex1 != 0 || msg.Oindex1 != 0):
 		return ErrInvalidTransaction(DefaultCodespace, "second input is malformed. Deposit's position must be 0, 0, 0")
 
-	case msg.Blknum2 != 0 && msg.Oindex2 != 0 && msg.Oindex2 != 1:
-		return ErrInvalidOIndex(DefaultCodespace, "output index 2 must be either 0 or 1")
+	case msg.Blknum1 != 0 && msg.Oindex1 != 0 && msg.Oindex1 != 1:
+		return ErrInvalidOIndex(DefaultCodespace, "output index 1 must be either 0 or 1")
 
-	case msg.Amount1 == 0:
-		return ErrInvalidDenom(DefaultCodespace, "first denomination must be positive")
+	case msg.Amount0 == 0:
+		return ErrInvalidAmount(DefaultCodespace, "first amount must be positive")
 	}
 
 	return nil
@@ -78,32 +80,32 @@ func (msg SpendMsg) GetSignBytes() []byte {
 // Implements Msg.
 func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 	addrs := make([]sdk.AccAddress, 1)
-	addrs[0] = sdk.AccAddress(msg.Owner1.Bytes())
-	if utils.ValidAddress(msg.Owner2) {
-		addrs = append(addrs, sdk.AccAddress(msg.Owner2.Bytes()))
+	addrs[0] = sdk.AccAddress(msg.Owner0.Bytes())
+	if utils.ValidAddress(msg.Owner1) {
+		addrs = append(addrs, sdk.AccAddress(msg.Owner1.Bytes()))
 	}
 	return addrs
 }
 
 func (msg SpendMsg) Inputs() []utxo.Input {
 	inputs := []utxo.Input{utxo.Input{
-		Owner:    msg.Owner1.Bytes(),
-		Position: NewPlasmaPosition(msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1),
+		Owner:    msg.Owner0.Bytes(),
+		Position: NewPlasmaPosition(msg.Blknum0, msg.Txindex0, msg.Oindex0, msg.DepositNum0),
 	}}
-	if NewPlasmaPosition(msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2).IsValid() {
+	if NewPlasmaPosition(msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1).IsValid() {
 		// Add valid second input
 		inputs = append(inputs, utxo.Input{
-			Owner:    msg.Owner2.Bytes(),
-			Position: NewPlasmaPosition(msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2),
+			Owner:    msg.Owner1.Bytes(),
+			Position: NewPlasmaPosition(msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1),
 		})
 	}
 	return inputs
 }
 
 func (msg SpendMsg) Outputs() []utxo.Output {
-	outputs := []utxo.Output{utxo.Output{msg.Owner1.Bytes(), "Ether", msg.Amount1}}
-	if msg.Amount2 != 0 {
-		outputs = append(outputs, utxo.Output{msg.Newowner2.Bytes(), "Ether", msg.Amount2})
+	outputs := []utxo.Output{utxo.Output{msg.Owner0.Bytes(), "Ether", msg.Amount0}}
+	if msg.Amount1 != 0 {
+		outputs = append(outputs, utxo.Output{msg.Newowner1.Bytes(), "Ether", msg.Amount1})
 	}
 	return outputs
 }
