@@ -10,7 +10,7 @@ import (
 type NextPosition func(ctx sdk.Context, secondary bool) Position
 
 // Proto function to create application's UTXO implementation
-type ProtoUTXO func() UTXO
+type ProtoUTXO func(sdk.Msg) UTXO
 
 // User-defined fee update function
 type FeeUpdater func([]Output) sdk.Error
@@ -36,7 +36,7 @@ func NewSpendHandler(um Mapper, nextPos NextPosition, proto ProtoUTXO) sdk.Handl
 			} else {
 				next = nextPos(ctx, true)
 			}
-			utxo := proto()
+			utxo := proto(msg)
 			utxo.SetPosition(next)
 			utxo.SetAddress(o.Owner)
 			utxo.SetDenom(o.Denom)

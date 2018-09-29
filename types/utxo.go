@@ -8,6 +8,7 @@ import (
 
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -22,8 +23,14 @@ type BaseUTXO struct {
 	Position       PlasmaPosition
 }
 
-func ProtoUTXO() utxo.UTXO {
-	return &BaseUTXO{}
+func ProtoUTXO(msg sdk.Msg) utxo.UTXO {
+	spendmsg, ok := msg.(SpendMsg)
+	if !ok {
+		return nil
+	}
+	return &BaseUTXO{
+		InputAddresses: [2]common.Address{spendmsg.Owner0, spendmsg.Owner1},
+	}
 }
 
 func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, amount uint64,
@@ -87,7 +94,7 @@ func (baseutxo *BaseUTXO) SetAmount(amount uint64) error {
 }
 
 func (baseutxo BaseUTXO) GetPosition() utxo.Position {
-	return &baseutxo.Position
+	return baseutxo.Position
 }
 
 func (baseutxo *BaseUTXO) SetPosition(position utxo.Position) error {
@@ -97,11 +104,11 @@ func (baseutxo *BaseUTXO) SetPosition(position utxo.Position) error {
 		return errors.New("invalid position provided")
 	}
 
-	plasmaposition, ok := position.(*PlasmaPosition)
+	plasmaposition, ok := position.(PlasmaPosition)
 	if !ok {
 		return errors.New("position must be of type PlasmaPosition")
 	}
-	baseutxo.Position = *plasmaposition
+	baseutxo.Position = plasmaposition
 	return nil
 }
 
@@ -110,7 +117,14 @@ func (baseutxo BaseUTXO) GetDenom() string {
 }
 
 func (baseutxo *BaseUTXO) SetDenom(denom string) error {
-	return errors.New("cannot set denomination")
+	if denom == "" {
+		return errors.New("invalid denomination provided")
+	} else if baseutxo.Denom == "" {
+		baseutxo.Denom = denom
+		return nil
+	} else {
+		return errors.New("cannot set denomination")
+	}
 }
 
 //----------------------------------------
@@ -125,8 +139,8 @@ type PlasmaPosition struct {
 	DepositNum uint64
 }
 
-func NewPlasmaPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint64) *PlasmaPosition {
-	return &PlasmaPosition{
+func NewPlasmaPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint64) PlasmaPosition {
+	return PlasmaPosition{
 		Blknum:     blknum,
 		TxIndex:    txIndex,
 		Oindex:     oIndex,
@@ -136,17 +150,6 @@ func NewPlasmaPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum u
 
 func (position PlasmaPosition) Get() []uint64 {
 	return []uint64{position.Blknum, uint64(position.TxIndex), uint64(position.Oindex), position.DepositNum}
-}
-
-func (position *PlasmaPosition) Set(fields []uint64) error {
-	if position.IsValid() {
-		return fmt.Errorf("position already set to: %v", position)
-	}
-	position.Blknum = fields[0]
-	position.TxIndex = uint16(fields[1])
-	position.Oindex = uint8(fields[2])
-	position.DepositNum = fields[3]
-	return nil
 }
 
 // Used to determine Sign Bytes for confirm signatures
@@ -174,8 +177,8 @@ func (position PlasmaPosition) IsValid() bool {
 //-------------------------------------------------------
 // misc
 func RegisterAmino(cdc *amino.Codec) {
-	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
-	cdc.RegisterConcrete(PlasmaPosition{}, "types/PlasmaPosition", nil)
+	cdc.RegisterConcrete(&BaseUTXO{}, "types/BaseUTXO", nil)
+	cdc.RegisterConcrete(&PlasmaPosition{}, "types/PlasmaPosition", nil)
 	cdc.RegisterConcrete(BaseTx{}, "types/BaseTX", nil)
 	cdc.RegisterConcrete(SpendMsg{}, "types/SpendMsg", nil)
 }

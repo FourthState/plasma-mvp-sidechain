@@ -1,18 +1,21 @@
 package utxo
 
 import (
+	"errors"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
+
+/* structs used to test the mapper */
+var _ Position = &testPosition{}
 
 type testPosition struct {
 	BlockNumber uint64
@@ -20,26 +23,30 @@ type testPosition struct {
 	OutputIndex uint8
 }
 
-func newTestPosition() testPosition {
-	return testPosition{}
+func testProtoUTXO(msg sdk.Msg) UTXO {
+	return &testUTXO{}
+}
+
+func newTestPosition(newPos []uint64) testPosition {
+	return testPosition{
+		BlockNumber: newPos[0],
+		TxIndex:     uint32(newPos[1]),
+		OutputIndex: uint8(newPos[2]),
+	}
 }
 
 func (pos testPosition) Get() []uint64 {
 	return []uint64{pos.BlockNumber, uint64(pos.TxIndex), uint64(pos.OutputIndex)}
 }
 
-func (pos testPosition) Set(newPos []uint64) error {
-	pos.BlockNumber = newPos[0]
-	pos.TxIndex = uint32(newPos[1])
-	pos.OutputIndex = uint8(newPos[2])
-}
-
-func (pos testPosition) IsValid() []byte {
+func (pos testPosition) IsValid() bool {
 	if pos.OutputIndex > 4 {
 		return false
 	}
 	return true
 }
+
+var _ UTXO = &testUTXO{}
 
 type testUTXO struct {
 	Owner    []byte
@@ -48,15 +55,24 @@ type testUTXO struct {
 	Position testPosition
 }
 
+func newTestUTXO(owner []byte, amount uint64, position testPosition) UTXO {
+	return &testUTXO{
+		Owner:    owner,
+		Amount:   amount,
+		Denom:    "Ether",
+		Position: position,
+	}
+}
+
 func (utxo testUTXO) GetAddress() []byte {
 	return utxo.Owner
 }
 
-func (utxo testUTXO) SetAddress(address []byte) error {
+func (utxo *testUTXO) SetAddress(address []byte) error {
 	if utxo.Owner != nil {
 		return errors.New("Owner already set")
 	}
-	utxo.Amount = amount
+	utxo.Owner = address
 	return nil
 }
 
@@ -64,7 +80,7 @@ func (utxo testUTXO) GetAmount() uint64 {
 	return utxo.Amount
 }
 
-func (utxo testUTXO) SetAmount(amount uint64) error {
+func (utxo *testUTXO) SetAmount(amount uint64) error {
 	if utxo.Amount != 0 {
 		return errors.New("Owner already set")
 	}
@@ -76,7 +92,7 @@ func (utxo testUTXO) GetDenom() string {
 	return utxo.Denom
 }
 
-func (utxo testUTXO) SetDenom(denom string) error {
+func (utxo *testUTXO) SetDenom(denom string) error {
 	if utxo.Denom != "" {
 		return errors.New("Owner already set")
 	}
@@ -88,11 +104,14 @@ func (utxo testUTXO) GetPosition() Position {
 	return utxo.Position
 }
 
-func (utxo testUTXO) SetDenom(pos Position) error {
-	if utxo.Position != nil {
-		return errors.New("Owner already set")
+func (utxo *testUTXO) SetPosition(pos Position) error {
+
+	position, ok := pos.(testPosition)
+	if !ok {
+		fmt.Println("ah")
+		return errors.New("position setting err")
 	}
-	utxo.Position = pos
+	utxo.Position = position
 	return nil
 }
 
@@ -107,35 +126,34 @@ func TestUTXOGetAddDelete(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
+	cdc := MakeCodec()
+	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
+	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	mapper := NewBaseMapper(capKey, cdc)
 
-	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.PrivKeyToAddress(privA)
+	priv, _ := ethcrypto.GenerateKey()
+	addr := utils.PrivKeyToAddress(priv)
 
-	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.PrivKeyToAddress(privB)
+	position := newTestPosition([]uint64{1, 0, 0})
 
-	positionB := types.Position{1000, 0, 0, 0}
-	confirmAddr := [2]common.Address{addrA, addrA}
+	utxo := newTestUTXO(addr.Bytes(), 100, position)
 
-	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
 	require.NotNil(t, utxo)
-	require.Equal(t, addrB, utxo.GetAddress())
-	require.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
-	require.EqualValues(t, positionB, utxo.GetPosition())
+	require.Equal(t, addr.Bytes(), utxo.GetAddress())
+	require.EqualValues(t, position, utxo.GetPosition())
 
 	mapper.AddUTXO(ctx, utxo)
 
-	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
 	require.NotNil(t, utxo)
 
-	mapper.DeleteUTXO(ctx, addrB, positionB)
-	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	mapper.DeleteUTXO(ctx, addr.Bytes(), position)
+	utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
 	require.Nil(t, utxo)
 }
 
 /*
-	Basic test of Multiple Additions and Deletes in the same block
+	Test multiple additions and deletions in the same block and different blocks
 	Creates a valid UTXOs and adds them to the uxto mapping.
 	Then deletes the UTXO's from the mapping.
 */
@@ -144,34 +162,30 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
+	cdc := MakeCodec()
+	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
+	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	mapper := NewBaseMapper(capKey, cdc)
 
-	// These are not being tested
-	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.PrivKeyToAddress(privA)
+	priv, _ := ethcrypto.GenerateKey()
+	addr := utils.PrivKeyToAddress(priv)
 
-	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.PrivKeyToAddress(privB)
-
-	confirmAddr := [2]common.Address{addrA, addrA}
-
-	// Main part being tested
-	for i := 0; i < 10; i++ {
-		positionB := types.Position{1000, uint16(i), 0, 0}
-		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+	for i := 0; i < 20; i++ {
+		position := newTestPosition([]uint64{uint64(i%4) + 1, uint64(i / 4), 0})
+		utxo := newTestUTXO(addr.Bytes(), 100, position)
 		mapper.AddUTXO(ctx, utxo)
 
-		utxo = mapper.GetUTXO(ctx, addrB, positionB)
+		utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
 		require.NotNil(t, utxo)
 	}
 
-	for i := 0; i < 10; i++ {
-		position := types.Position{1000, uint16(i), 0, 0}
+	for i := 0; i < 20; i++ {
+		position := newTestPosition([]uint64{uint64(i%4) + 1, uint64(i / 4), 0})
 
-		utxo := mapper.GetUTXO(ctx, addrB, position)
+		utxo := mapper.GetUTXO(ctx, addr.Bytes(), position)
 		require.NotNil(t, utxo)
-		mapper.DeleteUTXO(ctx, addrB, position)
-		utxo = mapper.GetUTXO(ctx, addrB, position)
+		mapper.DeleteUTXO(ctx, addr.Bytes(), position)
+		utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
 		require.Nil(t, utxo)
 	}
 
@@ -181,83 +195,43 @@ func TestInvalidAddress(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
 
-	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.PrivKeyToAddress(privA)
+	cdc := MakeCodec()
+	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
+	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	mapper := NewBaseMapper(capKey, cdc)
 
-	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.PrivKeyToAddress(privB)
+	priv0, _ := ethcrypto.GenerateKey()
+	addr0 := utils.PrivKeyToAddress(priv0)
 
-	positionB := types.Position{1000, 0, 0, 0}
-	confirmAddr := [2]common.Address{addrA, addrA}
+	priv1, _ := ethcrypto.GenerateKey()
+	addr1 := utils.PrivKeyToAddress(priv1)
 
-	utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
+	position := newTestPosition([]uint64{1, 0, 0})
+
+	utxo := newTestUTXO(addr0.Bytes(), 100, position)
+
 	require.NotNil(t, utxo)
-	require.Equal(t, addrB, utxo.GetAddress())
-	require.EqualValues(t, confirmAddr, utxo.GetInputAddresses())
-	require.EqualValues(t, positionB, utxo.GetPosition())
+	require.Equal(t, addr0.Bytes(), utxo.GetAddress())
+	require.EqualValues(t, position, utxo.GetPosition())
 
 	mapper.AddUTXO(ctx, utxo)
 
 	// GetUTXO with correct position but wrong address
-	utxo = mapper.GetUTXO(ctx, addrA, positionB)
+	utxo = mapper.GetUTXO(ctx, addr1.Bytes(), position)
 	require.Nil(t, utxo)
 
-	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	utxo = mapper.GetUTXO(ctx, addr0.Bytes(), position)
 	require.NotNil(t, utxo)
 
 	// DeleteUTXO with correct position but wrong address
-	mapper.DeleteUTXO(ctx, addrA, positionB)
-	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	mapper.DeleteUTXO(ctx, addr1.Bytes(), position)
+	utxo = mapper.GetUTXO(ctx, addr0.Bytes(), position)
 	require.NotNil(t, utxo)
 
-	mapper.DeleteUTXO(ctx, addrB, positionB)
-	utxo = mapper.GetUTXO(ctx, addrB, positionB)
+	mapper.DeleteUTXO(ctx, addr0.Bytes(), position)
+	utxo = mapper.GetUTXO(ctx, addr0.Bytes(), position)
 	require.Nil(t, utxo)
-}
-
-/*
-	Basic test of Multiple Additions and Deletes in the different block
-	Creates a valid UTXOs and adds them to the uxto mapping.
-	Then deletes the UTXO's from the mapping.
-*/
-
-func TestMultiUTXOAddDeleteDifferentBlock(t *testing.T) {
-	ms, capKey := SetupMultiStore()
-
-	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
-
-	// These are not being tested
-	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.PrivKeyToAddress(privA)
-
-	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.PrivKeyToAddress(privB)
-
-	confirmAddr := [2]common.Address{addrA, addrA}
-
-	// Main part being tested
-	for i := 0; i < 10; i++ {
-		positionB := types.Position{uint64(i), 0, 0, 0}
-		utxo := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB)
-		mapper.AddUTXO(ctx, utxo)
-
-		utxo = mapper.GetUTXO(ctx, addrB, positionB)
-		require.NotNil(t, utxo)
-	}
-
-	for i := 0; i < 10; i++ {
-		position := types.Position{uint64(i), 0, 0, 0}
-
-		utxo := mapper.GetUTXO(ctx, addrB, position)
-		require.NotNil(t, utxo)
-		mapper.DeleteUTXO(ctx, addrB, position)
-		utxo = mapper.GetUTXO(ctx, addrB, position)
-		require.Nil(t, utxo)
-	}
-
 }
 
 /*
@@ -268,7 +242,11 @@ func TestGetUTXOsForAddress(t *testing.T) {
 	ms, capKey := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-	mapper := NewUTXOMapper(capKey, MakeCodec())
+
+	cdc := MakeCodec()
+	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
+	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	mapper := NewBaseMapper(capKey, cdc)
 
 	privA, _ := ethcrypto.GenerateKey()
 	addrA := utils.PrivKeyToAddress(privA)
@@ -279,35 +257,34 @@ func TestGetUTXOsForAddress(t *testing.T) {
 	privC, _ := ethcrypto.GenerateKey()
 	addrC := utils.PrivKeyToAddress(privC)
 
-	positionB1 := types.Position{1000, 0, 0, 0}
-	positionB2 := types.Position{1001, 1, 0, 0}
-	positionB3 := types.Position{1002, 2, 1, 0}
-	confirmAddr := [2]common.Address{addrA, addrA}
+	positionB0 := newTestPosition([]uint64{1, 0, 0})
+	positionB1 := newTestPosition([]uint64{2, 1, 0})
+	positionB2 := newTestPosition([]uint64{3, 2, 1})
 
-	utxo1 := types.NewBaseUTXO(addrB, confirmAddr, 100, positionB1)
-	utxo2 := types.NewBaseUTXO(addrB, confirmAddr, 200, positionB2)
-	utxo3 := types.NewBaseUTXO(addrB, confirmAddr, 300, positionB3)
+	utxo0 := newTestUTXO(addrB.Bytes(), 100, positionB0)
+	utxo1 := newTestUTXO(addrB.Bytes(), 200, positionB1)
+	utxo2 := newTestUTXO(addrB.Bytes(), 300, positionB2)
 
+	mapper.AddUTXO(ctx, utxo0)
 	mapper.AddUTXO(ctx, utxo1)
 	mapper.AddUTXO(ctx, utxo2)
-	mapper.AddUTXO(ctx, utxo3)
 
-	utxosForAddressB := mapper.GetUTXOsForAddress(ctx, addrB)
+	utxosForAddressB := mapper.GetUTXOsForAddress(ctx, addrB.Bytes())
 	require.NotNil(t, utxosForAddressB)
 	require.Equal(t, 3, len(utxosForAddressB))
-	require.Equal(t, utxo1, utxosForAddressB[0])
-	require.Equal(t, utxo2, utxosForAddressB[1])
-	require.Equal(t, utxo3, utxosForAddressB[2])
+	require.Equal(t, utxo0, utxosForAddressB[0])
+	require.Equal(t, utxo1, utxosForAddressB[1])
+	require.Equal(t, utxo2, utxosForAddressB[2])
 
-	positionC1 := types.Position{1002, 3, 0, 0}
-	utxo4 := types.NewBaseUTXO(addrC, confirmAddr, 300, positionC1)
-	mapper.AddUTXO(ctx, utxo4)
-	utxosForAddressC := mapper.GetUTXOsForAddress(ctx, addrC)
+	positionC0 := newTestPosition([]uint64{2, 3, 0})
+	utxo3 := newTestUTXO(addrC.Bytes(), 300, positionC0)
+	mapper.AddUTXO(ctx, utxo3)
+	utxosForAddressC := mapper.GetUTXOsForAddress(ctx, addrC.Bytes())
 	require.NotNil(t, utxosForAddressC)
 	require.Equal(t, 1, len(utxosForAddressC))
-	require.Equal(t, utxo4, utxosForAddressC[0])
+	require.Equal(t, utxo3, utxosForAddressC[0])
 
 	// check returns empty slice if no UTXOs exist for address
-	utxosForAddressA := mapper.GetUTXOsForAddress(ctx, addrA)
+	utxosForAddressA := mapper.GetUTXOsForAddress(ctx, addrA.Bytes())
 	require.Empty(t, utxosForAddressA)
 }

@@ -29,7 +29,7 @@ type ChildChain struct {
 
 	cdc *amino.Codec
 
-	txIndex *uint16
+	txIndex uint16
 
 	feeAmount *uint64
 
@@ -49,7 +49,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	var app = &ChildChain{
 		BaseApp:         bapp,
 		cdc:             cdc,
-		txIndex:         new(uint16),
+		txIndex:         0,
 		feeAmount:       new(uint64),
 		capKeyMainStore: sdk.NewKVStoreKey("main"),
 	}
@@ -105,7 +105,7 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	// reset txIndex and fee
-	*app.txIndex = 0
+	app.txIndex = 0
 	*app.feeAmount = 0
 
 	return abci.ResponseEndBlock{}
@@ -125,13 +125,12 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 // Return the next output position given ctx
 // and secondary flag which indicates if it is for secondary outputs from single tx.
 func (app *ChildChain) nextPosition(ctx sdk.Context, secondary bool) utxo.Position {
-	var oindex uint8
 	if !secondary {
-		(*app.txIndex)++
+		app.txIndex++
+		return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 0, 0)
 	} else {
-		oindex = 1
+		return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 1, 0)
 	}
-	return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), *app.txIndex, oindex, 0)
 }
 
 // Unimplemented for now
@@ -144,6 +143,7 @@ func MakeCodec() *amino.Codec {
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
 	cdc.RegisterConcrete(PlasmaGenTx{}, "app/PlasmaGenTx", nil)
 	types.RegisterAmino(cdc)
+	utxo.RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
 }

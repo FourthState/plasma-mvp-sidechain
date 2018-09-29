@@ -39,7 +39,6 @@ func NewBaseMapper(contextKey sdk.StoreKey, cdc *amino.Codec) Mapper {
 func (um baseMapper) GetUTXO(ctx sdk.Context, addr []byte, position Position) UTXO {
 	store := ctx.KVStore(um.contextKey)
 	key := um.constructKey(addr, position)
-
 	bz := store.Get(key)
 
 	if bz == nil {

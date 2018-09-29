@@ -34,25 +34,25 @@ func BufferStdin() *bufio.Reader {
 }
 
 // Build SpendMsg
-func BuildMsg(inaddr1, inaddr2, addr1, addr2 common.Address, position1, position2 types.Position, confirmSigs1, confirmSigs2 [2]types.Signature, amount1, amount2, fee uint64) types.SpendMsg {
+func BuildMsg(inaddr0, inaddr1, addr0, addr1 common.Address, position0, position1 types.PlasmaPosition, confirmSigs0, confirmSigs1 [2]types.Signature, amount0, amount1, fee uint64) types.SpendMsg {
 	return types.SpendMsg{
+		Blknum0:      position0.Blknum,
+		Txindex0:     position0.TxIndex,
+		Oindex0:      position0.Oindex,
+		DepositNum0:  position0.DepositNum,
+		Owner0:       inaddr0,
+		ConfirmSigs0: confirmSigs0,
 		Blknum1:      position1.Blknum,
 		Txindex1:     position1.TxIndex,
 		Oindex1:      position1.Oindex,
 		DepositNum1:  position1.DepositNum,
 		Owner1:       inaddr1,
 		ConfirmSigs1: confirmSigs1,
-		Blknum2:      position2.Blknum,
-		Txindex2:     position2.TxIndex,
-		Oindex2:      position2.Oindex,
-		DepositNum2:  position2.DepositNum,
-		Owner2:       inaddr2,
-		ConfirmSigs2: confirmSigs2,
+		Newowner0:    addr0,
+		Amount0:      amount0,
 		Newowner1:    addr1,
-		Denom1:       amount1,
-		Newowner2:    addr2,
-		Denom2:       amount2,
-		Fee:          fee,
+		Amount1:      amount1,
+		FeeAmount:    fee,
 	}
 }
 
@@ -82,7 +82,7 @@ func GetPassword(prompt string, buf *bufio.Reader) (pass string, err error) {
 }
 
 // Prompts for a password twice to verify they match
-func GetCheckPassword(prompt, prompt2 string, buf *bufio.Reader) (string, error) {
+func GetCheckPassword(prompt, prompt1 string, buf *bufio.Reader) (string, error) {
 	if !inputIsTty() {
 		return GetPassword(prompt, buf)
 	}
@@ -91,27 +91,27 @@ func GetCheckPassword(prompt, prompt2 string, buf *bufio.Reader) (string, error)
 	if err != nil {
 		return "", err
 	}
-	pass2, err := GetPassword(prompt2, buf)
+	pass1, err := GetPassword(prompt1, buf)
 	if err != nil {
 		return "", err
 	}
-	if pass != pass2 {
+	if pass != pass1 {
 		return "", errors.New("Passphrases did not match")
 	}
 	return pass, nil
 }
 
 // value in a position defaults to 0 if not provided
-func ParsePositions(posStr string) (position [2]types.Position, err error) {
+func ParsePositions(posStr string) (position [2]types.PlasmaPosition, err error) {
 	for i, v := range strings.Split(posStr, "::") {
 		var pos [4]uint64
 		for k, number := range strings.Split(v, ".") {
 			pos[k], err = strconv.ParseUint(strings.TrimSpace(number), 0, 64)
 			if err != nil {
-				return [2]types.Position{}, err
+				return [2]types.PlasmaPosition{}, err
 			}
 		}
-		position[i] = types.NewPosition(pos[0], uint16(pos[1]), uint8(pos[2]), uint64(pos[3]))
+		position[i] = types.NewPlasmaPosition(pos[0], uint16(pos[1]), uint8(pos[2]), uint64(pos[3]))
 	}
 	return position, nil
 }

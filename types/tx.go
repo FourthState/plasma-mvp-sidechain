@@ -103,7 +103,7 @@ func (msg SpendMsg) Inputs() []utxo.Input {
 }
 
 func (msg SpendMsg) Outputs() []utxo.Output {
-	outputs := []utxo.Output{utxo.Output{msg.Owner0.Bytes(), "Ether", msg.Amount0}}
+	outputs := []utxo.Output{utxo.Output{msg.Newowner0.Bytes(), "Ether", msg.Amount0}}
 	if msg.Amount1 != 0 {
 		outputs = append(outputs, utxo.Output{msg.Newowner1.Bytes(), "Ether", msg.Amount1})
 	}

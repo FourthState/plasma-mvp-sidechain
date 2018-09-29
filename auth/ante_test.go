@@ -20,7 +20,9 @@ func setup() (sdk.Context, utxo.Mapper, utxo.FeeUpdater) {
 	ms, capKey := utxo.SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-	mapper := utxo.NewBaseMapper(capKey, utxo.MakeCodec())
+	cdc := utxo.MakeCodec()
+	types.RegisterAmino(cdc)
+	mapper := utxo.NewBaseMapper(capKey, cdc)
 
 	return ctx, mapper, feeUpdater
 }
@@ -58,7 +60,7 @@ func GenSpendMsg() types.SpendMsg {
 }
 
 // Returns a confirmsig array signed by privKey0 and privKey1
-func CreateConfirmSig(position *types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
+func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
 	confirmBytes := position.GetSignBytes()
 	hash := ethcrypto.Keccak256(confirmBytes)
 	confirmSig, _ := ethcrypto.Sign(hash, privKey0)
@@ -97,15 +99,6 @@ func getInputAddr(addr0, addr1 common.Address, two bool) [2]common.Address {
 	}
 }
 
-// helper function for using the correct index value
-func getIndex(index int64) int64 {
-	if index >= 0 {
-		return index
-	} else {
-		return 0
-	}
-}
-
 // No signatures are provided
 func TestNoSigs(t *testing.T) {
 	ctx, mapper, feeUpdater := setup()
@@ -138,10 +131,10 @@ func TestNotEnoughSigs(t *testing.T) {
 }
 
 // helper struct for readability
-type Input struct {
+type input struct {
 	owner_index  int64
 	addr         common.Address
-	position     *types.PlasmaPosition
+	position     types.PlasmaPosition
 	input_index0 int64
 	input_index1 int64
 }
@@ -159,8 +152,8 @@ func TestDifferentCases(t *testing.T) {
 	}
 
 	cases := []struct {
-		input0    Input
-		input1    Input
+		input0    input
+		input1    input
 		newowner0 common.Address
 		amount0   uint64
 		newowner1 common.Address
@@ -169,8 +162,8 @@ func TestDifferentCases(t *testing.T) {
 	}{
 		// Test Case 0: Tx signed by the wrong address
 		{
-			Input{1, addrs[0], types.NewPlasmaPosition(2, 0, 0, 0), 1, -1}, // first input
-			Input{-1, common.Address{}, &types.PlasmaPosition{}, -1, -1},   // second input
+			input{1, addrs[0], types.NewPlasmaPosition(2, 0, 0, 0), 1, -1}, // first input
+			input{-1, common.Address{}, types.PlasmaPosition{}, -1, -1},    // second input
 			addrs[1], 1000, // first output
 			addrs[2], 1000, // second output
 			true,
@@ -178,8 +171,8 @@ func TestDifferentCases(t *testing.T) {
 
 		// Test Case 1: Inputs != Outputs + Fee
 		{
-			Input{0, addrs[0], types.NewPlasmaPosition(2, 0, 0, 0), 1, -1},
-			Input{-1, common.Address{}, &types.PlasmaPosition{}, -1, -1},
+			input{0, addrs[0], types.NewPlasmaPosition(3, 0, 0, 0), 1, -1},
+			input{-1, common.Address{}, types.PlasmaPosition{}, -1, -1},
 			addrs[1], 2000,
 			addrs[2], 1000,
 			true,
@@ -187,8 +180,8 @@ func TestDifferentCases(t *testing.T) {
 
 		// Test Case 2: 1 input 2 output
 		{
-			Input{0, addrs[0], types.NewPlasmaPosition(2, 0, 0, 0), 1, -1},
-			Input{-1, common.Address{}, &types.PlasmaPosition{}, -1, -1},
+			input{0, addrs[0], types.NewPlasmaPosition(4, 0, 0, 0), 1, -1},
+			input{-1, common.Address{}, types.PlasmaPosition{}, -1, -1},
 			addrs[1], 1000,
 			addrs[2], 1000,
 			false,
@@ -196,8 +189,8 @@ func TestDifferentCases(t *testing.T) {
 
 		// Test Case 3: 2 input 2 output
 		{
-			Input{1, addrs[1], types.NewPlasmaPosition(3, 0, 0, 0), 0, -1},
-			Input{2, addrs[2], types.NewPlasmaPosition(3, 0, 1, 0), 0, -1},
+			input{1, addrs[1], types.NewPlasmaPosition(5, 0, 0, 0), 0, -1},
+			input{2, addrs[2], types.NewPlasmaPosition(5, 0, 1, 0), 0, -1},
 			addrs[3], 2500,
 			addrs[4], 1500,
 			false,
@@ -205,9 +198,9 @@ func TestDifferentCases(t *testing.T) {
 	}
 
 	for index, tc := range cases {
-		input0_index1 := getIndex(tc.input0.input_index1)
-		input1_index0 := getIndex(tc.input1.input_index0)
-		input1_index1 := getIndex(tc.input1.input_index1)
+		input0_index1 := utils.GetIndex(tc.input0.input_index1)
+		input1_index0 := utils.GetIndex(tc.input1.input_index0)
+		input1_index1 := utils.GetIndex(tc.input1.input_index1)
 		var msg = types.SpendMsg{
 			Blknum0:      tc.input0.position.Blknum,
 			Txindex0:     tc.input0.position.TxIndex,
@@ -228,7 +221,7 @@ func TestDifferentCases(t *testing.T) {
 			FeeAmount:    5,
 		}
 
-		owner_index1 := getIndex(tc.input1.owner_index)
+		owner_index1 := utils.GetIndex(tc.input1.owner_index)
 		tx := GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 
 		handler := NewAnteHandler(mapper, feeUpdater)
@@ -238,12 +231,12 @@ func TestDifferentCases(t *testing.T) {
 		require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
-		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, "Ether", *tc.input0.position)
+		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, "Ether", tc.input0.position)
 
 		var utxo1 utxo.UTXO
 		if tc.input1.owner_index != -1 {
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
-			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, "Ether", *tc.input1.position)
+			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, "Ether", tc.input1.position)
 		}
 
 		mapper.AddUTXO(ctx, utxo0)
@@ -253,6 +246,10 @@ func TestDifferentCases(t *testing.T) {
 		_, res, abort = handler(ctx, tx)
 
 		assert.Equal(t, tc.abort, abort, fmt.Sprintf("aborted on case: %d", index))
-		require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+		if tc.abort == false {
+			require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+		} else {
+			require.NotEqual(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+		}
 	}
 }
