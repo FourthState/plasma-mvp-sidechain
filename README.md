@@ -50,7 +50,7 @@ The light client uses the Ethereum keystore to create and store passphrase encry
 See our [research repository](https://github.com/FourthState/plasma-research) for architectural explanations of our Plasma implementation. 
 
 ### Documentation
-See our [documentation](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/documentation.md)
+See our [documentation](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/docs/overview.md)
 
 ### Contributing
 See our [contributing guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md)
