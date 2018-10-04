@@ -25,7 +25,7 @@ Our ante handler will check that the address that created the signatures in Base
 
 Once a transaction has been included into a block, DeliverTx will be executed which will do the same functionality as CheckTx as well as route the Msg to a handler. 
 
-In our implementation, our handler can only handle a SpendMsg. Handling of a SpendMsg includes deleting the inputs of the transaction from our utxo databse and creating new utxos corresponding to the addresses and denominations provided in SpendMsg. handleSpendMsg() will utilize the UTXOKeeper which is used to restrict access to our UTXOMapper (utxo databse). The handler will also increment the transaction index number so the newly created utxo's will map from the correct position.
+In our implementation, our handler can only handle a SpendMsg. Handling of a SpendMsg includes deleting the inputs of the transaction from our utxo database and creating new utxos corresponding to the addresses and denominations provided in SpendMsg. handleSpendMsg() will utilize the UTXOKeeper which is used to restrict access to our UTXOMapper (utxo database). The handler will also increment the transaction index number so the newly created utxo's will map from the correct position.
 
 The UTXOMapper is our utxo database. Our mapper uses keys in the form: < encoded address > + < encoded position > . It maps to the encoded utxo and uses go-amino for its encoding. The < encoded position > at the beginning of the key is used for prefix iteration which will return all the utxo's owned by a specified address. 
 
