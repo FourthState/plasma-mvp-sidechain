@@ -54,8 +54,8 @@ Running `dep ensure` followed by `go build` will result in the following output:
 # github.com/FourthState/plasma-mvp-sidechain/vendor/github.com/ethereum/go-ethereum/crypto/secp256k1
 ../vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/curve.go:42:44: fatal error: libsecp256k1/include/secp256k1.h: No such file or directory
 ```
-This is caused by a go dep issue outlined [here](https://github.com/tools/godep/issues/422)
-To fix this locally, add the following under `crypto/secp256k1` and above `crypto/sha3`:
+This is caused by a go dep issue outlined [here](https://github.com/tools/godep/issues/422).
+To fix this locally, add the following in Gopkg.lock under `crypto/secp256k1` and above `crypto/sha3`:
 
 ```
 "crypto/secp256k1/libsecp256k1",
