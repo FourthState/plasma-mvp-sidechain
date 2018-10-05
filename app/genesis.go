@@ -13,6 +13,7 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/server/config"
 	"github.com/cosmos/cosmos-sdk/wire"
@@ -39,21 +40,23 @@ func NewGenesisUTXO(addr string, amount string, position [4]string) GenesisUTXO 
 	return utxo
 }
 
-func ToUTXO(gutxo GenesisUTXO) types.UTXO {
+func ToUTXO(gutxo GenesisUTXO) utxo.UTXO {
 	// Any failed str conversion defaults to 0
 	addr := common.HexToAddress(gutxo.Address)
-	denom, _ := strconv.ParseUint(gutxo.Denom, 10, 64)
+	amount, _ := strconv.ParseUint(gutxo.Denom, 10, 64)
 	utxo := &types.BaseUTXO{
 		InputAddresses: [2]common.Address{addr, common.Address{}},
 		Address:        addr,
-		Denom:          denom,
+		Amount:         amount,
+		Denom:          "Ether",
 	}
 	blkNum, _ := strconv.ParseUint(gutxo.Position[0], 10, 64)
 	txIndex, _ := strconv.ParseUint(gutxo.Position[1], 10, 16)
 	oIndex, _ := strconv.ParseUint(gutxo.Position[2], 10, 8)
 	depNum, _ := strconv.ParseUint(gutxo.Position[3], 10, 64)
 
-	utxo.SetPosition(blkNum, uint16(txIndex), uint8(oIndex), depNum)
+	position := types.NewPlasmaPosition(blkNum, uint16(txIndex), uint8(oIndex), depNum)
+	utxo.SetPosition(position)
 	return utxo
 }
 

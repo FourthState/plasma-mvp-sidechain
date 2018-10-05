@@ -2,9 +2,10 @@ package auth
 
 import (
 	"crypto/ecdsa"
-	db "github.com/FourthState/plasma-mvp-sidechain/db"
+	"fmt"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -15,95 +16,97 @@ import (
 	"testing"
 )
 
-func setup() (sdk.Context, types.UTXOMapper, *uint16, *uint64) {
-	ms, capKey := db.SetupMultiStore()
+func setup() (sdk.Context, utxo.Mapper, utxo.FeeUpdater) {
+	ms, capKey := utxo.SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-	mapper := db.NewUTXOMapper(capKey, db.MakeCodec())
+	cdc := utxo.MakeCodec()
+	types.RegisterAmino(cdc)
+	mapper := utxo.NewBaseMapper(capKey, cdc)
 
-	return ctx, mapper, new(uint16), new(uint64)
-
+	return ctx, mapper, feeUpdater
 }
 
-/// @param privA confirmSig Address
-/// @param privB owner address
-/// single input
-func newSingleInputUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position types.Position) types.UTXO {
-	addrA := utils.PrivKeyToAddress(privA)
-	addrB := utils.PrivKeyToAddress(privB)
-	confirmAddr := [2]common.Address{addrA, common.Address{}}
-	return types.NewBaseUTXO(addrB, confirmAddr, 100, position)
+// should be modified when fees are implemented
+func feeUpdater(outputs []utxo.Output) sdk.Error {
+	return nil
 }
 
-/// @param privA confirmSig Address
-/// @param privB owner address
-/// two inputs
-func newUTXO(privA *ecdsa.PrivateKey, privB *ecdsa.PrivateKey, position types.Position) types.UTXO {
-	addrA := utils.PrivKeyToAddress(privA)
-	addrB := utils.PrivKeyToAddress(privB)
-	confirmAddr := [2]common.Address{addrA, addrA}
-	return types.NewBaseUTXO(addrB, confirmAddr, 100, position)
-}
-
-func GenBasicSpendMsg() types.SpendMsg {
-	// Creates Basic Spend Msg with no owners or recipients
-	confirmSigs := [2]types.Signature{types.Signature{}, types.Signature{}}
-	return types.SpendMsg{
-		Blknum1:      1000,
-		Txindex1:     0,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       common.Address{},
-		ConfirmSigs1: confirmSigs,
-		Blknum2:      1000,
-		Txindex2:     1,
-		Oindex2:      0,
-		DepositNum2:  0,
-		Owner2:       common.Address{},
-		ConfirmSigs2: confirmSigs,
-		Newowner1:    common.Address{},
-		Denom1:       150,
-		Newowner2:    common.Address{},
-		Denom2:       50,
-		Fee:          0,
-	}
-}
-
-func GenSpendMsgWithAddresses() types.SpendMsg {
+func GenSpendMsg() types.SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
 	confirmSigs := [2]types.Signature{types.Signature{}, types.Signature{}}
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
 	return types.SpendMsg{
-		Blknum1:      1000,
-		Txindex1:     0,
+		Blknum0:      1,
+		Txindex0:     0,
+		Oindex0:      0,
+		DepositNum0:  0,
+		Owner0:       utils.PrivKeyToAddress(privKeyA),
+		ConfirmSigs0: confirmSigs,
+		Blknum1:      1,
+		Txindex1:     1,
 		Oindex1:      0,
 		DepositNum1:  0,
 		Owner1:       utils.PrivKeyToAddress(privKeyA),
 		ConfirmSigs1: confirmSigs,
-		Blknum2:      1000,
-		Txindex2:     1,
-		Oindex2:      0,
-		DepositNum2:  0,
-		Owner2:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs2: confirmSigs,
+		Newowner0:    utils.PrivKeyToAddress(privKeyB),
+		Amount0:      150,
 		Newowner1:    utils.PrivKeyToAddress(privKeyB),
-		Denom1:       150,
-		Newowner2:    utils.PrivKeyToAddress(privKeyB),
-		Denom2:       50,
-		Fee:          0,
+		Amount1:      50,
+		FeeAmount:    0,
+	}
+}
+
+// Returns a confirmsig array signed by privKey0 and privKey1
+func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
+	confirmBytes := position.GetSignBytes()
+	hash := ethcrypto.Keccak256(confirmBytes)
+	confirmSig, _ := ethcrypto.Sign(hash, privKey0)
+
+	var confirmSig1 []byte
+	if two_inputs {
+		confirmSig1, _ = ethcrypto.Sign(hash, privKey1)
+	}
+	confirmSigs = [2]types.Signature{types.Signature{confirmSig}, types.Signature{confirmSig1}}
+	return confirmSigs
+}
+
+// helper for constructing single or double input tx
+func GetTx(msg types.SpendMsg, privKey0, privKey1 *ecdsa.PrivateKey, two_sigs bool) (tx types.BaseTx) {
+	hash := ethcrypto.Keccak256(msg.GetSignBytes())
+	sig0, _ := ethcrypto.Sign(hash, privKey0)
+
+	tx = types.NewBaseTx(msg, []types.Signature{{
+		Sig: sig0,
+	}})
+
+	if two_sigs {
+		sig1, _ := ethcrypto.Sign(hash, privKey1)
+		tx.Signatures = append(tx.Signatures, types.Signature{sig1})
+	}
+
+	return tx
+}
+
+// helper for constructing input addresses
+func getInputAddr(addr0, addr1 common.Address, two bool) [2]common.Address {
+	if two {
+		return [2]common.Address{addr0, addr1}
+	} else {
+		return [2]common.Address{addr0, common.Address{}}
 	}
 }
 
 // No signatures are provided
 func TestNoSigs(t *testing.T) {
-	ctx, mapper, txIndex, feeAmount := setup()
+	ctx, mapper, feeUpdater := setup()
 
-	var msg = GenSpendMsgWithAddresses()
+	var msg = GenSpendMsg()
 	tx := types.NewBaseTx(msg, []types.Signature{})
 
-	handler := NewAnteHandler(mapper, txIndex, feeAmount)
+	handler := NewAnteHandler(mapper, feeUpdater)
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort with no signatures")
@@ -112,227 +115,141 @@ func TestNoSigs(t *testing.T) {
 
 // The wrong amount of signatures are provided
 func TestNotEnoughSigs(t *testing.T) {
-	ctx, mapper, txIndex, feeAmount := setup()
+	ctx, mapper, feeUpdater := setup()
 
-	var msg = GenSpendMsgWithAddresses()
+	var msg = GenSpendMsg()
 	priv, _ := ethcrypto.GenerateKey()
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, priv)
 	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}})
 
-	handler := NewAnteHandler(mapper, txIndex, feeAmount)
+	handler := NewAnteHandler(mapper, feeUpdater)
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with incorrect number of signatures")
 }
 
-// The transaction is not signed by the utxo owner
-func TestWrongSigner(t *testing.T) {
-	ctx, mapper, txIndex, feeAmount := setup()
-
-	// Generate input utxos
-	position1 := types.Position{1000, 0, 0, 0}
-	position2 := types.Position{1000, 1, 0, 0}
-	privA, _ := ethcrypto.GenerateKey()
-	privB, _ := ethcrypto.GenerateKey()
-	utxo1 := NewUTXO(privA, privB, position1)
-	utxo2 := NewUTXO(privA, privB, position2)
-	mapper.AddUTXO(ctx, utxo1)
-	mapper.AddUTXO(ctx, utxo2)
-
-	// Signature by non owner
-	var msg = GenSpendMsgWithAddresses()
-	msg.Owner1 = utils.PrivKeyToAddress(privB)
-	msg.Owner2 = utils.PrivKeyToAddress(privB)
-	priv, _ := ethcrypto.GenerateKey()
-	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	sig, err := ethcrypto.Sign(hash, priv)
-	require.NoError(t, err)
-	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}, types.Signature{sig}})
-
-	handler := NewAnteHandler(mapper, txIndex, feeAmount)
-	_, res, abort := handler(ctx, tx)
-
-	assert.Equal(t, true, abort, "did not abort on wrong signer")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "signer address does not match owner address")
+// helper struct for readability
+type input struct {
+	owner_index  int64
+	addr         common.Address
+	position     types.PlasmaPosition
+	input_index0 int64
+	input_index1 int64
 }
 
-// Tests a valid single input transaction
-func TestValidSingleInput(t *testing.T) {
-	ctx, mapper, txIndex, feeAmount := setup()
+// Tests a different cases
+func TestDifferentCases(t *testing.T) {
+	ctx, mapper, feeUpdater := setup()
 
-	privKeyA, _ := ethcrypto.GenerateKey() //Input Owner
-	privKeyB, _ := ethcrypto.GenerateKey() //ConfirmSig owner and recipient
+	var keys [6]*ecdsa.PrivateKey
+	var addrs []common.Address
 
-	position1 := types.Position{1, 0, 0, 0}
-	confirmSigHash := ethcrypto.Keccak256(position1.GetSignBytes())
-	confirmSig, err := ethcrypto.Sign(confirmSigHash, privKeyB)
-	require.NoError(t, err)
-	confirmSigs := [2]types.Signature{types.Signature{confirmSig}, types.Signature{}}
-
-	//Single input
-	var msg = types.SpendMsg{
-		Blknum1:      1,
-		Txindex1:     0,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs1: confirmSigs,
-		Blknum2:      0,
-		Txindex2:     0,
-		Oindex2:      0,
-		DepositNum2:  0,
-		Owner2:       common.Address{},
-		ConfirmSigs2: confirmSigs,
-		Newowner1:    utils.PrivKeyToAddress(privKeyA),
-		Denom1:       50,
-		Newowner2:    utils.PrivKeyToAddress(privKeyA),
-		Denom2:       45,
-		Fee:          5,
+	for i := 0; i < 6; i++ {
+		keys[i], _ = ethcrypto.GenerateKey()
+		addrs = append(addrs, utils.PrivKeyToAddress(keys[i]))
 	}
 
-	// Sign transaction
-	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	sig, err := ethcrypto.Sign(hash, privKeyA)
-	require.NoError(t, err)
-	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}})
+	cases := []struct {
+		input0    input
+		input1    input
+		newowner0 common.Address
+		amount0   uint64
+		newowner1 common.Address
+		amount1   uint64
+		abort     bool
+	}{
+		// Test Case 0: Tx signed by the wrong address
+		{
+			input{1, addrs[0], types.NewPlasmaPosition(2, 0, 0, 0), 1, -1}, // first input
+			input{-1, common.Address{}, types.PlasmaPosition{}, -1, -1},    // second input
+			addrs[1], 1000, // first output
+			addrs[2], 1000, // second output
+			true,
+		},
 
-	handler := NewAnteHandler(mapper, txIndex, feeAmount)
-	_, res, abort := handler(ctx, tx)
+		// Test Case 1: Inputs != Outputs + Fee
+		{
+			input{0, addrs[0], types.NewPlasmaPosition(3, 0, 0, 0), 1, -1},
+			input{-1, common.Address{}, types.PlasmaPosition{}, -1, -1},
+			addrs[1], 2000,
+			addrs[2], 1000,
+			true,
+		},
 
-	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
+		// Test Case 2: 1 input 2 output
+		{
+			input{0, addrs[0], types.NewPlasmaPosition(4, 0, 0, 0), 1, -1},
+			input{-1, common.Address{}, types.PlasmaPosition{}, -1, -1},
+			addrs[1], 1000,
+			addrs[2], 1000,
+			false,
+		},
 
-	utxo1 := newSingleInputUTXO(privKeyB, privKeyA, position1)
-	mapper.AddUTXO(ctx, utxo1)
-
-	_, res, abort = handler(ctx, tx)
-
-	assert.Equal(t, false, abort, "aborted with valid transaction")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
-}
-
-// Tests a valid transaction
-func TestValidTransaction(t *testing.T) {
-	ctx, mapper, txIndex, feeAmount := setup()
-
-	privKeyA, _ := ethcrypto.GenerateKey() //Input Owner
-	privKeyB, _ := ethcrypto.GenerateKey() //ConfirmSig owner and recipient
-
-	// Generate valid inputs
-	position1 := types.Position{1, 0, 0, 0}
-	position2 := types.Position{1, 1, 0, 0}
-	confirmSigHash1 := ethcrypto.Keccak256(position1.GetSignBytes())
-	confirmSigHash2 := ethcrypto.Keccak256(position2.GetSignBytes())
-	confirmSig1, err := ethcrypto.Sign(confirmSigHash1, privKeyB)
-	require.NoError(t, err)
-	confirmSig2, err := ethcrypto.Sign(confirmSigHash2, privKeyB)
-	require.NoError(t, err)
-	confirmSigs1 := [2]types.Signature{types.Signature{confirmSig1}, types.Signature{confirmSig1}}
-	confirmSigs2 := [2]types.Signature{types.Signature{confirmSig2}, types.Signature{confirmSig2}}
-
-	//Single input
-	var msg = types.SpendMsg{
-		Blknum1:      1,
-		Txindex1:     0,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs1: confirmSigs1,
-		Blknum2:      1,
-		Txindex2:     1,
-		Oindex2:      0,
-		DepositNum2:  0,
-		Owner2:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs2: confirmSigs2,
-		Newowner1:    utils.PrivKeyToAddress(privKeyB),
-		Denom1:       150,
-		Newowner2:    utils.PrivKeyToAddress(privKeyB),
-		Denom2:       45,
-		Fee:          5,
+		// Test Case 3: 2 input 2 output
+		{
+			input{1, addrs[1], types.NewPlasmaPosition(5, 0, 0, 0), 0, -1},
+			input{2, addrs[2], types.NewPlasmaPosition(5, 0, 1, 0), 0, -1},
+			addrs[3], 2500,
+			addrs[4], 1500,
+			false,
+		},
 	}
-	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	sig, err := ethcrypto.Sign(hash, privKeyA)
-	require.NoError(t, err)
-	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}, types.Signature{sig}})
 
-	handler := NewAnteHandler(mapper, txIndex, feeAmount)
-	_, res, abort := handler(ctx, tx)
+	for index, tc := range cases {
+		input0_index1 := utils.GetIndex(tc.input0.input_index1)
+		input1_index0 := utils.GetIndex(tc.input1.input_index0)
+		input1_index1 := utils.GetIndex(tc.input1.input_index1)
+		var msg = types.SpendMsg{
+			Blknum0:      tc.input0.position.Blknum,
+			Txindex0:     tc.input0.position.TxIndex,
+			Oindex0:      tc.input0.position.Oindex,
+			DepositNum0:  tc.input0.position.DepositNum,
+			Owner0:       tc.input0.addr,
+			ConfirmSigs0: CreateConfirmSig(tc.input0.position, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1),
+			Blknum1:      tc.input1.position.Blknum,
+			Txindex1:     tc.input1.position.TxIndex,
+			Oindex1:      tc.input1.position.Oindex,
+			DepositNum1:  tc.input1.position.DepositNum,
+			Owner1:       tc.input1.addr,
+			ConfirmSigs1: CreateConfirmSig(tc.input1.position, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1),
+			Newowner0:    tc.newowner0,
+			Amount0:      tc.amount0,
+			Newowner1:    tc.newowner1,
+			Amount1:      tc.amount1 - 5,
+			FeeAmount:    5,
+		}
 
-	assert.Equal(t, true, abort, "did not abort on utxo that does not exist")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
+		owner_index1 := utils.GetIndex(tc.input1.owner_index)
+		tx := GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 
-	utxo1 := newUTXO(privKeyB, privKeyA, position1)
-	utxo2 := newUTXO(privKeyB, privKeyA, position2)
-	mapper.AddUTXO(ctx, utxo1)
-	mapper.AddUTXO(ctx, utxo2)
+		handler := NewAnteHandler(mapper, feeUpdater)
+		_, res, abort := handler(ctx, tx)
 
-	_, res, abort = handler(ctx, tx)
+		assert.Equal(t, true, abort, fmt.Sprintf("did not abort on utxo that does not exist. Case: %d", index))
+		require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
-	assert.Equal(t, false, abort, "aborted with valid transaction")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
-}
+		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
+		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, "Ether", tc.input0.position)
 
-// Check for double input that ante handler will
-// prevent any malformed transactions with unequal
-// input output fee balance from being spent
-func TestDenomEquality(t *testing.T) {
-	ctx, mapper, txIndex, feeAmount := setup()
+		var utxo1 utxo.UTXO
+		if tc.input1.owner_index != -1 {
+			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
+			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, "Ether", tc.input1.position)
+		}
 
-	privKeyA, _ := ethcrypto.GenerateKey() //Input Owner
-	privKeyB, _ := ethcrypto.GenerateKey() //ConfirmSig owner and recipient
+		mapper.AddUTXO(ctx, utxo0)
+		if tc.input1.owner_index != -1 {
+			mapper.AddUTXO(ctx, utxo1)
+		}
+		_, res, abort = handler(ctx, tx)
 
-	// Generate valid inputs
-	position1 := types.Position{1, 0, 0, 0}
-	position2 := types.Position{1, 1, 0, 0}
-	confirmSigHash1 := ethcrypto.Keccak256(position1.GetSignBytes())
-	confirmSigHash2 := ethcrypto.Keccak256(position2.GetSignBytes())
-	confirmSig1, err := ethcrypto.Sign(confirmSigHash1, privKeyB)
-	require.NoError(t, err)
-	confirmSig2, err := ethcrypto.Sign(confirmSigHash2, privKeyB)
-	require.NoError(t, err)
-	confirmSigs1 := [2]types.Signature{types.Signature{confirmSig1}, types.Signature{confirmSig1}}
-	confirmSigs2 := [2]types.Signature{types.Signature{confirmSig2}, types.Signature{confirmSig2}}
-
-	//Single input
-	var msg = types.SpendMsg{
-		Blknum1:      1,
-		Txindex1:     0,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs1: confirmSigs1,
-		Blknum2:      1,
-		Txindex2:     1,
-		Oindex2:      0,
-		DepositNum2:  0,
-		Owner2:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs2: confirmSigs2,
-		Newowner1:    utils.PrivKeyToAddress(privKeyB),
-		Denom1:       150,
-		Newowner2:    utils.PrivKeyToAddress(privKeyB),
-		Denom2:       50,
-		Fee:          5,
+		assert.Equal(t, tc.abort, abort, fmt.Sprintf("aborted on case: %d", index))
+		if tc.abort == false {
+			require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+		} else {
+			require.NotEqual(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(0)), res.Code, res.Log)
+		}
 	}
-	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	sig, err := ethcrypto.Sign(hash, privKeyA)
-	require.NoError(t, err)
-	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}, types.Signature{sig}})
-
-	handler := NewAnteHandler(mapper, txIndex, feeAmount)
-	_, res, abort := handler(ctx, tx)
-
-	require.Equal(t, true, abort, "did not abort on utxo that does not exist")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
-
-	utxo1 := newUTXO(privKeyB, privKeyA, position1)
-	utxo2 := newUTXO(privKeyB, privKeyA, position2)
-	mapper.AddUTXO(ctx, utxo1)
-	mapper.AddUTXO(ctx, utxo2)
-
-	_, res, abort = handler(ctx, tx)
-
-	assert.Equal(t, true, abort, "did not abort with invalid transaction")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, res.Log)
 }

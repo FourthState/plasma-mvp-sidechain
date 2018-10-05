@@ -27,3 +27,12 @@ func GenerateAddress() common.Address {
 	}
 	return PrivKeyToAddress(priv)
 }
+
+// helper function for tests
+func GetIndex(index int64) int64 {
+	if index >= 0 {
+		return index
+	} else {
+		return 0
+	}
+}

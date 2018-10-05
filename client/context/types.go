@@ -1,12 +1,12 @@
 package context
 
 import (
-	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
 // redefine in utxo.go
-type UTXODecoder func(utxoBytes []byte) (types.UTXO, error)
+type UTXODecoder func(utxoBytes []byte) (utxo.UTXO, error)
 
 type ClientContext struct {
 	Height         int64

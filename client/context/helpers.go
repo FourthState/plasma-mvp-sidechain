@@ -15,6 +15,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 )
 
 // Broadcast the transaction bytes to Tendermint
@@ -68,7 +69,7 @@ func (ctx ClientContext) SignBuildBroadcast(addrs [2]common.Address, msg types.S
 	return ctx.BroadcastTx(txBytes)
 }
 
-func (ctx ClientContext) GetSignature(addr common.Address, msg types.SpendMsg, dir string) (sig []byte, err error) {
+func (ctx ClientContext) GetSignature(addr common.Address, msg utxo.SpendMsg, dir string) (sig []byte, err error) {
 
 	passphrase, err := ctx.GetPassphraseFromStdin(addr)
 	if err != nil {

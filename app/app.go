@@ -3,8 +3,8 @@ package app
 import (
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
-	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"io"
 
@@ -29,7 +29,7 @@ type ChildChain struct {
 
 	cdc *amino.Codec
 
-	txIndex *uint16
+	txIndex uint16
 
 	feeAmount *uint64
 
@@ -37,7 +37,7 @@ type ChildChain struct {
 	capKeyMainStore *sdk.KVStoreKey
 
 	// Manage addition and deletion of utxo's
-	utxoMapper types.UTXOMapper
+	utxoMapper utxo.Mapper
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
@@ -49,21 +49,19 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	var app = &ChildChain{
 		BaseApp:         bapp,
 		cdc:             cdc,
-		txIndex:         new(uint16),
+		txIndex:         0,
 		feeAmount:       new(uint64),
 		capKeyMainStore: sdk.NewKVStoreKey("main"),
 	}
 
 	// define the utxoMapper
-	app.utxoMapper = plasmaDB.NewUTXOMapper(
+	app.utxoMapper = utxo.NewBaseMapper(
 		app.capKeyMainStore, // target store
 		cdc,
 	)
 
-	// UTXOKeeper to adjust spending and recieving of utxo's
-	UTXOKeeper := plasmaDB.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
-		AddRoute("spend", auth.NewHandler(UTXOKeeper, app.txIndex))
+		AddRoute("spend", utxo.NewSpendHandler(app.utxoMapper, app.nextPosition, types.ProtoUTXO))
 
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
@@ -74,7 +72,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	app.SetEndBlocker(app.endBlocker)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.txIndex, app.feeAmount))
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.feeUpdater))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -107,7 +105,7 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	// reset txIndex and fee
-	*app.txIndex = 0
+	app.txIndex = 0
 	*app.feeAmount = 0
 
 	return abci.ResponseEndBlock{}
@@ -124,11 +122,28 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	return tx, nil
 }
 
+// Return the next output position given ctx
+// and secondary flag which indicates if it is for secondary outputs from single tx.
+func (app *ChildChain) nextPosition(ctx sdk.Context, secondary bool) utxo.Position {
+	if !secondary {
+		app.txIndex++
+		return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 0, 0)
+	} else {
+		return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 1, 0)
+	}
+}
+
+// Unimplemented for now
+func (app *ChildChain) feeUpdater([]utxo.Output) sdk.Error {
+	return nil
+}
+
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
 	cdc.RegisterConcrete(PlasmaGenTx{}, "app/PlasmaGenTx", nil)
 	types.RegisterAmino(cdc)
+	utxo.RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
 }

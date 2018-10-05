@@ -11,7 +11,7 @@ import (
 )
 
 // return a base utxo with nothing set, along with two addresses
-func GetBareUTXO() (utxo UTXO, addrA, addrB common.Address) {
+func GetBareUTXO() (utxo *BaseUTXO, addrA, addrB common.Address) {
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 	addrA = utils.PrivKeyToAddress(privKeyA)
@@ -24,20 +24,20 @@ func TestGetSetAddress(t *testing.T) {
 	utxo, addrA, addrB := GetBareUTXO()
 
 	// try to set address to another blank address
-	err := utxo.SetAddress(common.Address{})
-	require.EqualError(t, err, "address provided is nil")
+	err := utxo.SetAddress(common.Address{}.Bytes())
+	require.Error(t, err)
 
 	// set address to addrB
-	err = utxo.SetAddress(addrB)
+	err = utxo.SetAddress(addrB.Bytes())
 	require.NoError(t, err)
 
 	// try to set address to addrA (currently set to addrB)
-	err = utxo.SetAddress(addrA)
-	require.EqualError(t, err, "cannot override BaseUTXO Address")
+	err = utxo.SetAddress(addrA.Bytes())
+	require.Error(t, err)
 
 	// check get method
 	addr := utxo.GetAddress()
-	require.Equal(t, addr, addrB, fmt.Sprintf("BaseUTXO GetAddress() method returned the wrong address: %s", addr))
+	require.Equal(t, addr, addrB.Bytes(), fmt.Sprintf("BaseUTXO GetAddress() method returned the wrong address: %s", addr))
 }
 
 // Test GetInputAddresses() and SetInputAddresses
@@ -46,7 +46,7 @@ func TestInputAddresses(t *testing.T) {
 
 	// try to set input address to blank addresses
 	err := utxo.SetInputAddresses([2]common.Address{common.Address{}, common.Address{}})
-	require.EqualError(t, err, "address provided is nil")
+	require.Error(t, err)
 
 	// set input addresses to addrA, addrA
 	err = utxo.SetInputAddresses([2]common.Address{addrA, addrA})
@@ -54,43 +54,45 @@ func TestInputAddresses(t *testing.T) {
 
 	// try to set input address to addrB
 	err = utxo.SetInputAddresses([2]common.Address{addrB, common.Address{}})
-	require.EqualError(t, err, "cannot override BaseUTXO Address")
+	require.Error(t, err)
 
 	// check get method
 	addrs := utxo.GetInputAddresses()
 	require.Equal(t, addrs, [2]common.Address{addrA, addrA})
 }
 
-// Test GetDenom() and SetDenom()
-func TestDenom(t *testing.T) {
-	utxo := NewBaseUTXO(common.Address{}, [2]common.Address{common.Address{}, common.Address{}}, 100, Position{})
+// Test GetAmount() and SetAmount()
+func TestAmount(t *testing.T) {
+	utxo := NewBaseUTXO(common.Address{}, [2]common.Address{common.Address{}, common.Address{}}, 100, "ether", PlasmaPosition{})
 
 	// try to set denom when it already has a value
-	err := utxo.SetDenom(100000000)
-	require.EqualError(t, err, "cannot override BaseUTXO denomination")
+	err := utxo.SetAmount(100000000)
+	require.Error(t, err)
 
 	// check get method
-	amount := utxo.GetDenom()
+	amount := utxo.GetAmount()
 	require.Equal(t, amount, uint64(100), "the wrong denomination was returned by GetDenom()")
 }
 
 // Test GetPosition() and SetPosition()
 func TestPosition(t *testing.T) {
 	utxo := BaseUTXO{}
+	position := NewPlasmaPosition(0, uint16(0), uint8(0), 0)
 
 	// try to set position to incorrect position 0, 0, 0, 0
-	err := utxo.SetPosition(0, uint16(0), uint8(0), 0)
-	require.EqualError(t, err, "position cannot be set to 0, 0, 0, 0")
+	err := utxo.SetPosition(position)
+	require.Error(t, err)
 
 	// set position
-	err = utxo.SetPosition(5, 12, 1, 0)
+	position = NewPlasmaPosition(5, uint16(12), uint8(1), 0)
+	err = utxo.SetPosition(position)
 	require.NoError(t, err)
 
 	// try to set to different position
-	err = utxo.SetPosition(1, 23, 1, 0)
-	require.EqualError(t, err, "cannot override BaseUTXO Position")
+	position = NewPlasmaPosition(1, uint16(23), uint8(1), 0)
+	err = utxo.SetPosition(position)
+	require.Error(t, err)
 
 	// check get method
-	position := utxo.GetPosition()
-	require.Equal(t, position, NewPosition(5, 12, 1, 0))
+	require.Equal(t, utxo.GetPosition(), NewPlasmaPosition(5, uint16(12), uint8(1), 0), "the wrong position was returned")
 }
