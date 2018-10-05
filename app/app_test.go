@@ -188,7 +188,7 @@ func TestSpendDeposit(t *testing.T) {
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(1, 0, 0, 0)
 	utxo := cc.utxoMapper.GetUTXO(ctx, addrB.Bytes(), position)
-	expected := types.NewBaseUTXO(addrB, [2]common.Address{addrA, common.Address{}}, 100, "Ether", position)
+	expected := types.NewBaseUTXO(addrB, [2]common.Address{addrA, common.Address{}}, 100, "", position)
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 
@@ -255,7 +255,7 @@ func TestSpendTx(t *testing.T) {
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(5, 0, 0, 0)
 	utxo := cc.utxoMapper.GetUTXO(ctx, addrA.Bytes(), position)
-	expected := types.NewBaseUTXO(addrA, [2]common.Address{addrB, common.Address{}}, 100, "Ether", position)
+	expected := types.NewBaseUTXO(addrA, [2]common.Address{addrB, common.Address{}}, 100, "", position)
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 
@@ -378,13 +378,13 @@ func TestDifferentTxForms(t *testing.T) {
 		// Retrieve utxo from context
 		position := types.NewPlasmaPosition(uint64(index)+7, 0, 0, 0)
 		utxo := cc.utxoMapper.GetUTXO(ctx, tc.newowner0.Bytes(), position)
-		expected := types.NewBaseUTXO(tc.newowner0, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount0, "Ether", position)
+		expected := types.NewBaseUTXO(tc.newowner0, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount0, "", position)
 		require.Equal(t, expected, utxo, fmt.Sprintf("First UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 
 		if !utils.ZeroAddress(msg.Newowner1) {
 			position = types.NewPlasmaPosition(uint64(index)+7, 0, 1, 0)
 			utxo = cc.utxoMapper.GetUTXO(ctx, tc.newowner1.Bytes(), position)
-			expected = types.NewBaseUTXO(tc.newowner1, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount1, "Ether", position)
+			expected = types.NewBaseUTXO(tc.newowner1, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount1, "", position)
 			require.Equal(t, expected, utxo, fmt.Sprintf("Second UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 		}
 
@@ -437,7 +437,7 @@ func TestMultiTxBlocks(t *testing.T) {
 	for i := uint16(0); i < N; i++ {
 		position := types.NewPlasmaPosition(1, i, 0, 0)
 		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
-		expected := types.NewBaseUTXO(addrs[i], [2]common.Address{addrs[i], common.Address{}}, 100, "Ether", position)
+		expected := types.NewBaseUTXO(addrs[i], [2]common.Address{addrs[i], common.Address{}}, 100, "", position)
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
@@ -468,7 +468,7 @@ func TestMultiTxBlocks(t *testing.T) {
 	// Retrieve and check UTXO from context
 	for i := uint16(0); i < N; i++ {
 		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[(i+1)%N].Bytes(), types.NewPlasmaPosition(2, i, 0, 0))
-		expected := types.NewBaseUTXO(addrs[(i+1)%N], [2]common.Address{addrs[i], common.Address{}}, 100, "Ether", types.NewPlasmaPosition(2, i, 0, 0))
+		expected := types.NewBaseUTXO(addrs[(i+1)%N], [2]common.Address{addrs[i], common.Address{}}, 100, "", types.NewPlasmaPosition(2, i, 0, 0))
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 

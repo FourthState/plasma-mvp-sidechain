@@ -117,14 +117,7 @@ func (baseutxo BaseUTXO) GetDenom() string {
 }
 
 func (baseutxo *BaseUTXO) SetDenom(denom string) error {
-	if denom == "" {
-		return errors.New("invalid denomination provided")
-	} else if baseutxo.Denom == "" {
-		baseutxo.Denom = denom
-		return nil
-	} else {
-		return errors.New("cannot set denomination")
-	}
+	return nil
 }
 
 //----------------------------------------
@@ -148,8 +141,8 @@ func NewPlasmaPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum u
 	}
 }
 
-func (position PlasmaPosition) Get() []uint64 {
-	return []uint64{position.Blknum, uint64(position.TxIndex), uint64(position.Oindex), position.DepositNum}
+func (position PlasmaPosition) Get() []sdk.Uint {
+	return []sdk.Uint{sdk.NewUint(position.Blknum), sdk.NewUint(uint64(position.TxIndex)), sdk.NewUint(uint64(position.Oindex)), sdk.NewUint(position.DepositNum)}
 }
 
 // Used to determine Sign Bytes for confirm signatures

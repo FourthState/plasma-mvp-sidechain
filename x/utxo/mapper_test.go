@@ -35,8 +35,8 @@ func newTestPosition(newPos []uint64) testPosition {
 	}
 }
 
-func (pos testPosition) Get() []uint64 {
-	return []uint64{pos.BlockNumber, uint64(pos.TxIndex), uint64(pos.OutputIndex)}
+func (pos testPosition) Get() []sdk.Uint {
+	return []sdk.Uint{sdk.NewUint(pos.BlockNumber), sdk.NewUint(uint64(pos.TxIndex)), sdk.NewUint(uint64(pos.OutputIndex))}
 }
 
 func (pos testPosition) IsValid() bool {

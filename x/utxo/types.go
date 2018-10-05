@@ -23,7 +23,7 @@ type UTXO interface {
 // Positions must be unqiue or a collision may result when using mapper.go
 type Position interface {
 	// Position is a uint slice
-	Get() []uint64 // get position int slice. Return nil if unset.
+	Get() []sdk.Uint // get position int slice. Return nil if unset.
 
 	// returns true if the position is valid, false otherwise
 	IsValid() bool
