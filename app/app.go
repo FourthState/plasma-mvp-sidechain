@@ -3,8 +3,8 @@ package app
 import (
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
-	plasmaDB "github.com/FourthState/plasma-mvp-sidechain/db"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"io"
 
@@ -37,7 +37,7 @@ type ChildChain struct {
 	capKeyMainStore *sdk.KVStoreKey
 
 	// Manage addition and deletion of utxo's
-	utxoMapper types.UTXOMapper
+	utxoMapper utxo.Mapper
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
@@ -55,15 +55,13 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	}
 
 	// define the utxoMapper
-	app.utxoMapper = plasmaDB.NewUTXOMapper(
+	app.utxoMapper = utxo.NewBaseMapper(
 		app.capKeyMainStore, // target store
 		cdc,
 	)
 
-	// UTXOKeeper to adjust spending and recieving of utxo's
-	UTXOKeeper := plasmaDB.NewUTXOKeeper(app.utxoMapper)
 	app.Router().
-		AddRoute("spend", auth.NewHandler(UTXOKeeper, app.txIndex))
+		AddRoute("spend", utxo.NewSpendHandler(app.utxoMapper, app.nextPosition, types.ProtoUTXO))
 
 	// set the BaseApp txDecoder to use txDecoder with RLP
 	app.SetTxDecoder(app.txDecoder)
@@ -74,7 +72,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	app.SetEndBlocker(app.endBlocker)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.txIndex, app.feeAmount))
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.feeUpdater))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -122,6 +120,23 @@ func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 		return nil, sdk.ErrTxDecode(err.Error())
 	}
 	return tx, nil
+}
+
+// Return the next output position given ctx
+// and secondary flag which indicates if it is for secondary outputs from single tx.
+func (app *ChildChain) nextPosition(ctx sdk.Context, secondary bool) utxo.Position {
+	var oindex uint8
+	if !secondary {
+		(*app.txIndex)++
+	} else {
+		oindex = 1
+	}
+	return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), *app.txIndex, oindex, 0)
+}
+
+// Unimplemented for now
+func (app *ChildChain) feeUpdater([]utxo.Output) sdk.Error {
+	return nil
 }
 
 func MakeCodec() *amino.Codec {

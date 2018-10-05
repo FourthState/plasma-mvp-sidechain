@@ -2,12 +2,13 @@ package types
 
 import (
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	utxo "github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
-var _ sdk.Msg = SpendMsg{}
+var _ utxo.SpendMsg = SpendMsg{}
 
 type SpendMsg struct {
 	Blknum1      uint64
@@ -23,10 +24,10 @@ type SpendMsg struct {
 	Owner2       common.Address
 	ConfirmSigs2 [2]Signature
 	Newowner1    common.Address
-	Denom1       uint64
+	Amount1      uint64
 	Newowner2    common.Address
-	Denom2       uint64
-	Fee          uint64
+	Amount2      uint64
+	FeeAmount    uint64
 }
 
 // Implements Msg.
@@ -58,7 +59,7 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	case msg.Blknum2 != 0 && msg.Oindex2 != 0 && msg.Oindex2 != 1:
 		return ErrInvalidOIndex(DefaultCodespace, "output index 2 must be either 0 or 1")
 
-	case msg.Denom1 == 0:
+	case msg.Amount1 == 0:
 		return ErrInvalidDenom(DefaultCodespace, "first denomination must be positive")
 	}
 
@@ -82,6 +83,36 @@ func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 		addrs = append(addrs, sdk.AccAddress(msg.Owner2.Bytes()))
 	}
 	return addrs
+}
+
+func (msg SpendMsg) Inputs() []utxo.Input {
+	inputs := []utxo.Input{utxo.Input{
+		Owner:    msg.Owner1.Bytes(),
+		Position: NewPlasmaPosition(msg.Blknum1, msg.Txindex1, msg.Oindex1, msg.DepositNum1),
+	}}
+	if NewPlasmaPosition(msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2).IsValid() {
+		// Add valid second input
+		inputs = append(inputs, utxo.Input{
+			Owner:    msg.Owner2.Bytes(),
+			Position: NewPlasmaPosition(msg.Blknum2, msg.Txindex2, msg.Oindex2, msg.DepositNum2),
+		})
+	}
+	return inputs
+}
+
+func (msg SpendMsg) Outputs() []utxo.Output {
+	outputs := []utxo.Output{utxo.Output{msg.Owner1.Bytes(), "Ether", msg.Amount1}}
+	if msg.Amount2 != 0 {
+		outputs = append(outputs, utxo.Output{msg.Newowner2.Bytes(), "Ether", msg.Amount2})
+	}
+	return outputs
+}
+
+func (msg SpendMsg) Fee() []utxo.Output {
+	return []utxo.Output{utxo.Output{
+		Denom:  "Ether",
+		Amount: msg.FeeAmount,
+	}}
 }
 
 //----------------------------------------

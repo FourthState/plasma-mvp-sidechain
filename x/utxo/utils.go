@@ -1,7 +1,6 @@
-package db
+package utxo
 
 import (
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/go-amino"
@@ -20,7 +19,12 @@ func SetupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
-	types.RegisterAmino(cdc)
+	RegisterAmino(cdc)
 	crypto.RegisterAmino(cdc)
 	return cdc
+}
+
+func RegisterAmino(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Position)(nil), nil)
+	cdc.RegisterInterface((*UTXO)(nil), nil)
 }
