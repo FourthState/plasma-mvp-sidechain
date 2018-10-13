@@ -4,7 +4,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/tendermint/crypto"
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
@@ -20,7 +20,7 @@ func SetupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	RegisterAmino(cdc)
-	crypto.RegisterAmino(cdc)
+	cryptoAmino.RegisterAmino(cdc)
 	return cdc
 }
 
