@@ -12,7 +12,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/tendermint/crypto"
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -43,7 +43,7 @@ type ChildChain struct {
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
 	cdc := MakeCodec()
 
-	bapp := bam.NewBaseApp(appName, cdc, logger, db)
+	bapp := bam.NewBaseApp(appName, logger, db, txDecoder)
 	bapp.SetCommitMultiStoreTracer(traceStore)
 
 	var app = &ChildChain{
@@ -62,9 +62,6 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 
 	app.Router().
 		AddRoute("spend", utxo.NewSpendHandler(app.utxoMapper, app.nextPosition, types.ProtoUTXO))
-
-	// set the BaseApp txDecoder to use txDecoder with RLP
-	app.SetTxDecoder(app.txDecoder)
 
 	app.MountStoresIAVL(app.capKeyMainStore)
 
@@ -100,7 +97,11 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	}
 
 	// load the initial stake information
-	return abci.ResponseInitChain{}
+	return abci.ResponseInitChain{Validators: []abci.Validator{abci.Validator{
+		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator),
+		Address: genesisState.Validator.Address(),
+		Power: 1,
+	}}}
 }
 
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
@@ -112,7 +113,7 @@ func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abc
 }
 
 // RLP decodes the txBytes to a BaseTx
-func (app *ChildChain) txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
+func txDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	var tx = types.BaseTx{}
 
 	err := rlp.DecodeBytes(txBytes, &tx)
@@ -142,9 +143,11 @@ func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
 	cdc.RegisterConcrete(PlasmaGenTx{}, "app/PlasmaGenTx", nil)
+	cdc.RegisterConcrete(GenesisUTXO{}, "genesis/utxo", nil)
+	cdc.RegisterConcrete(GenesisState{}, "genesis/state", nil)
 	types.RegisterAmino(cdc)
 	utxo.RegisterAmino(cdc)
-	crypto.RegisterAmino(cdc)
+	cryptoAmino.RegisterAmino(cdc)
 	return cdc
 }
 

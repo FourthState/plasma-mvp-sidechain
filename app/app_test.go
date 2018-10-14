@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -12,7 +11,7 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	secp256k1 "github.com/tendermint/tendermint/crypto/secp256k1"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -40,11 +39,14 @@ func InitTestChain(cc *ChildChain, addrs ...common.Address) {
 		genUTXOs = append(genUTXOs, NewGenesisUTXO(addr.Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
 	}
 
+	pubKey := secp256k1.GenPrivKey().PubKey()
+
 	genState := GenesisState{
+		Validator: pubKey,
 		UTXOs: genUTXOs,
 	}
 
-	appStateBytes, err := json.Marshal(genState)
+	appStateBytes, err := cc.cdc.MarshalJSON(genState)
 	if err != nil {
 		panic(err)
 	}
@@ -123,7 +125,7 @@ func TestBadSpendMsg(t *testing.T) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	tx := types.NewBaseTx(msg, []types.Signature{{
-		Sig: crypto.SignatureSecp256k1(sig),
+		Sig: sig,
 	}})
 
 	txBytes, err := rlp.EncodeToBytes(tx)
@@ -214,7 +216,7 @@ func TestSpendTx(t *testing.T) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, privKeyA)
 	tx := types.NewBaseTx(msg, []types.Signature{{
-		Sig: crypto.SignatureSecp256k1(sig),
+		Sig: sig,
 	}})
 
 	// Simulate a block
@@ -240,7 +242,7 @@ func TestSpendTx(t *testing.T) {
 	hash = ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ = ethcrypto.Sign(hash, privKeyB)
 	tx = types.NewBaseTx(msg, []types.Signature{{
-		Sig: crypto.SignatureSecp256k1(sig),
+		Sig: sig,
 	}})
 
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 5}})
