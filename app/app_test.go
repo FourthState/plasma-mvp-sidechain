@@ -503,6 +503,7 @@ func TestFee(t *testing.T) {
 
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
 
+	// Create tx's with fees and deliver them in block 1
 	msg1 := GenerateSimpleMsg(addrs[0], addrs[1], [4]uint64{0, 0, 0, 1}, 90, 10)
 	// Set confirm signatures
 	msg1.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, 1), privKeys[0], &ecdsa.PrivateKey{}, false)
@@ -536,11 +537,13 @@ func TestFee(t *testing.T) {
 
 	valUTXO := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), expectedValPosition)
 
+	// Check that users and validators have expected UTXO's
 	require.Equal(t, uint64(90), utxo1.GetAmount(), "UTXO1 does not have expected amount")
 	require.Equal(t, uint64(90), utxo2.GetAmount(), "UTXO2 does not have expected amount")
 	require.Equal(t, uint64(20), valUTXO.GetAmount(), "Validator fees did not get collected into UTXO correctly")
 
-	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 2 ^ 16 - 1, 0, 0}, 20, 0)
+	// Check that validator can spend his fees as if they were a regular UTXO on sidechain
+	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 2 ^ 16 - 1, 0, 0}, 10, 10)
 	// Set confirm signatures
 	valMsg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(1, 2^16-1, 0, 0), valPrivKey, &ecdsa.PrivateKey{}, false)
 
@@ -549,4 +552,15 @@ func TestFee(t *testing.T) {
 	valRes := cc.Deliver(valTx)
 
 	require.Equal(t, sdk.CodeOK, sdk.CodeType(valRes.Code), valRes.Log)
+
+	cc.EndBlock(abci.RequestEndBlock{})
+	cc.Commit()
+
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 3}})
+
+	ctx = cc.NewContext(false, abci.Header{Height: 3})
+
+	// Check that fee Amount gets reset between blocks. feeAmount for block 2 is 10 not 30.
+	feeUTXO2 := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), types.NewPlasmaPosition(2, 2^16-1, 0, 0))
+	require.Equal(t, uint64(10), feeUTXO2.GetAmount(), "Fee Amount on second block is incorrect")
 }
