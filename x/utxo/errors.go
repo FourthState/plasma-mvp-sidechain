@@ -14,6 +14,7 @@ const (
 	CodeInvalidIOF          sdk.CodeType = 104
 	CodeInvalidUTXO         sdk.CodeType = 105
 	CodeInvalidTransaction  sdk.CodeType = 106
+	CodeInvalidFee          sdk.CodeType = 107
 )
 
 func codeToDefaultMsg(code sdk.CodeType) string {
@@ -47,4 +48,8 @@ func ErrInvalidIOF(codespace sdk.CodespaceType, msg string) sdk.Error {
 
 func ErrInvalidUTXO(codespace sdk.CodespaceType, msg string) sdk.Error {
 	return sdk.NewError(codespace, CodeInvalidUTXO, msg)
+}
+
+func ErrInvalidFee(codespace sdk.CodespaceType, msg string) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidFee, msg)
 }
