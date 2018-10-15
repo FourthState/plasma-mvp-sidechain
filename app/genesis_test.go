@@ -1,37 +1,43 @@
 package app
 
 import (
-	"os"
 	"fmt"
-	"testing"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 	secp256k1 "github.com/tendermint/tendermint/crypto/secp256k1"
-	"github.com/ethereum/go-ethereum/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
+	"os"
+	"testing"
 
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
 func TestGenesisState(t *testing.T) {
-    logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
 	app := NewChildChain(logger, db, nil)
 
 	addrs := []common.Address{utils.GenerateAddress(), utils.GenerateAddress()}
 
-    var genUTXOs []GenesisUTXO
+	var genUTXOs []GenesisUTXO
 	for i, addr := range addrs {
 		genUTXOs = append(genUTXOs, NewGenesisUTXO(addr.Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
 	}
 
 	pubKey := secp256k1.GenPrivKey().PubKey()
+	valAddr := utils.GenerateAddress()
+
+	genValidator := GenesisValidator{
+		ConsPubKey: pubKey,
+		Address:    valAddr.String(),
+	}
 
 	genState := GenesisState{
-		Validator: pubKey,
-		UTXOs: genUTXOs,
+		Validator: genValidator,
+		UTXOs:     genUTXOs,
 	}
 
 	appBytes, err := app.cdc.MarshalJSON(genState)
@@ -45,9 +51,9 @@ func TestGenesisState(t *testing.T) {
 	res := app.InitChain(abci.RequestInitChain{AppStateBytes: appBytes})
 	expected := abci.ResponseInitChain{
 		Validators: []abci.Validator{abci.Validator{
-			PubKey: tmtypes.TM2PB.PubKey(pubKey),
+			PubKey:  tmtypes.TM2PB.PubKey(pubKey),
 			Address: pubKey.Address(),
-			Power: 1,
+			Power:   1,
 		}},
 	}
 	assert.Equal(t, expected, res)

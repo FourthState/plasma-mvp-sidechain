@@ -17,6 +17,8 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	ethcmn "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -31,13 +33,16 @@ type ChildChain struct {
 
 	txIndex uint16
 
-	feeAmount *uint64
+	feeAmount uint64
 
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey
 
 	// Manage addition and deletion of utxo's
 	utxoMapper utxo.Mapper
+
+	// Address that validator uses to collect fees
+	validatorAddress ethcmn.Address
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
@@ -50,7 +55,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 		BaseApp:         bapp,
 		cdc:             cdc,
 		txIndex:         0,
-		feeAmount:       new(uint64),
+		feeAmount:       0,
 		capKeyMainStore: sdk.NewKVStoreKey("main"),
 	}
 
@@ -96,18 +101,35 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 		app.utxoMapper.AddUTXO(ctx, utxo)
 	}
 
+	app.validatorAddress = ethcmn.HexToAddress(genesisState.Validator.Address)
+
 	// load the initial stake information
 	return abci.ResponseInitChain{Validators: []abci.Validator{abci.Validator{
-		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator),
-		Address: genesisState.Validator.Address(),
-		Power: 1,
+		PubKey:  tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
+		Address: genesisState.Validator.ConsPubKey.Address(),
+		Power:   1,
 	}}}
 }
 
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+	position := types.PlasmaPosition{
+		Blknum:     uint64(ctx.BlockHeight()),
+		TxIndex:    uint16(2 ^ 16 - 1),
+		Oindex:     0,
+		DepositNum: 0,
+	}
+	utxo := types.BaseUTXO{
+		Address:        app.validatorAddress,
+		InputAddresses: [2]ethcmn.Address{app.validatorAddress, ethcmn.Address{}},
+		Amount:         app.feeAmount,
+		Denom:          types.Denom,
+		Position:       position,
+	}
+	app.utxoMapper.AddUTXO(ctx, &utxo)
+
 	// reset txIndex and fee
 	app.txIndex = 0
-	*app.feeAmount = 0
+	app.feeAmount = 0
 
 	return abci.ResponseEndBlock{}
 }
@@ -129,13 +151,16 @@ func (app *ChildChain) nextPosition(ctx sdk.Context, secondary bool) utxo.Positi
 	if !secondary {
 		app.txIndex++
 		return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 0, 0)
-	} else {
-		return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 1, 0)
 	}
+	return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 1, 0)
 }
 
 // Unimplemented for now
-func (app *ChildChain) feeUpdater([]utxo.Output) sdk.Error {
+func (app *ChildChain) feeUpdater(output []utxo.Output) sdk.Error {
+	if len(output) != 1 || output[0].Denom != types.Denom {
+		return utxo.ErrInvalidFee(2, "Fee must be paid in Eth")
+	}
+	app.feeAmount += output[0].Amount
 	return nil
 }
 
@@ -143,8 +168,6 @@ func MakeCodec() *amino.Codec {
 	cdc := amino.NewCodec()
 	cdc.RegisterInterface((*sdk.Msg)(nil), nil)
 	cdc.RegisterConcrete(PlasmaGenTx{}, "app/PlasmaGenTx", nil)
-	cdc.RegisterConcrete(GenesisUTXO{}, "genesis/utxo", nil)
-	cdc.RegisterConcrete(GenesisState{}, "genesis/state", nil)
 	types.RegisterAmino(cdc)
 	utxo.RegisterAmino(cdc)
 	cryptoAmino.RegisterAmino(cdc)

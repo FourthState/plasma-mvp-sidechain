@@ -71,7 +71,7 @@ func TestAmount(t *testing.T) {
 
 	// check get method
 	amount := utxo.GetAmount()
-	require.Equal(t, amount, uint64(100), "the wrong denomination was returned by GetDenom()")
+	require.Equal(t, amount, uint64(100), "the wrong amount was returned by GetAmount()")
 }
 
 // Test GetPosition() and SetPosition()
