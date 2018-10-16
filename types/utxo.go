@@ -167,6 +167,13 @@ func (position PlasmaPosition) IsValid() bool {
 	}
 }
 
+func (position PlasmaPosition) GetPriority() uint64 {
+	if position.DepositNum > 0 {
+		return position.DepositNum
+	}
+	return position.Blknum*1000000 + uint64(position.TxIndex)*10 + uint64(position.Oindex)
+}
+
 //-------------------------------------------------------
 // misc
 func RegisterAmino(cdc *amino.Codec) {

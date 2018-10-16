@@ -10,6 +10,7 @@ import (
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/go-amino"
 	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
@@ -28,6 +29,8 @@ type ChildChain struct {
 	*bam.BaseApp
 
 	cdc *amino.Codec
+
+	rootchainAddress common.Address
 
 	txIndex uint16
 
@@ -69,7 +72,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	app.SetEndBlocker(app.endBlocker)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.feeUpdater))
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.rootchainAddress, app.feeUpdater))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -96,11 +99,13 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 		app.utxoMapper.AddUTXO(ctx, utxo)
 	}
 
+	app.rootchainAddress = common.HexToAddress(genesisState.RootChain)
+
 	// load the initial stake information
 	return abci.ResponseInitChain{Validators: []abci.Validator{abci.Validator{
-		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator),
+		PubKey:  tmtypes.TM2PB.PubKey(genesisState.Validator),
 		Address: genesisState.Validator.Address(),
-		Power: 1,
+		Power:   1,
 	}}}
 }
 

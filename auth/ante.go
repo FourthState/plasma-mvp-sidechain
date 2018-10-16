@@ -14,7 +14,7 @@ import (
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
 // confirm signatures, and increments the feeAmount
-func NewAnteHandler(utxoMapper utxo.Mapper, feeUpdater utxo.FeeUpdater) sdk.AnteHandler {
+func NewAnteHandler(utxoMapper utxo.Mapper, rootchainAddress common.Address, feeUpdater utxo.FeeUpdater) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
@@ -67,7 +67,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, feeUpdater utxo.FeeUpdater) sdk.Ante
 		posSignBytes := position0.GetSignBytes()
 
 		// Verify that confirmation signature
-		res = processConfirmSig(ctx, utxoMapper, position0, addr0, spendMsg.ConfirmSigs0, posSignBytes)
+		res = processConfirmSig(ctx, utxoMapper, position0, addr0, rootchainAddress, spendMsg.ConfirmSigs0)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -90,7 +90,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, feeUpdater utxo.FeeUpdater) sdk.Ante
 
 			posSignBytes = position1.GetSignBytes()
 
-			res = processConfirmSig(ctx, utxoMapper, position1, addr1, spendMsg.ConfirmSigs1, posSignBytes)
+			res = processConfirmSig(ctx, utxoMapper, position1, addr1, rootchainAddress, spendMsg.ConfirmSigs1)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -122,7 +122,7 @@ func processSig(
 
 func processConfirmSig(
 	ctx sdk.Context, utxoMapper utxo.Mapper,
-	position types.PlasmaPosition, addr common.Address, sigs [2]types.Signature, signBytes []byte) (
+	position types.PlasmaPosition, addr, rootchainAddress common.Address, sigs [2]types.Signature) (
 	res sdk.Result) {
 
 	// Verify utxo exists
@@ -136,7 +136,15 @@ func processConfirmSig(
 	}
 	inputAddresses := plasmaUTXO.GetInputAddresses()
 
-	hash := ethcrypto.Keccak256(signBytes)
+	rootchainHash := ethcrypto.Keccak256(rootchainAddress.Bytes())
+	if position.Get()[3].Uint64() > 0 {
+		rootchainHash = append(rootchainHash, byte(0))
+	} else {
+		rootchainHash = append(rootchainHash, byte(1))
+	}
+
+	priorityHash := ethcrypto.Keccak256(position.GetPriority())
+	hash := ethcrypto.Keccak256(append(rootchainHash, priorityHash...))
 
 	pubKey0, err0 := ethcrypto.SigToPub(hash, sigs[0].Bytes())
 	if err0 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey0).Bytes(), inputAddresses[0].Bytes()) {

@@ -22,8 +22,9 @@ import (
 
 // State to Unmarshal
 type GenesisState struct {
+	RootChain string
 	Validator crypto.PubKey `json: validator_pubkey`
-	UTXOs []GenesisUTXO `json:"UTXOs"`
+	UTXOs     []GenesisUTXO `json:"UTXOs"`
 }
 
 type GenesisUTXO struct {
