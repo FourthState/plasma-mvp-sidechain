@@ -16,6 +16,12 @@ import (
 	"testing"
 )
 
+var rootchainAddress = common.BytesToAddress([]byte("rootchain contract address"))
+
+func GetRootchainAddress() common.Address {
+	return rootchainAddress
+}
+
 func setup() (sdk.Context, utxo.Mapper, utxo.FeeUpdater) {
 	ms, capKey := utxo.SetupMultiStore()
 
@@ -61,8 +67,10 @@ func GenSpendMsg() types.SpendMsg {
 
 // Returns a confirmsig array signed by privKey0 and privKey1
 func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
-	confirmBytes := position.GetSignBytes()
-	hash := ethcrypto.Keccak256(confirmBytes)
+	rootchainHash := ethcrypto.Keccak256(rootchainAddress.Bytes())
+	posHash := ethcrypto.Keccak256(position.GetSignBytes())
+	confHash := append(rootchainHash, posHash...)
+	hash := ethcrypto.Keccak256(confHash)
 	confirmSig, _ := ethcrypto.Sign(hash, privKey0)
 
 	var confirmSig1 []byte
@@ -106,7 +114,7 @@ func TestNoSigs(t *testing.T) {
 	var msg = GenSpendMsg()
 	tx := types.NewBaseTx(msg, []types.Signature{})
 
-	handler := NewAnteHandler(mapper, feeUpdater)
+	handler := NewAnteHandler(mapper, GetRootchainAddress, feeUpdater)
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort with no signatures")
@@ -123,7 +131,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	sig, _ := ethcrypto.Sign(hash, priv)
 	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}})
 
-	handler := NewAnteHandler(mapper, feeUpdater)
+	handler := NewAnteHandler(mapper, GetRootchainAddress, feeUpdater)
 	_, res, abort := handler(ctx, tx)
 
 	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
@@ -224,7 +232,7 @@ func TestDifferentCases(t *testing.T) {
 		owner_index1 := utils.GetIndex(tc.input1.owner_index)
 		tx := GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 
-		handler := NewAnteHandler(mapper, feeUpdater)
+		handler := NewAnteHandler(mapper, GetRootchainAddress, feeUpdater)
 		_, res, abort := handler(ctx, tx)
 
 		assert.Equal(t, true, abort, fmt.Sprintf("did not abort on utxo that does not exist. Case: %d", index))

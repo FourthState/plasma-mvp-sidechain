@@ -26,10 +26,14 @@ import (
 
 */
 
+var rootchainAddress = common.BytesToAddress([]byte("rootchain contract address"))
+
 func newChildChain() *ChildChain {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
-	return NewChildChain(logger, db, nil)
+	app := NewChildChain(logger, db, nil)
+	app.rootchainAddress = rootchainAddress
+	return app
 }
 
 // Creates a deposit of value 100 for each address in input
@@ -42,8 +46,9 @@ func InitTestChain(cc *ChildChain, addrs ...common.Address) {
 	pubKey := secp256k1.GenPrivKey().PubKey()
 
 	genState := GenesisState{
+		RootChain: rootchainAddress.String(),
 		Validator: pubKey,
-		UTXOs: genUTXOs,
+		UTXOs:     genUTXOs,
 	}
 
 	appStateBytes, err := cc.cdc.MarshalJSON(genState)
@@ -80,8 +85,10 @@ func GenerateSimpleMsg(Owner0, NewOwner0 common.Address, position [4]uint64, amo
 
 // Returns a confirmsig array signed by privKey0 and privKey1
 func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
-	confirmBytes := position.GetSignBytes()
-	hash := ethcrypto.Keccak256(confirmBytes)
+	rootchainHash := ethcrypto.Keccak256(rootchainAddress.Bytes())
+	posHash := ethcrypto.Keccak256(position.GetSignBytes())
+	confirmHash := append(rootchainHash, posHash...)
+	hash := ethcrypto.Keccak256(confirmHash)
 	confirmSig, _ := ethcrypto.Sign(hash, privKey0)
 
 	var confirmSig1 []byte

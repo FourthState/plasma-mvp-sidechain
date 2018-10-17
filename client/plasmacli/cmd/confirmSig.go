@@ -13,12 +13,14 @@ import (
 )
 
 const (
-	flagAddr = "addr"
+	flagAddr          = "addr"
+	flagRootchainAddr = "rootchainAddr"
 )
 
 func init() {
 	rootCmd.AddCommand(signCmd)
 	signCmd.Flags().String(flagAddr, "", "Address to sign with")
+	signCmd.Flags().String(flagRootchainAddr, "", "Contract Address of rootchain")
 	viper.BindPFlags(signCmd.Flags())
 }
 
@@ -60,16 +62,24 @@ var signCmd = &cobra.Command{
 			return err
 		}
 
+		// get the rootchain address
+		rootAddrStr := viper.GetString(flagRootchainAddr)
+		rootAddr, err := client.StrToAddress(rootAddrStr)
+		if err != nil {
+			return err
+		}
+
 		// sign positions
-		signBytes1 := pos[0].GetSignBytes()
-		hash1 := ethcrypto.Keccak256(signBytes1)
-		sig1, err := ks.SignHashWithPassphrase(acct, passphrase, hash1)
+		rootHash := ethcrypto.Keccak256(rootAddr.Bytes())
+		posHash := ethcrypto.Keccak256(pos[0].GetSignBytes())
+		confirmHash := ethcrypto.Keccak256(append(rootHash, posHash...))
+		sig1, err := ks.SignHashWithPassphrase(acct, passphrase, confirmHash)
 
 		var sig2 []byte
 		if len(pos) > 1 {
-			signBytes2 := pos[1].GetSignBytes()
-			hash2 := ethcrypto.Keccak256(signBytes2)
-			sig2, err = ks.SignHashWithPassphrase(acct, passphrase, hash2)
+			posHash = ethcrypto.Keccak256(pos[1].GetSignBytes())
+			confirmHash = ethcrypto.Keccak256(append(rootHash, posHash...))
+			sig2, err = ks.SignHashWithPassphrase(acct, passphrase, confirmHash)
 			if err != nil {
 				return err
 			}

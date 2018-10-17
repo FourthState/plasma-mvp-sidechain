@@ -14,6 +14,8 @@ import (
 
 var _ utxo.UTXO = &BaseUTXO{}
 
+type GetAddress func() common.Address
+
 // Implements UTXO interface
 type BaseUTXO struct {
 	InputAddresses [2]common.Address
@@ -165,13 +167,6 @@ func (position PlasmaPosition) IsValid() bool {
 		// If position represents deposit, depositnum is not 0 and txindex and oindex are 0.
 		return position.DepositNum != 0 && position.TxIndex == 0 && position.Oindex == 0
 	}
-}
-
-func (position PlasmaPosition) GetPriority() uint64 {
-	if position.DepositNum > 0 {
-		return position.DepositNum
-	}
-	return position.Blknum*1000000 + uint64(position.TxIndex)*10 + uint64(position.Oindex)
 }
 
 //-------------------------------------------------------

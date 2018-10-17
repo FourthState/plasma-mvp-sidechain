@@ -72,7 +72,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	app.SetEndBlocker(app.endBlocker)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.rootchainAddress, app.feeUpdater))
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.getRootchainAddress, app.feeUpdater))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -142,6 +142,13 @@ func (app *ChildChain) nextPosition(ctx sdk.Context, secondary bool) utxo.Positi
 // Unimplemented for now
 func (app *ChildChain) feeUpdater([]utxo.Output) sdk.Error {
 	return nil
+}
+
+// Helper function for getting rootchain address
+// Rootchain Address will be set when genesis state is loaded
+// not upon child chain constructor call
+func (app *ChildChain) getRootchainAddress() common.Address {
+	return app.rootchainAddress
 }
 
 func MakeCodec() *amino.Codec {
