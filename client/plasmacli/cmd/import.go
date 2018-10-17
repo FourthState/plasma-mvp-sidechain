@@ -29,7 +29,7 @@ The account is saved in encrypted format, you are prompted for a passphrase.
 
 You must remember this passphrase to unlock your account in the future.
 `,
-	Args:  cobra.ExactArgs(1),
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		keyfile := args[0]
 		if len(keyfile) == 0 {

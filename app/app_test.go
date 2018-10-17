@@ -37,7 +37,7 @@ func newChildChain() *ChildChain {
 }
 
 // Creates a deposit of value 100 for each address in input
-func InitTestChain(cc *ChildChain, addrs ...common.Address) {
+func InitTestChain(cc *ChildChain, valAddr common.Address, addrs ...common.Address) {
 	var genUTXOs []GenesisUTXO
 	for i, addr := range addrs {
 		genUTXOs = append(genUTXOs, NewGenesisUTXO(addr.Hex(), "100", [4]string{"0", "0", "0", fmt.Sprintf("%d", i+1)}))
@@ -45,9 +45,14 @@ func InitTestChain(cc *ChildChain, addrs ...common.Address) {
 
 	pubKey := secp256k1.GenPrivKey().PubKey()
 
+	genValidator := GenesisValidator{
+		ConsPubKey: pubKey,
+		Address:    valAddr.String(),
+	}
+
 	genState := GenesisState{
 		RootChain: rootchainAddress.String(),
-		Validator: pubKey,
+		Validator: genValidator,
 		UTXOs:     genUTXOs,
 	}
 
@@ -164,7 +169,7 @@ func TestSpendDeposit(t *testing.T) {
 	addrA := utils.PrivKeyToAddress(privKeyA)
 	addrB := utils.PrivKeyToAddress(privKeyB)
 
-	InitTestChain(cc, addrA)
+	InitTestChain(cc, utils.GenerateAddress(), addrA)
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
 
@@ -211,7 +216,7 @@ func TestSpendTx(t *testing.T) {
 	addrA := utils.PrivKeyToAddress(privKeyA)
 	addrB := utils.PrivKeyToAddress(privKeyB)
 
-	InitTestChain(cc, addrA)
+	InitTestChain(cc, utils.GenerateAddress(), addrA)
 	cc.Commit()
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
@@ -292,7 +297,7 @@ func TestDifferentTxForms(t *testing.T) {
 		addrs = append(addrs, utils.PrivKeyToAddress(keys[i]))
 	}
 
-	InitTestChain(cc, addrs...)
+	InitTestChain(cc, utils.GenerateAddress(), addrs...)
 	cc.Commit()
 
 	cases := []struct {
@@ -427,7 +432,7 @@ func TestMultiTxBlocks(t *testing.T) {
 		addrs = append(addrs, utils.PrivKeyToAddress(keys[i]))
 	}
 
-	InitTestChain(cc, addrs...)
+	InitTestChain(cc, utils.GenerateAddress(), addrs...)
 	cc.Commit()
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
 
@@ -485,4 +490,84 @@ func TestMultiTxBlocks(t *testing.T) {
 		require.Nil(t, utxo, fmt.Sprintf("UTXO %d  did not get removed from the utxo store correctly", i))
 	}
 
+}
+
+func TestFee(t *testing.T) {
+	cc := newChildChain()
+
+	valPrivKey, _ := ethcrypto.GenerateKey()
+	valAddr := utils.PrivKeyToAddress(valPrivKey)
+	privKeys := make([]*ecdsa.PrivateKey, 2)
+	addrs := make([]common.Address, 2)
+
+	for i, _ := range privKeys {
+		privKeys[i], _ = ethcrypto.GenerateKey()
+		addrs[i] = utils.PrivKeyToAddress(privKeys[i])
+	}
+
+	InitTestChain(cc, valAddr, addrs...)
+	cc.Commit()
+
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
+
+	// Create tx's with fees and deliver them in block 1
+	msg1 := GenerateSimpleMsg(addrs[0], addrs[1], [4]uint64{0, 0, 0, 1}, 90, 10)
+	// Set confirm signatures
+	msg1.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, 1), privKeys[0], &ecdsa.PrivateKey{}, false)
+	msg2 := GenerateSimpleMsg(addrs[1], addrs[0], [4]uint64{0, 0, 0, 2}, 90, 10)
+	// Set confirm signatures
+	msg2.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, 2), privKeys[1], &ecdsa.PrivateKey{}, false)
+
+	tx1 := GetTx(msg1, privKeys[0], nil, false)
+	tx2 := GetTx(msg2, privKeys[1], nil, false)
+
+	res1 := cc.Deliver(tx1)
+	res2 := cc.Deliver(tx2)
+
+	require.Equal(t, sdk.CodeOK, sdk.CodeType(res1.Code), res1.Log)
+	require.Equal(t, sdk.CodeOK, sdk.CodeType(res2.Code), res2.Log)
+
+	cc.EndBlock(abci.RequestEndBlock{})
+	cc.Commit()
+
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 2}})
+
+	expectedPosition1 := types.NewPlasmaPosition(1, uint16(0), uint8(0), 0)
+	expectedPosition2 := types.NewPlasmaPosition(1, uint16(1), uint8(0), 0)
+
+	expectedValPosition := types.NewPlasmaPosition(1, uint16(2^16-1), uint8(0), 0)
+
+	ctx := cc.NewContext(false, abci.Header{Height: 2})
+
+	utxo1 := cc.utxoMapper.GetUTXO(ctx, addrs[1].Bytes(), expectedPosition1)
+	utxo2 := cc.utxoMapper.GetUTXO(ctx, addrs[0].Bytes(), expectedPosition2)
+
+	valUTXO := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), expectedValPosition)
+
+	// Check that users and validators have expected UTXO's
+	require.Equal(t, uint64(90), utxo1.GetAmount(), "UTXO1 does not have expected amount")
+	require.Equal(t, uint64(90), utxo2.GetAmount(), "UTXO2 does not have expected amount")
+	require.Equal(t, uint64(20), valUTXO.GetAmount(), "Validator fees did not get collected into UTXO correctly")
+
+	// Check that validator can spend his fees as if they were a regular UTXO on sidechain
+	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 2 ^ 16 - 1, 0, 0}, 10, 10)
+	// Set confirm signatures
+	valMsg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(1, 2^16-1, 0, 0), valPrivKey, &ecdsa.PrivateKey{}, false)
+
+	valTx := GetTx(valMsg, valPrivKey, nil, false)
+
+	valRes := cc.Deliver(valTx)
+
+	require.Equal(t, sdk.CodeOK, sdk.CodeType(valRes.Code), valRes.Log)
+
+	cc.EndBlock(abci.RequestEndBlock{})
+	cc.Commit()
+
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 3}})
+
+	ctx = cc.NewContext(false, abci.Header{Height: 3})
+
+	// Check that fee Amount gets reset between blocks. feeAmount for block 2 is 10 not 30.
+	feeUTXO2 := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), types.NewPlasmaPosition(2, 2^16-1, 0, 0))
+	require.Equal(t, uint64(10), feeUTXO2.GetAmount(), "Fee Amount on second block is incorrect")
 }

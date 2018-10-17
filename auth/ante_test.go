@@ -239,12 +239,12 @@ func TestDifferentCases(t *testing.T) {
 		require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
-		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, "Ether", tc.input0.position)
+		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, types.Denom, tc.input0.position)
 
 		var utxo1 utxo.UTXO
 		if tc.input1.owner_index != -1 {
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
-			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, "Ether", tc.input1.position)
+			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, types.Denom, tc.input1.position)
 		}
 
 		mapper.AddUTXO(ctx, utxo0)

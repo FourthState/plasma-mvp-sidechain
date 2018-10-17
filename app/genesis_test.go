@@ -19,7 +19,6 @@ func TestGenesisState(t *testing.T) {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
 	app := NewChildChain(logger, db, nil)
-	app.rootchainAddress = rootchainAddress
 	addrs := []common.Address{utils.GenerateAddress(), utils.GenerateAddress()}
 
 	var genUTXOs []GenesisUTXO
@@ -28,9 +27,16 @@ func TestGenesisState(t *testing.T) {
 	}
 
 	pubKey := secp256k1.GenPrivKey().PubKey()
+	valAddr := utils.GenerateAddress()
+
+	genValidator := GenesisValidator{
+		ConsPubKey: pubKey,
+		Address:    valAddr.String(),
+	}
 
 	genState := GenesisState{
-		Validator: pubKey,
+		RootChain: rootchainAddress.String(),
+		Validator: genValidator,
 		UTXOs:     genUTXOs,
 	}
 

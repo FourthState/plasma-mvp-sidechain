@@ -22,9 +22,14 @@ import (
 
 // State to Unmarshal
 type GenesisState struct {
-	RootChain string        `json: RootChain`
-	Validator crypto.PubKey `json: validator_pubkey`
-	UTXOs     []GenesisUTXO `json:"UTXOs"`
+	RootChain string           `json: rootchain_address`
+	Validator GenesisValidator `json: validator`
+	UTXOs     []GenesisUTXO    `json:"UTXOs"`
+}
+
+type GenesisValidator struct {
+	ConsPubKey crypto.PubKey `json: validator_pubkey`
+	Address    string        `json: fee_address`
 }
 
 type GenesisUTXO struct {
@@ -50,7 +55,7 @@ func ToUTXO(gutxo GenesisUTXO) utxo.UTXO {
 		InputAddresses: [2]common.Address{addr, common.Address{}},
 		Address:        addr,
 		Amount:         amount,
-		Denom:          "Ether",
+		Denom:          types.Denom,
 	}
 	blkNum, _ := strconv.ParseUint(gutxo.Position[0], 10, 64)
 	txIndex, _ := strconv.ParseUint(gutxo.Position[1], 10, 16)

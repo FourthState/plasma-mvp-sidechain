@@ -1,0 +1,54 @@
+{
+    "genesis_time": "2018-10-14T18:30:50.364854Z",
+    "chain_id": "test-chain-geF75G",
+    "consensus_params": {
+      "block_size_params": {
+        "max_bytes": "22020096",
+        "max_txs": "10000",
+        "max_gas": "-1"
+      },
+      "tx_size_params": {
+        "max_bytes": "10240",
+        "max_gas": "-1"
+      },
+      "block_gossip_params": {
+        "block_part_size_bytes": "65536"
+      },
+      "evidence_params": {
+        "max_age": "100000"
+      }
+    },
+    "validators": [
+      {
+        "pub_key": {
+          "type": "tendermint/PubKeyEd25519",
+          "value": "nchF//ddMszMxKk+2bQ4xQjTdeyHCRg08NuPDGZCWHw="
+        },
+        "power": "1",
+        "name": ""
+      }
+    ],
+    "app_hash": "",
+    "app_state": {
+      "type": "genesis/state",
+      "value": {
+        "Validator": {
+            "type": "tendermint/PubKeyEd25519",
+            "value": "nchF//ddMszMxKk+2bQ4xQjTdeyHCRg08NuPDGZCWHw="
+        },
+        "UTXOs": [
+          {
+            "Address": "0xc01BD94dB00C19d44D42c866cC14111015923160",
+            "Denom": "100",
+            "Position": [
+              "0",
+              "0",
+              "0",
+              "1"
+            ]
+          }
+        ]
+      }
+    }
+  }
+  
