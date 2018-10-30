@@ -112,20 +112,22 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 }
 
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	position := types.PlasmaPosition{
-		Blknum:     uint64(ctx.BlockHeight()),
-		TxIndex:    uint16(2 ^ 16 - 1),
-		Oindex:     0,
-		DepositNum: 0,
+	if app.feeAmount != 0 {
+		position := types.PlasmaPosition{
+			Blknum:     uint64(ctx.BlockHeight()),
+			TxIndex:    uint16(2 ^ 16 - 1),
+			Oindex:     0,
+			DepositNum: 0,
+		}
+		utxo := types.BaseUTXO{
+			Address:        app.validatorAddress,
+			InputAddresses: [2]ethcmn.Address{app.validatorAddress, ethcmn.Address{}},
+			Amount:         app.feeAmount,
+			Denom:          types.Denom,
+			Position:       position,
+		}
+		app.utxoMapper.AddUTXO(ctx, &utxo)
 	}
-	utxo := types.BaseUTXO{
-		Address:        app.validatorAddress,
-		InputAddresses: [2]ethcmn.Address{app.validatorAddress, ethcmn.Address{}},
-		Amount:         app.feeAmount,
-		Denom:          types.Denom,
-		Position:       position,
-	}
-	app.utxoMapper.AddUTXO(ctx, &utxo)
 
 	// reset txIndex and fee
 	app.txIndex = 0

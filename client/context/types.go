@@ -2,6 +2,7 @@ package context
 
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	"github.com/cosmos/cosmos-sdk/wire"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
@@ -9,6 +10,7 @@ import (
 type UTXODecoder func(utxoBytes []byte) (utxo.UTXO, error)
 
 type ClientContext struct {
+	Codec          *wire.Codec
 	Height         int64
 	TrustNode      bool
 	NodeURI        string
@@ -58,5 +60,10 @@ func (c ClientContext) WithDecoder(decoder UTXODecoder) ClientContext {
 // Returns a copy of the context with an updated UTXOStore
 func (c ClientContext) WithUTXOStore(utxoStore string) ClientContext {
 	c.UTXOStore = utxoStore
+	return c
+}
+
+func (c ClientContext) WithCodec(cdc *wire.Codec) ClientContext {
+	c.Codec = cdc
 	return c
 }
