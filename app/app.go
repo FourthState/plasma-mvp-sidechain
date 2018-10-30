@@ -115,7 +115,7 @@ func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abc
 	if app.feeAmount != 0 {
 		position := types.PlasmaPosition{
 			Blknum:     uint64(ctx.BlockHeight()),
-			TxIndex:    uint16(2 ^ 16 - 1),
+			TxIndex:    uint16(1<<16 - 1),
 			Oindex:     0,
 			DepositNum: 0,
 		}

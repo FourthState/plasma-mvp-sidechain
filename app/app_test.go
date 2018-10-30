@@ -528,7 +528,7 @@ func TestFee(t *testing.T) {
 	expectedPosition1 := types.NewPlasmaPosition(1, uint16(0), uint8(0), 0)
 	expectedPosition2 := types.NewPlasmaPosition(1, uint16(1), uint8(0), 0)
 
-	expectedValPosition := types.NewPlasmaPosition(1, uint16(2^16-1), uint8(0), 0)
+	expectedValPosition := types.NewPlasmaPosition(1, uint16(1<<16-1), uint8(0), 0)
 
 	ctx := cc.NewContext(false, abci.Header{Height: 2})
 
@@ -543,9 +543,9 @@ func TestFee(t *testing.T) {
 	require.Equal(t, uint64(20), valUTXO.GetAmount(), "Validator fees did not get collected into UTXO correctly")
 
 	// Check that validator can spend his fees as if they were a regular UTXO on sidechain
-	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 2 ^ 16 - 1, 0, 0}, 10, 10)
+	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 1<<16 - 1, 0, 0}, 10, 10)
 	// Set confirm signatures
-	valMsg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(1, 2^16-1, 0, 0), valPrivKey, &ecdsa.PrivateKey{}, false)
+	valMsg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(1, 1<<16-1, 0, 0), valPrivKey, &ecdsa.PrivateKey{}, false)
 
 	valTx := GetTx(valMsg, valPrivKey, nil, false)
 
@@ -561,6 +561,6 @@ func TestFee(t *testing.T) {
 	ctx = cc.NewContext(false, abci.Header{Height: 3})
 
 	// Check that fee Amount gets reset between blocks. feeAmount for block 2 is 10 not 30.
-	feeUTXO2 := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), types.NewPlasmaPosition(2, 2^16-1, 0, 0))
+	feeUTXO2 := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), types.NewPlasmaPosition(2, 1<<16-1, 0, 0))
 	require.Equal(t, uint64(10), feeUTXO2.GetAmount(), "Fee Amount on second block is incorrect")
 }
