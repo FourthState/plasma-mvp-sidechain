@@ -2,9 +2,11 @@ package auth
 
 import (
 	"crypto/ecdsa"
+	"encoding/binary"
 	"fmt"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,20 +18,35 @@ import (
 	"testing"
 )
 
-func setup() (sdk.Context, utxo.Mapper, utxo.FeeUpdater) {
-	ms, capKey := utxo.SetupMultiStore()
+func setup() (sdk.Context, utxo.Mapper, metadata.MetadataMapper, utxo.FeeUpdater) {
+	ms, capKey, metadataCapKey := utxo.SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	cdc := utxo.MakeCodec()
 	types.RegisterAmino(cdc)
-	mapper := utxo.NewBaseMapper(capKey, cdc)
 
-	return ctx, mapper, feeUpdater
+	mapper := utxo.NewBaseMapper(capKey, cdc)
+	metadataMapper := metadata.NewMetadataMapper(metadataCapKey)
+
+	return ctx, mapper, metadataMapper, feeUpdater
 }
 
 // should be modified when fees are implemented
 func feeUpdater(outputs []utxo.Output) sdk.Error {
 	return nil
+}
+
+// helper function for creating a utxo with the correct msg hash
+func NewBaseUTXOWithMsgHash(addr common.Address, inputaddr [2]common.Address, amount uint64,
+	denom string, position types.PlasmaPosition, msghash []byte) utxo.UTXO {
+	return &types.BaseUTXO{
+		MsgHash:        msghash,
+		InputAddresses: inputaddr,
+		Address:        addr,
+		Amount:         amount,
+		Denom:          denom,
+		Position:       position,
+	}
 }
 
 func GenSpendMsg() types.SpendMsg {
@@ -60,9 +77,8 @@ func GenSpendMsg() types.SpendMsg {
 }
 
 // Returns a confirmsig array signed by privKey0 and privKey1
-func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2][65]byte) {
-	confirmBytes := position.GetSignBytes()
-	hash := ethcrypto.Keccak256(confirmBytes)
+func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
+
 	var confirmSig0 [65]byte
 	confirmSig0Slice, _ := ethcrypto.Sign(hash, privKey0)
 	copy(confirmSig0[:], confirmSig0Slice)
@@ -104,7 +120,7 @@ func getInputAddr(addr0, addr1 common.Address, two bool) [2]common.Address {
 
 // No signatures are provided
 func TestNoSigs(t *testing.T) {
-	ctx, mapper, feeUpdater := setup()
+	ctx, mapper, metadataMapper, feeUpdater := setup()
 
 	var msg = GenSpendMsg()
 	var emptysigs [2][65]byte
@@ -116,7 +132,7 @@ func TestNoSigs(t *testing.T) {
 	mapper.AddUTXO(ctx, utxo1)
 	mapper.AddUTXO(ctx, utxo2)
 
-	handler := NewAnteHandler(mapper, feeUpdater)
+	handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
 	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with no signatures")
@@ -125,7 +141,7 @@ func TestNoSigs(t *testing.T) {
 
 // The wrong amount of signatures are provided
 func TestNotEnoughSigs(t *testing.T) {
-	ctx, mapper, feeUpdater := setup()
+	ctx, mapper, metadataMapper, feeUpdater := setup()
 
 	var msg = GenSpendMsg()
 	priv, _ := ethcrypto.GenerateKey()
@@ -141,7 +157,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	mapper.AddUTXO(ctx, utxo1)
 	mapper.AddUTXO(ctx, utxo2)
 
-	handler := NewAnteHandler(mapper, feeUpdater)
+	handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
 	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
@@ -157,9 +173,9 @@ type input struct {
 	input_index1 int64
 }
 
-// Tests a different cases
+// Tests a different cases.
 func TestDifferentCases(t *testing.T) {
-	ctx, mapper, feeUpdater := setup()
+	ctx, mapper, metadataMapper, feeUpdater := setup()
 
 	var keys [6]*ecdsa.PrivateKey
 	var addrs []common.Address
@@ -219,30 +235,31 @@ func TestDifferentCases(t *testing.T) {
 		input0_index1 := utils.GetIndex(tc.input0.input_index1)
 		input1_index0 := utils.GetIndex(tc.input1.input_index0)
 		input1_index1 := utils.GetIndex(tc.input1.input_index1)
+
+		// for ease of testing, blockHash is hash of case number
+		blockHash := ethcrypto.Keccak256([]byte(string(index)))
 		var msg = types.SpendMsg{
-			Blknum0:      tc.input0.position.Blknum,
-			Txindex0:     tc.input0.position.TxIndex,
-			Oindex0:      tc.input0.position.Oindex,
-			DepositNum0:  tc.input0.position.DepositNum,
-			Owner0:       tc.input0.addr,
-			ConfirmSigs0: CreateConfirmSig(tc.input0.position, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1),
-			Blknum1:      tc.input1.position.Blknum,
-			Txindex1:     tc.input1.position.TxIndex,
-			Oindex1:      tc.input1.position.Oindex,
-			DepositNum1:  tc.input1.position.DepositNum,
-			Owner1:       tc.input1.addr,
-			ConfirmSigs1: CreateConfirmSig(tc.input1.position, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1),
-			Newowner0:    tc.newowner0,
-			Amount0:      tc.amount0,
-			Newowner1:    tc.newowner1,
-			Amount1:      tc.amount1 - 5,
-			FeeAmount:    5,
+			Blknum0:     tc.input0.position.Blknum,
+			Txindex0:    tc.input0.position.TxIndex,
+			Oindex0:     tc.input0.position.Oindex,
+			DepositNum0: tc.input0.position.DepositNum,
+			Owner0:      tc.input0.addr,
+			Blknum1:     tc.input1.position.Blknum,
+			Txindex1:    tc.input1.position.TxIndex,
+			Oindex1:     tc.input1.position.Oindex,
+			DepositNum1: tc.input1.position.DepositNum,
+			Owner1:      tc.input1.addr,
+			Newowner0:   tc.newowner0,
+			Amount0:     tc.amount0,
+			Newowner1:   tc.newowner1,
+			Amount1:     tc.amount1 - 5,
+			FeeAmount:   5,
 		}
 
 		owner_index1 := utils.GetIndex(tc.input1.owner_index)
 		tx := GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 
-		handler := NewAnteHandler(mapper, feeUpdater)
+		handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
 		_, res, abort := handler(ctx, tx, false)
 
 		assert.Equal(t, true, abort, fmt.Sprintf("did not abort on utxo that does not exist. Case: %d", index))
@@ -250,17 +267,31 @@ func TestDifferentCases(t *testing.T) {
 
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
 		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, types.Denom, tc.input0.position)
+		msghash0 := ethcrypto.Keccak256([]byte("first utxo"))
 
 		var utxo1 utxo.UTXO
+		var msghash1 []byte
 		if tc.input1.owner_index != -1 {
+			msghash1 = ethcrypto.Keccak256([]byte("second utxo"))
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
 			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, types.Denom, tc.input1.position)
 		}
 
+		blknumKey := make([]byte, binary.MaxVarintLen64)
+		binary.PutUvarint(blknumKey, tc.input0.position.Get()[0].Uint64())
+		metadataMapper.StoreMetadata(ctx, blknumKey, blockHash)
+
+		// for ease of testing, msghash is simplified
+		// app_test tests for correct functionality when setting msg_hash
 		mapper.AddUTXO(ctx, utxo0)
+		hash := ethcrypto.Keccak256(append(msghash0, blockHash...))
+		msg.ConfirmSigs0 = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
 		if tc.input1.owner_index != -1 {
+			hash = ethcrypto.Keccak256(append(msghash1, blockHash...))
 			mapper.AddUTXO(ctx, utxo1)
+			msg.ConfirmSigs1 = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
 		}
+		tx = GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 		_, res, abort = handler(ctx, tx, false)
 
 		assert.Equal(t, tc.abort, abort, fmt.Sprintf("aborted on case: %d", index))
