@@ -4,23 +4,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	dbm "github.com/tendermint/tendermint/libs/db"
 
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
-
-func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
-	db := dbm.NewMemDB()
-	capKey := sdk.NewKVStoreKey("capkey")
-	ms := store.NewCommitMultiStore(db)
-	ms.MountStoreWithDB(capKey, sdk.StoreTypeIAVL, db)
-	ms.LoadLatestVersion()
-	return ms, capKey
-}
 
 func GenBasicSpendMsg() SpendMsg {
 	// Creates Basic Spend Msg with no owners or recipients

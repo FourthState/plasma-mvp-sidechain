@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"testing"
@@ -85,9 +86,8 @@ func GenerateSimpleMsg(Owner0, NewOwner0 common.Address, position [4]uint64, amo
 }
 
 // Returns a confirmsig array signed by privKey0 and privKey1
-func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2][65]byte) {
-	confirmBytes := position.GetSignBytes()
-	hash := ethcrypto.Keccak256(confirmBytes)
+func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
+
 	confirmSig, _ := ethcrypto.Sign(hash, privKey0)
 	copy(confirmSigs[0][:], confirmSig)
 
@@ -167,8 +167,7 @@ func TestSpendDeposit(t *testing.T) {
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
 
-	// Set confirm signatures
-	msg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, 1), privKeyA, &ecdsa.PrivateKey{}, false)
+	// no confirmation signatures needed for spending a deposit
 
 	// Signs the hash of the transaction
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
@@ -194,6 +193,9 @@ func TestSpendDeposit(t *testing.T) {
 	// Create context
 	ctx := cc.NewContext(false, abci.Header{})
 
+	msgbytes, _ := rlp.EncodeToBytes(msg)
+	msghash := ethcrypto.Keccak256(msgbytes)
+
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(1, 0, 0, 0)
 	utxo := cc.utxoMapper.GetUTXO(ctx, addrB.Bytes(), position)
@@ -215,9 +217,8 @@ func TestSpendTx(t *testing.T) {
 	cc.Commit()
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
-
-	// Set confirm signatures
-	msg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, 1), privKeyA, &ecdsa.PrivateKey{}, false)
+	msgbytes, _ := rlp.EncodeToBytes(msg)
+	msghash := ethcrypto.Keccak256(msgbytes)
 
 	// Signs the hash of the transaction
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
@@ -238,13 +239,22 @@ func TestSpendTx(t *testing.T) {
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
 
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 5}})
+
+	// Create context
+	ctx := cc.NewContext(false, abci.Header{})
+	blknumKey := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(blknumKey, uint64(1))
+	blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+
 	// Test that spending from a non-deposit/non-genesis UTXO works
 
 	// generate simple msg
 	msg = GenerateSimpleMsg(addrB, addrA, [4]uint64{1, 0, 0, 0}, 100, 0)
 
+	hash = ethcrypto.Keccak256(append(msghash, blockhash...))
 	// Set confirm signatures
-	msg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(1, 0, 0, 0), privKeyA, &ecdsa.PrivateKey{}, false)
+	msg.ConfirmSigs0 = CreateConfirmSig(hash, privKeyA, &ecdsa.PrivateKey{}, false)
 
 	// Signs the hash of the transaction
 	hash = ethcrypto.Keccak256(msg.GetSignBytes())
@@ -260,8 +270,8 @@ func TestSpendTx(t *testing.T) {
 
 	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
-	// Create context
-	ctx := cc.NewContext(false, abci.Header{})
+	msgbytes, _ = rlp.EncodeToBytes(msg)
+	msghash = ethcrypto.Keccak256(msgbytes)
 
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(5, 0, 0, 0)
@@ -358,24 +368,41 @@ func TestDifferentTxForms(t *testing.T) {
 		input0_index1 := utils.GetIndex(tc.input0.input_index1)
 		input1_index0 := utils.GetIndex(tc.input1.input_index0)
 		input1_index1 := utils.GetIndex(tc.input1.input_index1)
+
+		// Create context
+		ctx := cc.NewContext(false, abci.Header{})
+
 		msg := types.SpendMsg{
-			Blknum0:      tc.input0.position.Blknum,
-			Txindex0:     tc.input0.position.TxIndex,
-			Oindex0:      tc.input0.position.Oindex,
-			DepositNum0:  tc.input0.position.DepositNum,
-			Owner0:       tc.input0.addr,
-			ConfirmSigs0: CreateConfirmSig(tc.input0.position, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1),
-			Blknum1:      tc.input1.position.Blknum,
-			Txindex1:     tc.input1.position.TxIndex,
-			Oindex1:      tc.input1.position.Oindex,
-			DepositNum1:  tc.input1.position.DepositNum,
-			Owner1:       tc.input1.addr,
-			ConfirmSigs1: CreateConfirmSig(tc.input1.position, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1),
-			Newowner0:    tc.newowner0,
-			Amount0:      tc.amount0,
-			Newowner1:    tc.newowner1,
-			Amount1:      tc.amount1,
-			FeeAmount:    0,
+			Blknum0:     tc.input0.position.Blknum,
+			Txindex0:    tc.input0.position.TxIndex,
+			Oindex0:     tc.input0.position.Oindex,
+			DepositNum0: tc.input0.position.DepositNum,
+			Owner0:      tc.input0.addr,
+			Blknum1:     tc.input1.position.Blknum,
+			Txindex1:    tc.input1.position.TxIndex,
+			Oindex1:     tc.input1.position.Oindex,
+			DepositNum1: tc.input1.position.DepositNum,
+			Owner1:      tc.input1.addr,
+			Newowner0:   tc.newowner0,
+			Amount0:     tc.amount0,
+			Newowner1:   tc.newowner1,
+			Amount1:     tc.amount1,
+			FeeAmount:   0,
+		}
+
+		if tc.input0.position.DepositNum == 0 && tc.input0.position.Blknum != 0 {
+			// note: all cases currently have inputs belonging to the previous tx
+			// and therefore we only need to grab the first msghash from the inptus
+			input_utxo := cc.utxoMapper.GetUTXO(ctx, tc.input0.addr.Bytes(), tc.input0.position)
+			baseutxo, _ := input_utxo.(*types.BaseUTXO)
+			msghash := baseutxo.MsgHash
+			blknumKey := make([]byte, binary.MaxVarintLen64)
+			binary.PutUvarint(blknumKey, uint64(7+uint64(index-1)))
+			blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+			hash := ethcrypto.Keccak256(append(msghash, blockhash...))
+
+			msg.ConfirmSigs0 = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
+			msg.ConfirmSigs1 = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
 		}
 
 		tx := GetTx(msg, keys[tc.input0.owner_index], keys[tc.input1.owner_index], !utils.ZeroAddress(msg.Owner1))
@@ -385,8 +412,8 @@ func TestDifferentTxForms(t *testing.T) {
 
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
-		// Create context
-		ctx := cc.NewContext(false, abci.Header{})
+		msgbytes, _ := rlp.EncodeToBytes(msg)
+		msghash := ethcrypto.Keccak256(msgbytes)
 
 		// Retrieve utxo from context
 		position := types.NewPlasmaPosition(uint64(index)+7, 0, 0, 0)
@@ -428,6 +455,7 @@ func TestMultiTxBlocks(t *testing.T) {
 	var addrs []common.Address
 	var msgs [N]types.SpendMsg
 	var txs [N]sdk.Tx
+	var msghash [N][]byte
 
 	for i := 0; i < N; i++ {
 		keys[i], _ = ethcrypto.GenerateKey()
@@ -440,9 +468,11 @@ func TestMultiTxBlocks(t *testing.T) {
 
 	for i := uint64(0); i < N; i++ {
 		msgs[i] = GenerateSimpleMsg(addrs[i], addrs[i], [4]uint64{0, 0, 0, i + 1}, 100, 0)
-		msgs[i].ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, i+1), keys[i], &ecdsa.PrivateKey{}, false)
 		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
+
+		bytes, _ := rlp.EncodeToBytes(msgs[i])
+		msghash[i] = ethcrypto.Keccak256(bytes)
 
 		dres := cc.DeliverTx(txBytes)
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
@@ -474,10 +504,19 @@ func TestMultiTxBlocks(t *testing.T) {
 		msgs[i].Blknum0 = 1
 		msgs[i].Txindex0 = i
 		msgs[i].DepositNum0 = 0
-		msgs[i].ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(1, i, 0, 0), keys[i], &ecdsa.PrivateKey{}, false)
+
+		blknumKey := make([]byte, binary.MaxVarintLen64)
+		binary.PutUvarint(blknumKey, uint64(1))
+		blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+		hash := ethcrypto.Keccak256(append(msghash[i], blockhash...))
+		msgs[i].ConfirmSigs0 = CreateConfirmSig(hash, keys[i], &ecdsa.PrivateKey{}, false)
+
 		msgs[i].Newowner0 = addrs[(i+1)%N]
 		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
+
+		bytes, _ := rlp.EncodeToBytes(msgs[i])
+		msghash[i] = ethcrypto.Keccak256(bytes)
 
 		dres := cc.DeliverTx(txBytes)
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)

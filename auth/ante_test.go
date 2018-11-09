@@ -36,19 +36,6 @@ func feeUpdater(outputs []utxo.Output) sdk.Error {
 	return nil
 }
 
-// helper function for creating a utxo with the correct msg hash
-func NewBaseUTXOWithMsgHash(addr common.Address, inputaddr [2]common.Address, amount uint64,
-	denom string, position types.PlasmaPosition, msghash []byte) utxo.UTXO {
-	return &types.BaseUTXO{
-		MsgHash:        msghash,
-		InputAddresses: inputaddr,
-		Address:        addr,
-		Amount:         amount,
-		Denom:          denom,
-		Position:       position,
-	}
-}
-
 func GenSpendMsg() types.SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
 	var confirmSigs [2][65]byte
