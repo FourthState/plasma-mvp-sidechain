@@ -1,52 +1,70 @@
 package cmd
 
 import (
+	"encoding/binary"
 	"fmt"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
+	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
-	flagAddr = "addr"
+//flagAddr = "addr"
 )
 
 func init() {
 	rootCmd.AddCommand(signCmd)
-	signCmd.Flags().String(flagAddr, "", "Address to sign with")
+	//signCmd.Flags().String(flagAddr, "", "Address to sign with")
 	viper.BindPFlags(signCmd.Flags())
 }
 
 var signCmd = &cobra.Command{
-	Use:   "sign <position>",
-	Short: "Sign positions to create confirmation signatures, format: 0.0.0.0::0.0.0.0",
+	Use:   "sign <amount> <address>",
+	Short: "Sign confirmation signatures for amount provided, if it exists",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// get position
-		posStr := args[0]
-		pos, err := client.ParsePositions(posStr)
+
+		ctx := context.NewClientContextFromViper()
+		cdc := app.MakeCodec()
+		ctx = ctx.WithCodec(cdc)
+
+		ethAddr := common.HexToAddress(args[1])
+
+		res, err := ctx.QuerySubspace(ethAddr.Bytes(), ctx.UTXOStore)
 		if err != nil {
 			return err
 		}
 
-		ctx := context.NewClientContextFromViper()
+		var utxos []types.BaseUTXO
+		for _, pair := range res {
+			var utxo types.BaseUTXO
+			err := ctx.Codec.UnmarshalBinaryBare(pair.Value, &utxo)
+			if err != nil {
+				return err
+			}
+			utxos = append(utxos, utxo)
+		}
 
 		dir := viper.GetString(FlagHomeDir)
 
 		ks := client.GetKeyStore(dir)
 		// get address to sign with
-		addrStr := viper.GetString(flagAddr)
-		addr, err := client.StrToAddress(addrStr)
-		if err != nil {
-			return err
-		}
+		//addrStr := viper.GetString(flagAddr)
+		//addr, err := client.StrToAddress(addrStr)
+		//if err != nil {
+		//	return err
+		//}
 		acc := accounts.Account{
-			Address: addr,
+			Address: ethAddr,
 		}
 		// get account to sign with
 		acct, err := ks.Find(acc)
@@ -54,33 +72,43 @@ var signCmd = &cobra.Command{
 			return err
 		}
 
+		amount, err := strconv.ParseUint(args[0], 10, 64)
+		if err != nil {
+			return err
+		}
 		// get passphrase
-		passphrase, err := ctx.GetPassphraseFromStdin(addr)
+		passphrase, err := ctx.GetPassphraseFromStdin(ethAddr)
 		if err != nil {
 			return err
 		}
 
-		// sign positions
-		signBytes1 := pos[0].GetSignBytes()
-		hash1 := ethcrypto.Keccak256(signBytes1)
-		sig1, err := ks.SignHashWithPassphrase(acct, passphrase, hash1)
-
-		var sig2 []byte
-		if len(pos) > 1 {
-			signBytes2 := pos[1].GetSignBytes()
-			hash2 := ethcrypto.Keccak256(signBytes2)
-			sig2, err = ks.SignHashWithPassphrase(acct, passphrase, hash2)
-			if err != nil {
-				return err
+		index := -1
+		for i, utxo := range utxos {
+			if utxo.GetAmount() == amount {
+				index = i
+				break
 			}
 		}
-		fmt.Println()
-		fmt.Println("Sig 1:")
-		fmt.Printf("%X", sig1)
-		fmt.Println()
-		fmt.Println("Sig 2:")
-		fmt.Printf("%X", sig2)
-		fmt.Println()
+
+		if index == -1 {
+			fmt.Println("Sorry, the provided amount and address do not match to an existing utxo")
+			return nil
+		}
+
+		blknumKey := make([]byte, binary.MaxVarintLen64)
+		binary.PutUvarint(blknumKey, utxos[index].GetPosition().Get()[0].Uint64())
+
+		blockhash, err := ctx.QuerySubspace(blknumKey, ctx.MetadataStore)
+		if err != nil {
+			return err
+		}
+
+		hash := ethcrypto.Keccak256(append(utxos[index].MsgHash, blockhash[0].Value...))
+		sig, err := ks.SignHashWithPassphrase(acct, passphrase, hash)
+
+		fmt.Printf("\nConfirmation Signature for utxo with\n position: %v \namount: %d\n")
+		fmt.Printf("Signature:%v\n", sig)
+		fmt.Printf("UTXO had %d inputs\n")
 		return nil
 	},
 }

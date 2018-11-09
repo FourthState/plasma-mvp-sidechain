@@ -24,6 +24,7 @@ type ClientContext struct {
 	Decoder        UTXODecoder
 	Verifier       tmlite.Verifier
 	UTXOStore      string
+	MetadataStore  string
 }
 
 // Returns a copy of the context with an updated height
@@ -66,6 +67,11 @@ func (c ClientContext) WithDecoder(decoder UTXODecoder) ClientContext {
 // Returns a copy of the context with an updated UTXOStore
 func (c ClientContext) WithUTXOStore(utxoStore string) ClientContext {
 	c.UTXOStore = utxoStore
+	return c
+}
+
+func (c ClientContext) WithMetadataStore(metadataStore string) ClientContext {
+	c.MetadataStore = metadataStore
 	return c
 }
 
