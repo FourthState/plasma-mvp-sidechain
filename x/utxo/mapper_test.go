@@ -123,7 +123,7 @@ func (utxo *testUTXO) SetPosition(pos Position) error {
 */
 
 func TestUTXOGetAddDelete(t *testing.T) {
-	ms, capKey := SetupMultiStore()
+	ms, capKey, _ := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	cdc := MakeCodec()
@@ -159,7 +159,7 @@ func TestUTXOGetAddDelete(t *testing.T) {
 */
 
 func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
-	ms, capKey := SetupMultiStore()
+	ms, capKey, _ := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	cdc := MakeCodec()
@@ -192,7 +192,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 }
 
 func TestInvalidAddress(t *testing.T) {
-	ms, capKey := SetupMultiStore()
+	ms, capKey, _ := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 
@@ -239,7 +239,7 @@ func TestInvalidAddress(t *testing.T) {
 */
 
 func TestGetUTXOsForAddress(t *testing.T) {
-	ms, capKey := SetupMultiStore()
+	ms, capKey, _ := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 
