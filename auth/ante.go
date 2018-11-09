@@ -16,7 +16,7 @@ import (
 // confirm signatures, and increments the feeAmount
 func NewAnteHandler(utxoMapper utxo.Mapper, feeUpdater utxo.FeeUpdater) sdk.AnteHandler {
 	return func(
-		ctx sdk.Context, tx sdk.Tx,
+		ctx sdk.Context, tx sdk.Tx, simulate bool,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
 
 		baseTx, ok := tx.(types.BaseTx)
@@ -96,7 +96,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, feeUpdater utxo.FeeUpdater) sdk.Ante
 			}
 		}
 
-		balanceErr := utxo.AnteHelper(ctx, utxoMapper, tx, feeUpdater)
+		balanceErr := utxo.AnteHelper(ctx, utxoMapper, tx, simulate, feeUpdater)
 		if balanceErr != nil {
 			return ctx, balanceErr.Result(), true
 		}

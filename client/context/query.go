@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/libs/common"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
@@ -23,8 +22,13 @@ func (ctx ClientContext) GetNode() (rpcclient.Client, error) {
 }
 
 // Query performs a query for information about the connected node.
-func (ctx ClientContext) Query(path string) (res []byte, err error) {
-	return ctx.query(path, nil)
+func (ctx ClientContext) Query(path string, data cmn.HexBytes) (res []byte, err error) {
+	return ctx.query(path, data)
+}
+
+// Query information about the connected node with a data payload
+func (ctx ClientContext) QueryWithData(path string, data []byte) (res []byte, err error) {
+	return ctx.query(path, data)
 }
 
 // QueryStore performs a query from a Tendermint node with the provided key and
@@ -41,21 +45,21 @@ func (ctx ClientContext) QuerySubspace(subspace []byte, storeName string) (res [
 		return res, err
 	}
 
-	ctx.Codec.MustUnmarshalBinary(resRaw, &res)
+	ctx.Codec.MustUnmarshalBinaryLengthPrefixed(resRaw, &res)
 	return
 }
 
 // query performs a query from a Tendermint node with the provided store name
 // and path.
-func (ctx ClientContext) query(path string, key common.HexBytes) (res []byte, err error) {
+func (ctx ClientContext) query(path string, key cmn.HexBytes) (res []byte, err error) {
 	node, err := ctx.GetNode()
 	if err != nil {
 		return res, err
 	}
 
 	opts := rpcclient.ABCIQueryOptions{
-		Height:  ctx.Height,
-		Trusted: ctx.TrustNode,
+		Height: ctx.Height,
+		Prove:  !ctx.TrustNode,
 	}
 
 	result, err := node.ABCIQueryWithOptions(path, key, opts)
@@ -65,7 +69,7 @@ func (ctx ClientContext) query(path string, key common.HexBytes) (res []byte, er
 
 	resp := result.Response
 	if !resp.IsOK() {
-		return res, errors.Errorf("query failed: (%d) %s", resp.Code, resp.Log)
+		return res, errors.Errorf(resp.Log)
 	}
 
 	return resp.Value, nil

@@ -514,9 +514,17 @@ func TestFee(t *testing.T) {
 	tx1 := GetTx(msg1, privKeys[0], nil, false)
 	tx2 := GetTx(msg2, privKeys[1], nil, false)
 
+	check1 := cc.Check(tx1)
+	check2 := cc.Check(tx2)
+
 	res1 := cc.Deliver(tx1)
 	res2 := cc.Deliver(tx2)
 
+	// Assert checks pass
+	require.Equal(t, sdk.CodeOK, sdk.CodeType(check1.Code), check1.Log)
+	require.Equal(t, sdk.CodeOK, sdk.CodeType(check2.Code), check2.Log)
+
+	// Assert delivering tx passes
 	require.Equal(t, sdk.CodeOK, sdk.CodeType(res1.Code), res1.Log)
 	require.Equal(t, sdk.CodeOK, sdk.CodeType(res2.Code), res2.Log)
 

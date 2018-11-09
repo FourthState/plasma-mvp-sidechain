@@ -34,7 +34,7 @@ var balanceCmd = &cobra.Command{
 
 		for _, pair := range res {
 			var utxo types.BaseUTXO
-			err := ctx.Codec.UnmarshalBinary(pair.Value, &utxo)
+			err := ctx.Codec.UnmarshalBinaryBare(pair.Value, &utxo)
 			if err != nil {
 				return err
 			}

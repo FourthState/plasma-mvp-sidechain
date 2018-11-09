@@ -31,8 +31,11 @@ type SpendMsg struct {
 	FeeAmount    uint64
 }
 
+// Implements Msg. Improve later
+func (msg SpendMsg) Type() string { return "spend_utxo" }
+
 // Implements Msg.
-func (msg SpendMsg) Type() string { return "spend" }
+func (msg SpendMsg) Route() string { return "spend" }
 
 // Implements Msg.
 func (msg SpendMsg) ValidateBasic() sdk.Error {

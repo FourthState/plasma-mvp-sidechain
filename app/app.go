@@ -104,10 +104,9 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	app.validatorAddress = ethcmn.HexToAddress(genesisState.Validator.Address)
 
 	// load the initial stake information
-	return abci.ResponseInitChain{Validators: []abci.Validator{abci.Validator{
-		PubKey:  tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
-		Address: genesisState.Validator.ConsPubKey.Address(),
-		Power:   1,
+	return abci.ResponseInitChain{Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{
+		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
+		Power:  1,
 	}}}
 }
 
