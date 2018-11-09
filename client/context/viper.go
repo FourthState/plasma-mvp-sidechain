@@ -22,6 +22,6 @@ func NewClientContextFromViper() ClientContext {
 		NodeURI:        nodeURI,
 		Client:         rpc,
 		Decoder:        nil,
-		UTXOStore:      "utxo",
+		UTXOStore:      "main",
 	}
 }

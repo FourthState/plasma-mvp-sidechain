@@ -15,6 +15,7 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/FourthState/plasma-mvp-sidechain/app"
+	"github.com/FourthState/plasma-mvp-sidechain/client/plasmad/cmd"
 )
 
 func main() {
@@ -26,10 +27,11 @@ func main() {
 		Short:             "Plasma Daemon (server)",
 		PersistentPreRunE: server.PersistentPreRunEFn(ctx),
 	}
+	rootCmd.AddCommand(cmd.InitCmd(ctx, cdc, app.PlasmaAppInit()))
 
 	server.AddCommands(ctx, cdc, rootCmd, app.PlasmaAppInit(),
-		server.ConstructAppCreator(newApp, "plasma"),
-		server.ConstructAppExporter(exportAppState, "plasma"))
+		newApp,
+		exportAppState)
 
 	// prepare and add flags
 	rootDir := os.ExpandEnv("$HOME/.plasmad")

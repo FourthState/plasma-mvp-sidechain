@@ -107,7 +107,7 @@ func TestNoSigs(t *testing.T) {
 	tx := types.NewBaseTx(msg, []types.Signature{})
 
 	handler := NewAnteHandler(mapper, feeUpdater)
-	_, res, abort := handler(ctx, tx)
+	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with no signatures")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with no signatures")
@@ -124,7 +124,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}})
 
 	handler := NewAnteHandler(mapper, feeUpdater)
-	_, res, abort := handler(ctx, tx)
+	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with incorrect number of signatures")
@@ -225,7 +225,7 @@ func TestDifferentCases(t *testing.T) {
 		tx := GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 
 		handler := NewAnteHandler(mapper, feeUpdater)
-		_, res, abort := handler(ctx, tx)
+		_, res, abort := handler(ctx, tx, false)
 
 		assert.Equal(t, true, abort, fmt.Sprintf("did not abort on utxo that does not exist. Case: %d", index))
 		require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
@@ -243,7 +243,7 @@ func TestDifferentCases(t *testing.T) {
 		if tc.input1.owner_index != -1 {
 			mapper.AddUTXO(ctx, utxo1)
 		}
-		_, res, abort = handler(ctx, tx)
+		_, res, abort = handler(ctx, tx, false)
 
 		assert.Equal(t, tc.abort, abort, fmt.Sprintf("aborted on case: %d", index))
 		if tc.abort == false {

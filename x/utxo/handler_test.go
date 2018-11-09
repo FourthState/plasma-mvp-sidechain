@@ -42,7 +42,9 @@ type testSpendMsg struct {
 	Fees   Output
 }
 
-func (msg testSpendMsg) Type() string { return "spend" }
+func (msg testSpendMsg) Type() string { return "spend_utxo" }
+
+func (msg testSpendMsg) Route() string { return "spend" }
 
 func (msg testSpendMsg) ValidateBasic() sdk.Error {
 	return nil

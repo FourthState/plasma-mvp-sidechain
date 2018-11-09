@@ -85,7 +85,7 @@ func (um baseMapper) DeleteUTXO(ctx sdk.Context, addr []byte, position Position)
 
 // (<address> + <encoded position>) forms the unique key that maps to an UTXO.
 func (um baseMapper) constructKey(address []byte, position Position) []byte {
-	posBytes, err := um.cdc.MarshalBinary(position)
+	posBytes, err := um.cdc.MarshalBinaryBare(position)
 	if err != nil {
 		panic(err)
 	}
@@ -94,7 +94,7 @@ func (um baseMapper) constructKey(address []byte, position Position) []byte {
 }
 
 func (um baseMapper) encodeUTXO(utxo UTXO) []byte {
-	bz, err := um.cdc.MarshalBinary(utxo)
+	bz, err := um.cdc.MarshalBinaryBare(utxo)
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +102,7 @@ func (um baseMapper) encodeUTXO(utxo UTXO) []byte {
 }
 
 func (um baseMapper) decodeUTXO(bz []byte) (utxo UTXO) {
-	err := um.cdc.UnmarshalBinary(bz, &utxo)
+	err := um.cdc.UnmarshalBinaryBare(bz, &utxo)
 	if err != nil {
 		panic(err)
 	}

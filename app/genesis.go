@@ -14,21 +14,20 @@ import (
 
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
-	"github.com/cosmos/cosmos-sdk/server/config"
-	"github.com/cosmos/cosmos-sdk/wire"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 // State to Unmarshal
 type GenesisState struct {
-	Validator GenesisValidator `json: validator`
+	Validator GenesisValidator `json:"genvalidator"`
 	UTXOs     []GenesisUTXO    `json:"UTXOs"`
 }
 
 type GenesisValidator struct {
-	ConsPubKey crypto.PubKey `json: validator_pubkey`
-	Address    string        `json: fee_address`
+	ConsPubKey crypto.PubKey `json:"validator_pubkey"`
+	Address    string        `json:"fee_address"`
 }
 
 type GenesisUTXO struct {
@@ -81,8 +80,6 @@ var (
 
 // get app init parameters for server init command
 func PlasmaAppInit() server.AppInit {
-	fsAppGenState := pflag.NewFlagSet("", pflag.ContinueOnError)
-
 	fsAppGenTx := pflag.NewFlagSet("", pflag.ContinueOnError)
 	fsAppGenTx.String(flagAddress, "", "address, required")
 	fsAppGenTx.String(flagClientHome, DefaultCLIHome,
@@ -90,10 +87,7 @@ func PlasmaAppInit() server.AppInit {
 	fsAppGenTx.Bool(flagOWK, false, "overwrite the accounts created")
 
 	return server.AppInit{
-		FlagsAppGenState: fsAppGenState,
-		FlagsAppGenTx:    fsAppGenTx,
-		AppGenTx:         PlasmaAppGenTx,
-		AppGenState:      PlasmaAppGenStateJSON,
+		AppGenState: PlasmaAppGenStateJSON,
 	}
 }
 
@@ -104,7 +98,7 @@ type PlasmaGenTx struct {
 }
 
 // Generate a gaia genesis transaction with flags
-func PlasmaAppGenTx(cdc *wire.Codec, pk crypto.PubKey, gentTxConfig config.GenTx) (
+func PlasmaAppGenTx(cdc *codec.Codec, pk crypto.PubKey) (
 	appGenTx, cliPrint json.RawMessage, validator tmtypes.GenesisValidator, err error) {
 	addrString := viper.GetString(flagAddress)
 	overwrite := viper.GetBool(flagOWK)
@@ -116,14 +110,14 @@ func PlasmaAppGenTx(cdc *wire.Codec, pk crypto.PubKey, gentTxConfig config.GenTx
 }
 
 // Generate a gaia genesis transaction without flags
-func PlasmaAppGenTxNF(cdc *wire.Codec, pk crypto.PubKey, addr string, overwrite bool) (
+func PlasmaAppGenTxNF(cdc *codec.Codec, pk crypto.PubKey, addr string, overwrite bool) (
 	appGenTx, cliPrint json.RawMessage, validator tmtypes.GenesisValidator, err error) {
 
 	var bz []byte
 	plasmaGenTx := PlasmaGenTx{
 		Address: addr,
 	}
-	bz, err = wire.MarshalJSONIndent(cdc, plasmaGenTx)
+	bz, err = codec.MarshalJSONIndent(cdc, plasmaGenTx)
 	if err != nil {
 		return
 	}
@@ -138,7 +132,11 @@ func PlasmaAppGenTxNF(cdc *wire.Codec, pk crypto.PubKey, addr string, overwrite 
 
 // Create the core parameters for genesis initialization for gaia
 // note that the pubkey input is this machines pubkey
-func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisState GenesisState, err error) {
+func PlasmaAppGenState(cdc *codec.Codec, genDoc tmtypes.GenesisDoc, appGenTxs []json.RawMessage) (genesisState GenesisState, err error) {
+
+	if err = cdc.UnmarshalJSON(genDoc.AppState, &genesisState); err != nil {
+		return genesisState, err
+	}
 
 	if len(appGenTxs) == 0 {
 		err = errors.New("must provide at least genesis transaction")
@@ -159,20 +157,25 @@ func PlasmaAppGenState(cdc *wire.Codec, appGenTxs []json.RawMessage) (genesisSta
 	}
 
 	// create the final app state
-	genesisState = GenesisState{
-		UTXOs: genUTXO,
-	}
+	genesisState.UTXOs = genUTXO
 	return
 }
 
 // PlasmaAppGenState but with JSON
-func PlasmaAppGenStateJSON(cdc *wire.Codec, appGenTxs []json.RawMessage) (appState json.RawMessage, err error) {
+func PlasmaAppGenStateJSON(cdc *codec.Codec, genDoc tmtypes.GenesisDoc, appGenTxs []json.RawMessage) (appState json.RawMessage, err error) {
 
 	// create the final app state
-	genesisState, err := PlasmaAppGenState(cdc, appGenTxs)
+	genesisState, err := PlasmaAppGenState(cdc, genDoc, appGenTxs)
 	if err != nil {
 		return nil, err
 	}
-	appState, err = wire.MarshalJSONIndent(cdc, genesisState)
+	appState, err = codec.MarshalJSONIndent(cdc, genesisState)
 	return
+}
+
+func NewDefaultGenesisState() GenesisState {
+	return GenesisState{
+		Validator: GenesisValidator{},
+		UTXOs:     nil,
+	}
 }

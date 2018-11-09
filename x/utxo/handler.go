@@ -50,7 +50,7 @@ func NewSpendHandler(um Mapper, nextPos NextPosition, proto ProtoUTXO) sdk.Handl
 
 // This function should be called within the antehandler
 // Checks that the inputs = outputs + fee and handles fee collection
-func AnteHelper(ctx sdk.Context, um Mapper, tx sdk.Tx, feeUpdater FeeUpdater) sdk.Error {
+func AnteHelper(ctx sdk.Context, um Mapper, tx sdk.Tx, simulate bool, feeUpdater FeeUpdater) sdk.Error {
 	msg := tx.GetMsgs()[0]
 	spendMsg, ok := msg.(SpendMsg)
 	if !ok {
@@ -79,6 +79,10 @@ func AnteHelper(ctx sdk.Context, um Mapper, tx sdk.Tx, feeUpdater FeeUpdater) sd
 		}
 	}
 
-	err := feeUpdater(spendMsg.Fee())
-	return err
+	// Only update fee when we are actually delivering tx
+	if !ctx.IsCheckTx() && !simulate {
+		err := feeUpdater(spendMsg.Fee())
+		return err
+	}
+	return nil
 }

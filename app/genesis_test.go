@@ -50,10 +50,9 @@ func TestGenesisState(t *testing.T) {
 
 	res := app.InitChain(abci.RequestInitChain{AppStateBytes: appBytes})
 	expected := abci.ResponseInitChain{
-		Validators: []abci.Validator{abci.Validator{
-			PubKey:  tmtypes.TM2PB.PubKey(pubKey),
-			Address: pubKey.Address(),
-			Power:   1,
+		Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{
+			PubKey: tmtypes.TM2PB.PubKey(pubKey),
+			Power:  1,
 		}},
 	}
 	assert.Equal(t, expected, res)

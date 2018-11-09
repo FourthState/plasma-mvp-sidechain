@@ -104,28 +104,29 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	app.validatorAddress = ethcmn.HexToAddress(genesisState.Validator.Address)
 
 	// load the initial stake information
-	return abci.ResponseInitChain{Validators: []abci.Validator{abci.Validator{
-		PubKey:  tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
-		Address: genesisState.Validator.ConsPubKey.Address(),
-		Power:   1,
+	return abci.ResponseInitChain{Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{
+		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
+		Power:  1,
 	}}}
 }
 
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	position := types.PlasmaPosition{
-		Blknum:     uint64(ctx.BlockHeight()),
-		TxIndex:    uint16(2 ^ 16 - 1),
-		Oindex:     0,
-		DepositNum: 0,
+	if app.feeAmount != 0 {
+		position := types.PlasmaPosition{
+			Blknum:     uint64(ctx.BlockHeight()),
+			TxIndex:    uint16(1<<16 - 1),
+			Oindex:     0,
+			DepositNum: 0,
+		}
+		utxo := types.BaseUTXO{
+			Address:        app.validatorAddress,
+			InputAddresses: [2]ethcmn.Address{app.validatorAddress, ethcmn.Address{}},
+			Amount:         app.feeAmount,
+			Denom:          types.Denom,
+			Position:       position,
+		}
+		app.utxoMapper.AddUTXO(ctx, &utxo)
 	}
-	utxo := types.BaseUTXO{
-		Address:        app.validatorAddress,
-		InputAddresses: [2]ethcmn.Address{app.validatorAddress, ethcmn.Address{}},
-		Amount:         app.feeAmount,
-		Denom:          types.Denom,
-		Position:       position,
-	}
-	app.utxoMapper.AddUTXO(ctx, &utxo)
 
 	// reset txIndex and fee
 	app.txIndex = 0
