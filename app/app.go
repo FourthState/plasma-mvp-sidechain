@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
@@ -106,6 +107,8 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 		panic(err) // TODO https://github.com/cosmos/cosmos-sdk/issues/468
 		// return sdk.ErrGenesisParse("").TraceCause(err, "")
 	}
+
+	fmt.Println(genesisState)
 
 	// load the accounts
 	for _, gutxo := range genesisState.UTXOs {

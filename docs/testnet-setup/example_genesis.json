@@ -1,42 +1,30 @@
 {
-    "genesis_time": "2018-10-14T18:30:50.364854Z",
-    "chain_id": "test-chain-geF75G",
-    "consensus_params": {
-      "block_size_params": {
-        "max_bytes": "22020096",
-        "max_txs": "10000",
-        "max_gas": "-1"
-      },
-      "tx_size_params": {
-        "max_bytes": "10240",
-        "max_gas": "-1"
-      },
-      "block_gossip_params": {
-        "block_part_size_bytes": "65536"
-      },
-      "evidence_params": {
-        "max_age": "100000"
-      }
+  "genesis_time": "2018-11-10T23:09:36.891350775Z",
+  "chain_id": "test-chain-z467uy",
+  "consensus_params": {
+    "block_size": {
+      "max_bytes": "22020096",
+      "max_gas": "-1"
     },
-    "validators": [
-      {
-        "pub_key": {
-          "type": "tendermint/PubKeyEd25519",
-          "value": "nchF//ddMszMxKk+2bQ4xQjTdeyHCRg08NuPDGZCWHw="
-        },
-        "power": "1",
-        "name": ""
-      }
-    ],
-    "app_hash": "",
-    "app_state": {
-      "type": "genesis/state",
-      "value": {
-        "Validator": {
-            "type": "tendermint/PubKeyEd25519",
-            "value": "nchF//ddMszMxKk+2bQ4xQjTdeyHCRg08NuPDGZCWHw="
-        },
-        "UTXOs": [
+    "evidence": {
+      "max_age": "100000"
+    },
+    "validator": {
+      "pub_key_types": [
+        "ed25519"
+      ]
+    }
+  },
+  "app_hash": "",
+  "app_state": {
+    "genvalidator": {
+      "validator_pubkey": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "M2fnNquqN9I17/gb2pK8Tq8QNy4vaQwUxEGKUe0f0Ys="
+      },
+      "fee_address": "0x495B9e12A0bC69a9dC83631bEde98de0CF0B298D"
+    },
+    "UTXOs":  [
           {
             "Address": "0xc01BD94dB00C19d44D42c866cC14111015923160",
             "Denom": "100",
@@ -46,9 +34,17 @@
               "0",
               "1"
             ]
-          }
+          },
+          {
+            "Address": "0xc01BD94dB00C19d44D42c866cC14111015923160",
+            "Denom": "100",
+            "Position": [
+              "0",
+              "0",
+              "0",
+              "2" 
         ]
       }
-    }
+    ]
   }
-  
+}
