@@ -23,7 +23,7 @@ type testPosition struct {
 	OutputIndex uint8
 }
 
-func testProtoUTXO(msg sdk.Msg) UTXO {
+func testProtoUTXO(ctx sdk.Context, msg sdk.Msg) UTXO {
 	return &testUTXO{}
 }
 
