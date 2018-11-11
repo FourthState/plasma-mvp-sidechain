@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
@@ -23,16 +22,14 @@ var proveCmd = &cobra.Command{
 	Long:  "Returns proof for tx inclusion. Use to exit tx on rootchain",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewClientContextFromViper()
-		cdc := app.MakeCodec()
-		ctx = ctx.WithCodec(cdc)
-
+		
 		ethAddr := common.HexToAddress(args[0])
 		position, err := client.ParsePositions(args[1])
 		if err != nil {
 			return err
 		}
 
-		posBytes, err := cdc.MarshalBinaryBare(position[0])
+		posBytes, err := ctx.Codec.MarshalBinaryBare(position[0])
 		if err != nil {
 			return err
 		}
@@ -43,8 +40,6 @@ var proveCmd = &cobra.Command{
 		if err2 != nil {
 			return err2
 		}
-
-		fmt.Println(res)
 
 		var utxo types.BaseUTXO
 		err = ctx.Codec.UnmarshalBinaryBare(res, &utxo)
