@@ -24,7 +24,7 @@ func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
 
 func GenBasicSpendMsg() SpendMsg {
 	// Creates Basic Spend Msg with no owners or recipients
-	confirmSigs := [2]Signature{Signature{}, Signature{}}
+	var confirmSigs [2][65]byte
 	return SpendMsg{
 		Blknum0:      1,
 		Txindex0:     0,
@@ -48,7 +48,7 @@ func GenBasicSpendMsg() SpendMsg {
 
 func GenSpendMsgWithAddresses() SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
-	confirmSigs := [2]Signature{Signature{}, Signature{}}
+	var confirmSigs [2][65]byte
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 

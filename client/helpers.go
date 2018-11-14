@@ -34,7 +34,7 @@ func BufferStdin() *bufio.Reader {
 }
 
 // Build SpendMsg
-func BuildMsg(inaddr0, inaddr1, addr0, addr1 common.Address, position0, position1 types.PlasmaPosition, confirmSigs0, confirmSigs1 [2]types.Signature, amount0, amount1, fee uint64) types.SpendMsg {
+func BuildMsg(inaddr0, inaddr1, addr0, addr1 common.Address, position0, position1 types.PlasmaPosition, confirmSigs0, confirmSigs1 [2][65]byte, amount0, amount1, fee uint64) types.SpendMsg {
 	return types.SpendMsg{
 		Blknum0:      position0.Blknum,
 		Txindex0:     position0.TxIndex,

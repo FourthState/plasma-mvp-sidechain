@@ -7,7 +7,6 @@ import (
 
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
-	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/ethereum/go-ethereum/common"
 	"strings"
 
@@ -111,20 +110,21 @@ var sendTxCmd = &cobra.Command{
 	},
 }
 
-func getConfirmSigs(sig1, sig2 string) (sigs [2]types.Signature, err error) {
+func getConfirmSigs(sig1, sig2 string) (sigs [2][65]byte, err error) {
 	var cs1, cs2 []byte
 	if sig1 != "" {
 		cs1, err = hex.DecodeString(strings.TrimSpace(sig1))
 		if err != nil {
 			return sigs, err
 		}
+		copy(sigs[0][:], cs1)
 	}
 	if sig2 != "" {
 		cs2, err = hex.DecodeString(strings.TrimSpace(sig2))
 		if err != nil {
 			return sigs, err
 		}
+		copy(sigs[1][:], cs2)
 	}
-	sigs = [2]types.Signature{types.Signature{cs1}, types.Signature{cs2}}
 	return sigs, nil
 }

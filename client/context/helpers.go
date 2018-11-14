@@ -48,14 +48,15 @@ func (ctx ClientContext) SignBuildBroadcast(addrs [2]common.Address, msg types.S
 	if err != nil {
 		return nil, err
 	}
-	sigs := []types.Signature{types.Signature{sig}}
+	var sigs [2][65]byte
+	copy(sigs[0][:], sig)
 
 	if utils.ValidAddress(addrs[1]) {
 		sig, err = ctx.GetSignature(addrs[1], msg, dir)
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, types.Signature{sig})
+		copy(sigs[1][:], sig)
 	}
 
 	tx := types.NewBaseTx(msg, sigs)
