@@ -1,15 +1,12 @@
 package cmd
 
 import (
-	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/ethereum/go-ethereum/common"
-	rlp "github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 )
 
@@ -60,30 +57,17 @@ var proveCmd = &cobra.Command{
 		fmt.Printf("LeafHash: 0x%s\n", hex.EncodeToString(result.Proof.Proof.LeafHash))
 		fmt.Printf("TxBytes: 0x%s\n", hex.EncodeToString(result.Tx))
 
-		var tx types.BaseTx
-		rlp.DecodeBytes(result.Tx, &tx)
-
-		fmt.Printf("Transaction: %+v\n", tx)
-
+		// flatten aunts
 		var proof []byte
 		for _, aunt := range result.Proof.Proof.Aunts {
 			proof = append(proof, aunt...)
 		}
 
-		fmt.Printf("Proof: 0x%s\n", hex.EncodeToString(proof))
-
-		hasher := sha256.New()
-		var buf [10]byte
-		n := binary.PutUvarint(buf[:], 32)
-		_, err = hasher.Write(buf[0:n])
-		fmt.Printf("buffer: %s\n", hex.EncodeToString(buf[0:n]))
-		hasher.Write(proof)
-		hasher.Write(buf[0:n])
-		hasher.Write(result.Proof.Proof.LeafHash)
-		value := hasher.Sum(nil)
-
-		fmt.Println()
-		fmt.Printf("Verify: %s\n", hex.EncodeToString(value))
+		if len(proof) == 0 {
+			fmt.Println("Proof: nil")
+		} else {
+			fmt.Printf("Proof: 0x%s\n", hex.EncodeToString(proof))
+		}
 
 		return nil
 	},
