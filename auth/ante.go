@@ -138,9 +138,9 @@ func processConfirmSig(
 	binary.PutUvarint(blknumKey, plasmaUTXO.GetPosition().Get()[0].Uint64())
 	blockHash := metadataMapper.GetMetadata(ctx, blknumKey)
 
-	msgHash := plasmaUTXO.GetMsgHash()
+	txHash := plasmaUTXO.GetTxHash()
 
-	hash := append(msgHash, blockHash...)
+	hash := append(txHash, blockHash...)
 	confirmHash := ethcrypto.Keccak256(hash)
 
 	pubKey0, err0 := ethcrypto.SigToPub(confirmHash, sigs[0][:])

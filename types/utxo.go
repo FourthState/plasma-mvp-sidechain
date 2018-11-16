@@ -9,7 +9,6 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
@@ -23,7 +22,6 @@ var _ utxo.UTXO = &BaseUTXO{}
 
 // Implements UTXO interface
 type BaseUTXO struct {
-	MsgHash        []byte
 	InputAddresses [2]common.Address
 	Address        common.Address
 	Amount         uint64
@@ -38,12 +36,9 @@ func ProtoUTXO(ctx sdk.Context, msg sdk.Msg) utxo.UTXO {
 		return nil
 	}
 
-	msgHash := ethcrypto.Keccak256(spendmsg.GetSignBytes())
-
 	return &BaseUTXO{
 		InputAddresses: [2]common.Address{spendmsg.Owner0, spendmsg.Owner1},
 		TxHash:         tmhash.Sum(ctx.TxBytes()),
-		MsgHash:        msgHash,
 	}
 }
 
@@ -58,8 +53,8 @@ func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, amount uint64
 	}
 }
 
-func (baseutxo BaseUTXO) GetMsgHash() []byte {
-	return baseutxo.MsgHash
+func (baseutxo BaseUTXO) GetTxHash() []byte {
+	return baseutxo.TxHash
 }
 
 //Implements UTXO

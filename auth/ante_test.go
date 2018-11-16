@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	"testing"
 )
@@ -224,7 +225,7 @@ func TestDifferentCases(t *testing.T) {
 		input1_index1 := utils.GetIndex(tc.input1.input_index1)
 
 		// for ease of testing, blockHash is hash of case number
-		blockHash := ethcrypto.Keccak256([]byte(string(index)))
+		blockHash := tmhash.Sum([]byte(string(index)))
 		var msg = types.SpendMsg{
 			Blknum0:     tc.input0.position.Blknum,
 			Txindex0:    tc.input0.position.TxIndex,
@@ -254,29 +255,29 @@ func TestDifferentCases(t *testing.T) {
 
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
 		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, types.Denom, tc.input0.position)
-		msghash0 := ethcrypto.Keccak256([]byte("first utxo"))
-		utxo0.MsgHash = msghash0
+		txhash0 := tmhash.Sum([]byte("first utxo"))
+		utxo0.TxHash = txhash0
 
 		var utxo1 *types.BaseUTXO
-		var msghash1 []byte
+		var txhash1 []byte
 		if tc.input1.owner_index != -1 {
-			msghash1 = ethcrypto.Keccak256([]byte("second utxo"))
+			txhash1 = tmhash.Sum([]byte("second utxo"))
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
 			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, types.Denom, tc.input1.position)
-			utxo1.MsgHash = msghash1
+			utxo1.TxHash = txhash1
 		}
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
 		binary.PutUvarint(blknumKey, tc.input0.position.Get()[0].Uint64())
 		metadataMapper.StoreMetadata(ctx, blknumKey, blockHash)
 
-		// for ease of testing, msghash is simplified
-		// app_test tests for correct functionality when setting msg_hash
+		// for ease of testing, txhash is simplified
+		// app_test tests for correct functionality when setting tx_hash
 		mapper.AddUTXO(ctx, utxo0)
-		hash := ethcrypto.Keccak256(append(msghash0, blockHash...))
+		hash := tmhash.Sum(append(txhash0, blockHash...))
 		msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
 		if tc.input1.owner_index != -1 {
-			hash = ethcrypto.Keccak256(append(msghash1, blockHash...))
+			hash = tmhash.Sum(append(txhash1, blockHash...))
 			mapper.AddUTXO(ctx, utxo1)
 			msg.Input1ConfirmSigs = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
 		}
