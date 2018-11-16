@@ -62,8 +62,8 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		}
 
 		// verify the confirmation signature if the input is not a deposit
-		if position0.DepositNum == 0 {
-			res = processConfirmSig(ctx, utxoMapper, metadataMapper, position0, addr0, spendMsg.ConfirmSigs0)
+		if position0.DepositNum == 0 && position0.TxIndex != 1<<16-1 {
+			res = processConfirmSig(ctx, utxoMapper, metadataMapper, position0, addr0, spendMsg.Input0ConfirmSigs)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -85,8 +85,8 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 				return ctx, res, true
 			}
 
-			if position1.DepositNum == 0 {
-				res = processConfirmSig(ctx, utxoMapper, metadataMapper, position1, addr1, spendMsg.ConfirmSigs1)
+			if position1.DepositNum == 0 && position1.TxIndex != 1<<16-1 {
+				res = processConfirmSig(ctx, utxoMapper, metadataMapper, position1, addr1, spendMsg.Input1ConfirmSigs)
 				if !res.IsOK() {
 					return ctx, res, true
 				}
@@ -119,7 +119,7 @@ func processSig(
 
 func processConfirmSig(
 	ctx sdk.Context, utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper,
-	position types.PlasmaPosition, addr common.Address, sigs [2][65]byte) (
+	position types.PlasmaPosition, addr common.Address, sigs [][65]byte) (
 	res sdk.Result) {
 
 	// Verify utxo exists
@@ -143,13 +143,13 @@ func processConfirmSig(
 	hash := append(msgHash, blockHash...)
 	confirmHash := ethcrypto.Keccak256(hash)
 
-	pubKey0, err0 := ethcrypto.SigToPub(hash, sigs[0][:])
+	pubKey0, err0 := ethcrypto.SigToPub(confirmHash, sigs[0][:])
 	if err0 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey0).Bytes(), inputAddresses[0].Bytes()) {
 		return sdk.ErrUnauthorized("confirm signature 0 verification failed").Result()
 	}
 
 	if utils.ValidAddress(inputAddresses[1]) {
-		pubKey1, err1 := ethcrypto.SigToPub(hash, sigs[1][:])
+		pubKey1, err1 := ethcrypto.SigToPub(confirmHash, sigs[1][:])
 		if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), inputAddresses[1].Bytes()) {
 			return sdk.ErrUnauthorized("confirm signature 1 verification failed").Result()
 		}

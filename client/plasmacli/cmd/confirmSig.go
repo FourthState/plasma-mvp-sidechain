@@ -23,9 +23,9 @@ func init() {
 }
 
 var signCmd = &cobra.Command{
-	Use:   "sign <position> <address>",
+	Use:   "sign <position> <address> <signer_address>",
 	Short: "Sign confirmation signatures for position provided (0.0.0.0), if it exists",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		ctx := context.NewClientContextFromViper()
@@ -37,6 +37,8 @@ var signCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		signerAddr := common.HexToAddress(args[2])
 
 		posBytes, err := ctx.Codec.MarshalBinaryBare(position[0])
 		if err != nil {
@@ -66,7 +68,7 @@ var signCmd = &cobra.Command{
 		ks := client.GetKeyStore(dir)
 
 		acc := accounts.Account{
-			Address: ethAddr,
+			Address: signerAddr,
 		}
 		// get account to sign with
 		acct, err := ks.Find(acc)
@@ -75,7 +77,7 @@ var signCmd = &cobra.Command{
 		}
 
 		// get passphrase
-		passphrase, err := ctx.GetPassphraseFromStdin(ethAddr)
+		passphrase, err := ctx.GetPassphraseFromStdin(signerAddr)
 		if err != nil {
 			return err
 		}
@@ -83,7 +85,7 @@ var signCmd = &cobra.Command{
 		sig, err := ks.SignHashWithPassphrase(acct, passphrase, hash)
 
 		fmt.Printf("\nConfirmation Signature for utxo with\nposition: %v \namount: %d\n", utxo.Position, utxo.Amount)
-		fmt.Printf("signature:%x\n", sig)
+		fmt.Printf("signature: %x\n", sig)
 
 		inputLen := 1
 		// check number of inputs

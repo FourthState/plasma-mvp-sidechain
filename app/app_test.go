@@ -63,38 +63,41 @@ func InitTestChain(cc *ChildChain, valAddr common.Address, addrs ...common.Addre
 }
 
 func GenerateSimpleMsg(Owner0, NewOwner0 common.Address, position [4]uint64, amount0 uint64, fee uint64) types.SpendMsg {
-	var confirmSigs [2][65]byte
+	var confirmSigs [][65]byte
 	return types.SpendMsg{
-		Blknum0:      position[0],
-		Txindex0:     uint16(position[1]),
-		Oindex0:      uint8(position[2]),
-		DepositNum0:  position[3],
-		Owner0:       Owner0,
-		ConfirmSigs0: confirmSigs,
-		Blknum1:      0,
-		Txindex1:     0,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       common.Address{},
-		ConfirmSigs1: confirmSigs,
-		Newowner0:    NewOwner0,
-		Amount0:      amount0,
-		Newowner1:    common.Address{},
-		Amount1:      0,
-		FeeAmount:    fee,
+		Blknum0:           position[0],
+		Txindex0:          uint16(position[1]),
+		Oindex0:           uint8(position[2]),
+		DepositNum0:       position[3],
+		Owner0:            Owner0,
+		Input0ConfirmSigs: confirmSigs,
+		Blknum1:           0,
+		Txindex1:          0,
+		Oindex1:           0,
+		DepositNum1:       0,
+		Owner1:            common.Address{},
+		Input1ConfirmSigs: confirmSigs,
+		Newowner0:         NewOwner0,
+		Amount0:           amount0,
+		Newowner1:         common.Address{},
+		Amount1:           0,
+		FeeAmount:         fee,
 	}
 }
 
 // Returns a confirmsig array signed by privKey0 and privKey1
-func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
+func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [][65]byte) {
 
-	confirmSig, _ := ethcrypto.Sign(hash, privKey0)
-	copy(confirmSigs[0][:], confirmSig)
+	var confirmSig0 [65]byte
+	confirmSig0Slice, _ := ethcrypto.Sign(hash, privKey0)
+	copy(confirmSig0[:], confirmSig0Slice)
+	confirmSigs = append(confirmSigs, confirmSig0)
 
-	var confirmSig1 []byte
+	var confirmSig1 [65]byte
 	if two_inputs {
-		confirmSig1, _ = ethcrypto.Sign(hash, privKey1)
-		copy(confirmSigs[1][:], confirmSig1)
+		confirmSig1Slice, _ := ethcrypto.Sign(hash, privKey1)
+		copy(confirmSig1[:], confirmSig1Slice)
+		confirmSigs = append(confirmSigs, confirmSig1)
 	}
 	return confirmSigs
 }
@@ -199,8 +202,10 @@ func TestSpendDeposit(t *testing.T) {
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(1, 0, 0, 0)
 	utxo := cc.utxoMapper.GetUTXO(ctx, addrB.Bytes(), position)
+
 	expected := types.NewBaseUTXO(addrB, [2]common.Address{addrA, common.Address{}}, 100, "", position)
 	expected.TxHash = tmhash.Sum(txBytes)
+	expected.MsgHash = msghash
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 }
@@ -254,7 +259,7 @@ func TestSpendTx(t *testing.T) {
 
 	hash = ethcrypto.Keccak256(append(msghash, blockhash...))
 	// Set confirm signatures
-	msg.ConfirmSigs0 = CreateConfirmSig(hash, privKeyA, &ecdsa.PrivateKey{}, false)
+	msg.Input0ConfirmSigs = CreateConfirmSig(hash, privKeyA, &ecdsa.PrivateKey{}, false)
 
 	// Signs the hash of the transaction
 	hash = ethcrypto.Keccak256(msg.GetSignBytes())
@@ -276,8 +281,10 @@ func TestSpendTx(t *testing.T) {
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(5, 0, 0, 0)
 	utxo := cc.utxoMapper.GetUTXO(ctx, addrA.Bytes(), position)
+
 	expected := types.NewBaseUTXO(addrA, [2]common.Address{addrB, common.Address{}}, 100, "", position)
 	expected.TxHash = tmhash.Sum(txBytes)
+	expected.MsgHash = msghash
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 
@@ -401,8 +408,8 @@ func TestDifferentTxForms(t *testing.T) {
 			blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
 			hash := ethcrypto.Keccak256(append(msghash, blockhash...))
 
-			msg.ConfirmSigs0 = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
-			msg.ConfirmSigs1 = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
+			msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
+			msg.Input1ConfirmSigs = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
 		}
 
 		tx := GetTx(msg, keys[tc.input0.owner_index], keys[tc.input1.owner_index], !utils.ZeroAddress(msg.Owner1))
@@ -418,16 +425,21 @@ func TestDifferentTxForms(t *testing.T) {
 		// Retrieve utxo from context
 		position := types.NewPlasmaPosition(uint64(index)+7, 0, 0, 0)
 		utxo := cc.utxoMapper.GetUTXO(ctx, tc.newowner0.Bytes(), position)
+
 		expected := types.NewBaseUTXO(tc.newowner0, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount0, "", position)
 		expected.TxHash = tmhash.Sum(txBytes)
+		expected.MsgHash = msghash
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("First UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 
 		if !utils.ZeroAddress(msg.Newowner1) {
 			position = types.NewPlasmaPosition(uint64(index)+7, 0, 1, 0)
 			utxo = cc.utxoMapper.GetUTXO(ctx, tc.newowner1.Bytes(), position)
+
 			expected = types.NewBaseUTXO(tc.newowner1, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount1, "", position)
 			expected.TxHash = tmhash.Sum(txBytes)
+			expected.MsgHash = msghash
+
 			require.Equal(t, expected, utxo, fmt.Sprintf("Second UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 		}
 
@@ -485,8 +497,10 @@ func TestMultiTxBlocks(t *testing.T) {
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
 		position := types.NewPlasmaPosition(1, i, 0, 0)
 		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
+
 		expected := types.NewBaseUTXO(addrs[i], [2]common.Address{addrs[i], common.Address{}}, 100, "", position)
 		expected.TxHash = tmhash.Sum(txBytes)
+		expected.MsgHash = msghash[i]
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
@@ -509,7 +523,7 @@ func TestMultiTxBlocks(t *testing.T) {
 		binary.PutUvarint(blknumKey, uint64(1))
 		blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
 		hash := ethcrypto.Keccak256(append(msghash[i], blockhash...))
-		msgs[i].ConfirmSigs0 = CreateConfirmSig(hash, keys[i], &ecdsa.PrivateKey{}, false)
+		msgs[i].Input0ConfirmSigs = CreateConfirmSig(hash, keys[i], &ecdsa.PrivateKey{}, false)
 
 		msgs[i].Newowner0 = addrs[(i+1)%N]
 		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
@@ -528,8 +542,10 @@ func TestMultiTxBlocks(t *testing.T) {
 	for i := uint16(0); i < N; i++ {
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
 		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[(i+1)%N].Bytes(), types.NewPlasmaPosition(2, i, 0, 0))
+
 		expected := types.NewBaseUTXO(addrs[(i+1)%N], [2]common.Address{addrs[i], common.Address{}}, 100, "", types.NewPlasmaPosition(2, i, 0, 0))
 		expected.TxHash = tmhash.Sum(txBytes)
+		expected.MsgHash = msghash[i]
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
@@ -559,11 +575,7 @@ func TestFee(t *testing.T) {
 
 	// Create tx's with fees and deliver them in block 1
 	msg1 := GenerateSimpleMsg(addrs[0], addrs[1], [4]uint64{0, 0, 0, 1}, 90, 10)
-	// Set confirm signatures
-	msg1.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, 1), privKeys[0], &ecdsa.PrivateKey{}, false)
 	msg2 := GenerateSimpleMsg(addrs[1], addrs[0], [4]uint64{0, 0, 0, 2}, 90, 10)
-	// Set confirm signatures
-	msg2.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(0, 0, 0, 2), privKeys[1], &ecdsa.PrivateKey{}, false)
 
 	tx1 := GetTx(msg1, privKeys[0], nil, false)
 	tx2 := GetTx(msg2, privKeys[1], nil, false)
@@ -606,8 +618,6 @@ func TestFee(t *testing.T) {
 
 	// Check that validator can spend his fees as if they were a regular UTXO on sidechain
 	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 1<<16 - 1, 0, 0}, 10, 10)
-	// Set confirm signatures
-	valMsg.ConfirmSigs0 = CreateConfirmSig(types.NewPlasmaPosition(1, 1<<16-1, 0, 0), valPrivKey, &ecdsa.PrivateKey{}, false)
 
 	valTx := GetTx(valMsg, valPrivKey, nil, false)
 

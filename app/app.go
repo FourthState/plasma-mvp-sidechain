@@ -122,14 +122,6 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	}}}
 }
 
-func (app *ChildChain) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	blknumKey := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(blknumKey, uint64(ctx.BlockHeight()))
-
-	app.metadataMapper.StoreMetadata(ctx, blknumKey, ctx.BlockHeader().LastBlockHash)
-	return abci.ResponseBeginBlock{}
-}
-
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	if app.feeAmount != 0 {
 		position := types.PlasmaPosition{
@@ -151,6 +143,13 @@ func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abc
 	// reset txIndex and fee
 	app.txIndex = 0
 	app.feeAmount = 0
+
+	blknumKey := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(blknumKey, uint64(ctx.BlockHeight()))
+
+	if ctx.BlockHeader().DataHash != nil {
+		app.metadataMapper.StoreMetadata(ctx, blknumKey, ctx.BlockHeader().DataHash)
+	}
 
 	return abci.ResponseEndBlock{}
 }

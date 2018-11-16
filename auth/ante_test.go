@@ -38,33 +38,33 @@ func feeUpdater(outputs []utxo.Output) sdk.Error {
 
 func GenSpendMsg() types.SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
-	var confirmSigs [2][65]byte
+	var confirmSigs [][65]byte
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
 	return types.SpendMsg{
-		Blknum0:      1,
-		Txindex0:     0,
-		Oindex0:      0,
-		DepositNum0:  0,
-		Owner0:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs0: confirmSigs,
-		Blknum1:      1,
-		Txindex1:     1,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs1: confirmSigs,
-		Newowner0:    utils.PrivKeyToAddress(privKeyB),
-		Amount0:      150,
-		Newowner1:    utils.PrivKeyToAddress(privKeyB),
-		Amount1:      50,
-		FeeAmount:    0,
+		Blknum0:           1,
+		Txindex0:          0,
+		Oindex0:           0,
+		DepositNum0:       0,
+		Owner0:            utils.PrivKeyToAddress(privKeyA),
+		Input0ConfirmSigs: confirmSigs,
+		Blknum1:           1,
+		Txindex1:          1,
+		Oindex1:           0,
+		DepositNum1:       0,
+		Owner1:            utils.PrivKeyToAddress(privKeyA),
+		Input1ConfirmSigs: confirmSigs,
+		Newowner0:         utils.PrivKeyToAddress(privKeyB),
+		Amount0:           150,
+		Newowner1:         utils.PrivKeyToAddress(privKeyB),
+		Amount1:           50,
+		FeeAmount:         0,
 	}
 }
 
 // Returns a confirmsig array signed by privKey0 and privKey1
-func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
+func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [][65]byte) {
 
 	var confirmSig0 [65]byte
 	confirmSig0Slice, _ := ethcrypto.Sign(hash, privKey0)
@@ -75,7 +75,7 @@ func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inp
 		confirmSig1Slice, _ := ethcrypto.Sign(hash, privKey1)
 		copy(confirmSig1[:], confirmSig1Slice)
 	}
-	confirmSigs = [2][65]byte{confirmSig0, confirmSig1}
+	confirmSigs = [][65]byte{confirmSig0, confirmSig1}
 	return confirmSigs
 }
 
@@ -255,13 +255,15 @@ func TestDifferentCases(t *testing.T) {
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
 		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, types.Denom, tc.input0.position)
 		msghash0 := ethcrypto.Keccak256([]byte("first utxo"))
+		utxo0.MsgHash = msghash0
 
-		var utxo1 utxo.UTXO
+		var utxo1 *types.BaseUTXO
 		var msghash1 []byte
 		if tc.input1.owner_index != -1 {
 			msghash1 = ethcrypto.Keccak256([]byte("second utxo"))
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
 			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, types.Denom, tc.input1.position)
+			utxo1.MsgHash = msghash1
 		}
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
@@ -272,11 +274,11 @@ func TestDifferentCases(t *testing.T) {
 		// app_test tests for correct functionality when setting msg_hash
 		mapper.AddUTXO(ctx, utxo0)
 		hash := ethcrypto.Keccak256(append(msghash0, blockHash...))
-		msg.ConfirmSigs0 = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
+		msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
 		if tc.input1.owner_index != -1 {
 			hash = ethcrypto.Keccak256(append(msghash1, blockHash...))
 			mapper.AddUTXO(ctx, utxo1)
-			msg.ConfirmSigs1 = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
+			msg.Input1ConfirmSigs = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
 		}
 		tx = GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 		_, res, abort = handler(ctx, tx, false)

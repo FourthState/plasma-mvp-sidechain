@@ -7,7 +7,6 @@ import (
 
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
-	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"strings"
@@ -19,8 +18,8 @@ import (
 const (
 	flagTo           = "to"
 	flagPositions    = "position"
-	flagConfirmSigs0 = "confirmSigs0"
-	flagConfirmSigs1 = "confirmSigs1"
+	flagConfirmSigs0 = "Input0ConfirmSigs"
+	flagConfirmSigs1 = "Input1ConfirmSigs"
 	flagAmounts      = "amounts"
 )
 
@@ -30,8 +29,8 @@ func init() {
 	// Format for positions can be adjusted
 	sendTxCmd.Flags().String(flagPositions, "", "UTXO Positions to be spent, format: blknum0.txindex0.oindex0.depositnonce0::blknum1.txindex1.oindex1.depositnonce1")
 
-	sendTxCmd.Flags().String(flagConfirmSigs0, "", "Confirmation Signatures for first input to be spent (separated by commas)")
-	sendTxCmd.Flags().String(flagConfirmSigs1, "", "Confirmation Signatures for second input to be spent (separated by commas)")
+	sendTxCmd.Flags().String(flagConfirmSigs0, "", "Input Confirmation Signatures for first input to be spent (separated by commas)")
+	sendTxCmd.Flags().String(flagConfirmSigs1, "", "Input Confirmation Signatures for second input to be spent (separated by commas)")
 
 	sendTxCmd.Flags().String(flagAmounts, "", "Amounts to be spent, format: amount1, amount2, fee")
 
@@ -113,17 +112,20 @@ var sendTxCmd = &cobra.Command{
 	},
 }
 
-func getConfirmSigs(sigs []string) (confirmSigs [2]types.Signature, err error) {
+func getConfirmSigs(sigs []string) (confirmSigs [][65]byte, err error) {
 	var cs0, cs1 []byte
+	var confirmSig0, confirmSig1 [65]byte
+
 	if strings.Compare(sigs[0], "") == 0 {
-		return [2]types.Signature{types.Signature{}, types.Signature{}}, nil
+		return confirmSigs, nil
 	}
 	switch len(sigs) {
 	case 1:
 		if cs0, err = hex.DecodeString(strings.TrimSpace(sigs[0])); err != nil {
 			return confirmSigs, err
 		}
-		return [2]types.Signature{types.Signature{cs0}, types.Signature{}}, nil
+		copy(confirmSig0[:], cs0)
+		return append(confirmSigs, confirmSig0), nil
 	case 2:
 		if cs0, err = hex.DecodeString(strings.TrimSpace(sigs[0])); err != nil {
 			return confirmSigs, err
@@ -131,7 +133,10 @@ func getConfirmSigs(sigs []string) (confirmSigs [2]types.Signature, err error) {
 		if cs1, err = hex.DecodeString(strings.TrimSpace(sigs[1])); err != nil {
 			return confirmSigs, err
 		}
-		copy(sigs[1][:], cs2)
+		copy(confirmSig0[:], cs0)
+		copy(confirmSig1[:], cs1)
+
+		return append(confirmSigs, confirmSig0, confirmSig1), nil
 	}
 	return confirmSigs, errors.New("the provided confirmSigs caused undefined behavior. Pass in 0, 1 or 2 confirm sigs per flag")
 }
