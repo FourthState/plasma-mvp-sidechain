@@ -10,6 +10,8 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 const (
@@ -26,20 +28,22 @@ type BaseUTXO struct {
 	Amount         uint64
 	Denom          string
 	Position       PlasmaPosition
+	TxHash         []byte
 }
 
-func ProtoUTXO(msg sdk.Msg) utxo.UTXO {
+func ProtoUTXO(ctx sdk.Context, msg sdk.Msg) utxo.UTXO {
 	spendmsg, ok := msg.(SpendMsg)
 	if !ok {
 		return nil
 	}
 	return &BaseUTXO{
 		InputAddresses: [2]common.Address{spendmsg.Owner0, spendmsg.Owner1},
+		TxHash:         tmhash.Sum(ctx.TxBytes()),
 	}
 }
 
 func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, amount uint64,
-	denom string, position PlasmaPosition) utxo.UTXO {
+	denom string, position PlasmaPosition) *BaseUTXO {
 	return &BaseUTXO{
 		InputAddresses: inputaddr,
 		Address:        addr,

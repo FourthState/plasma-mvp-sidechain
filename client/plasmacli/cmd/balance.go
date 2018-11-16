@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
@@ -22,8 +21,6 @@ var balanceCmd = &cobra.Command{
 	Long:  "Query Balances",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewClientContextFromViper()
-		cdc := app.MakeCodec()
-		ctx = ctx.WithCodec(cdc)
 
 		ethAddr := common.HexToAddress(args[0])
 

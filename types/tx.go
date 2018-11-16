@@ -17,13 +17,13 @@ type SpendMsg struct {
 	Oindex0      uint8
 	DepositNum0  uint64
 	Owner0       common.Address
-	ConfirmSigs0 [2]Signature
+	ConfirmSigs0 [2][65]byte
 	Blknum1      uint64
 	Txindex1     uint16
 	Oindex1      uint8
 	DepositNum1  uint64
 	Owner1       common.Address
-	ConfirmSigs1 [2]Signature
+	ConfirmSigs1 [2][65]byte
 	Newowner0    common.Address
 	Amount0      uint64
 	Newowner1    common.Address
@@ -126,10 +126,10 @@ var _ sdk.Tx = BaseTx{}
 
 type BaseTx struct {
 	Msg        SpendMsg
-	Signatures []Signature
+	Signatures [2][65]byte
 }
 
-func NewBaseTx(msg SpendMsg, sigs []Signature) BaseTx {
+func NewBaseTx(msg SpendMsg, sigs [2][65]byte) BaseTx {
 	return BaseTx{
 		Msg:        msg,
 		Signatures: sigs,
@@ -137,14 +137,4 @@ func NewBaseTx(msg SpendMsg, sigs []Signature) BaseTx {
 }
 
 func (tx BaseTx) GetMsgs() []sdk.Msg         { return []sdk.Msg{tx.Msg} }
-func (tx BaseTx) GetSignatures() []Signature { return tx.Signatures }
-
-//-----------------------------------------
-// Wrapper for signature byte arrays
-type Signature struct {
-	Sig []byte
-}
-
-func (s Signature) Bytes() []byte {
-	return s.Sig
-}
+func (tx BaseTx) GetSignatures() [2][65]byte { return tx.Signatures }

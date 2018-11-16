@@ -34,7 +34,7 @@ func feeUpdater(outputs []utxo.Output) sdk.Error {
 
 func GenSpendMsg() types.SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
-	confirmSigs := [2]types.Signature{types.Signature{}, types.Signature{}}
+	var confirmSigs [2][65]byte
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
@@ -60,16 +60,19 @@ func GenSpendMsg() types.SpendMsg {
 }
 
 // Returns a confirmsig array signed by privKey0 and privKey1
-func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2]types.Signature) {
+func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [2][65]byte) {
 	confirmBytes := position.GetSignBytes()
 	hash := ethcrypto.Keccak256(confirmBytes)
-	confirmSig, _ := ethcrypto.Sign(hash, privKey0)
+	var confirmSig0 [65]byte
+	confirmSig0Slice, _ := ethcrypto.Sign(hash, privKey0)
+	copy(confirmSig0[:], confirmSig0Slice)
 
-	var confirmSig1 []byte
+	var confirmSig1 [65]byte
 	if two_inputs {
-		confirmSig1, _ = ethcrypto.Sign(hash, privKey1)
+		confirmSig1Slice, _ := ethcrypto.Sign(hash, privKey1)
+		copy(confirmSig1[:], confirmSig1Slice)
 	}
-	confirmSigs = [2]types.Signature{types.Signature{confirmSig}, types.Signature{confirmSig1}}
+	confirmSigs = [2][65]byte{confirmSig0, confirmSig1}
 	return confirmSigs
 }
 
@@ -77,15 +80,15 @@ func CreateConfirmSig(position types.PlasmaPosition, privKey0, privKey1 *ecdsa.P
 func GetTx(msg types.SpendMsg, privKey0, privKey1 *ecdsa.PrivateKey, two_sigs bool) (tx types.BaseTx) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig0, _ := ethcrypto.Sign(hash, privKey0)
-
-	tx = types.NewBaseTx(msg, []types.Signature{{
-		Sig: sig0,
-	}})
+	var sigs [2][65]byte
+	copy(sigs[0][:], sig0)
 
 	if two_sigs {
 		sig1, _ := ethcrypto.Sign(hash, privKey1)
-		tx.Signatures = append(tx.Signatures, types.Signature{sig1})
+		copy(sigs[1][:], sig1)
 	}
+
+	tx = types.NewBaseTx(msg, sigs)
 
 	return tx
 }
@@ -104,13 +107,20 @@ func TestNoSigs(t *testing.T) {
 	ctx, mapper, feeUpdater := setup()
 
 	var msg = GenSpendMsg()
-	tx := types.NewBaseTx(msg, []types.Signature{})
+	var emptysigs [2][65]byte
+	tx := types.NewBaseTx(msg, emptysigs)
+
+	// Add input UTXOs to mapper
+	utxo1 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 0, 0, 0))
+	utxo2 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 1, 0, 0))
+	mapper.AddUTXO(ctx, utxo1)
+	mapper.AddUTXO(ctx, utxo2)
 
 	handler := NewAnteHandler(mapper, feeUpdater)
 	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with no signatures")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with no signatures")
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, fmt.Sprintf("tx had processed with no signatures: %s", res.Log))
 }
 
 // The wrong amount of signatures are provided
@@ -121,13 +131,21 @@ func TestNotEnoughSigs(t *testing.T) {
 	priv, _ := ethcrypto.GenerateKey()
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
 	sig, _ := ethcrypto.Sign(hash, priv)
-	tx := types.NewBaseTx(msg, []types.Signature{types.Signature{sig}})
+	var sigs [2][65]byte
+	copy(sigs[0][:], sig)
+	tx := types.NewBaseTx(msg, sigs)
+
+	// Add input UTXOs to mapper
+	utxo1 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 0, 0, 0))
+	utxo2 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 1, 0, 0))
+	mapper.AddUTXO(ctx, utxo1)
+	mapper.AddUTXO(ctx, utxo2)
 
 	handler := NewAnteHandler(mapper, feeUpdater)
 	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
-	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, "tx had processed with incorrect number of signatures")
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, fmt.Sprintf("tx had processed with incorrect number of signatures: %s", res.Log))
 }
 
 // helper struct for readability
