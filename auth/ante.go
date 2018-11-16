@@ -9,6 +9,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"reflect"
 
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
@@ -141,7 +142,7 @@ func processConfirmSig(
 	txHash := plasmaUTXO.GetTxHash()
 
 	hash := append(txHash, blockHash...)
-	confirmHash := ethcrypto.Keccak256(hash)
+	confirmHash := tmhash.Sum(hash)
 
 	pubKey0, err0 := ethcrypto.SigToPub(confirmHash, sigs[0][:])
 	if err0 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey0).Bytes(), inputAddresses[0].Bytes()) {

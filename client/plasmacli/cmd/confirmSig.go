@@ -14,7 +14,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 func init() {
@@ -62,7 +62,7 @@ var signCmd = &cobra.Command{
 			return err
 		}
 
-		hash := ethcrypto.Keccak256(append(utxo.MsgHash, blockhash...))
+		hash := tmhash.Sum(append(utxo.TxHash, blockhash...))
 
 		dir := viper.GetString(FlagHomeDir)
 		ks := client.GetKeyStore(dir)

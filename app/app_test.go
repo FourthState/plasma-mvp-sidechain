@@ -196,16 +196,12 @@ func TestSpendDeposit(t *testing.T) {
 	// Create context
 	ctx := cc.NewContext(false, abci.Header{})
 
-	msgbytes, _ := rlp.EncodeToBytes(msg)
-	msghash := ethcrypto.Keccak256(msgbytes)
-
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(1, 0, 0, 0)
 	utxo := cc.utxoMapper.GetUTXO(ctx, addrB.Bytes(), position)
 
 	expected := types.NewBaseUTXO(addrB, [2]common.Address{addrA, common.Address{}}, 100, "", position)
 	expected.TxHash = tmhash.Sum(txBytes)
-	expected.MsgHash = msghash
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 }
@@ -222,8 +218,6 @@ func TestSpendTx(t *testing.T) {
 	cc.Commit()
 
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
-	msgbytes, _ := rlp.EncodeToBytes(msg)
-	msghash := ethcrypto.Keccak256(msgbytes)
 
 	// Signs the hash of the transaction
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
@@ -232,6 +226,7 @@ func TestSpendTx(t *testing.T) {
 	copy(sigs[0][:], sig)
 	tx := types.NewBaseTx(msg, sigs)
 	txBytes, _ := rlp.EncodeToBytes(tx)
+	txHash := tmhash.Sum(txBytes)
 
 	// Simulate a block
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
@@ -257,7 +252,7 @@ func TestSpendTx(t *testing.T) {
 	// generate simple msg
 	msg = GenerateSimpleMsg(addrB, addrA, [4]uint64{1, 0, 0, 0}, 100, 0)
 
-	hash = ethcrypto.Keccak256(append(msghash, blockhash...))
+	hash = tmhash.Sum(append(txHash, blockhash...))
 	// Set confirm signatures
 	msg.Input0ConfirmSigs = CreateConfirmSig(hash, privKeyA, &ecdsa.PrivateKey{}, false)
 
@@ -268,6 +263,7 @@ func TestSpendTx(t *testing.T) {
 	copy(sigs2[0][:], sig)
 	tx = types.NewBaseTx(msg, sigs2)
 	txBytes, _ = rlp.EncodeToBytes(tx)
+	txHash = tmhash.Sum(txBytes)
 
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 5}})
 
@@ -275,16 +271,12 @@ func TestSpendTx(t *testing.T) {
 
 	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
-	msgbytes, _ = rlp.EncodeToBytes(msg)
-	msghash = ethcrypto.Keccak256(msgbytes)
-
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(5, 0, 0, 0)
 	utxo := cc.utxoMapper.GetUTXO(ctx, addrA.Bytes(), position)
 
 	expected := types.NewBaseUTXO(addrA, [2]common.Address{addrB, common.Address{}}, 100, "", position)
-	expected.TxHash = tmhash.Sum(txBytes)
-	expected.MsgHash = msghash
+	expected.TxHash = txHash
 
 	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
 
@@ -399,14 +391,14 @@ func TestDifferentTxForms(t *testing.T) {
 
 		if tc.input0.position.DepositNum == 0 && tc.input0.position.Blknum != 0 {
 			// note: all cases currently have inputs belonging to the previous tx
-			// and therefore we only need to grab the first msghash from the inptus
+			// and therefore we only need to grab the first txhash from the inptus
 			input_utxo := cc.utxoMapper.GetUTXO(ctx, tc.input0.addr.Bytes(), tc.input0.position)
 			baseutxo, _ := input_utxo.(*types.BaseUTXO)
-			msghash := baseutxo.MsgHash
+			txhash := baseutxo.TxHash
 			blknumKey := make([]byte, binary.MaxVarintLen64)
 			binary.PutUvarint(blknumKey, uint64(7+uint64(index-1)))
 			blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
-			hash := ethcrypto.Keccak256(append(msghash, blockhash...))
+			hash := tmhash.Sum(append(txhash, blockhash...))
 
 			msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
 			msg.Input1ConfirmSigs = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
@@ -419,16 +411,12 @@ func TestDifferentTxForms(t *testing.T) {
 
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
-		msgbytes, _ := rlp.EncodeToBytes(msg)
-		msghash := ethcrypto.Keccak256(msgbytes)
-
 		// Retrieve utxo from context
 		position := types.NewPlasmaPosition(uint64(index)+7, 0, 0, 0)
 		utxo := cc.utxoMapper.GetUTXO(ctx, tc.newowner0.Bytes(), position)
 
 		expected := types.NewBaseUTXO(tc.newowner0, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount0, "", position)
 		expected.TxHash = tmhash.Sum(txBytes)
-		expected.MsgHash = msghash
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("First UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 
@@ -438,7 +426,6 @@ func TestDifferentTxForms(t *testing.T) {
 
 			expected = types.NewBaseUTXO(tc.newowner1, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount1, "", position)
 			expected.TxHash = tmhash.Sum(txBytes)
-			expected.MsgHash = msghash
 
 			require.Equal(t, expected, utxo, fmt.Sprintf("Second UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 		}
@@ -467,7 +454,6 @@ func TestMultiTxBlocks(t *testing.T) {
 	var addrs []common.Address
 	var msgs [N]types.SpendMsg
 	var txs [N]sdk.Tx
-	var msghash [N][]byte
 
 	for i := 0; i < N; i++ {
 		keys[i], _ = ethcrypto.GenerateKey()
@@ -483,9 +469,6 @@ func TestMultiTxBlocks(t *testing.T) {
 		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
 
-		bytes, _ := rlp.EncodeToBytes(msgs[i])
-		msghash[i] = ethcrypto.Keccak256(bytes)
-
 		dres := cc.DeliverTx(txBytes)
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
@@ -500,7 +483,6 @@ func TestMultiTxBlocks(t *testing.T) {
 
 		expected := types.NewBaseUTXO(addrs[i], [2]common.Address{addrs[i], common.Address{}}, 100, "", position)
 		expected.TxHash = tmhash.Sum(txBytes)
-		expected.MsgHash = msghash[i]
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
@@ -522,15 +504,16 @@ func TestMultiTxBlocks(t *testing.T) {
 		blknumKey := make([]byte, binary.MaxVarintLen64)
 		binary.PutUvarint(blknumKey, uint64(1))
 		blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
-		hash := ethcrypto.Keccak256(append(msghash[i], blockhash...))
+
+		txBytes, _ := rlp.EncodeToBytes(txs[i])
+		txHash := tmhash.Sum(txBytes)
+
+		hash := tmhash.Sum(append(txHash, blockhash...))
 		msgs[i].Input0ConfirmSigs = CreateConfirmSig(hash, keys[i], &ecdsa.PrivateKey{}, false)
 
 		msgs[i].Newowner0 = addrs[(i+1)%N]
 		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
-		txBytes, _ := rlp.EncodeToBytes(txs[i])
-
-		bytes, _ := rlp.EncodeToBytes(msgs[i])
-		msghash[i] = ethcrypto.Keccak256(bytes)
+		txBytes, _ = rlp.EncodeToBytes(txs[i])
 
 		dres := cc.DeliverTx(txBytes)
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
@@ -545,7 +528,6 @@ func TestMultiTxBlocks(t *testing.T) {
 
 		expected := types.NewBaseUTXO(addrs[(i+1)%N], [2]common.Address{addrs[i], common.Address{}}, 100, "", types.NewPlasmaPosition(2, i, 0, 0))
 		expected.TxHash = tmhash.Sum(txBytes)
-		expected.MsgHash = msghash[i]
 
 		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
