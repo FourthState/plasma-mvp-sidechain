@@ -27,6 +27,7 @@ Once a transaction has been included into a block, DeliverTx will be executed wh
 
 Our implementation utilizes our utxo module in x/utxo. The utxo module allows for modularity when creating a utxo based system. We use our BaseUTXO to implement the UTXO interface. In addition to the base traits of a UTXO, we also keep the TxHash, and InputAddresses in our UTXO. The ProtoUTXO() function allows for our extra information to be stored when the handler in x/utxo creates a new output utxo.
 
+
 The UTXOMapper is our utxo database. Our mapper uses keys in the form: < encoded address > + < encoded position > . It maps to the encoded utxo and uses go-amino for its encoding. The < encoded position > at the beginning of the key is used for prefix iteration which will return all the utxo's owned by a specified address. 
 
 ## Types
