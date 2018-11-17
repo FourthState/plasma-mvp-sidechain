@@ -35,7 +35,7 @@ var infoCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Printf("\nPosition: %v \nAmount: %d \n", utxo.Position, utxo.Amount)
+			fmt.Printf("\nPosition: %v \nAmount: %d \nDenomination: %s \n", utxo.Position, utxo.Amount, utxo.GetDenom())
 			inputAddrHelper(utxo)
 		}
 
