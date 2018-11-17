@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
@@ -17,28 +17,43 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
+const (
+	flagFrom  = "from"  // address to sign with
+	flagOwner = "owner" // address that owns the utxo being queried for
+)
+
 func init() {
 	rootCmd.AddCommand(signCmd)
+	signCmd.Flags().String(flagFrom, "", "Address used to sign the confirmation signature")
+	signCmd.Flags().String(flagOwner, "", "Owner of the newly created utxo")
 	viper.BindPFlags(signCmd.Flags())
 }
 
 var signCmd = &cobra.Command{
-	Use:   "sign <position> <address> <signer_address>",
-	Short: "Sign confirmation signatures for position provided (0.0.0.0), if it exists",
-	Args:  cobra.ExactArgs(3),
+	Use:   "sign <position>",
+	Short: "Sign confirmation signatures for position provided (0.0.0.0), if it exists.",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		ctx := context.NewClientContextFromViper()
-		cdc := app.MakeCodec()
-		ctx = ctx.WithCodec(cdc)
 
-		ethAddr := common.HexToAddress(args[1])
 		position, err := client.ParsePositions(args[0])
 		if err != nil {
 			return err
 		}
 
-		signerAddr := common.HexToAddress(args[2])
+		fromStr := viper.GetString(flagFrom)
+		if fromStr == "" {
+			return errors.New("must provide the address to sign with using the --from flag")
+		}
+
+		ownerStr := viper.GetString(flagOwner)
+		if ownerStr == "" {
+			return fmt.Errorf("must provide the address that owns position %v using the --owner flag", position)
+		}
+
+		ethAddr := common.HexToAddress(ownerStr)
+		signerAddr := common.HexToAddress(fromStr)
 
 		posBytes, err := ctx.Codec.MarshalBinaryBare(position[0])
 		if err != nil {

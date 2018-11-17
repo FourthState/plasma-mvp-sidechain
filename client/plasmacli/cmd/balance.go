@@ -5,6 +5,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -35,9 +36,19 @@ var balanceCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Position: %v \nAmount: %d\n", utxo.Position, utxo.Amount)
+			fmt.Printf("\nPosition: %v \nAmount: %d \n", utxo.Position, utxo.Amount)
+			inputAddrHelper(utxo)
 		}
 
 		return nil
 	},
+}
+
+func inputAddrHelper(utxo types.BaseUTXO) {
+	if utxo.Position.DepositNum == 0 {
+		fmt.Printf("First Input Address: %s \n", utxo.InputAddresses[0].Hex())
+		if !utils.ZeroAddress(utxo.InputAddresses[1]) {
+			fmt.Printf("Second Input Address: %s \n", utxo.InputAddresses[1].Hex())
+		}
+	}
 }
