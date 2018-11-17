@@ -16,7 +16,7 @@ func init() {
 }
 
 var balanceCmd = &cobra.Command{
-	Use:   "balance",
+	Use:   "balance <address>",
 	Short: "Query Balances",
 	Long:  "Query Balances",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -35,7 +35,7 @@ var balanceCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Position: %v \nAmount: %d\n", utxo.Position, utxo.Amount)
+			fmt.Printf("Position: %v \nAmount: %d \n", utxo.Position, utxo.Amount)
 		}
 
 		return nil

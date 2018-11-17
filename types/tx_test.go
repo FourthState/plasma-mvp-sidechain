@@ -4,72 +4,61 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	dbm "github.com/tendermint/tendermint/libs/db"
 
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
-func setupMultiStore() (sdk.MultiStore, *sdk.KVStoreKey) {
-	db := dbm.NewMemDB()
-	capKey := sdk.NewKVStoreKey("capkey")
-	ms := store.NewCommitMultiStore(db)
-	ms.MountStoreWithDB(capKey, sdk.StoreTypeIAVL, db)
-	ms.LoadLatestVersion()
-	return ms, capKey
-}
-
 func GenBasicSpendMsg() SpendMsg {
 	// Creates Basic Spend Msg with no owners or recipients
-	var confirmSigs [2][65]byte
+	var confirmSigs [][65]byte
 	return SpendMsg{
-		Blknum0:      1,
-		Txindex0:     0,
-		Oindex0:      0,
-		DepositNum0:  0,
-		Owner0:       common.Address{},
-		ConfirmSigs0: confirmSigs,
-		Blknum1:      1,
-		Txindex1:     1,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       common.Address{},
-		ConfirmSigs1: confirmSigs,
-		Newowner0:    common.Address{},
-		Amount0:      150,
-		Newowner1:    common.Address{},
-		Amount1:      50,
-		FeeAmount:    0,
+		Blknum0:           1,
+		Txindex0:          0,
+		Oindex0:           0,
+		DepositNum0:       0,
+		Owner0:            common.Address{},
+		Input0ConfirmSigs: confirmSigs,
+		Blknum1:           1,
+		Txindex1:          1,
+		Oindex1:           0,
+		DepositNum1:       0,
+		Owner1:            common.Address{},
+		Input1ConfirmSigs: confirmSigs,
+		Newowner0:         common.Address{},
+		Amount0:           150,
+		Newowner1:         common.Address{},
+		Amount1:           50,
+		FeeAmount:         0,
 	}
 }
 
 func GenSpendMsgWithAddresses() SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
-	var confirmSigs [2][65]byte
+	var confirmSigs [][65]byte
 	privKeyA, _ := ethcrypto.GenerateKey()
 	privKeyB, _ := ethcrypto.GenerateKey()
 
 	return SpendMsg{
-		Blknum0:      1,
-		Txindex0:     0,
-		Oindex0:      0,
-		DepositNum0:  0,
-		Owner0:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs0: confirmSigs,
-		Blknum1:      1,
-		Txindex1:     1,
-		Oindex1:      0,
-		DepositNum1:  0,
-		Owner1:       utils.PrivKeyToAddress(privKeyA),
-		ConfirmSigs1: confirmSigs,
-		Newowner0:    utils.PrivKeyToAddress(privKeyB),
-		Amount0:      150,
-		Newowner1:    utils.PrivKeyToAddress(privKeyB),
-		Amount1:      50,
-		FeeAmount:    0,
+		Blknum0:           1,
+		Txindex0:          0,
+		Oindex0:           0,
+		DepositNum0:       0,
+		Owner0:            utils.PrivKeyToAddress(privKeyA),
+		Input0ConfirmSigs: confirmSigs,
+		Blknum1:           1,
+		Txindex1:          1,
+		Oindex1:           0,
+		DepositNum1:       0,
+		Owner1:            utils.PrivKeyToAddress(privKeyA),
+		Input1ConfirmSigs: confirmSigs,
+		Newowner0:         utils.PrivKeyToAddress(privKeyB),
+		Amount0:           150,
+		Newowner1:         utils.PrivKeyToAddress(privKeyB),
+		Amount1:           50,
+		FeeAmount:         0,
 	}
 }
 

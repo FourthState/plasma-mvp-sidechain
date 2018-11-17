@@ -3,7 +3,6 @@ package types
 import (
 	"errors"
 	"fmt"
-	rlp "github.com/ethereum/go-ethereum/rlp"
 	amino "github.com/tendermint/go-amino"
 
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -36,6 +35,7 @@ func ProtoUTXO(ctx sdk.Context, msg sdk.Msg) utxo.UTXO {
 	if !ok {
 		return nil
 	}
+
 	return &BaseUTXO{
 		InputAddresses: [2]common.Address{spendmsg.Owner0, spendmsg.Owner1},
 		TxHash:         tmhash.Sum(ctx.TxBytes()),
@@ -51,6 +51,10 @@ func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, amount uint64
 		Denom:          denom,
 		Position:       position,
 	}
+}
+
+func (baseutxo BaseUTXO) GetTxHash() []byte {
+	return baseutxo.TxHash
 }
 
 //Implements UTXO
@@ -152,16 +156,6 @@ func NewPlasmaPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum u
 
 func (position PlasmaPosition) Get() []sdk.Uint {
 	return []sdk.Uint{sdk.NewUint(position.Blknum), sdk.NewUint(uint64(position.TxIndex)), sdk.NewUint(uint64(position.Oindex)), sdk.NewUint(position.DepositNum)}
-}
-
-// Used to determine Sign Bytes for confirm signatures
-// Implements Position
-func (position PlasmaPosition) GetSignBytes() []byte {
-	b, err := rlp.EncodeToBytes(position)
-	if err != nil {
-		panic(err)
-	}
-	return b
 }
 
 // check that the position is formatted correctly

@@ -34,25 +34,25 @@ func BufferStdin() *bufio.Reader {
 }
 
 // Build SpendMsg
-func BuildMsg(inaddr0, inaddr1, addr0, addr1 common.Address, position0, position1 types.PlasmaPosition, confirmSigs0, confirmSigs1 [2][65]byte, amount0, amount1, fee uint64) types.SpendMsg {
+func BuildMsg(inaddr0, inaddr1, addr0, addr1 common.Address, position0, position1 types.PlasmaPosition, confirmSigs0, confirmSigs1 [][65]byte, amount0, amount1, fee uint64) types.SpendMsg {
 	return types.SpendMsg{
-		Blknum0:      position0.Blknum,
-		Txindex0:     position0.TxIndex,
-		Oindex0:      position0.Oindex,
-		DepositNum0:  position0.DepositNum,
-		Owner0:       inaddr0,
-		ConfirmSigs0: confirmSigs0,
-		Blknum1:      position1.Blknum,
-		Txindex1:     position1.TxIndex,
-		Oindex1:      position1.Oindex,
-		DepositNum1:  position1.DepositNum,
-		Owner1:       inaddr1,
-		ConfirmSigs1: confirmSigs1,
-		Newowner0:    addr0,
-		Amount0:      amount0,
-		Newowner1:    addr1,
-		Amount1:      amount1,
-		FeeAmount:    fee,
+		Blknum0:           position0.Blknum,
+		Txindex0:          position0.TxIndex,
+		Oindex0:           position0.Oindex,
+		DepositNum0:       position0.DepositNum,
+		Owner0:            inaddr0,
+		Input0ConfirmSigs: confirmSigs0,
+		Blknum1:           position1.Blknum,
+		Txindex1:          position1.TxIndex,
+		Oindex1:           position1.Oindex,
+		DepositNum1:       position1.DepositNum,
+		Owner1:            inaddr1,
+		Input1ConfirmSigs: confirmSigs1,
+		Newowner0:         addr0,
+		Amount0:           amount0,
+		Newowner1:         addr1,
+		Amount1:           amount1,
+		FeeAmount:         fee,
 	}
 }
 

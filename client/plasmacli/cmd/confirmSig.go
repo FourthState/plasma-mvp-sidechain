@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -8,45 +10,80 @@ import (
 
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
+	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/accounts"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 const (
-	flagAddr = "addr"
+	flagFrom  = "from"  // address to sign with
+	flagOwner = "owner" // address that owns the utxo being queried for
 )
 
 func init() {
 	rootCmd.AddCommand(signCmd)
-	signCmd.Flags().String(flagAddr, "", "Address to sign with")
+	signCmd.Flags().String(flagFrom, "", "Address used to sign the confirmation signature")
+	signCmd.Flags().String(flagOwner, "", "Owner of the newly created utxo")
 	viper.BindPFlags(signCmd.Flags())
 }
 
 var signCmd = &cobra.Command{
 	Use:   "sign <position>",
-	Short: "Sign positions to create confirmation signatures, format: 0.0.0.0::0.0.0.0",
+	Short: "Sign confirmation signatures for position provided (0.0.0.0), if it exists.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// get position
-		posStr := args[0]
-		pos, err := client.ParsePositions(posStr)
-		if err != nil {
-			return err
-		}
 
 		ctx := context.NewClientContextFromViper()
 
-		dir := viper.GetString(FlagHomeDir)
-
-		ks := client.GetKeyStore(dir)
-		// get address to sign with
-		addrStr := viper.GetString(flagAddr)
-		addr, err := client.StrToAddress(addrStr)
+		position, err := client.ParsePositions(args[0])
 		if err != nil {
 			return err
 		}
+
+		fromStr := viper.GetString(flagFrom)
+		if fromStr == "" {
+			return errors.New("must provide the address to sign with using the --from flag")
+		}
+
+		ownerStr := viper.GetString(flagOwner)
+		if ownerStr == "" {
+			return fmt.Errorf("must provide the address that owns position %v using the --owner flag", position)
+		}
+
+		ethAddr := common.HexToAddress(ownerStr)
+		signerAddr := common.HexToAddress(fromStr)
+
+		posBytes, err := ctx.Codec.MarshalBinaryBare(position[0])
+		if err != nil {
+			return err
+		}
+
+		key := append(ethAddr.Bytes(), posBytes...)
+		res, err := ctx.QueryStore(key, ctx.UTXOStore)
+		if err != nil {
+			return err
+		}
+
+		var utxo types.BaseUTXO
+		err = ctx.Codec.UnmarshalBinaryBare(res, &utxo)
+
+		blknumKey := make([]byte, binary.MaxVarintLen64)
+		binary.PutUvarint(blknumKey, utxo.GetPosition().Get()[0].Uint64())
+
+		blockhash, err := ctx.QueryStore(blknumKey, ctx.MetadataStore)
+		if err != nil {
+			return err
+		}
+
+		hash := tmhash.Sum(append(utxo.TxHash, blockhash...))
+
+		dir := viper.GetString(FlagHomeDir)
+		ks := client.GetKeyStore(dir)
+
 		acc := accounts.Account{
-			Address: addr,
+			Address: signerAddr,
 		}
 		// get account to sign with
 		acct, err := ks.Find(acc)
@@ -55,32 +92,22 @@ var signCmd = &cobra.Command{
 		}
 
 		// get passphrase
-		passphrase, err := ctx.GetPassphraseFromStdin(addr)
+		passphrase, err := ctx.GetPassphraseFromStdin(signerAddr)
 		if err != nil {
 			return err
 		}
 
-		// sign positions
-		signBytes1 := pos[0].GetSignBytes()
-		hash1 := ethcrypto.Keccak256(signBytes1)
-		sig1, err := ks.SignHashWithPassphrase(acct, passphrase, hash1)
+		sig, err := ks.SignHashWithPassphrase(acct, passphrase, hash)
 
-		var sig2 []byte
-		if len(pos) > 1 {
-			signBytes2 := pos[1].GetSignBytes()
-			hash2 := ethcrypto.Keccak256(signBytes2)
-			sig2, err = ks.SignHashWithPassphrase(acct, passphrase, hash2)
-			if err != nil {
-				return err
-			}
+		fmt.Printf("\nConfirmation Signature for utxo with\nposition: %v \namount: %d\n", utxo.Position, utxo.Amount)
+		fmt.Printf("signature: %x\n", sig)
+
+		inputLen := 1
+		// check number of inputs
+		if !utils.ZeroAddress(utxo.InputAddresses[1]) {
+			inputLen = 2
 		}
-		fmt.Println()
-		fmt.Println("Sig 1:")
-		fmt.Printf("%X", sig1)
-		fmt.Println()
-		fmt.Println("Sig 2:")
-		fmt.Printf("%X", sig2)
-		fmt.Println()
+		fmt.Printf("UTXO had %d inputs\n", inputLen)
 		return nil
 	},
 }
