@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"math/big"
@@ -26,6 +27,11 @@ func GenerateAddress() common.Address {
 		panic(err)
 	}
 	return PrivKeyToAddress(priv)
+}
+
+func SignHash(data []byte) []byte {
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), data)
+	return ethcrypto.Keccak256([]byte(msg))
 }
 
 // helper function for tests

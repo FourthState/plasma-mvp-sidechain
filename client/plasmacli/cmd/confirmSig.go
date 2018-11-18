@@ -78,6 +78,7 @@ var signCmd = &cobra.Command{
 		}
 
 		hash := tmhash.Sum(append(utxo.TxHash, blockhash...))
+		signHash := utils.SignHash(hash)
 
 		dir := viper.GetString(FlagHomeDir)
 		ks := client.GetKeyStore(dir)
@@ -97,7 +98,7 @@ var signCmd = &cobra.Command{
 			return err
 		}
 
-		sig, err := ks.SignHashWithPassphrase(acct, passphrase, hash)
+		sig, err := ks.SignHashWithPassphrase(acct, passphrase, signHash)
 
 		fmt.Printf("\nConfirmation Signature for utxo with\nposition: %v \namount: %d\n", utxo.Position, utxo.Amount)
 		fmt.Printf("signature: %x\n", sig)

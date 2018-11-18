@@ -89,13 +89,14 @@ func GenerateSimpleMsg(Owner0, NewOwner0 common.Address, position [4]uint64, amo
 func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [][65]byte) {
 
 	var confirmSig0 [65]byte
-	confirmSig0Slice, _ := ethcrypto.Sign(hash, privKey0)
+	signHash := utils.SignHash(hash)
+	confirmSig0Slice, _ := ethcrypto.Sign(signHash, privKey0)
 	copy(confirmSig0[:], confirmSig0Slice)
 	confirmSigs = append(confirmSigs, confirmSig0)
 
 	var confirmSig1 [65]byte
 	if two_inputs {
-		confirmSig1Slice, _ := ethcrypto.Sign(hash, privKey1)
+		confirmSig1Slice, _ := ethcrypto.Sign(signHash, privKey1)
 		copy(confirmSig1[:], confirmSig1Slice)
 		confirmSigs = append(confirmSigs, confirmSig1)
 	}
@@ -105,12 +106,13 @@ func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inp
 // helper for constructing single or double input tx
 func GetTx(msg types.SpendMsg, privKeyA, privKeyB *ecdsa.PrivateKey, two_sigs bool) (tx types.BaseTx) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
+	signHash := utils.SignHash(hash)
 	var sigs [2][65]byte
-	sig, _ := ethcrypto.Sign(hash, privKeyA)
+	sig, _ := ethcrypto.Sign(signHash, privKeyA)
 	copy(sigs[0][:], sig)
 
 	if two_sigs {
-		sig1, _ := ethcrypto.Sign(hash, privKeyB)
+		sig1, _ := ethcrypto.Sign(signHash, privKeyB)
 		copy(sigs[1][:], sig1)
 	}
 
@@ -173,11 +175,7 @@ func TestSpendDeposit(t *testing.T) {
 	// no confirmation signatures needed for spending a deposit
 
 	// Signs the hash of the transaction
-	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	var sigs [2][65]byte
-	sig, _ := ethcrypto.Sign(hash, privKeyA)
-	copy(sigs[0][:], sig)
-	tx := types.NewBaseTx(msg, sigs)
+	tx := GetTx(msg, privKeyA, nil, false)
 	txBytes, _ := rlp.EncodeToBytes(tx)
 
 	// Must commit for checkState to be set correctly. Should be fixed in next version of SDK
@@ -220,11 +218,7 @@ func TestSpendTx(t *testing.T) {
 	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
 
 	// Signs the hash of the transaction
-	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	var sigs [2][65]byte
-	sig, _ := ethcrypto.Sign(hash, privKeyA)
-	copy(sigs[0][:], sig)
-	tx := types.NewBaseTx(msg, sigs)
+	tx := GetTx(msg, privKeyA, nil, false)
 	txBytes, _ := rlp.EncodeToBytes(tx)
 	txHash := tmhash.Sum(txBytes)
 
@@ -252,16 +246,12 @@ func TestSpendTx(t *testing.T) {
 	// generate simple msg
 	msg = GenerateSimpleMsg(addrB, addrA, [4]uint64{1, 0, 0, 0}, 100, 0)
 
-	hash = tmhash.Sum(append(txHash, blockhash...))
+	hash := tmhash.Sum(append(txHash, blockhash...))
 	// Set confirm signatures
 	msg.Input0ConfirmSigs = CreateConfirmSig(hash, privKeyA, &ecdsa.PrivateKey{}, false)
 
 	// Signs the hash of the transaction
-	hash = ethcrypto.Keccak256(msg.GetSignBytes())
-	sig, _ = ethcrypto.Sign(hash, privKeyB)
-	var sigs2 [2][65]byte
-	copy(sigs2[0][:], sig)
-	tx = types.NewBaseTx(msg, sigs2)
+	tx = GetTx(msg, privKeyB, nil, false)
 	txBytes, _ = rlp.EncodeToBytes(tx)
 	txHash = tmhash.Sum(txBytes)
 

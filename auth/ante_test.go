@@ -68,12 +68,13 @@ func GenSpendMsg() types.SpendMsg {
 func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inputs bool) (confirmSigs [][65]byte) {
 
 	var confirmSig0 [65]byte
-	confirmSig0Slice, _ := ethcrypto.Sign(hash, privKey0)
+	signHash := utils.SignHash(hash)
+	confirmSig0Slice, _ := ethcrypto.Sign(signHash, privKey0)
 	copy(confirmSig0[:], confirmSig0Slice)
 
 	var confirmSig1 [65]byte
 	if two_inputs {
-		confirmSig1Slice, _ := ethcrypto.Sign(hash, privKey1)
+		confirmSig1Slice, _ := ethcrypto.Sign(signHash, privKey1)
 		copy(confirmSig1[:], confirmSig1Slice)
 	}
 	confirmSigs = [][65]byte{confirmSig0, confirmSig1}
@@ -83,12 +84,13 @@ func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inp
 // helper for constructing single or double input tx
 func GetTx(msg types.SpendMsg, privKey0, privKey1 *ecdsa.PrivateKey, two_sigs bool) (tx types.BaseTx) {
 	hash := ethcrypto.Keccak256(msg.GetSignBytes())
-	sig0, _ := ethcrypto.Sign(hash, privKey0)
+	signHash := utils.SignHash(hash)
+	sig0, _ := ethcrypto.Sign(signHash, privKey0)
 	var sigs [2][65]byte
 	copy(sigs[0][:], sig0)
 
 	if two_sigs {
-		sig1, _ := ethcrypto.Sign(hash, privKey1)
+		sig1, _ := ethcrypto.Sign(signHash, privKey1)
 		copy(sigs[1][:], sig1)
 	}
 
