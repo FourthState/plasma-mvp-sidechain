@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"fmt"
 	"crypto/ecdsa"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"math/big"
@@ -31,8 +31,8 @@ func GenerateAddress() common.Address {
 
 func SignHash(data []byte) []byte {
 	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), data)
-    return ethcrypto.Keccak256([]byte(msg))
-} 
+	return ethcrypto.Keccak256([]byte(msg))
+}
 
 // helper function for tests
 func GetIndex(index int64) int64 {
