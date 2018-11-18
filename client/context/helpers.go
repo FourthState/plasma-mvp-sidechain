@@ -87,8 +87,9 @@ func (ctx ClientContext) GetSignature(addr common.Address, msg utxo.SpendMsg, di
 
 	bz := msg.GetSignBytes()
 	hash := ethcrypto.Keccak256(bz)
+	signHash := utils.SignHash(hash)
 
-	sig, err = ks.SignHashWithPassphrase(acct, passphrase, hash)
+	sig, err = ks.SignHashWithPassphrase(acct, passphrase, signHash)
 	if err != nil {
 		return nil, err
 	}

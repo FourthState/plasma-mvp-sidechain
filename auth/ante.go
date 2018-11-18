@@ -109,7 +109,8 @@ func processSig(
 	res sdk.Result) {
 
 	hash := ethcrypto.Keccak256(signBytes)
-	pubKey, err := ethcrypto.SigToPub(hash, sig[:])
+	signHash := utils.SignHash(hash)
+	pubKey, err := ethcrypto.SigToPub(signHash, sig[:])
 
 	if err != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey).Bytes(), addr.Bytes()) {
 		return sdk.ErrUnauthorized(fmt.Sprintf("signature verification failed for: %X", addr.Bytes())).Result()
@@ -143,14 +144,15 @@ func processConfirmSig(
 
 	hash := append(txHash, blockHash...)
 	confirmHash := tmhash.Sum(hash)
+	signHash := utils.SignHash(confirmHash)
 
-	pubKey0, err0 := ethcrypto.SigToPub(confirmHash, sigs[0][:])
+	pubKey0, err0 := ethcrypto.SigToPub(signHash, sigs[0][:])
 	if err0 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey0).Bytes(), inputAddresses[0].Bytes()) {
 		return sdk.ErrUnauthorized("confirm signature 0 verification failed").Result()
 	}
 
 	if utils.ValidAddress(inputAddresses[1]) {
-		pubKey1, err1 := ethcrypto.SigToPub(confirmHash, sigs[1][:])
+		pubKey1, err1 := ethcrypto.SigToPub(signHash, sigs[1][:])
 		if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), inputAddresses[1].Bytes()) {
 			return sdk.ErrUnauthorized("confirm signature 1 verification failed").Result()
 		}
