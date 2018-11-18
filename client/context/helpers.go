@@ -9,12 +9,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	rlp "github.com/ethereum/go-ethereum/rlp"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 )
 
 // Broadcast the transaction bytes to Tendermint
@@ -48,14 +48,15 @@ func (ctx ClientContext) SignBuildBroadcast(addrs [2]common.Address, msg types.S
 	if err != nil {
 		return nil, err
 	}
-	sigs := []types.Signature{types.Signature{sig}}
+	var sigs [2][65]byte
+	copy(sigs[0][:], sig)
 
 	if utils.ValidAddress(addrs[1]) {
 		sig, err = ctx.GetSignature(addrs[1], msg, dir)
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, types.Signature{sig})
+		copy(sigs[1][:], sig)
 	}
 
 	tx := types.NewBaseTx(msg, sigs)
@@ -68,7 +69,7 @@ func (ctx ClientContext) SignBuildBroadcast(addrs [2]common.Address, msg types.S
 	return ctx.BroadcastTx(txBytes)
 }
 
-func (ctx ClientContext) GetSignature(addr common.Address, msg types.SpendMsg, dir string) (sig []byte, err error) {
+func (ctx ClientContext) GetSignature(addr common.Address, msg utxo.SpendMsg, dir string) (sig []byte, err error) {
 
 	passphrase, err := ctx.GetPassphraseFromStdin(addr)
 	if err != nil {
@@ -86,8 +87,9 @@ func (ctx ClientContext) GetSignature(addr common.Address, msg types.SpendMsg, d
 
 	bz := msg.GetSignBytes()
 	hash := ethcrypto.Keccak256(bz)
+	signHash := utils.SignHash(hash)
 
-	sig, err = ks.SignHashWithPassphrase(acct, passphrase, hash)
+	sig, err = ks.SignHashWithPassphrase(acct, passphrase, signHash)
 	if err != nil {
 		return nil, err
 	}
@@ -134,12 +136,4 @@ func (ctx ClientContext) GetPassphraseFromStdin(addr common.Address) (pass strin
 	buf := client.BufferStdin()
 	prompt := fmt.Sprintf("Password to sign with '%s':", addr.Hex())
 	return client.GetPassword(prompt, buf)
-}
-
-// Prepares a simple rpc.Client
-func (ctx ClientContext) GetNode() (rpcclient.Client, error) {
-	if ctx.Client == nil {
-		return nil, errors.New("must define node URI")
-	}
-	return ctx.Client, nil
 }

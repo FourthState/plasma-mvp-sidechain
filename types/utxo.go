@@ -2,117 +2,151 @@ package types
 
 import (
 	"errors"
-	rlp "github.com/ethereum/go-ethereum/rlp"
+	"fmt"
 	amino "github.com/tendermint/go-amino"
 
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
-// UTXO is a standard unspent transaction output
-type UTXO interface {
-	// Address that owns UTXO
-	GetAddress() common.Address
-	SetAddress(common.Address) error // errors if already set
+const (
+	// Only allowed Denomination on this plasma chain
+	Denom = "Ether"
+)
 
-	GetInputAddresses() [2]common.Address
-	SetInputAddresses([2]common.Address) error
-
-	GetDenom() uint64
-	SetDenom(uint64) error //errors if already set
-
-	GetPosition() Position
-	SetPosition(uint64, uint16, uint8, uint64) error
-}
+var _ utxo.UTXO = &BaseUTXO{}
 
 // Implements UTXO interface
 type BaseUTXO struct {
 	InputAddresses [2]common.Address
 	Address        common.Address
-	Denom          uint64
-	Position       Position
+	Amount         uint64
+	Denom          string
+	Position       PlasmaPosition
+	TxHash         []byte
 }
 
-func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, denom uint64,
-	position Position) UTXO {
+func ProtoUTXO(ctx sdk.Context, msg sdk.Msg) utxo.UTXO {
+	spendmsg, ok := msg.(SpendMsg)
+	if !ok {
+		return nil
+	}
+
+	return &BaseUTXO{
+		InputAddresses: [2]common.Address{spendmsg.Owner0, spendmsg.Owner1},
+		TxHash:         tmhash.Sum(ctx.TxBytes()),
+	}
+}
+
+func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, amount uint64,
+	denom string, position PlasmaPosition) *BaseUTXO {
 	return &BaseUTXO{
 		InputAddresses: inputaddr,
 		Address:        addr,
+		Amount:         amount,
 		Denom:          denom,
 		Position:       position,
 	}
 }
 
-//Implements UTXO
-func (utxo *BaseUTXO) GetAddress() common.Address {
-	return utxo.Address
+func (baseutxo BaseUTXO) GetTxHash() []byte {
+	return baseutxo.TxHash
 }
 
 //Implements UTXO
-func (utxo *BaseUTXO) SetAddress(addr common.Address) error {
-	if utils.ZeroAddress(utxo.Address) {
-		return errors.New("cannot override BaseUTXO Address")
+func (baseutxo BaseUTXO) GetAddress() []byte {
+	return baseutxo.Address.Bytes()
+}
+
+//Implements UTXO
+func (baseutxo *BaseUTXO) SetAddress(addr []byte) error {
+	if !utils.ZeroAddress(baseutxo.Address) {
+		return fmt.Errorf("address already set to: %X", baseutxo.Address)
 	}
-	if utils.ZeroAddress(addr) {
-		return errors.New("address provided is nil")
+	address := common.BytesToAddress(addr)
+	if utils.ZeroAddress(address) {
+		return fmt.Errorf("invalid address provided: %X", address)
 	}
-	utxo.Address = addr
+	baseutxo.Address = address
 	return nil
 }
 
-func (utxo *BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
-	if utils.ZeroAddress(utxo.InputAddresses[0]) {
-		return errors.New("cannot override BaseUTXO Address")
+//Implements UTXO
+func (baseutxo *BaseUTXO) SetInputAddresses(addrs [2]common.Address) error {
+	if !utils.ZeroAddress(baseutxo.InputAddresses[0]) {
+		return fmt.Errorf("input addresses already set to: %X, %X", baseutxo.InputAddresses[0], baseutxo.InputAddresses[1])
 	}
 	if utils.ZeroAddress(addrs[0]) {
-		return errors.New("address provided is nil")
+		return fmt.Errorf("invalid address provided: %X", addrs[0])
 	}
-	utxo.InputAddresses = addrs
+	baseutxo.InputAddresses = addrs
 	return nil
 }
 
-func (utxo *BaseUTXO) GetInputAddresses() [2]common.Address {
-	return utxo.InputAddresses
+//Implements UTXO
+func (baseutxo BaseUTXO) GetInputAddresses() [2]common.Address {
+	return baseutxo.InputAddresses
 }
 
 //Implements UTXO
-func (utxo *BaseUTXO) GetDenom() uint64 {
-	return utxo.Denom
+func (baseutxo BaseUTXO) GetAmount() uint64 {
+	return baseutxo.Amount
 }
 
 //Implements UTXO
-func (utxo *BaseUTXO) SetDenom(denom uint64) error {
-	if utxo.Denom != 0 {
-		return errors.New("Cannot override BaseUTXO denomination")
+func (baseutxo *BaseUTXO) SetAmount(amount uint64) error {
+	if baseutxo.Amount != 0 {
+		return fmt.Errorf("amount already set to: %d", baseutxo.Amount)
 	}
-	utxo.Denom = denom
+	baseutxo.Amount = amount
 	return nil
 }
 
-func (utxo *BaseUTXO) GetPosition() Position {
-	return utxo.Position
+func (baseutxo BaseUTXO) GetPosition() utxo.Position {
+	return baseutxo.Position
 }
 
-func (utxo *BaseUTXO) SetPosition(blockNum uint64, txIndex uint16, oIndex uint8, depositNum uint64) error {
-	if utxo.Position.Blknum != 0 {
-		return errors.New("cannot override BaseUTXO Position")
+func (baseutxo *BaseUTXO) SetPosition(position utxo.Position) error {
+	if baseutxo.Position.IsValid() {
+		return fmt.Errorf("position already set to: %v", baseutxo.Position)
+	} else if !position.IsValid() {
+		return errors.New("invalid position provided")
 	}
-	utxo.Position = Position{blockNum, txIndex, oIndex, depositNum}
+
+	plasmaposition, ok := position.(PlasmaPosition)
+	if !ok {
+		return errors.New("position must be of type PlasmaPosition")
+	}
+	baseutxo.Position = plasmaposition
+	return nil
+}
+
+func (baseutxo BaseUTXO) GetDenom() string {
+	return Denom
+}
+
+func (baseutxo *BaseUTXO) SetDenom(denom string) error {
 	return nil
 }
 
 //----------------------------------------
-// misc
+// Position
 
-type Position struct {
+var _ utxo.Position = &PlasmaPosition{}
+
+type PlasmaPosition struct {
 	Blknum     uint64
 	TxIndex    uint16
 	Oindex     uint8
 	DepositNum uint64
 }
 
-func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint64) Position {
-	return Position{
+func NewPlasmaPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint64) PlasmaPosition {
+	return PlasmaPosition{
 		Blknum:     blknum,
 		TxIndex:    txIndex,
 		Oindex:     oIndex,
@@ -120,21 +154,27 @@ func NewPosition(blknum uint64, txIndex uint16, oIndex uint8, depositNum uint64)
 	}
 }
 
-// Used to determine Sign Bytes for confirm signatures
-func (position Position) GetSignBytes() []byte {
-	b, err := rlp.EncodeToBytes(position)
-	if err != nil {
-		panic(err)
+func (position PlasmaPosition) Get() []sdk.Uint {
+	return []sdk.Uint{sdk.NewUint(position.Blknum), sdk.NewUint(uint64(position.TxIndex)), sdk.NewUint(uint64(position.Oindex)), sdk.NewUint(position.DepositNum)}
+}
+
+// check that the position is formatted correctly
+// Implements Position
+func (position PlasmaPosition) IsValid() bool {
+	// If position is a regular tx, output index must be 0 or 1 and depositnum must be 0
+	if position.Blknum != 0 {
+		return position.Oindex < 2 && position.DepositNum == 0
+	} else {
+		// If position represents deposit, depositnum is not 0 and txindex and oindex are 0.
+		return position.DepositNum != 0 && position.TxIndex == 0 && position.Oindex == 0
 	}
-	return b
 }
 
 //-------------------------------------------------------
-
+// misc
 func RegisterAmino(cdc *amino.Codec) {
-	cdc.RegisterInterface((*UTXO)(nil), nil)
-	cdc.RegisterConcrete(BaseUTXO{}, "types/BaseUTXO", nil)
-	cdc.RegisterConcrete(Position{}, "types/Position", nil)
+	cdc.RegisterConcrete(&BaseUTXO{}, "types/BaseUTXO", nil)
+	cdc.RegisterConcrete(&PlasmaPosition{}, "types/PlasmaPosition", nil)
 	cdc.RegisterConcrete(BaseTx{}, "types/BaseTX", nil)
 	cdc.RegisterConcrete(SpendMsg{}, "types/SpendMsg", nil)
 }

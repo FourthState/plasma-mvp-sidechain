@@ -1,16 +1,23 @@
-package db
+package utxo
 
 import (
-	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/ethereum/go-ethereum/common"
 	amino "github.com/tendermint/go-amino"
 )
 
-// Maps Position struct to UTXO
+// Mapper stores and retrieves UTXO's from stores
+// retrieved from the context.
+type Mapper interface {
+	GetUTXO(ctx sdk.Context, addr []byte, position Position) UTXO
+	GetUTXOsForAddress(ctx sdk.Context, addr []byte) []UTXO
+	AddUTXO(ctx sdk.Context, utxo UTXO)
+	DeleteUTXO(ctx sdk.Context, addr []byte, position Position)
+}
+
+// Maps Address+Position to UTXO
 // Uses go-amino encoding/decoding library
-// Implements UTXOMapper
-type utxoMapper struct {
+// Implements Mapper
+type baseMapper struct {
 
 	// The contextKey used to access the store from the Context.
 	contextKey sdk.StoreKey
@@ -19,8 +26,8 @@ type utxoMapper struct {
 	cdc *amino.Codec
 }
 
-func NewUTXOMapper(contextKey sdk.StoreKey, cdc *amino.Codec) types.UTXOMapper {
-	return utxoMapper{
+func NewBaseMapper(contextKey sdk.StoreKey, cdc *amino.Codec) Mapper {
+	return baseMapper{
 		contextKey: contextKey,
 		cdc:        cdc,
 	}
@@ -29,10 +36,9 @@ func NewUTXOMapper(contextKey sdk.StoreKey, cdc *amino.Codec) types.UTXOMapper {
 
 // Returns the UTXO corresponding to the address + go amino encoded Position struct
 // Returns nil if no UTXO exists at that position
-func (um utxoMapper) GetUTXO(ctx sdk.Context, addr common.Address, position types.Position) types.UTXO {
+func (um baseMapper) GetUTXO(ctx sdk.Context, addr []byte, position Position) UTXO {
 	store := ctx.KVStore(um.contextKey)
 	key := um.constructKey(addr, position)
-
 	bz := store.Get(key)
 
 	if bz == nil {
@@ -45,10 +51,10 @@ func (um utxoMapper) GetUTXO(ctx sdk.Context, addr common.Address, position type
 
 // Returns all the UTXOs owned by an address.
 // Returns empty slice if no UTXO exists for the address.
-func (um utxoMapper) GetUTXOsForAddress(ctx sdk.Context, addr common.Address) []types.UTXO {
+func (um baseMapper) GetUTXOsForAddress(ctx sdk.Context, addr []byte) []UTXO {
 	store := ctx.KVStore(um.contextKey)
-	iterator := sdk.KVStorePrefixIterator(store, addr.Bytes())
-	utxos := make([]types.UTXO, 0)
+	iterator := sdk.KVStorePrefixIterator(store, addr)
+	utxos := make([]UTXO, 0)
 
 	for ; iterator.Valid(); iterator.Next() {
 		utxo := um.decodeUTXO(iterator.Value())
@@ -60,7 +66,7 @@ func (um utxoMapper) GetUTXOsForAddress(ctx sdk.Context, addr common.Address) []
 }
 
 // Adds the UTXO to the mapper
-func (um utxoMapper) AddUTXO(ctx sdk.Context, utxo types.UTXO) {
+func (um baseMapper) AddUTXO(ctx sdk.Context, utxo UTXO) {
 	position := utxo.GetPosition()
 	address := utxo.GetAddress()
 	store := ctx.KVStore(um.contextKey)
@@ -71,40 +77,34 @@ func (um utxoMapper) AddUTXO(ctx sdk.Context, utxo types.UTXO) {
 }
 
 // Deletes UTXO corresponding to address + position from mapping
-func (um utxoMapper) DeleteUTXO(ctx sdk.Context, addr common.Address, position types.Position) {
+func (um baseMapper) DeleteUTXO(ctx sdk.Context, addr []byte, position Position) {
 	store := ctx.KVStore(um.contextKey)
 	key := um.constructKey(addr, position)
 	store.Delete(key)
 }
 
 // (<address> + <encoded position>) forms the unique key that maps to an UTXO.
-func (um utxoMapper) constructKey(address common.Address, position types.Position) []byte {
-	pos := um.encodePosition(position)
-	key := append(address.Bytes(), pos...)
+func (um baseMapper) constructKey(address []byte, position Position) []byte {
+	posBytes, err := um.cdc.MarshalBinaryBare(position)
+	if err != nil {
+		panic(err)
+	}
+	key := append(address, posBytes...)
 	return key
 }
 
-func (um utxoMapper) encodeUTXO(utxo types.UTXO) []byte {
-	bz, err := um.cdc.MarshalBinary(utxo)
+func (um baseMapper) encodeUTXO(utxo UTXO) []byte {
+	bz, err := um.cdc.MarshalBinaryBare(utxo)
 	if err != nil {
 		panic(err)
 	}
 	return bz
 }
 
-func (um utxoMapper) decodeUTXO(bz []byte) types.UTXO {
-	utxo := &types.BaseUTXO{}
-	err := um.cdc.UnmarshalBinary(bz, utxo)
+func (um baseMapper) decodeUTXO(bz []byte) (utxo UTXO) {
+	err := um.cdc.UnmarshalBinaryBare(bz, &utxo)
 	if err != nil {
 		panic(err)
 	}
 	return utxo
-}
-
-func (um utxoMapper) encodePosition(pos types.Position) []byte {
-	bz, err := um.cdc.MarshalBinary(pos)
-	if err != nil {
-		panic(err)
-	}
-	return bz
 }

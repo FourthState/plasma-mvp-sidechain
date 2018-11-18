@@ -5,6 +5,7 @@ import (
 
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 
+	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 )
 
@@ -18,10 +19,12 @@ func NewClientContextFromViper() ClientContext {
 	return ClientContext{
 		Height:         viper.GetInt64(client.FlagHeight),
 		TrustNode:      viper.GetBool(client.FlagTrustNode),
+		Codec:          app.MakeCodec(),
 		InputAddresses: viper.GetString(client.FlagAddress),
 		NodeURI:        nodeURI,
 		Client:         rpc,
 		Decoder:        nil,
-		UTXOStore:      "utxo",
+		UTXOStore:      "main",
+		MetadataStore:  "metadata",
 	}
 }
