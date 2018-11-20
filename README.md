@@ -9,7 +9,7 @@ master	  | [![Build Status](https://travis-ci.org/FourthState/plasma-mvp-sidecha
 
 This is the latest [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) version.  
 
-**Note**: This sidechain is being constructed to be compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain/master)  
+**Note**: This sidechain is being constructed to be compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain)  
 
 ## Overview
 As a layer 2 scaling solution, Plasma has two major components: verification and computation. Verification is handled by the rootchain contract which resolves any disputes and distributes funds accordingly. 
