@@ -1,2 +1,6 @@
 .DS_Store
 vendor/
+contracts/abi
+contracts/wrappers
+contracts/node_modules
+contra
