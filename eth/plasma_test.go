@@ -14,6 +14,7 @@ const (
 	clientAddr         = "http://127.0.0.1:8545"
 	plasmaContractAddr = "64c55d0385ac46776b50f989a6e4b381f12f6940"
 	operatorPrivKey    = "9cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c17181"
+	sampleAccount      = "66b2e0a229d38764cea81dc99bfbd1eb85354b33"
 )
 
 func TestConnection(t *testing.T) {
