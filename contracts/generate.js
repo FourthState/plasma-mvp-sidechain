@@ -22,5 +22,5 @@ function generate(path) {
 
     
     fs.writeFileSync(`abi/${contract.contractName}.abi`, JSON.stringify(contract.abi))
-    shell.exec(` abigen --abi abi/${contract.contractName}.abi --pkg wrappers --type ${contract.contractName} --out wrappers/${snakeCasedFilename}.go`);
+    shell.exec(`abigen --abi abi/${contract.contractName}.abi --pkg wrappers --type ${contract.contractName} --out wrappers/${snakeCasedFilename}.go`);
 }

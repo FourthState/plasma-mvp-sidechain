@@ -2,6 +2,7 @@ package utxo
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // UTXO is a standard unspent transaction output
@@ -48,4 +49,9 @@ type Output struct {
 	Owner  []byte
 	Denom  string
 	Amount uint64
+}
+
+type Deposit struct {
+	Owner  common.Address
+	Amount *sdk.Int
 }
