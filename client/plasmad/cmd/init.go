@@ -64,13 +64,15 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec, appInit server.AppInit) *cob
 			if viper.GetString(flagMoniker) != "" {
 				config.Moniker = viper.GetString(flagMoniker)
 			}
+			valPubKey := ReadOrCreatePrivValidator(config.PrivValidatorFile())
 
 			var appState json.RawMessage
 			genFile := config.GenesisFile()
-			if appState, err = initializeEmptyGenesis(cdc, genFile, chainID,
+			if appState, err = initializeEmptyGenesis(cdc, genFile, chainID, valPubKey,
 				viper.GetBool(flagOverwrite)); err != nil {
 				return err
 			}
+
 			if err = ExportGenesisFile(genFile, chainID, nil, appState); err != nil {
 				return err
 			}
