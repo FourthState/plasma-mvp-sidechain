@@ -73,4 +73,4 @@ See our [research repository](https://github.com/FourthState/plasma-research) fo
 See our [documentation](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/docs/overview.md)
 
 ### Contributing
-See our [contributing guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md)
+See our [contributing guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md). Join our [Discord Server](https://discord.gg/YTB5A4P).
