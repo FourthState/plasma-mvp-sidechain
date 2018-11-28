@@ -86,6 +86,7 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec, appInit server.AppInit) *cob
 
 			cfg.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
 
+			fmt.Printf("Add an ethereum address to 'fee_address' to collect fees as a validator\n\n")
 			return displayInfo(cdc, toPrint)
 		},
 	}
