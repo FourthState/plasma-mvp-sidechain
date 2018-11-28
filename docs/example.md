@@ -10,7 +10,7 @@ cd into client/plasmad
 
 run `go install`
 
-run 'plasmad init` to initalize a validator. cd into `~/.plasmad/config`. Open genesis.json and add a `fee_address` and genesis utxos. See our example [genesis.json](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/testnet-setup/example_genesis.json)
+run `plasmad init` to initalize a validator. cd into `~/.plasmad/config`. Open genesis.json and add a `fee_address` and genesis utxos. See our example [genesis.json](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/testnet-setup/example_genesis.json)
 
 Open config.toml and add any configurations you would like to add for your validator, such as a moniker.
 
