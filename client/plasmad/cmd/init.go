@@ -64,13 +64,15 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec, appInit server.AppInit) *cob
 			if viper.GetString(flagMoniker) != "" {
 				config.Moniker = viper.GetString(flagMoniker)
 			}
+			valPubKey := ReadOrCreatePrivValidator(config.PrivValidatorFile())
 
 			var appState json.RawMessage
 			genFile := config.GenesisFile()
-			if appState, err = initializeEmptyGenesis(cdc, genFile, chainID,
+			if appState, err = initializeEmptyGenesis(cdc, genFile, chainID, valPubKey,
 				viper.GetBool(flagOverwrite)); err != nil {
 				return err
 			}
+
 			if err = ExportGenesisFile(genFile, chainID, nil, appState); err != nil {
 				return err
 			}
@@ -84,6 +86,7 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec, appInit server.AppInit) *cob
 
 			cfg.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
 
+			fmt.Printf("Add an ethereum address to 'fee_address' to collect fees as a validator\n\n")
 			return displayInfo(cdc, toPrint)
 		},
 	}
