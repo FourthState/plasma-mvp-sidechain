@@ -174,9 +174,8 @@ func PlasmaAppGenStateJSON(cdc *codec.Codec, genDoc tmtypes.GenesisDoc, appGenTx
 }
 
 func NewDefaultGenesisState(pubkey crypto.PubKey) GenesisState {
-	address := fmt.Sprintf("%x", pubkey.Address())
 	return GenesisState{
-		Validator: GenesisValidator{pubkey, address},
+		Validator: GenesisValidator{pubkey, ""},
 		UTXOs:     nil,
 	}
 }
