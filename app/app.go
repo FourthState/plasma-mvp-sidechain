@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
@@ -48,10 +49,12 @@ type ChildChain struct {
 	// Address that validator uses to collect fees
 	validatorAddress ethcmn.Address
 
+	validatorPrivKey *ecdsa.PrivateKey
+
 	metadataMapper metadata.MetadataMapper
 }
 
-func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
+func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options ...func(*ChildChain)) *ChildChain {
 	cdc := MakeCodec()
 
 	bapp := bam.NewBaseApp(appName, logger, db, txDecoder)
@@ -64,6 +67,10 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 		feeAmount:           0,
 		capKeyMainStore:     sdk.NewKVStoreKey("main"),
 		capKeyMetadataStore: sdk.NewKVStoreKey("metadata"),
+	}
+
+	for _, option := range options {
+		option(app)
 	}
 
 	// define the utxoMapper
@@ -150,7 +157,6 @@ func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abc
 	if ctx.BlockHeader().DataHash != nil {
 		app.metadataMapper.StoreMetadata(ctx, blknumKey, ctx.BlockHeader().DataHash)
 	}
-
 	return abci.ResponseEndBlock{}
 }
 

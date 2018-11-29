@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/FourthState/plasma-mvp-sidechain/app"
+	plasmacfg "github.com/FourthState/plasma-mvp-sidechain/client/plasmad/config"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -85,6 +86,9 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec, appInit server.AppInit) *cob
 			}
 
 			cfg.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
+
+			plasmaConfig := plasmacfg.DefaultConfig()
+			plasmacfg.WriteConfigFile(filepath.Join(config.RootDir, "config", "plasma.toml"), plasmaConfig)
 
 			fmt.Printf("Add an ethereum address to 'fee_address' to collect fees as a validator\n\n")
 			return displayInfo(cdc, toPrint)
