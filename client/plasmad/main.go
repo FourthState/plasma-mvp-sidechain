@@ -41,7 +41,12 @@ func main() {
 }
 
 func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
-	return app.NewChildChain(logger, db, traceStore, app.SetEthPrivKey(viper.GetString("ethereum_privkey_file")))
+	key_file := viper.GetString("ethereum_privkey_file")
+	isValidator := viper.GetBool("is_validator")
+
+	return app.NewChildChain(logger, db, traceStore,
+		app.SetEthPrivKey(key_file, isValidator),
+	)
 }
 
 // non-functional

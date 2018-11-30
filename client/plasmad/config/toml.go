@@ -19,7 +19,9 @@ ethereum_privkey_file = "{{ .EthPrivKeyFile }}"
 
 # Gas limit for eth transactions
 gas_limit = "{{.EthGasLimit }}"
-`
+
+# Boolean specifying if this node is a validator
+is_validator = "{{ .IsValidator }}"`
 
 var configTemplate *template.Template
 

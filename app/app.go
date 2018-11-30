@@ -52,6 +52,8 @@ type ChildChain struct {
 	validatorPrivKey *ecdsa.PrivateKey
 
 	metadataMapper metadata.MetadataMapper
+
+	isValidator bool
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options ...func(*ChildChain)) *ChildChain {
