@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	"crypto/ecdsa"
@@ -19,6 +20,7 @@ import (
 
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -101,6 +103,15 @@ func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inp
 		confirmSigs = append(confirmSigs, confirmSig1)
 	}
 	return confirmSigs
+}
+
+func getInputKeys(mapper utxo.Mapper, inputs ...Input) (res [][]byte) {
+	for _, in := range inputs {
+		if !reflect.DeepEqual(in.addr, common.Address{}) {
+			res = append(res, mapper.ConstructKey(in.addr.Bytes(), in.position))
+		}
+	}
+	return res
 }
 
 // helper for constructing single or double input tx
@@ -196,12 +207,13 @@ func TestSpendDeposit(t *testing.T) {
 
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(1, 0, 0, 0)
-	utxo := cc.utxoMapper.GetUTXO(ctx, addrB.Bytes(), position)
+	res := cc.utxoMapper.GetUTXO(ctx, addrB.Bytes(), position)
 
-	expected := types.NewBaseUTXO(addrB, [2]common.Address{addrA, common.Address{}}, 100, "", position)
-	expected.TxHash = tmhash.Sum(txBytes)
+	inputKey := cc.utxoMapper.ConstructKey(addrA.Bytes(), types.NewPlasmaPosition(0, 0, 0, 1))
+	txHash := tmhash.Sum(txBytes)
+	expected := utxo.NewUTXOwithInputs(addrB.Bytes(), 100, "Ether", position, txHash, [][]byte{inputKey})
 
-	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
+	require.Equal(t, expected, res, "UTXO did not get added to store correctly")
 }
 
 func TestSpendTx(t *testing.T) {
@@ -263,12 +275,12 @@ func TestSpendTx(t *testing.T) {
 
 	// Retrieve UTXO from context
 	position := types.NewPlasmaPosition(5, 0, 0, 0)
-	utxo := cc.utxoMapper.GetUTXO(ctx, addrA.Bytes(), position)
+	actual := cc.utxoMapper.GetUTXO(ctx, addrA.Bytes(), position)
 
-	expected := types.NewBaseUTXO(addrA, [2]common.Address{addrB, common.Address{}}, 100, "", position)
-	expected.TxHash = txHash
+	inputKey := cc.utxoMapper.ConstructKey(addrB.Bytes(), types.NewPlasmaPosition(1, 0, 0, 0))
+	expected := utxo.NewUTXOwithInputs(addrA.Bytes(), 100, "Ether", position, txHash, [][]byte{inputKey})
 
-	require.Equal(t, expected, utxo, "UTXO did not get added to store correctly")
+	require.Equal(t, expected, actual, "UTXO did not get added to store correctly")
 
 }
 
@@ -383,12 +395,10 @@ func TestDifferentTxForms(t *testing.T) {
 			// note: all cases currently have inputs belonging to the previous tx
 			// and therefore we only need to grab the first txhash from the inptus
 			input_utxo := cc.utxoMapper.GetUTXO(ctx, tc.input0.addr.Bytes(), tc.input0.position)
-			baseutxo, _ := input_utxo.(*types.BaseUTXO)
-			txhash := baseutxo.TxHash
 			blknumKey := make([]byte, binary.MaxVarintLen64)
 			binary.PutUvarint(blknumKey, uint64(7+uint64(index-1)))
 			blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
-			hash := tmhash.Sum(append(txhash, blockhash...))
+			hash := tmhash.Sum(append(input_utxo.TxHash, blockhash...))
 
 			msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
 			msg.Input1ConfirmSigs = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
@@ -403,30 +413,30 @@ func TestDifferentTxForms(t *testing.T) {
 
 		// Retrieve utxo from context
 		position := types.NewPlasmaPosition(uint64(index)+7, 0, 0, 0)
-		utxo := cc.utxoMapper.GetUTXO(ctx, tc.newowner0.Bytes(), position)
+		utxo0 := cc.utxoMapper.GetUTXO(ctx, tc.newowner0.Bytes(), position)
 
-		expected := types.NewBaseUTXO(tc.newowner0, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount0, "", position)
-		expected.TxHash = tmhash.Sum(txBytes)
+		inputKeys := getInputKeys(cc.utxoMapper, tc.input0, tc.input1)
+		txHash := tmhash.Sum(txBytes)
+		expected := utxo.NewUTXOwithInputs(tc.newowner0.Bytes(), tc.amount0, "Ether", position, txHash, inputKeys)
 
-		require.Equal(t, expected, utxo, fmt.Sprintf("First UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
+		require.Equal(t, expected, utxo0, fmt.Sprintf("First UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 
 		if !utils.ZeroAddress(msg.Newowner1) {
 			position = types.NewPlasmaPosition(uint64(index)+7, 0, 1, 0)
-			utxo = cc.utxoMapper.GetUTXO(ctx, tc.newowner1.Bytes(), position)
+			utxo1 := cc.utxoMapper.GetUTXO(ctx, tc.newowner1.Bytes(), position)
 
-			expected = types.NewBaseUTXO(tc.newowner1, [2]common.Address{msg.Owner0, msg.Owner1}, tc.amount1, "", position)
-			expected.TxHash = tmhash.Sum(txBytes)
+			expected = utxo.NewUTXOwithInputs(tc.newowner1.Bytes(), tc.amount1, "Ether", position, txHash, inputKeys)
 
-			require.Equal(t, expected, utxo, fmt.Sprintf("Second UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
+			require.Equal(t, expected, utxo1, fmt.Sprintf("Second UTXO did not get added to the utxo store correctly. Failed on test case: %d", index))
 		}
 
 		// Check that inputs were removed
-		utxo = cc.utxoMapper.GetUTXO(ctx, msg.Owner0.Bytes(), tc.input0.position)
-		require.Nil(t, utxo, fmt.Sprintf("first input was not removed from the utxo store. Failed on test case: %d", index))
+		recovered := cc.utxoMapper.GetUTXO(ctx, msg.Owner0.Bytes(), tc.input0.position)
+		require.False(t, recovered.Valid, fmt.Sprintf("first input was not removed from the utxo store. Failed on test case: %d", index))
 
 		if !utils.ZeroAddress(msg.Owner1) {
-			utxo = cc.utxoMapper.GetUTXO(ctx, msg.Owner1.Bytes(), tc.input1.position)
-			require.Nil(t, utxo, fmt.Sprintf("second input was not removed from the utxo store. Failed on test case: %d", index))
+			recovered = cc.utxoMapper.GetUTXO(ctx, msg.Owner1.Bytes(), tc.input1.position)
+			require.False(t, recovered.Valid, fmt.Sprintf("second input was not removed from the utxo store. Failed on test case: %d", index))
 		}
 
 		cc.EndBlock(abci.RequestEndBlock{})
@@ -469,16 +479,17 @@ func TestMultiTxBlocks(t *testing.T) {
 	for i := uint16(0); i < N; i++ {
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
 		position := types.NewPlasmaPosition(1, i, 0, 0)
-		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
+		actual := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
 
-		expected := types.NewBaseUTXO(addrs[i], [2]common.Address{addrs[i], common.Address{}}, 100, "", position)
+		inputKey := cc.utxoMapper.ConstructKey(addrs[i].Bytes(), types.NewPlasmaPosition(0, 0, 0, uint64(i+1)))
+		expected := utxo.NewUTXOwithInputs(addrs[i].Bytes(), 100, "Ether", position, tmhash.Sum(txBytes), [][]byte{inputKey})
 		expected.TxHash = tmhash.Sum(txBytes)
 
-		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
+		require.Equal(t, expected, actual, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
 		position = types.NewPlasmaPosition(0, 0, 0, uint64(i)+1)
-		utxo = cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
-		require.Nil(t, utxo, fmt.Sprintf("deposit %d did not get removed correctly from the utxo store", i+1))
+		deposit := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
+		require.False(t, deposit.Valid, fmt.Sprintf("deposit %d did not get removed correctly from the utxo store", i+1))
 	}
 
 	cc.EndBlock(abci.RequestEndBlock{})
@@ -514,15 +525,15 @@ func TestMultiTxBlocks(t *testing.T) {
 	// Retrieve and check UTXO from context
 	for i := uint16(0); i < N; i++ {
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
-		utxo := cc.utxoMapper.GetUTXO(ctx, addrs[(i+1)%N].Bytes(), types.NewPlasmaPosition(2, i, 0, 0))
+		actual := cc.utxoMapper.GetUTXO(ctx, addrs[(i+1)%N].Bytes(), types.NewPlasmaPosition(2, i, 0, 0))
 
-		expected := types.NewBaseUTXO(addrs[(i+1)%N], [2]common.Address{addrs[i], common.Address{}}, 100, "", types.NewPlasmaPosition(2, i, 0, 0))
-		expected.TxHash = tmhash.Sum(txBytes)
+		inputKey := cc.utxoMapper.ConstructKey(addrs[i].Bytes(), types.NewPlasmaPosition(1, i, 0, 0))
+		expected := utxo.NewUTXOwithInputs(addrs[(i+1)%N].Bytes(), 100, "Ether", types.NewPlasmaPosition(2, i, 0, 0), tmhash.Sum(txBytes), [][]byte{inputKey})
 
-		require.Equal(t, expected, utxo, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
+		require.Equal(t, expected, actual, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
-		utxo = cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), types.NewPlasmaPosition(1, i, 0, 0))
-		require.Nil(t, utxo, fmt.Sprintf("UTXO %d  did not get removed from the utxo store correctly", i))
+		input := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), types.NewPlasmaPosition(1, i, 0, 0))
+		require.False(t, input.Valid, fmt.Sprintf("UTXO %d  did not get removed from the utxo store correctly", i))
 	}
 
 }
@@ -584,9 +595,9 @@ func TestFee(t *testing.T) {
 	valUTXO := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), expectedValPosition)
 
 	// Check that users and validators have expected UTXO's
-	require.Equal(t, uint64(90), utxo1.GetAmount(), "UTXO1 does not have expected amount")
-	require.Equal(t, uint64(90), utxo2.GetAmount(), "UTXO2 does not have expected amount")
-	require.Equal(t, uint64(20), valUTXO.GetAmount(), "Validator fees did not get collected into UTXO correctly")
+	require.Equal(t, uint64(90), utxo1.Amount, "UTXO1 does not have expected amount")
+	require.Equal(t, uint64(90), utxo2.Amount, "UTXO2 does not have expected amount")
+	require.Equal(t, uint64(20), valUTXO.Amount, "Validator fees did not get collected into UTXO correctly")
 
 	// Check that validator can spend his fees as if they were a regular UTXO on sidechain
 	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 1<<16 - 1, 0, 0}, 10, 10)
@@ -606,5 +617,5 @@ func TestFee(t *testing.T) {
 
 	// Check that fee Amount gets reset between blocks. feeAmount for block 2 is 10 not 30.
 	feeUTXO2 := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), types.NewPlasmaPosition(2, 1<<16-1, 0, 0))
-	require.Equal(t, uint64(10), feeUTXO2.GetAmount(), "Fee Amount on second block is incorrect")
+	require.Equal(t, uint64(10), feeUTXO2.Amount, "Fee Amount on second block is incorrect")
 }

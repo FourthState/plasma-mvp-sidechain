@@ -10,8 +10,8 @@ import (
 
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
-	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -66,18 +66,18 @@ var signCmd = &cobra.Command{
 			return err
 		}
 
-		var utxo types.BaseUTXO
-		err = ctx.Codec.UnmarshalBinaryBare(res, &utxo)
+		var input utxo.UTXO
+		err = ctx.Codec.UnmarshalBinaryBare(res, &input)
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
-		binary.PutUvarint(blknumKey, utxo.GetPosition().Get()[0].Uint64())
+		binary.PutUvarint(blknumKey, input.Position.Get()[0].Uint64())
 
 		blockhash, err := ctx.QueryStore(blknumKey, ctx.MetadataStore)
 		if err != nil {
 			return err
 		}
 
-		hash := tmhash.Sum(append(utxo.TxHash, blockhash...))
+		hash := tmhash.Sum(append(input.TxHash, blockhash...))
 		signHash := utils.SignHash(hash)
 
 		dir := viper.GetString(FlagHomeDir)
@@ -100,15 +100,10 @@ var signCmd = &cobra.Command{
 
 		sig, err := ks.SignHashWithPassphrase(acct, passphrase, signHash)
 
-		fmt.Printf("\nConfirmation Signature for utxo with\nposition: %v \namount: %d\n", utxo.Position, utxo.Amount)
+		fmt.Printf("\nConfirmation Signature for utxo with\nposition: %v \namount: %d\n", input.Position, input.Amount)
 		fmt.Printf("signature: %x\n", sig)
 
-		inputLen := 1
-		// check number of inputs
-		if !utils.ZeroAddress(utxo.InputAddresses[1]) {
-			inputLen = 2
-		}
-		fmt.Printf("UTXO had %d inputs\n", inputLen)
+		fmt.Printf("UTXO had %d inputs\n", len(input.InputAddresses()))
 		return nil
 	},
 }

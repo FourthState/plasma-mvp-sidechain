@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
-	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -30,12 +30,14 @@ var balanceCmd = &cobra.Command{
 		}
 
 		for _, pair := range res {
-			var utxo types.BaseUTXO
-			err := ctx.Codec.UnmarshalBinaryBare(pair.Value, &utxo)
+			var resUTXO utxo.UTXO
+			err := ctx.Codec.UnmarshalBinaryBare(pair.Value, &resUTXO)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Position: %v \nAmount: %d \n", utxo.Position, utxo.Amount)
+			if resUTXO.Valid {
+				fmt.Printf("Position: %v \nAmount: %d \n", resUTXO.Position, resUTXO.Amount)
+			}
 		}
 
 		return nil

@@ -77,7 +77,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	)
 
 	app.Router().
-		AddRoute("spend", utxo.NewSpendHandler(app.utxoMapper, app.nextPosition, types.ProtoUTXO))
+		AddRoute("spend", utxo.NewSpendHandler(app.utxoMapper, app.nextPosition))
 
 	app.MountStoresIAVL(app.capKeyMainStore)
 	app.MountStoresIAVL(app.capKeyMetadataStore)
@@ -110,7 +110,7 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	// load the accounts
 	for _, gutxo := range genesisState.UTXOs {
 		utxo := ToUTXO(gutxo)
-		app.utxoMapper.AddUTXO(ctx, utxo)
+		app.utxoMapper.ReceiveUTXO(ctx, utxo)
 	}
 
 	app.validatorAddress = ethcmn.HexToAddress(genesisState.Validator.Address)
@@ -130,14 +130,8 @@ func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abc
 			Oindex:     0,
 			DepositNum: 0,
 		}
-		utxo := types.BaseUTXO{
-			Address:        app.validatorAddress,
-			InputAddresses: [2]ethcmn.Address{app.validatorAddress, ethcmn.Address{}},
-			Amount:         app.feeAmount,
-			Denom:          types.Denom,
-			Position:       position,
-		}
-		app.utxoMapper.AddUTXO(ctx, &utxo)
+		utxo := utxo.NewUTXO(app.validatorAddress.Bytes(), app.feeAmount, types.Denom, position)
+		app.utxoMapper.ReceiveUTXO(ctx, utxo)
 	}
 
 	// reset txIndex and fee
@@ -175,7 +169,7 @@ func (app *ChildChain) nextPosition(ctx sdk.Context, secondary bool) utxo.Positi
 	return types.NewPlasmaPosition(uint64(ctx.BlockHeight()), app.txIndex-1, 1, 0)
 }
 
-// Unimplemented for now
+// Fee Updater passed into antehandler
 func (app *ChildChain) feeUpdater(output []utxo.Output) sdk.Error {
 	if len(output) != 1 || output[0].Denom != types.Denom {
 		return utxo.ErrInvalidFee(2, "Fee must be paid in Eth")

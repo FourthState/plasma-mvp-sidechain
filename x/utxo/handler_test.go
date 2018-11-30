@@ -103,30 +103,35 @@ func TestHandleSpendMessage(t *testing.T) {
 		ms, capKey, _ := SetupMultiStore()
 
 		cdc := MakeCodec()
-		cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
+		cdc.RegisterConcrete(&UTXO{}, "x/utxo/UTXO", nil)
 		cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
 		mapper := NewBaseMapper(capKey, cdc)
 		app := testApp{0, 0}
-		handler := NewSpendHandler(mapper, app.testNextPosition, testProtoUTXO)
+		handler := NewSpendHandler(mapper, app.testNextPosition)
 
 		ctx := sdk.NewContext(ms, abci.Header{Height: 6}, false, log.NewNopLogger())
 		var inputs []Input
 		var outputs []Output
+		var inputKeys [][]byte
+		var spenderKeys [][]byte
 
 		// Add utxo's that will be spent
 		for i := 0; i < tc.inputNum; i++ {
 			position := newTestPosition([]uint64{5, uint64(i), 0})
-			utxo := newTestUTXO(addrs[i].Bytes(), 100, position)
-			mapper.AddUTXO(ctx, utxo)
+			utxo := NewUTXO(addrs[i].Bytes(), 100, "testEther", position)
+			mapper.ReceiveUTXO(ctx, utxo)
 
 			utxo = mapper.GetUTXO(ctx, addrs[i].Bytes(), position)
 			require.NotNil(t, utxo)
 
 			inputs = append(inputs, Input{addrs[i].Bytes(), position})
+			inputKeys = append(inputKeys, mapper.ConstructKey(addrs[i].Bytes(), position))
 		}
 
 		for i := 0; i < tc.outputNum; i++ {
 			outputs = append(outputs, Output{addrs[(i+1)%len].Bytes(), "Ether", uint64((100 * tc.inputNum) / tc.outputNum)})
+			position := newTestPosition([]uint64{6, 0, uint64(i)})
+			spenderKeys = append(spenderKeys, mapper.ConstructKey(addrs[(i+1)%len].Bytes(), position))
 		}
 
 		// Create spend msg
@@ -141,9 +146,11 @@ func TestHandleSpendMessage(t *testing.T) {
 
 		// Delete inputs
 		for _, in := range msg.Inputs() {
-			mapper.DeleteUTXO(ctx, in.Owner, in.Position)
 			utxo := mapper.GetUTXO(ctx, in.Owner, in.Position)
-			require.Nil(t, utxo)
+			require.NotNil(t, utxo)
+			require.False(t, utxo.Valid, "Spent UTXO not valid")
+			require.Equal(t, spenderKeys, utxo.SpenderKeys, "Spender keys not set properly for inputs")
+			deleteUTXO(ctx, capKey, mapper, utxo)
 		}
 
 		// Check that outputs were created and are valid
@@ -153,12 +160,20 @@ func TestHandleSpendMessage(t *testing.T) {
 			utxo := mapper.GetUTXO(ctx, o.Owner, position)
 			require.NotNil(t, utxo, fmt.Sprintf("test case %d, output %d", index, i))
 
-			require.Equal(t, uint64((tc.inputNum*100)/tc.outputNum), utxo.GetAmount())
-			require.EqualValues(t, addrs[(i+1)%len].Bytes(), utxo.GetAddress())
+			require.Equal(t, uint64((tc.inputNum*100)/tc.outputNum), utxo.Amount)
+			require.EqualValues(t, addrs[(i+1)%len].Bytes(), utxo.Address)
+			require.True(t, utxo.Valid, "Output UTXO is not valid")
+			require.Equal(t, inputKeys, utxo.InputKeys, "Input keys for new outputs not set properly")
 
-			mapper.DeleteUTXO(ctx, o.Owner, position)
+			deleteUTXO(ctx, capKey, mapper, utxo)
 			utxo = mapper.GetUTXO(ctx, o.Owner, position)
-			require.Nil(t, utxo)
+			require.Equal(t, utxo, UTXO{}, "UTXO was not deleted")
 		}
 	}
+}
+
+func deleteUTXO(ctx sdk.Context, storeKey sdk.StoreKey, um Mapper, utxo UTXO) {
+	store := ctx.KVStore(storeKey)
+	key := um.ConstructKey(utxo.Address, utxo.Position)
+	store.Delete(key)
 }

@@ -28,5 +28,4 @@ func MakeCodec() *amino.Codec {
 
 func RegisterAmino(cdc *amino.Codec) {
 	cdc.RegisterInterface((*Position)(nil), nil)
-	cdc.RegisterInterface((*UTXO)(nil), nil)
 }
