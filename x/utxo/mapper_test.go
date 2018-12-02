@@ -161,65 +161,6 @@ func TestInvalidAddress(t *testing.T) {
 	require.Equal(t, utxo.SpenderKeys, [][]byte{[]byte("spenderKey")}, "UTXO doesn't have spenderKeys set after valid spend")
 }
 
-/*
-	Test getting all UTXOs for an Address.
-*/
-
-func TestGetUTXOsForAddress(t *testing.T) {
-	ms, capKey, _ := SetupMultiStore()
-
-	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-
-	cdc := MakeCodec()
-	cdc.RegisterConcrete(testPosition{}, "x/utxo/testPosition", nil)
-	mapper := NewBaseMapper(capKey, cdc)
-
-	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.PrivKeyToAddress(privA)
-
-	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.PrivKeyToAddress(privB)
-
-	privC, _ := ethcrypto.GenerateKey()
-	addrC := utils.PrivKeyToAddress(privC)
-
-	positionB0 := newTestPosition([]uint64{1, 0, 0})
-	positionB1 := newTestPosition([]uint64{2, 1, 0})
-	positionB2 := newTestPosition([]uint64{3, 2, 1})
-
-	utxo0 := NewUTXO(addrB.Bytes(), 100, "testEther", positionB0)
-	utxo1 := NewUTXO(addrB.Bytes(), 200, "testEther", positionB1)
-	utxo2 := NewUTXO(addrB.Bytes(), 300, "testEther", positionB2)
-
-	mapper.ReceiveUTXO(ctx, utxo0)
-	mapper.ReceiveUTXO(ctx, utxo1)
-	mapper.ReceiveUTXO(ctx, utxo2)
-
-	utxosForAddressB := mapper.GetUTXOsForAddress(ctx, addrB.Bytes())
-	require.Equal(t, 3, len(utxosForAddressB))
-	require.Equal(t, utxo0, utxosForAddressB[0])
-	require.Equal(t, utxo1, utxosForAddressB[1])
-	require.Equal(t, utxo2, utxosForAddressB[2])
-
-	mapper.SpendUTXO(ctx, addrB.Bytes(), positionB1, [][]byte{[]byte("the aether")})
-
-	utxosForAddressB = mapper.GetUTXOsForAddress(ctx, addrB.Bytes())
-	require.Equal(t, 2, len(utxosForAddressB))
-	require.Equal(t, utxo0, utxosForAddressB[0])
-	require.Equal(t, utxo2, utxosForAddressB[1])
-
-	positionC0 := newTestPosition([]uint64{2, 3, 0})
-	utxo3 := NewUTXO(addrC.Bytes(), 300, "testEther", positionC0)
-	mapper.ReceiveUTXO(ctx, utxo3)
-	utxosForAddressC := mapper.GetUTXOsForAddress(ctx, addrC.Bytes())
-	require.Equal(t, 1, len(utxosForAddressC))
-	require.Equal(t, utxo3, utxosForAddressC[0])
-
-	// check returns empty slice if no UTXOs exist for address
-	utxosForAddressA := mapper.GetUTXOsForAddress(ctx, addrA.Bytes())
-	require.Empty(t, utxosForAddressA)
-}
-
 func TestSpendInvalidUTXO(t *testing.T) {
 	ms, capKey, _ := SetupMultiStore()
 

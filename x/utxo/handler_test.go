@@ -150,7 +150,6 @@ func TestHandleSpendMessage(t *testing.T) {
 			require.NotNil(t, utxo)
 			require.False(t, utxo.Valid, "Spent UTXO not valid")
 			require.Equal(t, spenderKeys, utxo.SpenderKeys, "Spender keys not set properly for inputs")
-			deleteUTXO(ctx, capKey, mapper, utxo)
 		}
 
 		// Check that outputs were created and are valid
@@ -164,16 +163,6 @@ func TestHandleSpendMessage(t *testing.T) {
 			require.EqualValues(t, addrs[(i+1)%len].Bytes(), utxo.Address)
 			require.True(t, utxo.Valid, "Output UTXO is not valid")
 			require.Equal(t, inputKeys, utxo.InputKeys, "Input keys for new outputs not set properly")
-
-			deleteUTXO(ctx, capKey, mapper, utxo)
-			utxo = mapper.GetUTXO(ctx, o.Owner, position)
-			require.Equal(t, utxo, UTXO{}, "UTXO was not deleted")
 		}
 	}
-}
-
-func deleteUTXO(ctx sdk.Context, storeKey sdk.StoreKey, um Mapper, utxo UTXO) {
-	store := ctx.KVStore(storeKey)
-	key := um.ConstructKey(utxo.Address, utxo.Position)
-	store.Delete(key)
 }

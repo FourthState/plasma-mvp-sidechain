@@ -9,7 +9,6 @@ import (
 // retrieved from the context.
 type Mapper interface {
 	GetUTXO(ctx sdk.Context, addr []byte, position Position) UTXO
-	GetUTXOsForAddress(ctx sdk.Context, addr []byte) []UTXO
 	ConstructKey(addr []byte, position Position) []byte
 	ReceiveUTXO(sdk.Context, UTXO)
 	ValidateUTXO(sdk.Context, UTXO) sdk.Error
@@ -50,26 +49,7 @@ func (um baseMapper) GetUTXO(ctx sdk.Context, addr []byte, position Position) UT
 	return utxo
 }
 
-// Returns all the valid UTXOs owned by an address.
-// Returns empty slice if no UTXO exists for the address.
-func (um baseMapper) GetUTXOsForAddress(ctx sdk.Context, addr []byte) []UTXO {
-	store := ctx.KVStore(um.contextKey)
-	iterator := sdk.KVStorePrefixIterator(store, addr)
-	utxos := make([]UTXO, 0)
-
-	for ; iterator.Valid(); iterator.Next() {
-		utxo := um.decodeUTXO(iterator.Value())
-		// Only append if UTXO is valid
-		if utxo.Valid {
-			utxos = append(utxos, utxo)
-		}
-	}
-	iterator.Close()
-
-	return utxos
-}
-
-// Adds the UTXO to the mapper
+// Receives the UTXO to the mapper
 func (um baseMapper) ReceiveUTXO(ctx sdk.Context, utxo UTXO) {
 	store := ctx.KVStore(um.contextKey)
 
@@ -78,7 +58,7 @@ func (um baseMapper) ReceiveUTXO(ctx sdk.Context, utxo UTXO) {
 	store.Set(key, bz)
 }
 
-// Deletes UTXO corresponding to address + position from mapping
+// Spend UTXO corresponding to address + position from mapping
 func (um baseMapper) SpendUTXO(ctx sdk.Context, addr []byte, position Position, spenderKeys [][]byte) sdk.Error {
 	store := ctx.KVStore(um.contextKey)
 	key := um.ConstructKey(addr, position)
