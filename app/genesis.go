@@ -49,20 +49,15 @@ func ToUTXO(gutxo GenesisUTXO) utxo.UTXO {
 	// Any failed str conversion defaults to 0
 	addr := common.HexToAddress(gutxo.Address)
 	amount, _ := strconv.ParseUint(gutxo.Denom, 10, 64)
-	utxo := &types.BaseUTXO{
-		InputAddresses: [2]common.Address{addr, common.Address{}},
-		Address:        addr,
-		Amount:         amount,
-		Denom:          types.Denom,
-	}
+
 	blkNum, _ := strconv.ParseUint(gutxo.Position[0], 10, 64)
 	txIndex, _ := strconv.ParseUint(gutxo.Position[1], 10, 16)
 	oIndex, _ := strconv.ParseUint(gutxo.Position[2], 10, 8)
 	depNum, _ := strconv.ParseUint(gutxo.Position[3], 10, 64)
 
 	position := types.NewPlasmaPosition(blkNum, uint16(txIndex), uint8(oIndex), depNum)
-	utxo.SetPosition(position)
-	return utxo
+
+	return utxo.NewUTXO(addr.Bytes(), amount, "Ether", position)
 }
 
 var (

@@ -71,14 +71,15 @@ func CreateConfirmSig(hash []byte, privKey0, privKey1 *ecdsa.PrivateKey, two_inp
 	signHash := utils.SignHash(hash)
 	confirmSig0Slice, _ := ethcrypto.Sign(signHash, privKey0)
 	copy(confirmSig0[:], confirmSig0Slice)
+	if !two_inputs {
+		return [][65]byte{confirmSig0}
+	}
 
 	var confirmSig1 [65]byte
-	if two_inputs {
-		confirmSig1Slice, _ := ethcrypto.Sign(signHash, privKey1)
-		copy(confirmSig1[:], confirmSig1Slice)
-	}
-	confirmSigs = [][65]byte{confirmSig0, confirmSig1}
-	return confirmSigs
+	confirmSig1Slice, _ := ethcrypto.Sign(signHash, privKey1)
+	copy(confirmSig1[:], confirmSig1Slice)
+
+	return [][65]byte{confirmSig0, confirmSig1}
 }
 
 // helper for constructing single or double input tx
@@ -100,11 +101,11 @@ func GetTx(msg types.SpendMsg, privKey0, privKey1 *ecdsa.PrivateKey, two_sigs bo
 }
 
 // helper for constructing input addresses
-func getInputAddr(addr0, addr1 common.Address, two bool) [2]common.Address {
+func getInputAddr(addr0, addr1 common.Address, two bool) [][]byte {
 	if two {
-		return [2]common.Address{addr0, addr1}
+		return [][]byte{addr0.Bytes(), addr1.Bytes()}
 	} else {
-		return [2]common.Address{addr0, common.Address{}}
+		return [][]byte{addr0.Bytes()}
 	}
 }
 
@@ -117,10 +118,10 @@ func TestNoSigs(t *testing.T) {
 	tx := types.NewBaseTx(msg, emptysigs)
 
 	// Add input UTXOs to mapper
-	utxo1 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 0, 0, 0))
-	utxo2 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 1, 0, 0))
-	mapper.AddUTXO(ctx, utxo1)
-	mapper.AddUTXO(ctx, utxo2)
+	utxo1 := utxo.NewUTXO(msg.Owner0.Bytes(), 100, types.Denom, types.NewPlasmaPosition(1, 0, 0, 0))
+	utxo2 := utxo.NewUTXO(msg.Owner0.Bytes(), 100, types.Denom, types.NewPlasmaPosition(1, 1, 0, 0))
+	mapper.ReceiveUTXO(ctx, utxo1)
+	mapper.ReceiveUTXO(ctx, utxo2)
 
 	handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
 	_, res, abort := handler(ctx, tx, false)
@@ -142,10 +143,10 @@ func TestNotEnoughSigs(t *testing.T) {
 	tx := types.NewBaseTx(msg, sigs)
 
 	// Add input UTXOs to mapper
-	utxo1 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 0, 0, 0))
-	utxo2 := types.NewBaseUTXO(msg.Owner0, [2]common.Address{}, 100, types.Denom, types.NewPlasmaPosition(1, 1, 0, 0))
-	mapper.AddUTXO(ctx, utxo1)
-	mapper.AddUTXO(ctx, utxo2)
+	utxo1 := utxo.NewUTXO(msg.Owner0.Bytes(), 100, types.Denom, types.NewPlasmaPosition(1, 0, 0, 0))
+	utxo2 := utxo.NewUTXO(msg.Owner0.Bytes(), 100, types.Denom, types.NewPlasmaPosition(1, 1, 0, 0))
+	mapper.ReceiveUTXO(ctx, utxo1)
+	mapper.ReceiveUTXO(ctx, utxo2)
 
 	handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
 	_, res, abort := handler(ctx, tx, false)
@@ -256,17 +257,15 @@ func TestDifferentCases(t *testing.T) {
 		require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(6)), res.Code, res.Log)
 
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
-		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, types.Denom, tc.input0.position)
 		txhash0 := tmhash.Sum([]byte("first utxo"))
-		utxo0.TxHash = txhash0
+		utxo0 := utxo.NewUTXOwithInputs(tc.input0.addr.Bytes(), 2000, types.Denom, tc.input0.position, txhash0, inputAddr)
 
-		var utxo1 *types.BaseUTXO
+		var utxo1 utxo.UTXO
 		var txhash1 []byte
 		if tc.input1.owner_index != -1 {
 			txhash1 = tmhash.Sum([]byte("second utxo"))
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
-			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, types.Denom, tc.input1.position)
-			utxo1.TxHash = txhash1
+			utxo1 = utxo.NewUTXOwithInputs(tc.input1.addr.Bytes(), 2000, types.Denom, tc.input1.position, txhash1, inputAddr)
 		}
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
@@ -275,12 +274,12 @@ func TestDifferentCases(t *testing.T) {
 
 		// for ease of testing, txhash is simplified
 		// app_test tests for correct functionality when setting tx_hash
-		mapper.AddUTXO(ctx, utxo0)
+		mapper.ReceiveUTXO(ctx, utxo0)
 		hash := tmhash.Sum(append(txhash0, blockHash...))
 		msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
 		if tc.input1.owner_index != -1 {
 			hash = tmhash.Sum(append(txhash1, blockHash...))
-			mapper.AddUTXO(ctx, utxo1)
+			mapper.ReceiveUTXO(ctx, utxo1)
 			msg.Input1ConfirmSigs = CreateConfirmSig(hash, keys[input1_index0], keys[input1_index1], tc.input1.input_index1 != -1)
 		}
 		tx = GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)

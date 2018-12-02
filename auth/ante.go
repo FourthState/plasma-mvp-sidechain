@@ -125,36 +125,30 @@ func processConfirmSig(
 	res sdk.Result) {
 
 	// Verify utxo exists
-	utxo := utxoMapper.GetUTXO(ctx, addr.Bytes(), &position)
-	if utxo == nil {
+	input := utxoMapper.GetUTXO(ctx, addr.Bytes(), &position)
+	if reflect.DeepEqual(input, utxo.UTXO{}) {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("confirm Sig verification failed: UTXO trying to be spent, does not exist: %v.", position)).Result()
 	}
-	plasmaUTXO, ok := utxo.(*types.BaseUTXO)
-	if !ok {
-		return sdk.ErrInternal("utxo must be of type BaseUTXO").Result()
+	// Get input addresses for input UTXO (grandfather inputs)
+	inputAddresses := input.InputAddresses()
+	if len(inputAddresses) != len(sigs) {
+		return sdk.ErrUnauthorized("Wrong number of confirm sigs").Result()
 	}
-	inputAddresses := plasmaUTXO.GetInputAddresses()
 
-	// Get the block hash
+	// Get the block hash that input was created in
 	blknumKey := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(blknumKey, plasmaUTXO.GetPosition().Get()[0].Uint64())
+	binary.PutUvarint(blknumKey, input.Position.Get()[0].Uint64())
 	blockHash := metadataMapper.GetMetadata(ctx, blknumKey)
 
-	txHash := plasmaUTXO.GetTxHash()
-
-	hash := append(txHash, blockHash...)
+	// Create confirm signature hash
+	hash := append(input.TxHash, blockHash...)
 	confirmHash := tmhash.Sum(hash)
 	signHash := utils.SignHash(confirmHash)
 
-	pubKey0, err0 := ethcrypto.SigToPub(signHash, sigs[0][:])
-	if err0 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey0).Bytes(), inputAddresses[0].Bytes()) {
-		return sdk.ErrUnauthorized("confirm signature 0 verification failed").Result()
-	}
-
-	if utils.ValidAddress(inputAddresses[1]) {
-		pubKey1, err1 := ethcrypto.SigToPub(signHash, sigs[1][:])
-		if err1 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey1).Bytes(), inputAddresses[1].Bytes()) {
-			return sdk.ErrUnauthorized("confirm signature 1 verification failed").Result()
+	for i, sig := range sigs {
+		pubKey, err := ethcrypto.SigToPub(signHash, sig[:])
+		if err != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey).Bytes(), inputAddresses[i]) {
+			return sdk.ErrUnauthorized(fmt.Sprintf("confirm signature %d verification failed", i)).Result()
 		}
 	}
 
@@ -164,14 +158,14 @@ func processConfirmSig(
 // Checks that utxo at the position specified exists, matches the address in the SpendMsg
 // and returns the denomination associated with the utxo
 func checkUTXO(ctx sdk.Context, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
-	utxo := mapper.GetUTXO(ctx, addr.Bytes(), &position)
-	if utxo == nil {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, does not exist: %v.", position)).Result()
+	input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
+	if !input.Valid {
+		return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
 	}
 
 	// Verify that utxo owner equals input address in the transaction
-	if !reflect.DeepEqual(utxo.GetAddress(), addr.Bytes()) {
-		return sdk.ErrUnauthorized(fmt.Sprintf("signer does not match utxo owner, signer: %X  owner: %X", addr.Bytes(), utxo.GetAddress())).Result()
+	if !reflect.DeepEqual(input.Address, addr.Bytes()) {
+		return sdk.ErrUnauthorized(fmt.Sprintf("signer does not match utxo owner, signer: %X  owner: %X", addr.Bytes(), input.Address)).Result()
 	}
 
 	return sdk.Result{}

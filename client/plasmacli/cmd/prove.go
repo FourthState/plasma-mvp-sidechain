@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
-	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -41,13 +41,13 @@ var proveCmd = &cobra.Command{
 			return err2
 		}
 
-		var utxo types.BaseUTXO
-		err = ctx.Codec.UnmarshalBinaryBare(res, &utxo)
+		var resUTXO utxo.UTXO
+		err = ctx.Codec.UnmarshalBinaryBare(res, &resUTXO)
 		if err != nil {
 			return err
 		}
 
-		result, err := ctx.Client.Tx(utxo.TxHash, true)
+		result, err := ctx.Client.Tx(resUTXO.TxHash, true)
 		if err != nil {
 			return err
 		}

@@ -1,8 +1,6 @@
 package utxo
 
 import (
-	"errors"
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 
@@ -23,8 +21,8 @@ type testPosition struct {
 	OutputIndex uint8
 }
 
-func testProtoUTXO(ctx sdk.Context, msg sdk.Msg) UTXO {
-	return &testUTXO{}
+func testProtoPosition() Position {
+	return &testPosition{}
 }
 
 func newTestPosition(newPos []uint64) testPosition {
@@ -46,89 +44,19 @@ func (pos testPosition) IsValid() bool {
 	return true
 }
 
-var _ UTXO = &testUTXO{}
-
-type testUTXO struct {
-	Owner    []byte
-	Amount   uint64
-	Denom    string
-	Position testPosition
-}
-
-func newTestUTXO(owner []byte, amount uint64, position testPosition) UTXO {
-	return &testUTXO{
-		Owner:    owner,
-		Amount:   amount,
-		Denom:    "Ether",
-		Position: position,
-	}
-}
-
-func (utxo testUTXO) GetAddress() []byte {
-	return utxo.Owner
-}
-
-func (utxo *testUTXO) SetAddress(address []byte) error {
-	if utxo.Owner != nil {
-		return errors.New("Owner already set")
-	}
-	utxo.Owner = address
-	return nil
-}
-
-func (utxo testUTXO) GetAmount() uint64 {
-	return utxo.Amount
-}
-
-func (utxo *testUTXO) SetAmount(amount uint64) error {
-	if utxo.Amount != 0 {
-		return errors.New("Owner already set")
-	}
-	utxo.Amount = amount
-	return nil
-}
-
-func (utxo testUTXO) GetDenom() string {
-	return utxo.Denom
-}
-
-func (utxo *testUTXO) SetDenom(denom string) error {
-	if utxo.Denom != "" {
-		return errors.New("Owner already set")
-	}
-	utxo.Denom = denom
-	return nil
-}
-
-func (utxo testUTXO) GetPosition() Position {
-	return utxo.Position
-}
-
-func (utxo *testUTXO) SetPosition(pos Position) error {
-
-	position, ok := pos.(testPosition)
-	if !ok {
-		fmt.Println("ah")
-		return errors.New("position setting err")
-	}
-	utxo.Position = position
-	return nil
-}
-
 /*
-	Basic test of Get, Add, Delete
+	Basic test of Get, Receive, Spend
 	Creates a valid UTXO and adds it to the uxto mapping.
 	Checks to make sure UTXO isn't nil after adding to mapping.
 	Then deletes the UTXO from the mapping
 */
 
-func TestUTXOGetAddDelete(t *testing.T) {
+func TestUTXOGetReceiveSpend(t *testing.T) {
 	ms, capKey, _ := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	cdc := MakeCodec()
-	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
-	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	cdc.RegisterConcrete(testPosition{}, "x/utxo/testPosition", nil)
 	mapper := NewBaseMapper(capKey, cdc)
 
 	priv, _ := ethcrypto.GenerateKey()
@@ -136,20 +64,21 @@ func TestUTXOGetAddDelete(t *testing.T) {
 
 	position := newTestPosition([]uint64{1, 0, 0})
 
-	utxo := newTestUTXO(addr.Bytes(), 100, position)
+	utxo := NewUTXO(addr.Bytes(), 100, "testEther", position)
 
-	require.NotNil(t, utxo)
-	require.Equal(t, addr.Bytes(), utxo.GetAddress())
-	require.EqualValues(t, position, utxo.GetPosition())
+	require.Equal(t, addr.Bytes(), utxo.Address)
+	require.EqualValues(t, position, utxo.Position)
 
-	mapper.AddUTXO(ctx, utxo)
+	mapper.ReceiveUTXO(ctx, utxo)
 
+	received := mapper.GetUTXO(ctx, addr.Bytes(), position)
+	require.True(t, received.Valid, "output UTXO is not valid")
+	require.Equal(t, utxo, received, "not equal after receive")
+
+	mapper.SpendUTXO(ctx, addr.Bytes(), position, [][]byte{[]byte("spenderKey")})
 	utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
-	require.NotNil(t, utxo)
-
-	mapper.DeleteUTXO(ctx, addr.Bytes(), position)
-	utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
-	require.Nil(t, utxo)
+	require.False(t, utxo.Valid, "Spent UTXO is still valid")
+	require.Equal(t, utxo.SpenderKeys, [][]byte{[]byte("spenderKey")})
 }
 
 /*
@@ -163,8 +92,7 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	cdc := MakeCodec()
-	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
-	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	cdc.RegisterConcrete(testPosition{}, "x/utxo/testPosition", nil)
 	mapper := NewBaseMapper(capKey, cdc)
 
 	priv, _ := ethcrypto.GenerateKey()
@@ -172,21 +100,21 @@ func TestMultiUTXOAddDeleteSameBlock(t *testing.T) {
 
 	for i := 0; i < 20; i++ {
 		position := newTestPosition([]uint64{uint64(i%4) + 1, uint64(i / 4), 0})
-		utxo := newTestUTXO(addr.Bytes(), 100, position)
-		mapper.AddUTXO(ctx, utxo)
+		utxo := NewUTXO(addr.Bytes(), 100, "testEther", position)
+		mapper.ReceiveUTXO(ctx, utxo)
 
 		utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
-		require.NotNil(t, utxo)
+		require.True(t, utxo.Valid, "Received UTXO is not valid")
 	}
 
 	for i := 0; i < 20; i++ {
 		position := newTestPosition([]uint64{uint64(i%4) + 1, uint64(i / 4), 0})
 
 		utxo := mapper.GetUTXO(ctx, addr.Bytes(), position)
-		require.NotNil(t, utxo)
-		mapper.DeleteUTXO(ctx, addr.Bytes(), position)
+		mapper.SpendUTXO(ctx, addr.Bytes(), position, [][]byte{[]byte("spenderKey")})
 		utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
-		require.Nil(t, utxo)
+		require.False(t, utxo.Valid, "Spent UTXO is still valid")
+		require.Equal(t, utxo.SpenderKeys, [][]byte{[]byte("spenderKey")})
 	}
 
 }
@@ -197,8 +125,7 @@ func TestInvalidAddress(t *testing.T) {
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 
 	cdc := MakeCodec()
-	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
-	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	cdc.RegisterConcrete(testPosition{}, "x/utxo/testPosition", nil)
 	mapper := NewBaseMapper(capKey, cdc)
 
 	priv0, _ := ethcrypto.GenerateKey()
@@ -209,82 +136,88 @@ func TestInvalidAddress(t *testing.T) {
 
 	position := newTestPosition([]uint64{1, 0, 0})
 
-	utxo := newTestUTXO(addr0.Bytes(), 100, position)
+	utxo := NewUTXO(addr0.Bytes(), 100, "testEther", position)
 
-	require.NotNil(t, utxo)
-	require.Equal(t, addr0.Bytes(), utxo.GetAddress())
-	require.EqualValues(t, position, utxo.GetPosition())
+	require.Equal(t, addr0.Bytes(), utxo.Address)
+	require.EqualValues(t, position, utxo.Position)
 
-	mapper.AddUTXO(ctx, utxo)
+	mapper.ReceiveUTXO(ctx, utxo)
 
 	// GetUTXO with correct position but wrong address
 	utxo = mapper.GetUTXO(ctx, addr1.Bytes(), position)
-	require.Nil(t, utxo)
+	require.Equal(t, utxo, UTXO{}, "Valid UTXO in wrong location")
 
 	utxo = mapper.GetUTXO(ctx, addr0.Bytes(), position)
-	require.NotNil(t, utxo)
 
-	// DeleteUTXO with correct position but wrong address
-	mapper.DeleteUTXO(ctx, addr1.Bytes(), position)
+	// SpendUTXO with correct position but wrong address
+	mapper.SpendUTXO(ctx, addr1.Bytes(), position, [][]byte{[]byte("spenderKey")})
 	utxo = mapper.GetUTXO(ctx, addr0.Bytes(), position)
-	require.NotNil(t, utxo)
+	require.True(t, utxo.Valid, "UTXO invalid after invalid spend")
+	require.Nil(t, utxo.SpenderKeys, "UTXO has spenderKeys set after invalid spend")
 
-	mapper.DeleteUTXO(ctx, addr0.Bytes(), position)
+	mapper.SpendUTXO(ctx, addr0.Bytes(), position, [][]byte{[]byte("spenderKey")})
 	utxo = mapper.GetUTXO(ctx, addr0.Bytes(), position)
-	require.Nil(t, utxo)
+	require.False(t, utxo.Valid, "UTXO still valid after valid spend")
+	require.Equal(t, utxo.SpenderKeys, [][]byte{[]byte("spenderKey")}, "UTXO doesn't have spenderKeys set after valid spend")
 }
 
-/*
-	Test getting all UTXOs for an Address.
-*/
-
-func TestGetUTXOsForAddress(t *testing.T) {
+func TestSpendInvalidUTXO(t *testing.T) {
 	ms, capKey, _ := SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
-
 	cdc := MakeCodec()
-	cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
-	cdc.RegisterConcrete(&testPosition{}, "x/utxo/testPosition", nil)
+	cdc.RegisterConcrete(testPosition{}, "x/utxo/testPosition", nil)
 	mapper := NewBaseMapper(capKey, cdc)
 
-	privA, _ := ethcrypto.GenerateKey()
-	addrA := utils.PrivKeyToAddress(privA)
+	priv, _ := ethcrypto.GenerateKey()
+	addr := utils.PrivKeyToAddress(priv)
 
-	privB, _ := ethcrypto.GenerateKey()
-	addrB := utils.PrivKeyToAddress(privB)
+	position := newTestPosition([]uint64{1, 0, 0})
 
-	privC, _ := ethcrypto.GenerateKey()
-	addrC := utils.PrivKeyToAddress(privC)
+	utxo := NewUTXO(addr.Bytes(), 100, "testEther", position)
 
-	positionB0 := newTestPosition([]uint64{1, 0, 0})
-	positionB1 := newTestPosition([]uint64{2, 1, 0})
-	positionB2 := newTestPosition([]uint64{3, 2, 1})
+	require.True(t, utxo.Valid, "UTXO is not valid on creation")
 
-	utxo0 := newTestUTXO(addrB.Bytes(), 100, positionB0)
-	utxo1 := newTestUTXO(addrB.Bytes(), 200, positionB1)
-	utxo2 := newTestUTXO(addrB.Bytes(), 300, positionB2)
+	mapper.InvalidateUTXO(ctx, utxo)
 
-	mapper.AddUTXO(ctx, utxo0)
-	mapper.AddUTXO(ctx, utxo1)
-	mapper.AddUTXO(ctx, utxo2)
+	err := mapper.SpendUTXO(ctx, addr.Bytes(), position, [][]byte{[]byte("spenderKey")})
 
-	utxosForAddressB := mapper.GetUTXOsForAddress(ctx, addrB.Bytes())
-	require.NotNil(t, utxosForAddressB)
-	require.Equal(t, 3, len(utxosForAddressB))
-	require.Equal(t, utxo0, utxosForAddressB[0])
-	require.Equal(t, utxo1, utxosForAddressB[1])
-	require.Equal(t, utxo2, utxosForAddressB[2])
+	utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
+	require.NotNil(t, err, "Allowed invalid UTXO to be spent")
+	require.Nil(t, utxo.SpenderKeys, "UTXO mutated after invalid spend")
 
-	positionC0 := newTestPosition([]uint64{2, 3, 0})
-	utxo3 := newTestUTXO(addrC.Bytes(), 300, positionC0)
-	mapper.AddUTXO(ctx, utxo3)
-	utxosForAddressC := mapper.GetUTXOsForAddress(ctx, addrC.Bytes())
-	require.NotNil(t, utxosForAddressC)
-	require.Equal(t, 1, len(utxosForAddressC))
-	require.Equal(t, utxo3, utxosForAddressC[0])
+	mapper.ValidateUTXO(ctx, utxo)
+	err = mapper.SpendUTXO(ctx, addr.Bytes(), position, [][]byte{[]byte("spenderKey")})
 
-	// check returns empty slice if no UTXOs exist for address
-	utxosForAddressA := mapper.GetUTXOsForAddress(ctx, addrA.Bytes())
-	require.Empty(t, utxosForAddressA)
+	utxo = mapper.GetUTXO(ctx, addr.Bytes(), position)
+	require.Nil(t, err, "Spend of valid UTXO errorred")
+	require.False(t, utxo.Valid, "Spent UTXO is still valid")
+	require.Equal(t, utxo.SpenderKeys, [][]byte{[]byte("spenderKey")}, "UTXO doesn't have spenderKeys set after valid spend")
+}
+
+func TestUTXOMethods(t *testing.T) {
+	_, capKey, _ := SetupMultiStore()
+
+	cdc := MakeCodec()
+	cdc.RegisterConcrete(testPosition{}, "x/utxo/testPosition", nil)
+	mapper := NewBaseMapper(capKey, cdc)
+
+	addr1 := []byte("12345")
+	addr2 := []byte("13579")
+	addr3 := []byte("67890")
+
+	outputPos1 := testPosition{7, 8, 9}
+	outputPos2 := testPosition{3, 4, 5}
+
+	outputKey1 := mapper.ConstructKey(addr1, outputPos1)
+	outputKey2 := mapper.ConstructKey(addr2, outputPos2)
+
+	testUTXO := NewUTXO(addr3, 100, "Ether", testPosition{0, 1, 2})
+	testUTXO.SpenderKeys = [][]byte{outputKey1, outputKey2}
+
+	addrs := testUTXO.SpenderAddresses()
+	require.Equal(t, [][]byte{addr1, addr2}, addrs, "Spender addresses are not correct")
+
+	positions := testUTXO.SpenderPositions(cdc, testProtoPosition)
+	require.Equal(t, []Position{&outputPos1, &outputPos2}, positions, "Spender position not correct")
 }
