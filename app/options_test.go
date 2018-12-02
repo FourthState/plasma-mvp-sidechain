@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -16,6 +18,8 @@ const (
 )
 
 func TestSetPrivKey(t *testing.T) {
+	rootchain := utils.GenerateAddress()
+
 	// create a private key file
 	privkey_file, err := ioutil.TempFile("", "private_key")
 	require.NoError(t, err)
@@ -29,11 +33,15 @@ func TestSetPrivKey(t *testing.T) {
 	db := dbm.NewMemDB()
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
 	cc := NewChildChain(logger, db, nil,
-		SetEthPrivKey(privkey_file.Name(), true),
+		SetEthConfig(true, privkey_file.Name(), rootchain.String()),
 	)
 
 	private_key, _ := crypto.LoadECDSA(privkey_file.Name())
 	privkey_file.Close()
 	require.EqualValues(t, private_key, cc.validatorPrivKey)
 	require.Equal(t, true, cc.isValidator)
+
+	var empty ethcmn.Address
+	require.NotEqual(t, empty, cc.rootchain)
+	require.Equal(t, rootchain, cc.rootchain)
 }

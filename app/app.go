@@ -46,14 +46,19 @@ type ChildChain struct {
 	// Manage addition and deletion of utxo's
 	utxoMapper utxo.Mapper
 
+	metadataMapper metadata.MetadataMapper
+
+	/* Validator Information */
+	isValidator bool
+
 	// Address that validator uses to collect fees
 	validatorAddress ethcmn.Address
 
+	// Private key for submitting blocks to rootchain
 	validatorPrivKey *ecdsa.PrivateKey
 
-	metadataMapper metadata.MetadataMapper
-
-	isValidator bool
+	// Rootchain contract address
+	rootchain ethcmn.Address
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options ...func(*ChildChain)) *ChildChain {

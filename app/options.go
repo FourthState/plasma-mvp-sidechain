@@ -3,12 +3,15 @@ package app
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"path/filepath"
+
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func SetEthPrivKey(privkey_file string, isValidator bool) func(*ChildChain) {
+func SetEthConfig(isValidator bool, privkey_file string, rootchain_addr string) func(*ChildChain) {
 	var privkey *ecdsa.PrivateKey
+	var rootchain ethcmn.Address
 	if isValidator {
 		path, err := filepath.Abs(privkey_file)
 		if err != nil {
@@ -21,9 +24,12 @@ func SetEthPrivKey(privkey_file string, isValidator bool) func(*ChildChain) {
 			errMsg := fmt.Sprintf("Could not load provided private key file to ecdsa private key: %v", err)
 			panic(errMsg)
 		}
+
+		rootchain = ethcmn.HexToAddress(rootchain_addr)
 	}
 	return func(cc *ChildChain) {
 		cc.validatorPrivKey = privkey
 		cc.isValidator = isValidator
+		cc.rootchain = rootchain
 	}
 }

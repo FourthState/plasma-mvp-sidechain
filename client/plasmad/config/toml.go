@@ -12,16 +12,15 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 ##### ethereum config options #####
+# Boolean specifying if this node is a validator
+is_validator = "{{ .IsValidator }}"
 
 # File containing unencrypted private key
 # Used to sign eth transactions interacting with the rootchain  
 ethereum_privkey_file = "{{ .EthPrivKeyFile }}"
 
-# Gas limit for eth transactions
-gas_limit = "{{.EthGasLimit }}"
-
-# Boolean specifying if this node is a validator
-is_validator = "{{ .IsValidator }}"`
+# Ethereum rootchain contract address
+ethereum_rootchain = "{{.EthRootchain}}"`
 
 var configTemplate *template.Template
 
