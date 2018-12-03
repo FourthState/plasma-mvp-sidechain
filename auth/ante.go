@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
@@ -17,7 +18,7 @@ import (
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
 // confirm signatures, and increments the feeAmount
-func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper, feeUpdater utxo.FeeUpdater) sdk.AnteHandler {
+func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper, feeUpdater utxo.FeeUpdater, plasmaClient *eth.Plasma) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx, simulate bool,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
@@ -51,9 +52,14 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		addr0 := common.BytesToAddress(signerAddrs[0].Bytes())
 		position0 := types.PlasmaPosition{spendMsg.Blknum0, spendMsg.Txindex0, spendMsg.Oindex0, spendMsg.DepositNum0}
 
-		res := checkUTXO(ctx, utxoMapper, position0, addr0)
+		res := checkUTXO(ctx, plasmaClient, utxoMapper, position0, addr0)
 		if !res.IsOK() {
 			return ctx, res, true
+		}
+		if position0.IsDeposit() {
+			deposit, _ := DepositExists(position0.DepositNum, plasmaClient)
+			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount.Int64()), types.Denom, position0)
+			utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 		}
 
 		res = processSig(addr0, sigs[0], signBytes)
@@ -75,9 +81,14 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			addr1 := common.BytesToAddress(signerAddrs[1].Bytes())
 			position1 := types.PlasmaPosition{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
 
-			res := checkUTXO(ctx, utxoMapper, position1, addr1)
+			res := checkUTXO(ctx, plasmaClient, utxoMapper, position1, addr1)
 			if !res.IsOK() {
 				return ctx, res, true
+			}
+			if position1.IsDeposit() {
+				deposit, _ := DepositExists(position1.DepositNum, plasmaClient)
+				inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount.Int64()), types.Denom, position1)
+				utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 			}
 
 			res = processSig(addr1, sigs[1], signBytes)
@@ -157,16 +168,44 @@ func processConfirmSig(
 
 // Checks that utxo at the position specified exists, matches the address in the SpendMsg
 // and returns the denomination associated with the utxo
-func checkUTXO(ctx sdk.Context, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
-	input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
-	if !input.Valid {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
+func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
+	var inputAddress []byte
+	if position.IsDeposit() {
+		deposit, ok := DepositExists(position.DepositNum, plasmaClient)
+		if !ok {
+			return utxo.ErrInvalidUTXO(2, "Deposit UTXO does not exist yet").Result()
+		}
+		inputAddress = deposit.Owner.Bytes()
+	} else {
+		input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
+		if !input.Valid {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
+		}
 	}
 
 	// Verify that utxo owner equals input address in the transaction
-	if !reflect.DeepEqual(input.Address, addr.Bytes()) {
-		return sdk.ErrUnauthorized(fmt.Sprintf("signer does not match utxo owner, signer: %X  owner: %X", addr.Bytes(), input.Address)).Result()
+	if !reflect.DeepEqual(inputAddress, addr.Bytes()) {
+		return sdk.ErrUnauthorized(fmt.Sprintf("signer does not match utxo owner, signer: %X  owner: %X", addr.Bytes(), inputAddress)).Result()
 	}
 
 	return sdk.Result{}
 }
+
+func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (*types.Deposit, bool) {
+	fmt.Println("PlasmaClient")
+	fmt.Println(plasmaClient)
+	deposit, err := plasmaClient.CheckDeposit(sdk.NewUint(nonce))
+	fmt.Println(err.Error())
+	if err != nil {
+		fmt.Println("Goodbye")
+		return nil, false
+	}
+	fmt.Println("hello?")
+	return deposit, true
+}
+
+/*
+func ExitPriority(position types.PlasmaPosition) {
+	if position.IsDeposit()
+}
+*/

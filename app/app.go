@@ -99,10 +99,23 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	app.SetInitChainer(app.initChainer)
 	app.SetEndBlocker(app.endBlocker)
 
-	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.metadataMapper, app.feeUpdater))
+	// Set Ethereum connection
+	client, err := eth.InitEthConn(app.nodeURL)
+	if err != nil {
+		panic(err)
+	}
 
-	err := app.LoadLatestVersion(app.capKeyMainStore)
+	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), client, app.BaseApp.Logger, app.validatorPrivKey, app.isValidator)
+	if err != nil {
+		panic(err)
+	}
+
+	app.ethConnection = plasmaClient
+
+	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.metadataMapper, app.feeUpdater, app.ethConnection))
+
+	err = app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
