@@ -1,8 +1,22 @@
 # Rootchain Documentation
-```solidity
-function submitBlock(bytes32 root)
+
+The transcation bytes, `txBytes`, in the contract follow the convention:  
 ```
-The validator submits the block header, `root` of each child chain block. More than one block can be submitted per call by appending the roots to one another.  
+RLP_ENCODE ([ 
+  [Blknum1, TxIndex1, Oindex1, DepositNonce1, Amount1, ConfirmSig1,
+
+  Blknum2, TxIndex2, Oindex2, DepositNonce2, Amount2, ConfirmSig2,
+
+  NewOwner, Denom1, NewOwner, Denom2, Fee],
+
+  [Signature1, Signature2]
+])
+```
+```solidity
+function submitBlock(bytes32 blocks, uint256[] txnsPerBlock, uint256 blockNum)
+```
+The validator submits appended block headers in ascending order. Each block can be of variable block size(capped at 2^16 txns per block). The total number of transactions per block must be passed in through `txnsPerBlock`.
+`blockNum` must be the intended block number of the first header in this call. Ordering is enforced on each call. `blockNum == lastCommittedBlock + 1`.
 
 <br >
 
@@ -26,7 +40,7 @@ struct depositStruct {
 <br />
 
 ```solidity
-function startTransactionExit(uint256[3] txPos, bytes txBytes, bytes proof, bytes sigs, bytes confirmSignatures)
+function startTransactionExit(uint256[3] txPos, bytes txBytes, bytes proof, bytes confirmSignatures)
 ```
 `txPos` follows the convention - `[blockNumber, transactionIndex, outputIndex]`
 
@@ -51,19 +65,19 @@ This is because of the differing priority calculation. The priority of a deposit
 <br />
 
 ```solidity
-function challengeTransactionExit(uint256[3] txPos, uint256[2] newTxPos, bytes txBytes, bytes proof, bytes sigs, bytes confirmSignature)
+function challengeTransactionExit(uint256[3] exitingTxPos, uint256[2] challengingTxPos, bytes txBytes, bytes proof, bytes confirmSignature)
 ```
-`txPos` and `newTxPos` follow the convention - `[blockNumber, transcationIndex, outputIndex]`
+`exitingTxPos` and `challengingTxPos` follow the convention - `[blockNumber, transcationIndex, outputIndex]`
 
 A uxto that has starting an exit phase but was already spent on the child chain can be challenged using this function call. A successfull challenge awards the caller with the exit bond.
-The `txPos` locates the malicious utxo and is used to calculate the priority. `newTxPos` locates the transaction that is the parent (offending transaction is an input into this tx).
+The `exitingTxPos` locates the malicious utxo and is used to calculate the priority. `challengingTxPos` locates the transaction that is the parent (offending transaction is an input into this tx).
 The `proof`, `txBytes` and `sigs` is sufficient for a proof of inclusion in the child chain of the parent transaction. The `confirmSignature`, signed by the owner of the malicious transaction,
 acknowledges the inclusion of it's parent in the plasma chain and allows anyone with this confirm signature to challenge a malicious exit of the child.
 
 <br />
 
 ```solidity
-function challengeDepositExit(uint256 nonce, uint256[3] newTxPos, bytes txBytes, bytes sigs, bytes proof, bytes confirmSignature)
+function challengeDepositExit(uint256 nonce, uint256[3] newTxPos, bytes txBytes, bytes proof, bytes confirmSignature)
 ```
 A deposit that has been spent in the child chain is challenged here. The `txBytes` of the the parent transaction must include the nonce as one if it's input. The `txBytes`, `sigs` and `proof` is
 sufficient for a proof of inclusion. Similar to a normal challenge, the owner of the deposit must have also broadcasted a `confirmSignature` acknowledging the spend. A successfull challenge awards the
@@ -96,27 +110,6 @@ Sender withdraws all funds associated with their balance from the contract.
 function balanceOf(address _address) returns (uint256 amount)
 ```
 Getter for the withdrawable balance of `_address`
-
-<br />
-
-```solidity
-function getChildBlock(uint256 blockNumber) returns (bytes32 header, uint256 created_at)
-```
-Getter for the block header and when the block was submitted
-
-<br />
-
-```solidity
-function getTransactionExit(uint256 priority) returns (address owner, uint256 amount, uint256[3] utxoPos, uint256 created_at, uint8 state)
-```
-Getter for all information about an exit
-
-<br />
-
-```solidity
-function getDeposit(uint256 nonce) returns (address owner, uint256 amount, uint256 created_at)
-```
-Getter for all information about a deposit
 
 <br />
 

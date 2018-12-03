@@ -6,8 +6,8 @@ before_script:
   - npm install -g truffle@4.1.14 ganache-cli@6.1.8
   - npm install
 
-script: 
-  - ganache-cli -m=plasma_mvp > /dev/null &
+script:
+  - ganache-cli -m "they only media any modify banner suffer pole tag rule creek harvest" > /dev/null &
   - sleep 5
   - truffle migrate
   - truffle test

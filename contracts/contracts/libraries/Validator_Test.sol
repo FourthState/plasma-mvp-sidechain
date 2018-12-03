@@ -10,12 +10,11 @@ contract Validator_Test {
 
   using Validator for bytes32;
 
-  function checkMembership(bytes32 leaf, uint256 index, bytes32 rootHash, bytes proof)
+  function checkMembership(bytes32 leaf, uint256 index, bytes32 rootHash, bytes proof, uint256 total)
       public
-      pure
       returns (bool)
   {
-      return leaf.checkMembership(index, rootHash, proof);
+      return leaf.checkMembership(index, rootHash, proof, total);
   }
 
   function checkSigs(bytes32 txHash, bytes32 confirmationHash, bool input1, bytes sig0, bytes sig1, bytes confirmSignatures)
