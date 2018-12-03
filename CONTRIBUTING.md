@@ -2,7 +2,7 @@
 
 Thank you for considering making contributions to Fourth State's Plasma MVP implementation! We welcome contributions from anyone! See the [open issues](https://github.com/FourthState/plasma-mvp-sidechain/issues) for things we need help with!
 
-Contribute to design discussions and conversation by joining the #plasma-dev channel on Blockchain @ Berkeley's [public slack](https://www.berkeleyblockchain.slack.com/).
+Contribute to design discussions and conversation by joining our [Discord Server](https://discord.gg/YTB5A4P)
 
 ## Prerequisites
 * [Golang](https://golang.org/doc/install)

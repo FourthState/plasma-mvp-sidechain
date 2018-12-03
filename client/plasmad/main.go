@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/cosmos/cosmos-sdk/server"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -25,7 +26,7 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:               "plasmad",
 		Short:             "Plasma Daemon (server)",
-		PersistentPreRunE: server.PersistentPreRunEFn(ctx),
+		PersistentPreRunE: PersistentPreRunEFn(ctx),
 	}
 	rootCmd.AddCommand(cmd.InitCmd(ctx, cdc, app.PlasmaAppInit()))
 
@@ -40,7 +41,13 @@ func main() {
 }
 
 func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
-	return app.NewChildChain(logger, db, traceStore)
+	key_file := viper.GetString("ethereum_privkey_file")
+	isValidator := viper.GetBool("is_validator")
+	rootchain := viper.GetString("rootchain")
+
+	return app.NewChildChain(logger, db, traceStore,
+		app.SetEthConfig(isValidator, key_file, rootchain),
+	)
 }
 
 // non-functional

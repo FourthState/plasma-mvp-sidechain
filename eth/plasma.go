@@ -5,7 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	rootchain "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
-	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -72,16 +72,17 @@ func (plasma *Plasma) SubmitBlock(header []byte) (*types.Transaction, error) {
 }
 
 // CheckDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*utxo.Deposit, error) {
+func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 	key := prefixKey(depositPrefix, nonce.BigInt().Bytes())
 	data, err := plasma.memdb.Get(key)
 
 	// if entry exists, only return if we can decode successfully
 	if err == nil {
 		// try to decode and return
-		var deposit utxo.Deposit
+		var deposit plasmaTypes.Deposit
 		err := rlp.DecodeBytes(data, &deposit)
 		if err != nil {
+			plasma.memdb.Delete(key)
 			plasma.logger.Error("Error decoding cached deposit: %x", data)
 		} else {
 			return &deposit, nil
@@ -100,7 +101,7 @@ func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*utxo.Deposit, error) {
 	}
 
 	wrappedAmount := sdk.NewIntFromBigInt(amount)
-	deposit := utxo.Deposit{
+	deposit := plasmaTypes.Deposit{
 		Owner:  owner,
 		Amount: &wrappedAmount,
 	}
@@ -108,16 +109,14 @@ func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*utxo.Deposit, error) {
 	data, err = rlp.EncodeToBytes(deposit)
 	if err != nil {
 		plasma.logger.Error("Error encoding: %v", deposit)
-		// force another contract call if this function is called again with the same nonce
-		plasma.memdb.Delete(key)
-	} else {
-		// cache the deposit
+	} else { // cache only if we can encode successfully
 		plasma.memdb.Put(key, data)
 	}
 
 	return &deposit, nil
 }
 
+// CheckTransaction indicates if the position has every been exited
 func (plasma *Plasma) CheckTransaction(position sdk.Uint) (bool, error) {
 	key := prefixKey(transactionExitPrefix, position.BigInt().Bytes())
 
@@ -138,7 +137,7 @@ func (plasma *Plasma) watchDeposits() {
 
 		// remove the nonce, encode, and store
 		wrappedAmount := sdk.NewIntFromBigInt(deposit.Amount)
-		val, err := rlp.EncodeToBytes(utxo.Deposit{
+		val, err := rlp.EncodeToBytes(plasmaTypes.Deposit{
 			Owner:  deposit.Depositor,
 			Amount: &wrappedAmount,
 		})

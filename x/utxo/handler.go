@@ -2,6 +2,7 @@ package utxo
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // Return the next position for handler to store newly created UTXOs
@@ -9,25 +10,27 @@ import (
 // If false, NextPosition will increment position to accomadate outputs for a new transaction
 type NextPosition func(ctx sdk.Context, secondary bool) Position
 
-// Proto function to create application's UTXO implementation and fill with some proto-information
-type ProtoUTXO func(sdk.Context, sdk.Msg) UTXO
-
 // User-defined fee update function
 type FeeUpdater func([]Output) sdk.Error
 
 // Handler handles spends of arbitrary utxo implementation
-func NewSpendHandler(um Mapper, nextPos NextPosition, proto ProtoUTXO) sdk.Handler {
+func NewSpendHandler(um Mapper, nextPos NextPosition) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		spendMsg, ok := msg.(SpendMsg)
 		if !ok {
 			panic("Msg does not implement SpendMsg")
 		}
 
-		// Delete inputs from store
-		for _, i := range spendMsg.Inputs() {
-			um.DeleteUTXO(ctx, i.Owner, i.Position)
+		var inputKeys [][]byte
+		inputs := spendMsg.Inputs()
+		for _, in := range inputs {
+			inKey := um.ConstructKey(in.Owner, in.Position)
+			inputKeys = append(inputKeys, inKey)
 		}
 
+		txHash := tmhash.Sum(ctx.TxBytes())
+
+		var spenderKeys [][]byte
 		// Add outputs from store
 		for i, o := range spendMsg.Outputs() {
 			var next Position
@@ -36,12 +39,17 @@ func NewSpendHandler(um Mapper, nextPos NextPosition, proto ProtoUTXO) sdk.Handl
 			} else {
 				next = nextPos(ctx, true)
 			}
-			utxo := proto(ctx, msg)
-			utxo.SetPosition(next)
-			utxo.SetAddress(o.Owner)
-			utxo.SetDenom(o.Denom)
-			utxo.SetAmount(o.Amount)
-			um.AddUTXO(ctx, utxo)
+			spenderKeys = append(spenderKeys, um.ConstructKey(o.Owner, next))
+			utxo := NewUTXOwithInputs(o.Owner, o.Amount, o.Denom, next, txHash, inputKeys)
+			um.ReceiveUTXO(ctx, utxo)
+		}
+
+		// Spend inputs from store
+		for _, i := range spendMsg.Inputs() {
+			err := um.SpendUTXO(ctx, i.Owner, i.Position, spenderKeys)
+			if err != nil {
+				return err.Result()
+			}
 		}
 
 		return sdk.Result{}
@@ -61,7 +69,7 @@ func AnteHelper(ctx sdk.Context, um Mapper, tx sdk.Tx, simulate bool, feeUpdater
 	totalInput := map[string]uint64{}
 	for _, i := range spendMsg.Inputs() {
 		utxo := um.GetUTXO(ctx, i.Owner, i.Position)
-		totalInput[utxo.GetDenom()] += utxo.GetAmount()
+		totalInput[utxo.Denom] += utxo.Amount
 	}
 
 	// Add up all outputs and fee
