@@ -5,12 +5,18 @@ import (
 
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
 	// Only allowed Denomination on this plasma chain
 	Denom = "Ether"
 )
+
+type Deposit struct {
+	Owner  common.Address
+	Amount *sdk.Int
+}
 
 //----------------------------------------
 // Position
@@ -49,6 +55,13 @@ func (position PlasmaPosition) IsValid() bool {
 		// If position represents deposit, depositnum is not 0 and txindex and oindex are 0.
 		return position.DepositNum != 0 && position.TxIndex == 0 && position.Oindex == 0
 	}
+}
+
+func (position PlasmaPosition) IsDeposit() bool {
+	if !position.IsValid() {
+		return false
+	}
+	return position.DepositNum != 0
 }
 
 //-------------------------------------------------------

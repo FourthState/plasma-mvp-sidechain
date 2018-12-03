@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
+	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
 	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
@@ -59,6 +60,14 @@ type ChildChain struct {
 
 	// Rootchain contract address
 	rootchain ethcmn.Address
+
+	// NodeURL for connecting to ethereum client
+	nodeURL string
+
+	// Minimum Fee a validator is willing to accept
+	min_fees uint64
+
+	ethConnection *eth.Plasma
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options ...func(*ChildChain)) *ChildChain {
@@ -128,6 +137,18 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	}
 
 	app.validatorAddress = ethcmn.HexToAddress(genesisState.Validator.Address)
+
+	client, err := eth.InitEthConn(app.nodeURL)
+	if err != nil {
+		panic(err)
+	}
+
+	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), client, app.BaseApp.Logger, app.validatorPrivKey, app.isValidator)
+	if err != nil {
+		panic(err)
+	}
+
+	app.ethConnection = plasmaClient
 
 	// load the initial stake information
 	return abci.ResponseInitChain{Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{

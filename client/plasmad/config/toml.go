@@ -20,7 +20,13 @@ is_validator = "{{ .IsValidator }}"
 ethereum_privkey_file = "{{ .EthPrivKeyFile }}"
 
 # Ethereum rootchain contract address
-ethereum_rootchain = "{{.EthRootchain}}"`
+ethereum_rootchain = "{{.EthRootchain}}"
+
+# Node URL for eth client
+ethereum_nodeurl = "{{.EthNodeURL}}"
+
+# Minimum fee a validator accepts to include a transaction in a block
+minimum_fees = "{{.EthMinFees}}"`
 
 var configTemplate *template.Template
 

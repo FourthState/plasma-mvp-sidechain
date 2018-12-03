@@ -15,6 +15,7 @@ import (
 
 const (
 	privkey = "713bd18559e878e0fa3ee32c8ff3ef4393b82ff9f272a3d7de707882f9a3f7d7"
+	nodeURL = "http://127.0.0.1:8545"
 )
 
 func TestSetPrivKey(t *testing.T) {
@@ -33,7 +34,7 @@ func TestSetPrivKey(t *testing.T) {
 	db := dbm.NewMemDB()
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
 	cc := NewChildChain(logger, db, nil,
-		SetEthConfig(true, privkey_file.Name(), rootchain.String()),
+		SetEthConfig(true, privkey_file.Name(), rootchain.String(), nodeURL, "200"),
 	)
 
 	private_key, _ := crypto.LoadECDSA(privkey_file.Name())
@@ -44,4 +45,6 @@ func TestSetPrivKey(t *testing.T) {
 	var empty ethcmn.Address
 	require.NotEqual(t, empty, cc.rootchain)
 	require.Equal(t, rootchain, cc.rootchain)
+
+	require.Equal(t, uint64(200), cc.min_fees)
 }

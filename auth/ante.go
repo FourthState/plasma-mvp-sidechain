@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/binary"
 	"fmt"
+	rootchain "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
@@ -17,7 +18,7 @@ import (
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
 // confirm signatures, and increments the feeAmount
-func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper, feeUpdater utxo.FeeUpdater) sdk.AnteHandler {
+func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper, feeUpdater utxo.FeeUpdater, plasmaClient *rootchain.RootChainSession) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx, simulate bool,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
@@ -157,16 +158,33 @@ func processConfirmSig(
 
 // Checks that utxo at the position specified exists, matches the address in the SpendMsg
 // and returns the denomination associated with the utxo
-func checkUTXO(ctx sdk.Context, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
-	input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
-	if !input.Valid {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
+func checkUTXO(ctx sdk.Context, plasmaClient *rootchain.RootChainSession, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
+	var inputAddress []byte
+	if position.IsDeposit() {
+		deposit, err := DepositExists(position.DepositNonce, plasmaClient)
+		if err != nil {
+			return utxo.ErrInvalidUTXO(2, "Deposit UTXO does not exist yet").Result()
+		}
+		inputAddress = deposit.Owner
+	} else {
+		input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
+		if !input.Valid {
+			return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
+		}
 	}
 
 	// Verify that utxo owner equals input address in the transaction
-	if !reflect.DeepEqual(input.Address, addr.Bytes()) {
+	if !reflect.DeepEqual(inputAddress, addr.Bytes()) {
 		return sdk.ErrUnauthorized(fmt.Sprintf("signer does not match utxo owner, signer: %X  owner: %X", addr.Bytes(), input.Address)).Result()
 	}
 
 	return sdk.Result{}
+}
+
+func DepositExists(nonce uint64, plasmaClient *rootchain.RootChainSession) (*utxo.Deposit, bool) {
+	deposit, err := plasmaClient.CheckDeposit(position.DepositNum)
+	if err != nil {
+		return nil, false
+	}
+	return deposit, true
 }
