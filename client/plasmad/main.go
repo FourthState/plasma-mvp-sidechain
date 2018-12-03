@@ -43,7 +43,7 @@ func main() {
 func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
 	key_file := viper.GetString("ethereum_privkey_file")
 	isValidator := viper.GetBool("is_validator")
-	rootchain := viper.GetString("rootchain")
+	rootchain := viper.GetString("ethereum_rootchain")
 	nodeURL := viper.GetString("ethereum_nodeurl")
 	minFees := viper.GetString("minimum_fees")
 

@@ -15,7 +15,7 @@ const (
 
 type Deposit struct {
 	Owner  common.Address
-	Amount *sdk.Int
+	Amount int64
 }
 
 //----------------------------------------

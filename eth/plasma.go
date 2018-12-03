@@ -87,7 +87,7 @@ func (plasma *Plasma) SubmitBlock(header []byte) (*types.Transaction, error) {
 }
 
 // CheckDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*utxo.Deposit, error) {
+func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (utxo.Deposit, error) {
 	key := prefixKey(depositPrefix, nonce.BigInt().Bytes())
 	data, err := plasma.memdb.Get(key)
 
@@ -99,25 +99,22 @@ func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*utxo.Deposit, error) {
 		if err != nil {
 			plasma.logger.Error("Error decoding cached deposit: %x", data)
 		} else {
-			return &deposit, nil
+			return deposit, nil
 		}
 	}
-
 	owner, amount, createdAt, err := plasma.session.GetDeposit(nonce.BigInt())
 	if err != nil {
 		plasma.logger.Error("Contract call, GetDeposit, failed %v", err)
-		return nil, err
+		return utxo.Deposit{}, err
 	}
-
 	// deposit does not existed if the timestamp is the default solidity value
 	if createdAt.Sign() == 0 {
-		return nil, errors.New("deposit does not exist")
+		return utxo.Deposit{}, errors.New("deposit does not exist")
 	}
 
-	wrappedAmount := sdk.NewIntFromBigInt(amount)
 	deposit := utxo.Deposit{
 		Owner:  owner,
-		Amount: &wrappedAmount,
+		Amount: amount.Int64(),
 	}
 
 	data, err = rlp.EncodeToBytes(deposit)
@@ -130,7 +127,7 @@ func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*utxo.Deposit, error) {
 		plasma.memdb.Put(key, data)
 	}
 
-	return &deposit, nil
+	return deposit, nil
 }
 
 func (plasma *Plasma) CheckTransaction(position sdk.Uint) (bool, error) {
@@ -152,10 +149,9 @@ func (plasma *Plasma) watchDeposits() {
 		key := prefixKey(depositPrefix, deposit.DepositNonce.Bytes())
 
 		// remove the nonce, encode, and store
-		wrappedAmount := sdk.NewIntFromBigInt(deposit.Amount)
 		val, err := rlp.EncodeToBytes(utxo.Deposit{
 			Owner:  deposit.Depositor,
-			Amount: &wrappedAmount,
+			Amount: deposit.Amount.Int64(),
 		})
 
 		if err != nil {

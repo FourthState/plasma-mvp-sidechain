@@ -88,7 +88,6 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	for _, option := range options {
 		option(app)
 	}
-
 	// define the utxoMapper
 	app.utxoMapper = utxo.NewBaseMapper(
 		app.capKeyMainStore, // target store
