@@ -25,6 +25,7 @@ contract('[RootChain] Deposits', async (accounts) => {
         assert.equal(tx.logs[0].args.depositNonce, nonce, "incorrect deposit nonce");
     });
 
+    /*
     it("Allows deposits of funds into a different address", async () => {
         let nonce = (await rootchain.depositNonce.call()).toNumber();
         let tx = await rootchain.deposit(accounts[2], {from: accounts[1], value: 100});
@@ -186,5 +187,5 @@ contract('[RootChain] Deposits', async (accounts) => {
             toHex(txBytes), toHex(sigs), toHex(proof), toHex(confirmSig), {from: accounts[3]}));
         if (!err)
             assert.fail("Allowed a challenge for an exit already challenged");
-    });
+    });*/
 });

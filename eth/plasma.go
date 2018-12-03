@@ -105,7 +105,7 @@ func (plasma *Plasma) CheckDeposit(nonce sdk.Uint) (*utxo.Deposit, error) {
 
 	owner, amount, createdAt, err := plasma.session.GetDeposit(nonce.BigInt())
 	if err != nil {
-		plasma.logger.Error("Contract call, GetDeposit, failed")
+		plasma.logger.Error("Contract call, GetDeposit, failed %v", err)
 		return nil, err
 	}
 
