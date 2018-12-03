@@ -66,7 +66,7 @@ func loadConfig() (conf *tmcfg.Config, err error) {
 		conf.P2P.RecvRate = 5120000
 		conf.P2P.SendRate = 5120000
 		conf.TxIndex.IndexAllTags = true
-		conf.Consensus.TimeoutCommit = 5 * time.Nanosecond
+		conf.Consensus.TimeoutCommit = time.Second
 		tmcfg.WriteConfigFile(configFilePath, conf)
 	}
 

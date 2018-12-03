@@ -2,11 +2,14 @@ package config
 
 // Defines basic configuration needed to interact with a rootchain contract
 type Config struct {
-	IsValidator    bool   `mapstructure:"is_validator"`
-	EthPrivKeyFile string `mapstructure:"eth_privkey_file"`
-	EthRootchain   string `mapstructure:"eth_rootchain"`
+	IsValidator      bool
+	EthPrivKeyFile   string
+	EthRootchain     string
+	EthNodeURL       string
+	EthMinFees       string
+	EthBlockFinality string
 }
 
 func DefaultConfig() *Config {
-	return &Config{false, "", ""}
+	return &Config{false, "", "", "", "0", "0"}
 }

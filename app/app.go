@@ -59,6 +59,17 @@ type ChildChain struct {
 
 	// Rootchain contract address
 	rootchain ethcmn.Address
+
+	// NodeURL for connecting to ethereum client
+	nodeURL string
+
+	// Minimum Fee a validator is willing to accept
+	min_fees uint64
+
+	// Number of blocks required for a submitted block to be considered final
+	block_finality uint64
+
+	ethConnection *eth.Plasma
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options ...func(*ChildChain)) *ChildChain {

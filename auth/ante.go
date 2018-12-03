@@ -58,7 +58,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		}
 		if position0.IsDeposit() {
 			deposit, _ := DepositExists(position0.DepositNum, plasmaClient)
-			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount.Int64()), types.Denom, position0)
+			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount), types.Denom, position0)
 			utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 		}
 
@@ -87,7 +87,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			}
 			if position1.IsDeposit() {
 				deposit, _ := DepositExists(position1.DepositNum, plasmaClient)
-				inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount.Int64()), types.Denom, position1)
+				inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount), types.Denom, position1)
 				utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 			}
 
@@ -187,20 +187,15 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 	if !reflect.DeepEqual(inputAddress, addr.Bytes()) {
 		return sdk.ErrUnauthorized(fmt.Sprintf("signer does not match utxo owner, signer: %X  owner: %X", addr.Bytes(), inputAddress)).Result()
 	}
-
 	return sdk.Result{}
 }
 
-func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (*types.Deposit, bool) {
-	fmt.Println("PlasmaClient")
-	fmt.Println(plasmaClient)
+func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool) {
 	deposit, err := plasmaClient.CheckDeposit(sdk.NewUint(nonce))
-	fmt.Println(err.Error())
+
 	if err != nil {
-		fmt.Println("Goodbye")
-		return nil, false
+		return types.Deposit{}, false
 	}
-	fmt.Println("hello?")
 	return deposit, true
 }
 
