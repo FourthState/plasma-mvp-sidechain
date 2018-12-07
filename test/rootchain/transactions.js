@@ -46,7 +46,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let merkleRoot;
         [merkleRoot, proof] = generateMerkleRootAndProof([merkleHash], 0);
         let blockNum = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(merkleRoot), [1], blockNum, {from: authority});
+        await rootchain.submitBlock(toHex(merkleRoot), [1], [0], blockNum, {from: authority});
 
         // construct the confirm signature
         let confirmHash = sha256String(merkleHash + merkleRoot.slice(2));
@@ -78,7 +78,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let root2 = "783842a0f2aacc2f988d0d9736aac13a0530f1c78d55ab468a1debcd6b42f109";
         let roots = root1 + root2;
 
-        await rootchain.submitBlock(toHex(roots), [1, total], 1, {from: authority});
+        await rootchain.submitBlock(toHex(roots), [1, total], [0, 0], 1, {from: authority});
 
         let newOwner = "0x53bB5E06573dbD3baEFF3710c860F09F06C4C8A4";
 
@@ -117,7 +117,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let roots = root1 + root2 + root3;
 
         let blockNum = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(roots), [1, total, newTotal], blockNum, {from: authority});
+        await rootchain.submitBlock(toHex(roots), [1, total, newTotal], [0, 0, 0], blockNum, {from: authority});
 
         let newOwner = "0x53bB5E06573dbD3baEFF3710c860F09F06C4C8A4";
 
@@ -133,6 +133,10 @@ contract('[RootChain] Transactions', async (accounts) => {
         // check that the bond has been rewarded to the challenger
         let balance = (await rootchain.balanceOf.call(accounts[2])).toNumber();
         assert.equal(balance, minExitBond, "exit bond not rewarded to challenger");
+
+        let position = 1000000*txPos[0] + 10*txPos[1];
+        let exit = await rootchain.txExits.call(position);
+        assert.equal(exit[3].toNumber(), 2, "Fee exit state is not Challenged");
     });
 
     it("Catches StartedTransactionExit event", async () => {
@@ -161,6 +165,154 @@ contract('[RootChain] Transactions', async (accounts) => {
         let position = 1000000*txPos[0];
         let exit = await rootchain.txExits.call(position);
         assert.equal(exit[3].toNumber(), 3, "exit's state not set to finalized");
+    });
+
+    it("Allows validator to start a fee withdrawal exit", async () => {
+        // non-validators cannot start fee exits
+        let err;
+        [err] = await catchError(rootchain.startFeeExit(txPos[0], {from: accounts[1], value: minExitBond}));
+        if (!err)
+            assert.fail("fee exit start from non-validator");
+
+        // validator cannot start a fee exit without putting a sufficient exit bond
+        [err] = await catchError(rootchain.startFeeExit(txPos[0], {from: authority, value: minExitBond - 100}));
+        if (!err)
+            assert.fail("started fee exit with insufficient bond");
+
+        // cannot start a fee exit for a non-existent block
+        let nonExitentBlockNum = txPos[0] + 100;
+        [err] = await catchError(rootchain.startFeeExit(nonExitentBlockNum, {from: authority, value: minExitBond}));
+        if (!err)
+            assert.fail("started fee exit for non-existent block");
+
+        // validator can start a fee exit with sufficient exit bond
+        let tx = await rootchain.startFeeExit(txPos[0], {from: authority, value: minExitBond});
+
+        let position = 1000000*txPos[0] + 10*(Math.pow(2, 16) - 1);
+        let feeExit = await rootchain.txExits.call(position);
+        assert.equal(feeExit[0].toNumber(), 0, "Incorrect fee exit amount");
+        assert.equal(feeExit[2], authority, "Incorrect fee exit owner");
+        assert.equal(feeExit[3].toNumber(), 1, "Incorrect exit state.");
+
+        // can only start a fee exit for any particular block once
+        [err] = await catchError(rootchain.startFeeExit(txPos[0], {from: authority, value: minExitBond}));
+        if (!err)
+            assert.fail("attempted the same exit while a pending one existed");
+    });
+
+    it("Allows validator to start and finalize a fee withdrawal exit", async () => {
+        let depositAmount = 1000;
+        let feeAmount = 10;
+
+        let depositNonce = (await rootchain.depositNonce.call()).toNumber();
+        await rootchain.deposit(accounts[0], {from: accounts[0], value: depositAmount});
+
+        // deposit is the first input. accounts[0] sends entire deposit to accounts[1]
+        // fee is 10 for this tx
+        let txList = Array(17).fill(0);
+        txList[3] = depositNonce;
+        txList[12] = accounts[1];
+        txList[13] = depositAmount - feeAmount;
+        txList[16] = feeAmount;
+
+        let txHash = web3.sha3(RLP.encode(txList).toString('hex'), {encoding: 'hex'});
+        let sigs = [toHex(await web3.eth.sign(accounts[0], txHash)), toHex(Buffer.alloc(65).toString('hex'))];
+        let txBytes = [txList, sigs];
+        txBytes = RLP.encode(txBytes).toString('hex');
+
+        // submit the block
+        let merkleHash = sha256String(txBytes);
+        let merkleRoot = generateMerkleRootAndProof([merkleHash], 0)[0];
+        let blockNum = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
+        await rootchain.submitBlock(toHex(merkleRoot), [1], [feeAmount], blockNum, {from: authority});
+
+        await rootchain.startFeeExit(blockNum, {from: authority, value: minExitBond});
+
+        let position = 1000000*blockNum + 10*(Math.pow(2, 16) - 1);
+        let feeExit = await rootchain.txExits.call(position);
+        assert.equal(feeExit[0].toNumber(), feeAmount, "Incorrect fee exit amount");
+        assert.equal(feeExit[2], authority, "Incorrect fee exit owner");
+        assert.equal(feeExit[3].toNumber(), 1, "Fee exit state is not Pending");
+
+        fastForward(one_week + 1000);
+
+        await rootchain.finalizeTransactionExits();
+
+        let balance = (await rootchain.balanceOf.call(accounts[0])).toNumber();
+        assert.equal(balance, feeAmount + minExitBond, "Validator has incorrect balance");
+
+        feeExit = await rootchain.txExits.call(position);
+        assert.equal(feeExit[3].toNumber(), 3, "Fee exit state is not Finalized");
+    });
+
+    it("can challenge a fee withdrawal exit", async () => {
+        let depositAmount = 1000;
+        let feeAmount = 10;
+
+        let depositNonce = (await rootchain.depositNonce.call()).toNumber();
+        await rootchain.deposit(accounts[0], {from: accounts[0], value: depositAmount});
+
+        // deposit is the first input. accounts[0] sends entire deposit to accounts[1]
+        // fee is 10 for this tx
+        let txList = Array(17).fill(0);
+        txList[3] = depositNonce;
+        txList[12] = accounts[1];
+        txList[13] = depositAmount - feeAmount;
+        txList[16] = feeAmount;
+
+        let txHash = web3.sha3(RLP.encode(txList).toString('hex'), {encoding: 'hex'});
+        let sigs = [toHex(await web3.eth.sign(accounts[0], txHash)), toHex(Buffer.alloc(65).toString('hex'))];
+        let txBytes = [txList, sigs];
+        txBytes = RLP.encode(txBytes).toString('hex');
+
+        // submit the block
+        let merkleHash = sha256String(txBytes);
+        let merkleRoot = generateMerkleRootAndProof([merkleHash], 0)[0];
+        let blockNum = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
+        await rootchain.submitBlock(toHex(merkleRoot), [1], [feeAmount], blockNum, {from: authority});
+
+        // spend all fees to account[2] and mine the block
+        let txList2 = Array(17).fill(0);
+        txList2[0] = blockNum; txList2[1] = Math.pow(2, 16) - 1; txList2[2] = 0; // first input
+        txList2[12] = accounts[2]; txList2[13] = feeAmount; // first output
+
+        // create signature by deposit owner. Second signature should be zero
+        let txHash2 = web3.sha3(RLP.encode(txList2).toString('hex'), {encoding: 'hex'});
+        let sigs2 = [toHex(await web3.eth.sign(accounts[0], txHash2)), toHex(Buffer.alloc(65).toString('hex'))]
+
+        let newTxBytes2 = [txList2, sigs2];
+        newTxBytes2 = RLP.encode(newTxBytes2).toString('hex');
+
+        // include this transaction in the next block
+        let merkleHash2 = sha256String(newTxBytes2);
+        let root2, proof2;
+        [root2, proof2] = generateMerkleRootAndProof([merkleHash2], 0);
+        let blockNum2 = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
+        await rootchain.submitBlock(toHex(root2), [1], [0], blockNum2, {from: authority});
+
+        // create the confirm sig
+        let confirmHash2 = sha256String(merkleHash2 + root2.slice(2));
+        let newConfirmSignatures2 = await web3.eth.sign(accounts[0], confirmHash2);
+
+        // start fee exit
+        await rootchain.startFeeExit(blockNum, {from: authority, value: minExitBond});
+
+        let position = 1000000*blockNum + 10*(Math.pow(2, 16) - 1);
+        let feeExit = await rootchain.txExits.call(position);
+        assert.equal(feeExit[0].toNumber(), feeAmount, "Incorrect fee exit amount");
+        assert.equal(feeExit[2], authority, "Incorrect fee exit owner");
+        assert.equal(feeExit[3].toNumber(), 1, "Fee exit state is not Pending");
+
+        // challenge fee exit
+        await rootchain.challengeTransactionExit([blockNum, Math.pow(2, 16) - 1, 0], [blockNum2, 0, 0],
+            toHex(newTxBytes2), toHex(proof2), toHex(newConfirmSignatures2),
+            {from: accounts[2]});
+
+        let balance = (await rootchain.balanceOf.call(accounts[2])).toNumber();
+        assert.equal(balance, minExitBond, "exit bond not rewarded to challenger");
+
+        feeExit = await rootchain.txExits.call(position);
+        assert.equal(feeExit[3].toNumber(), 2, "Fee exit state is not Challenged");
     });
 
     it("Requires sufficient bond and refunds excess if overpayed", async () => {
@@ -233,7 +385,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let root, proof2;
         [root, proof2] = generateMerkleRootAndProof([merkleHash], 0);
         let blockNum = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(root), [1], blockNum, {from: authority});
+        await rootchain.submitBlock(toHex(root), [1], [0], blockNum, {from: authority});
 
         // create the confirm sig
         let confirmHash = sha256String(merkleHash + root.slice(2));
@@ -267,6 +419,10 @@ contract('[RootChain] Transactions', async (accounts) => {
         let balance = (await rootchain.balanceOf.call(accounts[2])).toNumber();
         assert.equal(balance, minExitBond, "exit bond not rewarded to challenger");
 
+        let position = 1000000*txPos[0];
+        let exit = await rootchain.txExits.call(position);
+        assert.equal(exit[3].toNumber(), 2, "Fee exit state is not Challenged");
+
         // start an exit of the new utxo after successfully challenging
         await rootchain.startTransactionExit([blockNum, 0, 0],
             toHex(newTxBytes), toHex(proof2), toHex(newConfirmSignatures),
@@ -293,7 +449,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let root, proof2;
         [root, proof2] = generateMerkleRootAndProof([merkleHash], 0);
         let blockNum = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(root), [1], blockNum, {from: authority});
+        await rootchain.submitBlock(toHex(root), [1], [0], blockNum, {from: authority});
 
         // create the confirm sig
         let confirmHash = sha256String(merkleHash + root.slice(2));
@@ -324,7 +480,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let root1, proof1;
         [root1, proof1] = generateMerkleRootAndProof([merkleHash1], 0);
         let blockNum1 = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(root1), [1], blockNum1, {from: authority});
+        await rootchain.submitBlock(toHex(root1), [1], [0], blockNum1, {from: authority});
 
         // create confirmation signature
         let confirmationHash1 = sha256String(merkleHash1.slice(2) + root1.slice(2));
@@ -344,7 +500,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let root2, proof2;
         [root2, proof2] = generateMerkleRootAndProof([merkleHash2], 0);
         let blockNum2 = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(root2), [1], blockNum2, {from: authority});
+        await rootchain.submitBlock(toHex(root2), [1], [0], blockNum2, {from: authority});
 
         // create confirmation signature
         let confirmationHash2 = sha256String(merkleHash2.slice(2) + root2.slice(2));
@@ -377,7 +533,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let root1, proof1;
         [root1, proof1] = generateMerkleRootAndProof([merkleHash1], 0);
         let blockNum1 = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(root1), [1], blockNum1, {from: authority});
+        await rootchain.submitBlock(toHex(root1), [1], [0], blockNum1, {from: authority});
 
         // create confirmation signature
         let confirmationHash1 = sha256String(merkleHash1.slice(2) + root1.slice(2));
@@ -396,7 +552,7 @@ contract('[RootChain] Transactions', async (accounts) => {
         let root2, proof2;
         [root2, proof2] = generateMerkleRootAndProof([merkleHash2], 0);
         let blockNum2 = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(root2), [1], blockNum2, {from: authority});
+        await rootchain.submitBlock(toHex(root2), [1], [0], blockNum2, {from: authority});
 
         // create confirmation signature
         let confirmationHash2 = sha256String(merkleHash2.slice(2) + root2.slice(2));
@@ -462,5 +618,63 @@ contract('[RootChain] Transactions', async (accounts) => {
         assert.equal(finalizedExit[2], accounts[1], "Incorrect finalized exit owner");
         assert.equal(finalizedExit[0], 50, "Incorrect finalized exit amount");
         assert.equal(finalizedExit[3].toNumber(), 3, "Incorrect finalized exit state.");
+    });
+
+    it("Does not finalize a transaction exit if not enough gas", async () => {
+        depositNonce = (await rootchain.depositNonce.call()).toNumber();
+        await rootchain.deposit(accounts[0], {from: accounts[0], value: amount});
+
+        // deposit is the first input. accounts[0] sends entire deposit to accounts[1]
+        let txList2 = Array(17).fill(0);
+        txList2[3] = depositNonce; txList2[12] = accounts[1]; txList2[13] = amount;
+        let txHash2 = web3.sha3(RLP.encode(txList2).toString('hex'), {encoding: 'hex'});
+
+        let sigs2 = [toHex(await web3.eth.sign(accounts[0], txHash2)), toHex(Buffer.alloc(65).toString('hex'))];
+
+        txBytes2 = [txList2, sigs2];
+        txBytes2 = RLP.encode(txBytes2).toString('hex');
+
+        // submit the block
+        let merkleHash2 = sha256String(txBytes2);
+        let merkleRoot2, proof2;
+        [merkleRoot2, proof2] = generateMerkleRootAndProof([merkleHash2], 0);
+        let blockNum2 = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
+        await rootchain.submitBlock(toHex(merkleRoot2), [1], [0], blockNum2, {from: authority});
+
+        // construct the confirm signature
+        let confirmHash2 = sha256String(merkleHash2 + merkleRoot2.slice(2));
+        confirmSignatures2 = await web3.eth.sign(accounts[0], confirmHash2);
+
+        txPos2 = [blockNum2, 0, 0];
+
+        // Start txn exit on both utxos
+        await rootchain.startTransactionExit(txPos,
+            toHex(txBytes), toHex(proof), toHex(confirmSignatures),
+            {from: accounts[1], value: minExitBond});
+
+        await rootchain.startTransactionExit(txPos2,
+            toHex(txBytes2), toHex(proof2), toHex(confirmSignatures2),
+            {from: accounts[1], value: minExitBond});
+
+        fastForward(one_week + 1000);
+
+        // Only provide enough gas for 1 txn to be finalized
+        await rootchain.finalizeTransactionExits({gas: 120000});
+
+        // The first utxo should have been exited correctly
+        let balance = (await rootchain.balanceOf.call(accounts[1])).toNumber();
+        assert.equal(balance, amount + minExitBond);
+
+        let position = 1000000*txPos[0];
+        let exit = await rootchain.txExits.call(position);
+        assert.equal(exit[3].toNumber(), 3, "exit's state not set to finalized");
+
+        // The second utxo exit should still be pending
+        balance = (await rootchain.balanceOf.call(accounts[1])).toNumber();
+        assert.equal(balance, amount + minExitBond);
+
+        position = 1000000*txPos2[0];
+        exit = await rootchain.txExits.call(position);
+        assert.equal(exit[3].toNumber(), 1, "exit has been challenged or finalized");
     });
 });

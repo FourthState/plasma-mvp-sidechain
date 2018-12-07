@@ -154,7 +154,7 @@ contract('[RootChain] Deposits', async (accounts) => {
         [root, proof] = generateMerkleRootAndProof([merkleHash], 0);
 
         let blockNum = (await rootchain.lastCommittedBlock.call()).toNumber() + 1;
-        await rootchain.submitBlock(toHex(root), [1], blockNum, {from: authority});
+        await rootchain.submitBlock(toHex(root), [1], [0], blockNum, {from: authority});
 
         // create the confirm sig
         let confirmHash = sha256String(merkleHash + root.slice(2));
