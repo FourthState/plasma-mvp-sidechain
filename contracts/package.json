@@ -6,6 +6,7 @@
   },
   "scripts": {
     "test": "truffle test",
+    "clean": "rm -rf build wrappers abi",
     "coverage": "./node_modules/.bin/solidity-coverage"
   },
   "devDependencies": {
