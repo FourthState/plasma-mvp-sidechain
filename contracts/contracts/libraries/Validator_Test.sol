@@ -12,6 +12,7 @@ contract Validator_Test {
 
   function checkMembership(bytes32 leaf, uint256 index, bytes32 rootHash, bytes proof, uint256 total)
       public
+      pure
       returns (bool)
   {
       return leaf.checkMembership(index, rootHash, proof, total);

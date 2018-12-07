@@ -2,20 +2,20 @@
 
 The transcation bytes, `txBytes`, in the contract follow the convention:  
 ```
-RLP_ENCODE ([ 
-  [Blknum1, TxIndex1, Oindex1, DepositNonce1, Amount1, ConfirmSig1,
+RLP_ENCODE ([
+  [Blknum1, TxIndex1, Oindex1, DepositNonce1, Owner1, Input1ConfirmSig,
 
-  Blknum2, TxIndex2, Oindex2, DepositNonce2, Amount2, ConfirmSig2,
+   Blknum2, TxIndex2, Oindex2, DepositNonce2, Owner2, Input2ConfirmSig,
 
-  NewOwner, Denom1, NewOwner, Denom2, Fee],
+   NewOwner, Denom1, NewOwner, Denom2, Fee],
 
   [Signature1, Signature2]
 ])
 ```
 ```solidity
-function submitBlock(bytes32 blocks, uint256[] txnsPerBlock, uint256 blockNum)
+function submitBlock(bytes32 blocks, uint256[] txnsPerBlock, uint256[] feesPerBlock, uint256 blockNum)
 ```
-The validator submits appended block headers in ascending order. Each block can be of variable block size(capped at 2^16 txns per block). The total number of transactions per block must be passed in through `txnsPerBlock`.
+The validator submits appended block headers in ascending order. Each block can be of variable block size(capped at 2^16 txns per block). The total number of transactions per block must be passed in through `txnsPerBlock`. The amount of transaction fees collected by the validator per block must be passed in through `feesPerBlock`.
 `blockNum` must be the intended block number of the first header in this call. Ordering is enforced on each call. `blockNum == lastCommittedBlock + 1`.
 
 <br >
@@ -65,7 +65,16 @@ This is because of the differing priority calculation. The priority of a deposit
 <br />
 
 ```solidity
-function challengeTransactionExit(uint256[3] exitingTxPos, uint256[2] challengingTxPos, bytes txBytes, bytes proof, bytes confirmSignature)
+function startFeeExit(uint256 blockNumber)
+```
+The validator of any block should call this function to exit the fees they've collected for that particular block.
+The validator declares the `blockNumber` of the block for which they'd like to exit fees. This exit is then added to exit queue with the lowest priority for that block.
+Note that if the validator attempts to start an exit for a fee-UTXO that has already been spent in a later block, the exit can be challenged through `startTransactionExit` the same way as a regular transaction exit.
+
+<br />
+
+```solidity
+function challengeTransactionExit(uint256[3] exitingTxPos, uint256[3] challengingTxPos, bytes txBytes, bytes proof, bytes confirmSignature)
 ```
 `exitingTxPos` and `challengingTxPos` follow the convention - `[blockNumber, transcationIndex, outputIndex]`
 
