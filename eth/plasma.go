@@ -117,7 +117,6 @@ func (plasma *Plasma) SubmitBlock(header []byte, numTxns sdk.Uint, fee sdk.Uint)
 
 // GetDeposit checks the existence of a deposit nonce
 func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
->>>>>>> 0069dc98085d16bf1e8f9d194defcaceddc9b1b8
 	key := prefixKey(depositPrefix, nonce.BigInt().Bytes())
 	data, err := plasma.memdb.Get(key)
 
