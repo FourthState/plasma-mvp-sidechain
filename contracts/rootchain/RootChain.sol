@@ -23,7 +23,7 @@ contract RootChain is Ownable {
 
     event AddedToBalances(address owner, uint256 amount);
     event BlockSubmitted(bytes32 root, uint256 blockNumber, uint256 numTxns, uint256 feeAmount);
-    event Deposit(address depositor, uint256 amount, uint256 depositNonce);
+    event Deposit(address depositor, uint256 amount, uint256 depositNonce, uint256 ethBlockNum);
 
     event StartedTransactionExit(uint[3] position, address owner, uint256 amount, bytes confirmSignatures);
     event StartedDepositExit(uint nonce, address owner, uint256 amount);
@@ -50,6 +50,7 @@ contract RootChain is Ownable {
         address owner;
         uint256 amount;
         uint256 createdAt;
+        uint256 ethBlocknum;
     }
 
     // exits
@@ -121,8 +122,8 @@ contract RootChain is Ownable {
         public
         payable
     {
-        deposits[depositNonce] = depositStruct(owner, msg.value, block.timestamp);
-        emit Deposit(owner, msg.value, depositNonce);
+        deposits[depositNonce] = depositStruct(owner, msg.value, block.timestamp, block.number);
+        emit Deposit(owner, msg.value, depositNonce, block.number);
 
         depositNonce = depositNonce.add(1);
     }
