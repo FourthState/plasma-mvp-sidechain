@@ -6,6 +6,7 @@
   },
   "scripts": {
     "test": "truffle test",
+    "clean": "rm -rf build wrappers abi",
     "coverage": "./node_modules/.bin/solidity-coverage"
   },
   "devDependencies": {
@@ -14,6 +15,7 @@
     "solidity-coverage": "^0.5.11"
   },
   "dependencies": {
+    "ethereumjs-util": "^6.0.0",
     "npm": "^5.10.0",
     "openzeppelin-solidity": "1.9.0",
     "rlp": "^2.1.0",

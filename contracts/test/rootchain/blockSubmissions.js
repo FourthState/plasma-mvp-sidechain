@@ -2,60 +2,93 @@ let assert = require('chai').assert;
 
 let RootChain = artifacts.require("RootChain");
 
-let mineNBlocks = require('./rootchain_helpers.js').mineNBlocks;
-let catchError = require('../utilities.js').catchError;
+let { toHex, catchError } = require('../utilities.js');
 
 contract('[RootChain] Block Submissions', async (accounts) => {
     let rootchain;
     let authority = accounts[0];
     let minExitBond = 10000;
-    before(async () => {
+    beforeEach(async () => {
         rootchain = await RootChain.new({from: authority});
     });
 
     it("Submit block from authority", async () => {
-        let blkNum = (await rootchain.currentChildBlock.call()).toNumber();
-
-        // waiting at least 5 root chain blocks before submitting a block
-        mineNBlocks(5);
         let root = web3.sha3('1234');
-        let tx = await rootchain.submitBlock(root, {from: authority});
+        let tx = await rootchain.submitBlock(root, [1], [0], 1, {from: authority});
 
         // BlockSubmitted event
         assert.equal(tx.logs[0].args.root, root, "incorrect block root in BlockSubmitted event");
-        assert.equal(tx.logs[0].args.blockNumber.toNumber(), blkNum, "incorrect block number in BlockSubmitted event");
+        assert.equal(tx.logs[0].args.blockNumber.toNumber(), 1, "incorrect block number in BlockSubmitted event");
+        assert.equal(tx.logs[0].args.numTxns.toNumber(), 1, "incorrect block size in BlockSubmitted event");
+        assert.equal(tx.logs[0].args.feeAmount.toNumber(), 0, "incorrect block fee amount in BlockSubmitted event");
 
-        assert.equal((await rootchain.getChildBlock.call(blkNum))[0], root, 'Child block merkle root does not match submitted merkle root.');
+        assert.equal((await rootchain.childChain.call(1))[0], root, 'Child block merkle root does not match submitted merkle root.');
     });
 
     it("Submit block from someone other than authority", async () => {
-        let prev = (await rootchain.currentChildBlock.call()).toNumber();
+        let prev = (await rootchain.lastCommittedBlock.call()).toNumber();
 
-        mineNBlocks(5);
-        let [err] = await catchError(rootchain.submitBlock(web3.sha3('578484785954'), {from: accounts[1]}));
+        let [err] = await catchError(rootchain.submitBlock(web3.sha3('578484785954'), [1], [0], 1, {from: accounts[1]}));
         if (!err)
             assert.fail("Submitted blocked without being the authority");
 
-        let curr = (await rootchain.currentChildBlock.call()).toNumber();
+        let curr = (await rootchain.lastCommittedBlock.call()).toNumber();
         assert.equal(prev, curr, "Child blocknum incorrectly changed");
     });
 
-    it("Submit block within 6 rootchain blocks", async () => {
-        // First submission waits and passes
-        let blkNum = (await rootchain.currentChildBlock.call()).toNumber();
+    it("Can submit more than one merkle root", async () => {
+        let root1 = web3.sha3("root1").slice(2);
+        let root2 = web3.sha3("root2").slice(2);
+        let roots = root1 + root2;
 
-        mineNBlocks(5);
-        let root = web3.sha3('12345');
-        let tx = await rootchain.submitBlock(root, {from: authority});
+        await rootchain.submitBlock(toHex(roots), [1, 2], [0, 0], 1, {from: authority});
 
-        // BlockSubmitted event
-        assert.equal(tx.logs[0].args.root, root, "incorrect block root in BlockSubmitted event");
-        assert.equal(tx.logs[0].args.blockNumber.toNumber(), blkNum, "incorrect block number in BlockSubmitted event");
+        assert.equal((await rootchain.lastCommittedBlock.call()).toNumber(), 2, "blocknum incremented incorrectly");
+        assert.equal((await rootchain.childChain.call(1))[0], toHex(root1), "mismatch in block root");
+        assert.equal((await rootchain.childChain.call(2))[0], toHex(root2), "mismatch in block root");
+    });
 
-        // Second submission does not wait and therfore fails.
-        mineNBlocks(3);
-        let [err] = await catchError(rootchain.submitBlock(web3.sha3('696969696969'), {from: authority}));
+    it("Can submit fees for a block", async () => {
+        let root1 = web3.sha3("root1").slice(2);
+        let root2 = web3.sha3("root2").slice(2);
+        let roots = root1 + root2;
+
+        let fees = [100, 200];
+
+        await rootchain.submitBlock(toHex(roots), [1, 2], fees, 1, {from: authority});
+
+        assert.equal((await rootchain.lastCommittedBlock.call()).toNumber(), 2, "blocknum incremented incorrectly");
+        assert.equal((await rootchain.childChain.call(1))[0], toHex(root1), "mismatch in block root");
+        assert.equal((await rootchain.childChain.call(2))[0], toHex(root2), "mismatch in block root");
+        assert.equal((await rootchain.childChain.call(1))[2], fees[0], "mismatch in block fees");
+        assert.equal((await rootchain.childChain.call(2))[2], fees[1], "mismatch in block fees");
+    });
+
+    it("Cannot exceed size limits for a block", async () => {
+        let root = web3.sha3("root1").slice(2);
+
+        let fees = [100];
+        let numTxns0 = [65535]
+        let numTxns1 = [65536];
+
+        let err;
+        // numTxns1 exceeds block size limit
+        [err] = await catchError(rootchain.submitBlock(toHex(root), numTxns1, fees, 1, {from: authority}));
         if (!err)
-            assert.fail("Submitted block without presumed finality");
+            assert.fail("Allowed submission of a block that exceeds block size limit");
+
+        // numTxns0 does not exceed block size limit
+        await rootchain.submitBlock(toHex(root), numTxns0, fees, 1, {from: authority});
+    });
+
+    it("Enforces block number ordering", async () => {
+        let root1 = web3.sha3("root1").slice(2)
+        let root3 = web3.sha3("root3").slice(2)
+
+        await rootchain.submitBlock(toHex(root1), [1], [0], 1);
+        let err;
+        [err] = await catchError(rootchain.submitBlock(toHex(root3), [1], [0],3));
+        if (!err)
+            assert.fail("Allowed block submission with inconsistent ordering");
     });
 });

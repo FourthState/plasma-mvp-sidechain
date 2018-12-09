@@ -2,13 +2,22 @@ package eth
 
 import (
 	"bytes"
+	"math/big"
 )
 
 const (
+	// prefixes
 	prefixSeperator       = "::"
 	depositPrefix         = "deposit"
 	transactionExitPrefix = "txExit"
 	depositExitPrefix     = "depositExit"
+
+	// keys
+	lastCommittedBlock = "lastCommittedBlock"
+
+	// constants
+	blockIndexFactor = 1000000
+	txIndexFactor    = 10
 )
 
 func prefixKey(prefix string, key []byte) []byte {
@@ -17,4 +26,15 @@ func prefixKey(prefix string, key []byte) []byte {
 	buffer.Write([]byte(prefixSeperator))
 	buffer.Write(key)
 	return buffer.Bytes()
+}
+
+// [blockNumber, txIndex, outputIndex]
+func calcPriority(position [3]*big.Int) *big.Int {
+	bFactor := big.NewInt(blockIndexFactor)
+	tFactor := big.NewInt(txIndexFactor)
+
+	bFactor = bFactor.Mul(bFactor, position[0])
+	tFactor = tFactor.Mul(tFactor, position[1])
+
+	return new(big.Int).Add(bFactor, tFactor).Add(position[2], big.NewInt(0))
 }

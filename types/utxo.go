@@ -1,22 +1,16 @@
 package types
 
 import (
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	amino "github.com/tendermint/go-amino"
 )
 
 const (
 	// Only allowed Denomination on this plasma chain
 	Denom = "Ether"
 )
-
-type Deposit struct {
-	Owner  common.Address
-	Amount int64
-}
 
 //----------------------------------------
 // Position
@@ -62,6 +56,12 @@ func (position PlasmaPosition) IsDeposit() bool {
 		return false
 	}
 	return position.DepositNum != 0
+}
+
+type Deposit struct {
+	Owner    common.Address
+	Amount   sdk.Uint
+	BlockNum sdk.Uint
 }
 
 //-------------------------------------------------------

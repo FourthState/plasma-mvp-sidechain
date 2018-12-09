@@ -22,36 +22,35 @@ contract RootChain is Ownable {
      */
 
     event AddedToBalances(address owner, uint256 amount);
-    event BlockSubmitted(bytes32 root, uint256 blockNumber);
-    event Deposit(address depositor, uint256 amount, uint256 depositNonce);
+    event BlockSubmitted(bytes32 root, uint256 blockNumber, uint256 numTxns, uint256 feeAmount);
+    event Deposit(address depositor, uint256 amount, uint256 depositNonce, uint256 ethBlockNum);
 
-    event ChallengedTransactionExit(uint position, address owner, uint256 amount);
-    event ChallengedDepositExit(uint nonce, address owner, uint256 amount);
-
-    event FinalizedTransactionExit(uint position, address owner, uint256 amount);
-    event FinalizedDepositExit(uint priority, address owner, uint256 amount);
-
-    event StartedTransactionExit(uint position, address owner, uint256 amount, bytes confirmSignatures);
+    event StartedTransactionExit(uint[3] position, address owner, uint256 amount, bytes confirmSignatures);
     event StartedDepositExit(uint nonce, address owner, uint256 amount);
+
+    event ChallengedExit(uint[4] position, address owner, uint256 amount);
+    event FinalizedExit(uint[4] position, address owner, uint256 amount);
 
     /*
      *  Storage
      */
 
     // child chain
-    uint256 public currentChildBlock;
-    uint256 public lastParentBlock;
+    uint256 public lastCommittedBlock;
     uint256 public depositNonce;
     mapping(uint256 => childBlock) public childChain;
     mapping(uint256 => depositStruct) public deposits;
     struct childBlock {
         bytes32 root;
+        uint256 numTxns;
+        uint256 feeAmount;
         uint256 createdAt;
     }
     struct depositStruct {
         address owner;
         uint256 amount;
         uint256 createdAt;
+        uint256 ethBlocknum;
     }
 
     // exits
@@ -65,6 +64,7 @@ contract RootChain is Ownable {
         uint256 amount;
         uint256 createdAt;
         address owner;
+        uint256[4] position; // (blkNum, txIndex, outputIndex, depositNonce)
         ExitState state; // default value is `NonExistent`
     }
 
@@ -78,48 +78,52 @@ contract RootChain is Ownable {
 
     constructor() public
     {
-        currentChildBlock = 1;
+        lastCommittedBlock = 0;
         depositNonce = 1;
-        lastParentBlock = block.number;
-
         minExitBond = 10000;
     }
 
-    // @param blocks 32 byte merkle roots
-    function submitBlock(bytes blocks)
+    // @param blocks       32 byte merkle roots appended in ascending order
+    // @param txnsPerBlock number of transactions per block
+    // @param feesPerBlock amount of fees the validator has collected per block
+    // @param blockNum     the block number of the first header
+    function submitBlock(bytes blocks, uint256[] txnsPerBlock, uint256[] feesPerBlock, uint256 blockNum)
         public
         onlyOwner
     {
-        require(block.number >= lastParentBlock.add(6), "presumed finality required");
-        require(blocks.length != 0 && blocks.length % 32 == 0, "block roots must be of size 32 bytes");
+        require(blockNum == lastCommittedBlock + 1, "inconsistent block number ordering");
+        require(blocks.length > 0 && blocks.length % 32 == 0, "block roots must be of size 32 bytes");
+        require(blocks.length / 32 == txnsPerBlock.length, "blocks and txnsPerBlock lengths are inconsistent");
+        require(blocks.length / 32 == feesPerBlock.length, "blocks and feesPerBlock lengths are inconsistent");
 
         uint memPtr;
         assembly  {
             memPtr := add(blocks, 0x20)
         }
 
+        uint maxNumTxPerBlock = 2**16 - 1;
         bytes32 root;
-        for (uint i = 0; i < blocks.length; i += 32) {
+        for (uint i = 0; i < txnsPerBlock.length; i++) {
+            require(txnsPerBlock[i] <= maxNumTxPerBlock, "number of transactions per block exceeds limit");
+
             assembly {
-                root := mload(add(memPtr, i))
+                root := mload(add(memPtr, mul(i, 32)))
             }
 
-            childChain[currentChildBlock] = childBlock(root, block.timestamp);
-            emit BlockSubmitted(root, currentChildBlock);
-
-            currentChildBlock = currentChildBlock.add(1);
+            childChain[blockNum + i] = childBlock(root, txnsPerBlock[i], feesPerBlock[i], block.timestamp);
+            emit BlockSubmitted(root, blockNum + i, txnsPerBlock[i], feesPerBlock[i]);
         }
 
-        lastParentBlock = block.number;
-    }
+        lastCommittedBlock = lastCommittedBlock.add(txnsPerBlock.length);
+   }
 
     // @param owner owner of this deposit
     function deposit(address owner)
         public
         payable
     {
-        deposits[depositNonce] = depositStruct(owner, msg.value, block.timestamp);
-        emit Deposit(owner, msg.value, depositNonce);
+        deposits[depositNonce] = depositStruct(owner, msg.value, block.timestamp, block.number);
+        emit Deposit(owner, msg.value, depositNonce, block.number);
 
         depositNonce = depositNonce.add(1);
     }
@@ -145,6 +149,7 @@ contract RootChain is Ownable {
             owner: owner,
             amount: amount,
             createdAt: block.timestamp,
+            position: [0,0,0,nonce],
             state: ExitState.Pending
         });
 
@@ -152,9 +157,9 @@ contract RootChain is Ownable {
     }
 
     // Transaction encoding:
-    // [[Blknum0, TxIndex0, Oindex0, depositNonce0, Amount0, ConfirmSig0
-    //  Blknum1, TxIndex1, Oindex1, depositNonce1, Amount1, ConfirmSig1
-    //  NewOwner0, Denom0, NewOwner1, Denom1, Fee],
+    // [[Blknum1, TxIndex1, Oindex1, DepositNonce1, Owner1, Input1ConfirmSig,
+    //   Blknum2, TxIndex2, Oindex2, DepositNonce2, Owner2, Input2ConfirmSig,
+    //   NewOwner, Denom1, NewOwner, Denom2, Fee],
     //  [Signature1, Signature2]]
     //
     // @param txBytes rlp encoded transaction
@@ -203,14 +208,14 @@ contract RootChain is Ownable {
         childBlock storage blk = childChain[txPos[0]];
 
         // check signatures
-        bytes32 merkleHash = keccak256(txBytes);
-        require(txHash.checkSigs(keccak256(abi.encodePacked(merkleHash, blk.root)), // confirmation hash -- sha3(merkleHash, root)
+        bytes32 merkleHash = sha256(txBytes);
+        require(txHash.checkSigs(sha256(abi.encodePacked(merkleHash, blk.root)), // confirmation hash -- sha256(merkleHash, root)
                          // we always assume the first input is always present in a transaction. The second input is optional
                          txList[6].toUint() > 0 || txList[9].toUint() > 0, // existence of input1. Either a deposit or utxo
                          sigList[0].toBytes(), sigList[1].toBytes(), confirmSignatures), "signature mismatch");
 
         // check proof
-        require(merkleHash.checkMembership(txPos[1], blk.root, proof), "invalid merkle proof");
+        require(merkleHash.checkMembership(txPos[1], blk.root, proof, blk.numTxns), "invalid merkle proof");
 
         // check that the UTXO's two direct inputs have not been previously exited
         require(validateTransactionExitInputs(txList), "an input is pending an exit or has been finalized");
@@ -225,10 +230,11 @@ contract RootChain is Ownable {
             owner: txList[12 + 2 * txPos[2]].toAddress(),
             amount: txList[13 + 2 * txPos[2]].toUint(),
             createdAt: block.timestamp,
+            position: [txPos[0], txPos[1], txPos[2], 0],
             state: ExitState.Pending
         });
 
-        emit StartedTransactionExit(position, msg.sender, txList[13 + 2 * txPos[2]].toUint(), confirmSignatures);
+        emit StartedTransactionExit(txPos, msg.sender, txList[13 + 2 * txPos[2]].toUint(), confirmSignatures);
     }
 
     // For any attempted exit of an UTXO, validate that the UTXO's two inputs have not
@@ -257,6 +263,45 @@ contract RootChain is Ownable {
         return true;
     }
 
+    // Validator of any block can call this function to exit the fees collected
+    // for that particular block. The fee exit is added to exit queue with the lowest priority for that block.
+    // In case of the fee UTXO already spent, anyone can challenge the fee exit by providing
+    // the spend of the fee UTXO.
+    // @param blockNumber the block for which the validator wants to exit fees
+    function startFeeExit(uint256 blockNumber)
+        public
+        payable
+        onlyOwner
+    {
+        // specified blockNumber must exist in child chain
+        require(childChain[blockNumber].root != bytes32(0), "specified block does not exist in child chain.");
+
+        require(msg.value >= minExitBond, "insufficient exit bond");
+        if (msg.value > minExitBond) {
+            uint256 excess = msg.value.sub(minExitBond);
+            balances[msg.sender] = balances[msg.sender].add(excess);
+            totalWithdrawBalance = totalWithdrawBalance.add(excess);
+        }
+
+        // a fee UTXO has explicitly defined position [blockNumber, 2**16 - 1, 0]
+        uint256 txIndex = 2**16 - 1;
+        uint256 position = blockIndexFactor*blockNumber + txIndexFactor*txIndex + 0;
+        require(txExits[position].state == ExitState.NonExistent, "this exit has already been started, challenged, or finalized");
+
+        txExitQueue.insert(Math.max256(childChain[blockNumber].createdAt + 1 weeks, block.timestamp) << 128 | position);
+        uint256 feeAmount = childChain[blockNumber].feeAmount;
+        txExits[position] = exit({
+            owner: msg.sender,
+            amount: feeAmount,
+            createdAt: block.timestamp,
+            position: [blockNumber, txIndex, 0, 0],
+            state: ExitState.Pending
+        });
+
+        // pass in empty bytes for confirmSignatures for StartedTransactionExit event.
+        emit StartedTransactionExit([blockNumber, txIndex, 0], msg.sender, feeAmount, "");
+    }
+
     // @param depositNonce     the nonce of the deposit trying to exit
     // @param newTxPos         position of the transaction with this deposit as an input [blkNum, txIndex, outputIndex]
     // @param txBytes          bytes of this transcation
@@ -276,18 +321,19 @@ contract RootChain is Ownable {
         require(exit_.state == ExitState.Pending, "no pending exit to challenge");
 
         // check for inclusion in the side chain
-        bytes32 root = childChain[newTxPos[0]].root;
-        bytes32 merkleHash = keccak256(txBytes);
-        bytes32 confirmationHash = keccak256(abi.encodePacked(merkleHash, root));
+        childBlock storage blk = childChain[newTxPos[0]];
+
+        bytes32 merkleHash = sha256(txBytes);
+        bytes32 confirmationHash = sha256(abi.encodePacked(merkleHash, blk.root));
         require(exit_.owner == confirmationHash.recover(confirmSignature), "mismatch in exit owner and confirm signature");
-        require(merkleHash.checkMembership(newTxPos[1], root, proof), "incorrect merkle proof");
+        require(merkleHash.checkMembership(newTxPos[1], blk.root, proof, blk.numTxns), "incorrect merkle proof");
 
         // exit successfully challenged
         balances[msg.sender] = balances[msg.sender].add(minExitBond);
         totalWithdrawBalance = totalWithdrawBalance.add(minExitBond);
 
         depositExits[nonce].state = ExitState.Challenged;
-        emit ChallengedDepositExit(nonce, exit_.owner, exit_.amount);
+        emit ChallengedExit(exit_.position, exit_.owner, exit_.amount);
     }
 
     // @param exitingTxPos     position of the invalid exiting transaction [blkNum, txIndex, outputIndex]
@@ -311,11 +357,12 @@ contract RootChain is Ownable {
         require(exit_.state == ExitState.Pending, "no pending exit to challenge");
 
         // confirm challenging transcation's inclusion and confirm signature
-        bytes32 root = childChain[challengingTxPos[0]].root;
-        bytes32 merkleHash = keccak256(txBytes);
-        bytes32 confirmationHash = keccak256(abi.encodePacked(merkleHash, root));
+        childBlock storage blk = childChain[challengingTxPos[0]];
+
+        bytes32 merkleHash = sha256(txBytes);
+        bytes32 confirmationHash = sha256(abi.encodePacked(merkleHash, blk.root));
         require(exit_.owner == confirmationHash.recover(confirmSignature), "mismatch in exit owner and confirm signature");
-        require(merkleHash.checkMembership(challengingTxPos[1], root, proof), "incorrect merkle proof");
+        require(merkleHash.checkMembership(challengingTxPos[1], blk.root, proof, blk.numTxns), "incorrect merkle proof");
 
         // exit successfully challenged. Award the sender with the bond
         balances[msg.sender] = balances[msg.sender].add(minExitBond);
@@ -324,7 +371,7 @@ contract RootChain is Ownable {
 
         // reflect challenged state
         txExits[position].state = ExitState.Challenged;
-        emit ChallengedTransactionExit(position, exit_.owner, exit_.amount);
+        emit ChallengedExit(exit_.position, exit_.owner, exit_.amount);
     }
 
     // When challenging an exiting transcation located at `exitingTxPos`, we must make sure that the challenging
@@ -349,6 +396,10 @@ contract RootChain is Ownable {
     function finalizeDepositExits() public { finalize(depositExitQueue, true); }
     function finalizeTransactionExits() public { finalize(txExitQueue, false); }
 
+    // Finalizes exits by iterating through either the depositExitQueue or txExitQueue.
+    // Users can determine the number of exits they're willing to process by varying
+    // the amount of gas allow finalize*Exits() to process.
+    // Each transaction takes < 80000 gas to process.
     function finalize(uint256[] storage queue, bool isDeposits)
         private
     {
@@ -375,12 +426,13 @@ contract RootChain is Ownable {
         * Conditions:
         *   1. Exits exist
         *   2. Exits must be a week old
-        *   3. Funds must exists for the exit to withdraw
+        *   3. Funds must exist for the exit to withdraw
         */
         uint256 amountToAdd;
         while (queue.currentSize() > 0 &&
                (block.timestamp - currentExit.createdAt) > 1 weeks &&
-               currentExit.amount.add(minExitBond) <= address(this).balance - totalWithdrawBalance) {
+               currentExit.amount.add(minExitBond) <= address(this).balance - totalWithdrawBalance &&
+               gasleft() > 80000) {
 
             // skip currentExit if it is not in 'started/pending' state.
             if (currentExit.state != ExitState.Pending) {
@@ -390,14 +442,12 @@ contract RootChain is Ownable {
                 balances[currentExit.owner] = balances[currentExit.owner].add(amountToAdd);
                 totalWithdrawBalance = totalWithdrawBalance.add(amountToAdd);
 
-                if (isDeposits) {
+                if (isDeposits)
                     depositExits[priority].state = ExitState.Finalized;
-                    emit FinalizedDepositExit(priority, currentExit.owner, amountToAdd);
-                } else {
+                else
                     txExits[position].state = ExitState.Finalized;
-                    emit FinalizedTransactionExit(position, currentExit.owner, amountToAdd);
-                }
 
+                emit FinalizedExit(currentExit.position, currentExit.owner, amountToAdd);
                 emit AddedToBalances(currentExit.owner, amountToAdd);
 
                 // move onto the next oldest exit
@@ -458,40 +508,5 @@ contract RootChain is Ownable {
         returns (uint256)
     {
         return balances[_address];
-    }
-
-    function getChildBlock(uint256 blockNumber)
-        public
-        view
-        returns (bytes32, uint256)
-    {
-        return (childChain[blockNumber].root, childChain[blockNumber].createdAt);
-    }
-
-    function getTransactionExit(uint256 position)
-        public
-        view
-        returns (address, uint256, uint256, ExitState)
-    {
-        exit memory exit_ = txExits[position];
-        return (exit_.owner, exit_.amount, exit_.createdAt, exit_.state);
-    }
-
-    function getDepositExit(uint256 priority)
-        public
-        view
-        returns (address, uint256, uint256, ExitState)
-    {
-        exit memory exit_ = depositExits[priority];
-        return (exit_.owner, exit_.amount, exit_.createdAt, exit_.state);
-    }
-
-    function getDeposit(uint256 nonce)
-        public
-        view
-        returns(address, uint256, uint256)
-    {
-        depositStruct memory deposit_ = deposits[nonce];
-        return (deposit_.owner, deposit_.amount, deposit_.createdAt);
     }
 }

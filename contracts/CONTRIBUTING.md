@@ -2,7 +2,7 @@
 
 Thank you for considering making contributions to Fourth State's Plasma MVP implementation! We welcome contributions from anyone! See the [open issues](https://github.com/FourthState/plasma-mvp-rootchain/issues) for things we need help with!
 
-Contribute to design discussions and conversation by joining the #plasma-dev channel on Blockchain @ Berkeley's [public slack](https://www.berkeleyblockchain.slack.com/).
+Contribute to design discussions and conversation by joining our [Discord Server](https://discord.gg/YTB5A4P).
 
 ## How to get started:
 
@@ -17,7 +17,7 @@ Otherwise:
 Install dependencies with:
 ``npm install``
 
-**Note**: requires Solidity 0.4.24 and Truffle 4.1.13
+**Note**: requires Solidity 0.4.24 and Truffle 4.1.14
 
 Make sure the tests pass:
 1. Start ganache-cli: ``ganache-cli -m=plasma_mvp``
