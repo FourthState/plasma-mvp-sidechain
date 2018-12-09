@@ -1,10 +1,13 @@
 package eth
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"math/big"
 )
 
 // Client defines wrappers to a remote endpoint
@@ -26,6 +29,34 @@ func InitEthConn(nodeUrl string) (*Client, error) {
 	ec := ethclient.NewClient(c)
 
 	return &Client{c, ec}, nil
+}
+
+// SubscribeToHeads returns a channel that funnels new ethereum headers to the returned channel
+func (client *Client) SubscribeToHeads() (<-chan *types.Header, error) {
+	c := make(chan *types.Header)
+
+	sub, err := client.ec.SubscribeNewHead(context.Background(), c)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func (client *Client) ethBlockNum() (*big.Int, error) {
+	var res json.RawMessage
+	err := client.rpc.Call(&res, "eth_blockNumber")
+	if err != nil {
+		return nil, err
+	}
+
+	blockNum := new(big.Int)
+	err = blockNum.UnmarshalJSON(res)
+	if err != nil {
+		return nil, err
+	}
+
+	return blockNum, nil
 }
 
 // used for testing when running against a local client like ganache

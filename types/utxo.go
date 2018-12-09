@@ -52,8 +52,9 @@ func (position PlasmaPosition) IsValid() bool {
 }
 
 type Deposit struct {
-	Owner  common.Address
-	Amount *sdk.Int
+	Owner    common.Address
+	Amount   sdk.Uint
+	BlockNum sdk.Uint
 }
 
 //-------------------------------------------------------
