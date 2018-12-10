@@ -56,9 +56,13 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		if !res.IsOK() {
 			return ctx, res, true
 		}
+		exitErr := hasTXExited(plasmaClient, position0)
+		if exitErr != nil {
+			return ctx, exitErr.Result(), true
+		}
 		if position0.IsDeposit() {
 			deposit, _ := DepositExists(position0.DepositNum, plasmaClient)
-			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount), types.Denom, position0)
+			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), deposit.Amount.Uint64(), types.Denom, position0)
 			utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 		}
 
@@ -81,13 +85,17 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			addr1 := common.BytesToAddress(signerAddrs[1].Bytes())
 			position1 := types.PlasmaPosition{spendMsg.Blknum1, spendMsg.Txindex1, spendMsg.Oindex1, spendMsg.DepositNum1}
 
+			exitErr := hasTXExited(plasmaClient, position1)
+			if exitErr != nil {
+				return ctx, exitErr.Result(), true
+			}
 			res := checkUTXO(ctx, plasmaClient, utxoMapper, position1, addr1)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
 			if position1.IsDeposit() {
 				deposit, _ := DepositExists(position1.DepositNum, plasmaClient)
-				inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), uint64(deposit.Amount), types.Denom, position1)
+				inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), deposit.Amount.Uint64(), types.Denom, position1)
 				utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 			}
 
@@ -191,16 +199,22 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 }
 
 func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool) {
-	deposit, err := plasmaClient.CheckDeposit(sdk.NewUint(nonce))
+	deposit, err := plasmaClient.GetDeposit(sdk.NewUint(nonce))
 
 	if err != nil {
 		return types.Deposit{}, false
 	}
-	return deposit, true
+	return *deposit, true
 }
 
-/*
-func ExitPriority(position types.PlasmaPosition) {
-	if position.IsDeposit()
+func hasTXExited(plasmaClient *eth.Plasma, pos types.PlasmaPosition) sdk.Error {
+	var positions [4]sdk.Uint
+	for i, num := range pos.Get() {
+		positions[i] = num
+	}
+	exited := plasmaClient.HasTXBeenExited(positions)
+	if exited {
+		return types.ErrInvalidTransaction(types.DefaultCodespace, "Input UTXO has already exited")
+	}
+	return nil
 }
-*/

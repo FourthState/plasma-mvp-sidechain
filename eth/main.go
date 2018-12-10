@@ -35,7 +35,7 @@ func InitEthConn(nodeUrl string) (*Client, error) {
 func (client *Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	c := make(chan *types.Header)
 
-	sub, err := client.ec.SubscribeNewHead(context.Background(), c)
+	_, err := client.ec.SubscribeNewHead(context.Background(), c)
 	if err != nil {
 		return nil, err
 	}

@@ -33,11 +33,10 @@ func SetEthConfig(isValidator bool, privkey_file, rootchain_addr, nodeURL, minFe
 		if err != nil {
 			panic(err)
 		}
-
-		block_finality, err = strconv.ParseUint(finality, 10, 64)
-		if err != nil {
-			panic(err)
-		}
+	}
+	block_finality, err := strconv.ParseUint(finality, 10, 64)
+	if err != nil {
+		panic(err)
 	}
 	rootchain = ethcmn.HexToAddress(rootchain_addr)
 

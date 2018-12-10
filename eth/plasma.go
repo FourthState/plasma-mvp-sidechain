@@ -1,9 +1,11 @@
 package eth
 
 import (
+	"fmt"
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"math/big"
 	rootchain "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
 	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -15,7 +17,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/comparer"
 	"github.com/syndtr/goleveldb/leveldb/memdb"
 	"github.com/tendermint/tendermint/libs/log"
-	"math/big"
 )
 
 // Contains the binded wrapper and keys of the operator
@@ -32,7 +33,7 @@ type Plasma struct {
 
 // InitPlasma binds the go wrapper to the deployed contract. This private key provides authentication
 // for the operator
-func InitPlasma(contractAddr string, privateKey *ecdsa.PrivateKey, client *Client, logger log.Logger, isValidator bool, finalityBound uint64) (*Plasma, error) {
+func InitPlasma(contractAddr string, privateKey *ecdsa.PrivateKey, client *Client, logger log.Logger, finalityBound uint64, isValidator bool) (*Plasma, error) {
 	plasmaContract, err := rootchain.NewRootChain(common.HexToAddress(contractAddr), client.ec)
 	if err != nil {
 		return nil, err
@@ -49,7 +50,6 @@ func InitPlasma(contractAddr string, privateKey *ecdsa.PrivateKey, client *Clien
 			},
 			TransactOpts: bind.TransactOpts{
 				From:     auth.From,
-				Nonce:    big.NewInt(3),
 				Signer:   auth.Signer,
 				GasLimit: 3141592, // aribitrary. TODO: check this
 			},
@@ -63,7 +63,6 @@ func InitPlasma(contractAddr string, privateKey *ecdsa.PrivateKey, client *Clien
 				Pending: true,
 			},
 			TransactOpts: bind.TransactOpts{
-				Nonce:    big.NewInt(3),
 				GasLimit: 3141592, // aribitrary. TODO: check this
 			},
 		}
@@ -95,8 +94,11 @@ func InitPlasma(contractAddr string, privateKey *ecdsa.PrivateKey, client *Clien
 
 func trackEthBLocks(plasma *Plasma, ch <-chan *types.Header) {
 	for {
+		fmt.Println("cappuccino")
 		header := <-ch
 		plasma.ethBlockNum = header.Number
+		fmt.Println(plasma.ethBlockNum)
+		fmt.Println("latte")
 	}
 }
 
@@ -126,6 +128,9 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 	if err == nil {
 		// try to decode and return
 		err := rlp.DecodeBytes(data, &deposit)
+		fmt.Println("is this nil???")
+		fmt.Println(deposit.BlockNum)
+		fmt.Println(deposit)
 		if err != nil {
 			plasma.memdb.Delete(key)
 			plasma.logger.Error("Error decoding cached deposit: %x", data)
@@ -140,7 +145,7 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 	d, err := plasma.session.Deposits(nonce.BigInt())
 	if err != nil {
 		plasma.logger.Error("Contract call, GetDeposit, failed %v", err)
-		return utxo.Deposit{}, err
+		return &deposit, err
 	}
 
 	// deposit does not existed if the timestamp is the default value
@@ -162,7 +167,12 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 	}
 
 	// check finality bound for the deposit
-
+	fmt.Println("boba")
+	fmt.Println(plasma.ethBlockNum)
+	fmt.Println(d.EthBlocknum)
+	fmt.Println(new(big.Int).Sub(plasma.ethBlockNum, d.EthBlocknum).Uint64())
+	fmt.Println(plasma.finalityBound)
+	fmt.Println(deposit)
 	if new(big.Int).Sub(plasma.ethBlockNum, d.EthBlocknum).Uint64() >= plasma.finalityBound {
 		return &deposit, nil
 	} else {
@@ -171,7 +181,7 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 }
 
 // CheckTransaction indicates if the position has every been exited
-func (plasma *Plasma) HasTXBeenExited(position [4]sdk.Uint) (bool, error) {
+func (plasma *Plasma) HasTXBeenExited(position [4]sdk.Uint) bool {
 	var key []byte
 	if position[3].Sign() == 0 { // utxo exit
 		pos := [3]*big.Int{position[0].BigInt(), position[1].BigInt(), position[3].BigInt()}
@@ -181,7 +191,8 @@ func (plasma *Plasma) HasTXBeenExited(position [4]sdk.Uint) (bool, error) {
 		key = prefixKey(depositExitPrefix, position[3].BigInt().Bytes())
 	}
 
-	return plasma.memdb.Contains(key), nil
+	fmt.Println(string(key))
+	return plasma.memdb.Contains(key)
 }
 
 func (plasma *Plasma) watchDeposits() {
@@ -195,6 +206,11 @@ func (plasma *Plasma) watchDeposits() {
 
 	for deposit := range deposits {
 		key := prefixKey(depositPrefix, deposit.DepositNonce.Bytes())
+
+		fmt.Println("Watched a deposit!!!!1")
+		fmt.Println(deposit)
+		fmt.Println(deposit.Amount)
+		fmt.Println(deposit.EthBlockNum)
 
 		// remove the nonce, encode, and store
 		val, err := rlp.EncodeToBytes(plasmaTypes.Deposit{
@@ -224,6 +240,10 @@ func (plasma *Plasma) watchExits() {
 
 	go func() {
 		for depositExit := range startedDepositExits {
+			fmt.Println("Deposit EXIT")
+			fmt.Println(depositExit)
+			fmt.Println("End Exit")
+			panic("Oh no!")
 			nonce := depositExit.Nonce.Bytes()
 			key := prefixKey(depositExitPrefix, nonce)
 			plasma.memdb.Put(key, nil)
@@ -232,6 +252,7 @@ func (plasma *Plasma) watchExits() {
 
 	go func() {
 		for transactionExit := range startedTransactionExits {
+			panic("Oh no!")
 			priority := calcPriority(transactionExit.Position).Bytes()
 			key := prefixKey(transactionExitPrefix, priority)
 			plasma.memdb.Put(key, nil)
