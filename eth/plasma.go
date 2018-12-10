@@ -115,7 +115,7 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 
 	var deposit plasmaTypes.Deposit
 	// check against the contract if the deposit is not in the cache or decoding fail
-	if err != nil && deserializedDeposit(data, &deposit) != nil {
+	if err != nil && deserializeDeposit(data, &deposit) != nil {
 		if plasma.memdb.Contains(key) {
 			plasma.logger.Info("corrupted deposit found within db")
 			plasma.memdb.Delete(key)
@@ -244,7 +244,7 @@ func watchEthBlocks(plasma *Plasma, ch <-chan *types.Header) {
 	plasma.logger.Info("Block subscription closed.")
 }
 
-func deserializedDeposit(data []byte, deposit *plasmaTypes.Deposit) error {
+func deserializeDeposit(data []byte, deposit *plasmaTypes.Deposit) error {
 	var dep serializedDeposit
 	if err := rlp.DecodeBytes(data, &dep); err != nil {
 		return err
