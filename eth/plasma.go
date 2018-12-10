@@ -75,13 +75,6 @@ func InitPlasma(contractAddr string, privateKey *ecdsa.PrivateKey, client *Clien
 	return plasma, nil
 }
 
-func trackEthBLocks(plasma *Plasma, ch <-chan *types.Header) {
-	for {
-		header := <-ch
-		plasma.ethBlockNum = header.Number
-	}
-}
-
 // SubmitBlock proxy. TODO: handle batching with a timmer interrupt
 func (plasma *Plasma) SubmitBlock(header []byte, numTxns sdk.Uint, fee sdk.Uint) (*types.Transaction, error) {
 	tx, err := plasma.session.SubmitBlock(
@@ -152,8 +145,8 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 	}
 }
 
-// CheckTransaction indicates if the position has every been exited
-func (plasma *Plasma) HasTXBeenExited(position [4]sdk.Uint) (bool, error) {
+// HasTXBeenExited indicates if the position has ever been exited
+func (plasma *Plasma) HasTXBeenExited(position [4]sdk.Uint) bool {
 	var key []byte
 	if position[3].Sign() == 0 { // utxo exit
 		pos := [3]*big.Int{position[0].BigInt(), position[1].BigInt(), position[3].BigInt()}
@@ -163,7 +156,7 @@ func (plasma *Plasma) HasTXBeenExited(position [4]sdk.Uint) (bool, error) {
 		key = prefixKey(depositExitPrefix, position[3].BigInt().Bytes())
 	}
 
-	return plasma.memdb.Contains(key), nil
+	return plasma.memdb.Contains(key)
 }
 
 func (plasma *Plasma) watchDeposits() {
@@ -219,4 +212,11 @@ func (plasma *Plasma) watchExits() {
 			plasma.memdb.Put(key, nil)
 		}
 	}()
+}
+
+func trackEthBLocks(plasma *Plasma, ch <-chan *types.Header) {
+	for {
+		header := <-ch
+		plasma.ethBlockNum = header.Number
+	}
 }
