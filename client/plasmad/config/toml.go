@@ -16,7 +16,8 @@ const defaultConfigTemplate = `# This is a TOML config file.
 is_validator = "{{ .IsValidator }}"
 
 # File containing unencrypted private key
-# Used to sign eth transactions interacting with the rootchain  
+# Used to sign eth transactions interacting with the rootchain 
+# Default directory is $HOME/.plasmad/config/
 ethereum_privkey_file = "{{ .EthPrivKeyFile }}"
 
 # Ethereum rootchain contract address
@@ -26,7 +27,10 @@ ethereum_rootchain = "{{.EthRootchain}}"
 ethereum_nodeurl = "{{.EthNodeURL}}"
 
 # Minimum fee a validator accepts to include a transaction in a block
-minimum_fees = "{{.EthMinFees}}"`
+minimum_fees = "{{.EthMinFees}}"
+
+# Number of Ethereum blocks until a submitted block header is considered final
+ethereum_finality = "{{.EthBlockFinality}}"`
 
 var configTemplate *template.Template
 
