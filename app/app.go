@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/json"
@@ -111,12 +112,13 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	app.SetEndBlocker(app.endBlocker)
 
 	// Set Ethereum connection
-	client, err := eth.InitEthConn(app.nodeURL)
+	fmt.Println(app.nodeURL)
+	client, err := eth.InitEthConn(app.nodeURL, bapp.Logger)
 	if err != nil {
 		panic(err)
 	}
 
-	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), client, app.BaseApp.Logger, app.validatorPrivKey, app.isValidator)
+	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), app.validatorPrivKey, client, app.BaseApp.Logger, app.block_finality, app.isValidator)
 	if err != nil {
 		panic(err)
 	}
