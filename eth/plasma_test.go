@@ -2,8 +2,10 @@ package eth
 
 import (
 	"bytes"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/tendermint/tendermint/libs/log"
+	"math/big"
 	"os"
 	"testing"
 )
@@ -11,15 +13,17 @@ import (
 // private/public keys using the `plasma` mnemonic with ganache-cli
 // `ganache-cli -m=plasma`
 const (
-	clientAddr         = "http://127.0.0.1:8545"
-	plasmaContractAddr = "64c55d0385ac46776b50f989a6e4b381f12f6940"
+	clientAddr         = "ws://127.0.0.1:8545"
+	plasmaContractAddr = "31e491fc70cdb231774c61b7f46d94699dace664"
 	operatorPrivKey    = "9cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c17181"
 	sampleAccount      = "66b2e0a229d38764cea81dc99bfbd1eb85354b33"
 )
 
 func TestConnection(t *testing.T) {
+	logger := log.NewTMLogger(os.Stderr)
+
 	t.Logf("Connecting to remote client: %s", clientAddr)
-	client, err := InitEthConn(clientAddr)
+	client, err := InitEthConn(clientAddr, logger)
 	if err != nil {
 		t.Fatal("Connection Error -", err)
 	}
@@ -31,7 +35,8 @@ func TestConnection(t *testing.T) {
 }
 
 func TestPlasmaInit(t *testing.T) {
-	client, err := InitEthConn(clientAddr)
+	logger := log.NewTMLogger(os.Stderr)
+	client, err := InitEthConn(clientAddr, logger)
 
 	t.Logf("Binding go wrapper to deployed contract: %s", plasmaContractAddr)
 	privKey, err := crypto.HexToECDSA(operatorPrivKey)
@@ -39,8 +44,7 @@ func TestPlasmaInit(t *testing.T) {
 		t.Fatal("Could not convert hex private key")
 	}
 
-	logger := log.NewTMLogger(os.Stderr)
-	plasma, err := InitPlasma(plasmaContractAddr, privKey, client, logger)
+	plasma, err := InitPlasma(plasmaContractAddr, privKey, client, logger, 1)
 	if err != nil {
 		t.Fatal("Could not bind contract -", err)
 	}
@@ -57,31 +61,25 @@ func TestPlasmaInit(t *testing.T) {
 }
 
 func TestSubmitBlock(t *testing.T) {
-	client, _ := InitEthConn(clientAddr)
+	logger := log.NewTMLogger(os.Stderr)
+	client, _ := InitEthConn(clientAddr, logger)
 
 	privKey, err := crypto.HexToECDSA(operatorPrivKey)
 	if err != nil {
 		t.Fatal("Could not convert hex private key")
 	}
 
-	logger := log.NewTMLogger(os.Stderr)
-	plasma, _ := InitPlasma(plasmaContractAddr, privKey, client, logger)
+	plasma, _ := InitPlasma(plasmaContractAddr, privKey, client, logger, 1)
 
-	blockNum, err := plasma.session.CurrentChildBlock()
+	blockNum, err := plasma.session.LastCommittedBlock()
 	if err != nil {
-		t.Fatal("Could not query block number -", err)
+		t.Fatal("Could not query for the last committed block -", err)
 	}
 
-	// presumed finality before submitting a block
-	for i := 0; i < 6; i++ {
-		err = client.rpc.Call(nil, "evm_mine")
-		if err != nil {
-			t.Fatal("Failed rpc call -", err)
-		}
-	}
+	blockNum = blockNum.Add(blockNum, big.NewInt(1))
 
 	header := crypto.Keccak256([]byte("blah"))
-	_, err = plasma.session.SubmitBlock(header)
+	_, err = plasma.SubmitBlock(header, sdk.NewUint(0), sdk.NewUint(0))
 	if err != nil {
 		t.Fatal("Could not submit block -", err)
 	}

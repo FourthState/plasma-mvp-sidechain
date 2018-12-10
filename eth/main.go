@@ -7,17 +7,18 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"math/big"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // Client defines wrappers to a remote endpoint
 type Client struct {
-	rpc *rpc.Client
-	ec  *ethclient.Client
+	rpc    *rpc.Client
+	ec     *ethclient.Client
+	logger log.Logger
 }
 
 // Instantiate a connection and bind the go plasma contract wrapper with this client
-func InitEthConn(nodeUrl string) (*Client, error) {
+func InitEthConn(nodeUrl string, logger log.Logger) (*Client, error) {
 	// Connect to a remote etheruem client
 	//
 	// Ethclient wraps around the underlying rpc module and provides convenient functions. We still keep reference
@@ -28,7 +29,7 @@ func InitEthConn(nodeUrl string) (*Client, error) {
 	}
 	ec := ethclient.NewClient(c)
 
-	return &Client{c, ec}, nil
+	return &Client{c, ec, logger}, nil
 }
 
 // SubscribeToHeads returns a channel that funnels new ethereum headers to the returned channel
@@ -40,23 +41,16 @@ func (client *Client) SubscribeToHeads() (<-chan *types.Header, error) {
 		return nil, err
 	}
 
+	// close the channel if an error arises in the subscription
+	go func() {
+		for {
+			err = <-sub.Err()
+			client.logger.Error("Etheruem client header subscription error -", err)
+			close(c)
+		}
+	}()
+
 	return c, nil
-}
-
-func (client *Client) ethBlockNum() (*big.Int, error) {
-	var res json.RawMessage
-	err := client.rpc.Call(&res, "eth_blockNumber")
-	if err != nil {
-		return nil, err
-	}
-
-	blockNum := new(big.Int)
-	err = blockNum.UnmarshalJSON(res)
-	if err != nil {
-		return nil, err
-	}
-
-	return blockNum, nil
 }
 
 // used for testing when running against a local client like ganache
