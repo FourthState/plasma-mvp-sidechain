@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"context"
 	"crypto/ecdsa"
+	"reflect"
 	"errors"
 	rootchain "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
 	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/types"
@@ -130,9 +131,14 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 	key := prefixKey(depositPrefix, nonce.BigInt().Bytes())
 	data, err := plasma.memdb.Get(key)
 
+	fmt.Println("here is the data retrieved")
+	fmt.Println(data)
+
 	var deposit plasmaTypes.Deposit
 	// check against the contract if the deposit is not in the cache or decoding fail
 	if err != nil && deserializeDeposit(data, &deposit) != nil {
+		fmt.Println("I am here?")
+		fmt.Println(deposit)
 		if plasma.memdb.Contains(key) {
 			plasma.logger.Info("corrupted deposit found within db")
 			plasma.memdb.Delete(key)
@@ -155,15 +161,29 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 		}
 	}
 
+	fmt.Println("I am there")
+	fmt.Println(deposit)
 	// save to the db
 	data, err = rlp.EncodeToBytes(serializedDeposit{
 		owner:    deposit.Owner,
 		amount:   deposit.Amount.BigInt().Bytes(),
 		blocknum: deposit.BlockNum.BigInt().Bytes(),
 	})
+	fmt.Println("Here is the data after encoder")
+	fmt.Println(data)
+	var recovered plasmaTypes.Deposit
+	err2 := deserializeDeposit(data, &recovered)
+	if err2 != nil {
+		panic("deserialize failed")
+	}
+	if !reflect.DeepEqual(deposit, recovered) {
+		panic("deposits are not equal")
+	}
 	if err != nil {
+		fmt.Println("Encoder failed")
 		plasma.logger.Error("error encoding deposit. will not be cached")
 	} else {
+		fmt.Println("Encoder passed")
 		plasma.memdb.Put(key, data)
 	}
 

@@ -60,11 +60,13 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		if exitErr != nil {
 			return ctx, exitErr.Result(), true
 		}
+		fmt.Println("I got past Tx Exited")
 		if position0.IsDeposit() {
 			deposit, _ := DepositExists(position0.DepositNum, plasmaClient)
 			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), deposit.Amount.Uint64(), types.Denom, position0)
 			utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 		}
+		fmt.Println("I got past second Deposit check")
 
 		res = processSig(addr0, sigs[0], signBytes)
 
@@ -199,6 +201,7 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 }
 
 func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool) {
+	fmt.Println("Called Deposit Exists")
 	deposit, err := plasmaClient.GetDeposit(sdk.NewUint(nonce))
 
 	if err != nil {

@@ -114,7 +114,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 
 	// Set Ethereum connection
 	fmt.Println(app.nodeURL)
-	client, err := eth.InitEthConn(app.nodeURL)
+	client, err := eth.InitEthConn(app.nodeURL, bapp.Logger)
 	if err != nil {
 		panic(err)
 	}
