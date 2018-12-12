@@ -55,10 +55,12 @@ contract('[RootChain] Transactions', async (accounts) => {
         txPos = [blockNum, 0, 0];
     });
 
+    /*
     it("Will not revert finalizeExit with an empty queue", async () => {
         await rootchain.finalizeDepositExits();
         await rootchain.finalizeTransactionExits();
     });
+    */
 
     it("Allows only the utxo owner to start an exit (hardcoded)", async () => {
         rootchain = await RootChain.new({from: authority});
@@ -87,6 +89,7 @@ contract('[RootChain] Transactions', async (accounts) => {
             toHex(txBytes), toHex(proof), toHex(confirmSigs), {from: newOwner, value: minExitBond});
     });
 
+    /*
     it("Can challenge a spend of a utxo (hardcoded)", async () => {
         rootchain = await RootChain.new({from: authority});
 
@@ -676,5 +679,6 @@ contract('[RootChain] Transactions', async (accounts) => {
         position = 1000000*txPos2[0];
         exit = await rootchain.txExits.call(position);
         assert.equal(exit[3].toNumber(), 1, "exit has been challenged or finalized");
-    });
+    });*/
 });
+

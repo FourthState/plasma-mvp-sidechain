@@ -23,6 +23,8 @@ contract('[RootChain] Deposits', async (accounts) => {
         assert.equal(tx.logs[0].args.depositor, accounts[1], "incorrect deposit owner");
         assert.equal(tx.logs[0].args.amount.toNumber(), 100, "incorrect deposit amount");
         assert.equal(tx.logs[0].args.depositNonce, nonce, "incorrect deposit nonce");
+
+        await rootchain.startDepositExit(nonce, {from: accounts[1], value: minExitBond});
     });
 
     /*

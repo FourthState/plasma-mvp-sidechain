@@ -64,11 +64,7 @@ func TestSubmitBlock(t *testing.T) {
 	logger := log.NewTMLogger(os.Stderr)
 	client, _ := InitEthConn(clientAddr, logger)
 
-	privKey, err := crypto.HexToECDSA(operatorPrivKey)
-	if err != nil {
-		t.Fatal("Could not convert hex private key")
-	}
-
+	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
 	plasma, _ := InitPlasma(plasmaContractAddr, privKey, client, logger, 1)
 
 	blockNum, err := plasma.session.LastCommittedBlock()
@@ -97,6 +93,29 @@ func TestSubmitBlock(t *testing.T) {
 
 	if bytes.Compare(result.Root[:], header) != 0 {
 		t.Errorf("Mismatch in block headers.\nGot: %x\nExpected: %x", result, header)
+	}
+}
+
+func TestEthBlockWatching(t *testing.T) {
+	logger := log.NewTMLogger(os.Stderr)
+	client, _ := InitEthConn(clientAddr, logger)
+
+	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
+	plasma, _ := InitPlasma(plasmaContractAddr, privKey, client, logger, 1)
+
+	lastBlockNum := plasma.ethBlockNum
+	t.Log(lastBlockNum)
+
+	// mine a block
+	err := client.rpc.Call(nil, "evm_mine")
+	if err != nil {
+		t.Fatal("Could not mine a block -", err)
+	}
+
+	t.Log(plasma.ethBlockNum)
+
+	if plasma.ethBlockNum.Cmp(lastBlockNum.Add(lastBlockNum, big.NewInt(1))) != 0 {
+		t.Error("Client did not catch the minted block and update correctly")
 	}
 }
 */

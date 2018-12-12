@@ -1,10 +1,9 @@
 package eth
 
 import (
-	"fmt"
 	"context"
 	"crypto/ecdsa"
-	"reflect"
+	"encoding/json"
 	"errors"
 	rootchain "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
 	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/types"
@@ -12,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/comparer"
 	"github.com/syndtr/goleveldb/leveldb/memdb"
@@ -131,14 +129,13 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 	key := prefixKey(depositPrefix, nonce.BigInt().Bytes())
 	data, err := plasma.memdb.Get(key)
 
-	fmt.Println("here is the data retrieved")
-	fmt.Println(data)
-
+	var decodeErr error
 	var deposit plasmaTypes.Deposit
+	if err == nil {
+		decodeErr = json.Unmarshal(data, &deposit)
+	}
 	// check against the contract if the deposit is not in the cache or decoding fail
-	if err != nil && deserializeDeposit(data, &deposit) != nil {
-		fmt.Println("I am here?")
-		fmt.Println(deposit)
+	if err != nil || decodeErr != nil  {
 		if plasma.memdb.Contains(key) {
 			plasma.logger.Info("corrupted deposit found within db")
 			plasma.memdb.Delete(key)
@@ -161,29 +158,11 @@ func (plasma *Plasma) GetDeposit(nonce sdk.Uint) (*plasmaTypes.Deposit, error) {
 		}
 	}
 
-	fmt.Println("I am there")
-	fmt.Println(deposit)
 	// save to the db
-	data, err = rlp.EncodeToBytes(serializedDeposit{
-		owner:    deposit.Owner,
-		amount:   deposit.Amount.BigInt().Bytes(),
-		blocknum: deposit.BlockNum.BigInt().Bytes(),
-	})
-	fmt.Println("Here is the data after encoder")
-	fmt.Println(data)
-	var recovered plasmaTypes.Deposit
-	err2 := deserializeDeposit(data, &recovered)
-	if err2 != nil {
-		panic("deserialize failed")
-	}
-	if !reflect.DeepEqual(deposit, recovered) {
-		panic("deposits are not equal")
-	}
+	data, err = json.Marshal(deposit)
 	if err != nil {
-		fmt.Println("Encoder failed")
 		plasma.logger.Error("error encoding deposit. will not be cached")
 	} else {
-		fmt.Println("Encoder passed")
 		plasma.memdb.Put(key, data)
 	}
 
@@ -209,7 +188,6 @@ func (plasma *Plasma) HasTXBeenExited(position [4]sdk.Uint) bool {
 		key = prefixKey(depositExitPrefix, position[3].BigInt().Bytes())
 	}
 
-	fmt.Println(string(key))
 	return plasma.memdb.Contains(key)
 }
 
@@ -225,22 +203,17 @@ func watchDeposits(plasma *Plasma) {
 	for deposit := range deposits {
 		key := prefixKey(depositPrefix, deposit.DepositNonce.Bytes())
 
-		fmt.Println("Watched a deposit!!!!1")
-		fmt.Println(deposit)
-		fmt.Println(deposit.Amount)
-		fmt.Println(deposit.EthBlockNum)
-
 		// remove the nonce, encode, and store
-		val, err := rlp.EncodeToBytes(serializedDeposit{
-			owner:    deposit.Depositor,
-			amount:   deposit.Amount.Bytes(),
-			blocknum: deposit.EthBlockNum.Bytes(),
+		data, err := json.Marshal(plasmaTypes.Deposit{
+			Owner:    deposit.Depositor,
+			Amount:   sdk.NewUintFromBigInt(deposit.Amount),
+			BlockNum: sdk.NewUintFromBigInt(deposit.EthBlockNum),
 		})
 
 		if err != nil {
 			plasma.logger.Error("Error encoding deposit event from contract -", deposit)
 		} else {
-			plasma.memdb.Put(key, val)
+			plasma.memdb.Put(key, data)
 		}
 	}
 }
@@ -258,10 +231,6 @@ func watchExits(plasma *Plasma) {
 
 	go func() {
 		for depositExit := range startedDepositExits {
-			fmt.Println("Deposit EXIT")
-			fmt.Println(depositExit)
-			fmt.Println("End Exit")
-			panic("Oh no!")
 			nonce := depositExit.Nonce.Bytes()
 			key := prefixKey(depositExitPrefix, nonce)
 			plasma.memdb.Put(key, nil)
@@ -272,7 +241,6 @@ func watchExits(plasma *Plasma) {
 
 	go func() {
 		for transactionExit := range startedTransactionExits {
-			panic("Oh no!")
 			priority := calcPriority(transactionExit.Position).Bytes()
 			key := prefixKey(transactionExitPrefix, priority)
 			plasma.memdb.Put(key, nil)
@@ -290,18 +258,4 @@ func watchEthBlocks(plasma *Plasma, ch <-chan *types.Header) {
 	}
 
 	plasma.logger.Info("Block subscription closed.")
-}
-
-func deserializeDeposit(data []byte, deposit *plasmaTypes.Deposit) error {
-	var dep serializedDeposit
-	if err := rlp.DecodeBytes(data, &dep); err != nil {
-		return err
-	}
-
-	deposit.Owner = dep.owner
-	deposit.Amount = sdk.NewUintFromBigInt(new(big.Int).SetBytes(dep.amount))
-	deposit.Amount = sdk.NewUintFromBigInt(new(big.Int).SetBytes(dep.amount))
-	deposit.BlockNum = sdk.NewUintFromBigInt(new(big.Int).SetBytes(dep.blocknum))
-
-	return nil
 }
