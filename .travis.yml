@@ -15,7 +15,16 @@ before_install:
 install:
   - dep ensure -vendor-only
 
+before_script:
+  - npm install -g truffle@4.1.14 ganache-cli@6.1.8
+
 script:
+  - ganache-cli -m=plasma > /dev/null &
+  - sleep 5
+  - cd contracts/
+  - npm install
+  - truffle migrate
+  - cd ../
   - go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...
 
 after_success:
