@@ -1,6 +1,6 @@
 # Rootchain Documentation
 
-The transcation bytes, `txBytes`, in the contract follow the convention:  
+The transaction bytes, `txBytes`, in the contract follow the convention:  
 ```
 RLP_ENCODE ([
   [Blknum1, TxIndex1, Oindex1, DepositNonce1, Owner1, Input1ConfirmSig,
@@ -40,13 +40,13 @@ struct depositStruct {
 <br />
 
 ```solidity
-function startTransactionExit(uint256[3] txPos, bytes txBytes, bytes proof, bytes confirmSignatures)
+function startTransactionExit(uint256[3] txPos, bytes txBytes, bytes proof, bytes confirmSignatures, uint256 committedFee)
 ```
 `txPos` follows the convention - `[blockNumber, transactionIndex, outputIndex]`
 
 Exit procedure for exiting a utxo on the child chain(not deposits). The `txPos` locates the transaction on the child chain. The leaf, hash(hash(`txBytes`), `sigs`) is checked against the block header using the `proof`.
 The `confirmSignatures` represent the acknowledgement of the inclusion by both inputs. If only one input was used to create this transactions, only one confirm signature should be passed in for the corresponding
-input. However, if there are two distinct inputs in the exiting transactions, both confirm signatures should be appended together in order for a total of 130 bytes.
+input. However, if there are two distinct inputs in the exiting transactions, both confirm signatures should be appended together in order for a total of 130 bytes. The owner of the exit must commit to any fees payed, `committedFee`.
 
 A valid exit satisfies the following properties:
   - Exit has not previously been finalized or challenged
@@ -56,11 +56,12 @@ A valid exit satisfies the following properties:
 <br />
 
 ```solidity
-function startDepositExit(uint256 nonce)
+function startDepositExit(uint256 nonce, uint256 committedFee)
 ```
 Exit procedure for deposits that have not been spent. Deposits are purely identified by their `nonce`. The caller's address must match the owner of the deposit.
-A valid exit must satisfy the same constraints listed above for normal utxo exits except confirm signatures. Deposits exits are also collected into their own seperate queue from normal transcations.
-This is because of the differing priority calculation. The priority of a deposit is purely it's nonce while the priority of a utxo is calculated from it's location in the child chain.
+A valid exit must satisfy the same constraints listed above for normal utxo exits except confirm signatures. Deposits exits are also collected into their own seperate queue from normal transactions.
+This is because of the differing priority calculation. The priority of a deposit is purely it's nonce while the priority of a utxo is calculated from it's location in the child chain. The owner of the exit must
+commit to any fee, `committedFee`.
 
 <br />
 
@@ -74,23 +75,26 @@ Note that if the validator attempts to start an exit for a fee-UTXO that has alr
 <br />
 
 ```solidity
-function challengeTransactionExit(uint256[3] exitingTxPos, uint256[3] challengingTxPos, bytes txBytes, bytes proof, bytes confirmSignature)
+function challengeFeeMismatch(uint256[4] exitingTxPos, uint256[2] challengingTxPos, bytes txBytes, bytes proof)
 ```
-`exitingTxPos` and `challengingTxPos` follow the convention - `[blockNumber, transcationIndex, outputIndex]`
+`challengingTxPos` follows the convention - `[blockNumber, transactionIndex]`  
+`exitingTxPos` follows the convention - `[blockNumber, transactionIndex, outputIndex, depositNonce`]
 
-A uxto that has starting an exit phase but was already spent on the child chain can be challenged using this function call. A successfull challenge awards the caller with the exit bond.
-The `exitingTxPos` locates the malicious utxo and is used to calculate the priority. `challengingTxPos` locates the transaction that is the parent (offending transaction is an input into this tx).
-The `proof`, `txBytes` and `sigs` is sufficient for a proof of inclusion in the child chain of the parent transaction. The `confirmSignature`, signed by the owner of the malicious transaction,
-acknowledges the inclusion of it's parent in the plasma chain and allows anyone with this confirm signature to challenge a malicious exit of the child.
+An exit which posts an invalid committed fee can be challenged with this function. The `txBytes` of `challengingTxPos` which includes the correct fee, along with it's merkle `proof` of inclusion is checked against the exiter's claimed
+committed fee. If there is a mismatch, the exit is invalidated and the bond is awarded to the challenger. `exitingTxPos` must be the first input of `challengingTxPos`. `exitingTxPos` is the full position including the deposit nonce.
 
 <br />
 
 ```solidity
-function challengeDepositExit(uint256 nonce, uint256[3] newTxPos, bytes txBytes, bytes proof, bytes confirmSignature)
+function challengeExit(uint256[4] exitingTxPos, uint256[2] challengingTxPos, bytes txBytes, bytes proof, bytes confirmSignature)
 ```
-A deposit that has been spent in the child chain is challenged here. The `txBytes` of the the parent transaction must include the nonce as one if it's input. The `txBytes`, `sigs` and `proof` is
-sufficient for a proof of inclusion. Similar to a normal challenge, the owner of the deposit must have also broadcasted a `confirmSignature` acknowledging the spend. A successfull challenge awards the
-caller with the exit bond.
+`challengingTxPos` follows the convention - `[blockNumber, transactionIndex]`  
+`exitingTxPos` follows the convention - `[blockNumber, transactionIndex, outputIndex, depositNonce`]
+
+A uxto that has starting an exit phase but was already spent on the child chain can be challenged using this function call. A successful challenge awards the caller with the exit bond.
+The `exitingTxPos` locates the malicious utxo and is used to calculate the priority. `challengingTxPos` locates the transaction that is the child (offending transaction is an input into this tx).
+The `proof`, `txBytes` and `sigs` is sufficient for a proof of inclusion in the child chain of the parent transaction. The `confirmSignature`, signed by the owner of the malicious transaction,
+acknowledges the inclusion of it's parent in the plasma chain and allows anyone with this confirm signature to challenge a malicious exit of the child.
 
 <br />
 

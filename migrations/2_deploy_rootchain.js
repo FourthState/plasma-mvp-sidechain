@@ -1,5 +1,5 @@
-let RootChain = artifacts.require("RootChain");
+let PlasmaMVP = artifacts.require("PlasmaMVP");
 
 module.exports = function(deployer, network, accounts) {
-	deployer.deploy(RootChain, {from: accounts[0]});
+	deployer.deploy(PlasmaMVP, {from: accounts[0]});
 };
