@@ -6,7 +6,7 @@ import (
 	"fmt"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
-	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
+	"github.com/FourthState/plasma-mvp-sidechain/x/kvstore"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,17 +19,17 @@ import (
 	"testing"
 )
 
-func setup() (sdk.Context, utxo.Mapper, metadata.MetadataMapper, utxo.FeeUpdater) {
-	ms, capKey, metadataCapKey := utxo.SetupMultiStore()
+func setup() (sdk.Context, utxo.Mapper, kvstore.KVStore, utxo.FeeUpdater) {
+	ms, capKey, plasmaCapKey := utxo.SetupMultiStore()
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 	cdc := utxo.MakeCodec()
 	types.RegisterAmino(cdc)
 
 	mapper := utxo.NewBaseMapper(capKey, cdc)
-	metadataMapper := metadata.NewMetadataMapper(metadataCapKey)
+	plasmaStore := kvstore.NewKVStore(plasmaCapKey)
 
-	return ctx, mapper, metadataMapper, feeUpdater
+	return ctx, mapper, plasmaStore, feeUpdater
 }
 
 // should be modified when fees are implemented
@@ -111,7 +111,7 @@ func getInputAddr(addr0, addr1 common.Address, two bool) [][]byte {
 
 // No signatures are provided
 func TestNoSigs(t *testing.T) {
-	ctx, mapper, metadataMapper, feeUpdater := setup()
+	ctx, mapper, plasmaStore, feeUpdater := setup()
 
 	var msg = GenSpendMsg()
 	var emptysigs [2][65]byte
@@ -123,7 +123,7 @@ func TestNoSigs(t *testing.T) {
 	mapper.ReceiveUTXO(ctx, utxo1)
 	mapper.ReceiveUTXO(ctx, utxo2)
 
-	handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
+	handler := NewAnteHandler(mapper, plasmaStore, feeUpdater, nil)
 	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with no signatures")
@@ -132,7 +132,7 @@ func TestNoSigs(t *testing.T) {
 
 // The wrong amount of signatures are provided
 func TestNotEnoughSigs(t *testing.T) {
-	ctx, mapper, metadataMapper, feeUpdater := setup()
+	ctx, mapper, plasmaStore, feeUpdater := setup()
 
 	var msg = GenSpendMsg()
 	priv, _ := ethcrypto.GenerateKey()
@@ -148,7 +148,7 @@ func TestNotEnoughSigs(t *testing.T) {
 	mapper.ReceiveUTXO(ctx, utxo1)
 	mapper.ReceiveUTXO(ctx, utxo2)
 
-	handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
+	handler := NewAnteHandler(mapper, plasmaStore, feeUpdater, nil)
 	_, res, abort := handler(ctx, tx, false)
 
 	assert.Equal(t, true, abort, "did not abort with incorrect number of signatures")
@@ -166,7 +166,7 @@ type input struct {
 
 // Tests a different cases.
 func TestDifferentCases(t *testing.T) {
-	ctx, mapper, metadataMapper, feeUpdater := setup()
+	ctx, mapper, plasmaStore, feeUpdater := setup()
 
 	var keys [6]*ecdsa.PrivateKey
 	var addrs []common.Address
@@ -250,7 +250,7 @@ func TestDifferentCases(t *testing.T) {
 		owner_index1 := utils.GetIndex(tc.input1.owner_index)
 		tx := GetTx(msg, keys[tc.input0.owner_index], keys[owner_index1], tc.input1.owner_index != -1)
 
-		handler := NewAnteHandler(mapper, metadataMapper, feeUpdater)
+		handler := NewAnteHandler(mapper, plasmaStore, feeUpdater, nil)
 		_, res, abort := handler(ctx, tx, false)
 
 		assert.Equal(t, true, abort, fmt.Sprintf("did not abort on utxo that does not exist. Case: %d", index))
@@ -270,7 +270,8 @@ func TestDifferentCases(t *testing.T) {
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
 		binary.PutUvarint(blknumKey, tc.input0.position.Get()[0].Uint64())
-		metadataMapper.StoreMetadata(ctx, blknumKey, blockHash)
+		key := append(utils.RootHashPrefix, blknumKey...)
+		plasmaStore.Set(ctx, key, blockHash)
 
 		// for ease of testing, txhash is simplified
 		// app_test tests for correct functionality when setting tx_hash

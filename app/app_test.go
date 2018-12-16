@@ -251,7 +251,8 @@ func TestSpendTx(t *testing.T) {
 	ctx := cc.NewContext(false, abci.Header{})
 	blknumKey := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(blknumKey, uint64(1))
-	blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+	key := append(utils.RootHashPrefix, blknumKey...)
+	blockhash := cc.plasmaStore.Get(ctx, key)
 
 	// Test that spending from a non-deposit/non-genesis UTXO works
 
@@ -397,7 +398,8 @@ func TestDifferentTxForms(t *testing.T) {
 			input_utxo := cc.utxoMapper.GetUTXO(ctx, tc.input0.addr.Bytes(), tc.input0.position)
 			blknumKey := make([]byte, binary.MaxVarintLen64)
 			binary.PutUvarint(blknumKey, uint64(7+uint64(index-1)))
-			blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+			key := append(utils.RootHashPrefix, blknumKey...)
+			blockhash := cc.plasmaStore.Get(ctx, key)
 			hash := tmhash.Sum(append(input_utxo.TxHash, blockhash...))
 
 			msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
@@ -504,7 +506,8 @@ func TestMultiTxBlocks(t *testing.T) {
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
 		binary.PutUvarint(blknumKey, uint64(1))
-		blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+		key := append(utils.RootHashPrefix, blknumKey...)
+		blockhash := cc.plasmaStore.Get(ctx, key)
 
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
 		txHash := tmhash.Sum(txBytes)

@@ -1,14 +1,15 @@
 package app
 
 import (
-	"fmt"
 	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
-	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/FourthState/plasma-mvp-sidechain/x/kvstore"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"io"
@@ -43,12 +44,12 @@ type ChildChain struct {
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey
 
-	capKeyMetadataStore *sdk.KVStoreKey
+	capKeyPlasmaStore *sdk.KVStoreKey
 
 	// Manage addition and deletion of utxo's
 	utxoMapper utxo.Mapper
 
-	metadataMapper metadata.MetadataMapper
+	plasmaStore kvstore.KVStore
 
 	/* Validator Information */
 	isValidator bool
@@ -81,12 +82,12 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	bapp.SetCommitMultiStoreTracer(traceStore)
 
 	var app = &ChildChain{
-		BaseApp:             bapp,
-		cdc:                 cdc,
-		txIndex:             0,
-		feeAmount:           0,
-		capKeyMainStore:     sdk.NewKVStoreKey("main"),
-		capKeyMetadataStore: sdk.NewKVStoreKey("metadata"),
+		BaseApp:           bapp,
+		cdc:               cdc,
+		txIndex:           0,
+		feeAmount:         0,
+		capKeyMainStore:   sdk.NewKVStoreKey("main"),
+		capKeyPlasmaStore: sdk.NewKVStoreKey("plasma"),
 	}
 
 	for _, option := range options {
@@ -99,15 +100,15 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 		cdc,
 	)
 
-	app.metadataMapper = metadata.NewMetadataMapper(
-		app.capKeyMetadataStore,
+	app.plasmaStore = kvstore.NewKVStore(
+		app.capKeyPlasmaStore,
 	)
 
 	app.Router().
 		AddRoute("spend", utxo.NewSpendHandler(app.utxoMapper, app.nextPosition))
 
 	app.MountStoresIAVL(app.capKeyMainStore)
-	app.MountStoresIAVL(app.capKeyMetadataStore)
+	app.MountStoresIAVL(app.capKeyPlasmaStore)
 
 	app.SetInitChainer(app.initChainer)
 	app.SetEndBlocker(app.endBlocker)
@@ -127,7 +128,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	app.ethConnection = plasmaClient
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.metadataMapper, app.feeUpdater, app.ethConnection))
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.plasmaStore, app.feeUpdater, app.ethConnection))
 
 	err = app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -181,9 +182,10 @@ func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abc
 
 	blknumKey := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(blknumKey, uint64(ctx.BlockHeight()))
+	key := append(utils.RootHashPrefix, blknumKey...)
 
 	if ctx.BlockHeader().DataHash != nil {
-		app.metadataMapper.StoreMetadata(ctx, blknumKey, ctx.BlockHeader().DataHash)
+		app.plasmaStore.Set(ctx, key, ctx.BlockHeader().DataHash)
 	}
 	return abci.ResponseEndBlock{}
 }

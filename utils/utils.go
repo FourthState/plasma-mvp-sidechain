@@ -9,6 +9,9 @@ import (
 	"reflect"
 )
 
+var RootHashPrefix = []byte("root hash")
+var ConfirmSigPrefix = []byte("confirmation signatures")
+
 func ZeroAddress(addr common.Address) bool {
 	return new(big.Int).SetBytes(addr.Bytes()).Sign() == 0
 }
