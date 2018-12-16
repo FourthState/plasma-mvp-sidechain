@@ -155,6 +155,30 @@ func TestNotEnoughSigs(t *testing.T) {
 	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(1), sdk.CodeType(4)), res.Code, fmt.Sprintf("tx had processed with incorrect number of signatures: %s", res.Log))
 }
 
+func TestInvalidFee(t *testing.T) {
+	ctx, mapper, plasmaStore, feeUpdater := setup()
+
+	var inputAmount uint64 = 1001
+
+	// sigs not needed since fee amount should be checked with existence check
+	var msg = GenSpendMsg()
+	var sigs [2][65]byte
+	msg.FeeAmount = inputAmount + 1
+	tx := types.NewBaseTx(msg, sigs)
+
+	// Add input UTXOs to mapper
+	utxo1 := utxo.NewUTXO(msg.Owner0.Bytes(), inputAmount, types.Denom, types.NewPlasmaPosition(1, 0, 0, 0))
+	utxo2 := utxo.NewUTXO(msg.Owner0.Bytes(), inputAmount, types.Denom, types.NewPlasmaPosition(1, 1, 0, 0))
+	mapper.ReceiveUTXO(ctx, utxo1)
+	mapper.ReceiveUTXO(ctx, utxo2)
+
+	handler := NewAnteHandler(mapper, plasmaStore, feeUpdater, nil)
+	_, res, abort := handler(ctx, tx, false)
+
+	assert.Equal(t, true, abort, "did not abort with incorrect fee amount")
+	require.Equal(t, sdk.ToABCICode(sdk.CodespaceType(3), sdk.CodeType(204)), res.Code, "tx had processed with a fee amount greater than first input amount")
+}
+
 // helper struct for readability
 type input struct {
 	owner_index  int64

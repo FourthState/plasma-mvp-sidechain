@@ -47,7 +47,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, plasmaStore kvstore.KVStore, feeUpda
 		addr0 := common.BytesToAddress(signerAddrs[0].Bytes())
 		position0 := types.PlasmaPosition{spendMsg.Blknum0, spendMsg.Txindex0, spendMsg.Oindex0, spendMsg.DepositNum0}
 
-		res := checkUTXO(ctx, plasmaClient, utxoMapper, position0, addr0)
+		res := checkUTXO(ctx, plasmaClient, utxoMapper, position0, addr0, spendMsg.FeeAmount)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -86,7 +86,9 @@ func NewAnteHandler(utxoMapper utxo.Mapper, plasmaStore kvstore.KVStore, feeUpda
 			if exitErr != nil {
 				return ctx, exitErr.Result(), true
 			}
-			res := checkUTXO(ctx, plasmaClient, utxoMapper, position1, addr1)
+
+			// second input can be less than fee amount
+			res := checkUTXO(ctx, plasmaClient, utxoMapper, position1, addr1, 0)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -202,7 +204,7 @@ func setConfirmSigs(ctx sdk.Context, plasmaStore kvstore.KVStore, blknum, txinde
 
 // Checks that utxo at the position specified exists, matches the address in the SpendMsg
 // and returns the denomination associated with the utxo
-func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
+func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address, feeAmount uint64) sdk.Result {
 	var inputAddress []byte
 	input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
 	if position.IsDeposit() && reflect.DeepEqual(input, utxo.UTXO{}) {
@@ -216,6 +218,10 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 			return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
 		}
 		inputAddress = input.Address
+	}
+
+	if input.Amount < feeAmount {
+		return types.ErrInvalidTransaction(types.DefaultCodespace, "Fee cannot be worth more than first input amount").Result()
 	}
 
 	// Verify that utxo owner equals input address in the transaction
