@@ -152,7 +152,8 @@ contract PlasmaMVP {
 
         uint amount = deposits[nonce].amount;
         address owner = deposits[nonce].owner;
-        depositExitQueue.insert(nonce);
+        uint256 priority = block.timestamp << 128 | nonce;
+        depositExitQueue.insert(priority);
         depositExits[nonce] = exit({
             owner: owner,
             amount: amount,
@@ -408,15 +409,12 @@ contract PlasmaMVP {
         uint256 priority = queue[0];
         exit memory currentExit;
         uint256 position;
-        if (isDeposits) {
-            currentExit = depositExits[priority];
-        } else {
-            // retrieve the right 128 bits from the priority to obtain the position
-            assembly {
-   			    position := and(priority, div(not(0x0), exp(256, 16)))
-		    }
-            currentExit = txExits[position];
-        }
+        // retrieve the right 128 bits from the priority to obtain the position
+        assembly {
+   	        position := and(priority, div(not(0x0), exp(256, 16)))
+		}
+
+        currentExit = isDeposits ? depositExits[position] : txExits[position];
 
         /*
         * Conditions:
@@ -439,7 +437,7 @@ contract PlasmaMVP {
                 totalWithdrawBalance = totalWithdrawBalance.add(amountToAdd);
 
                 if (isDeposits)
-                    depositExits[priority].state = ExitState.Finalized;
+                    depositExits[position].state = ExitState.Finalized;
                 else
                     txExits[position].state = ExitState.Finalized;
 
@@ -456,15 +454,13 @@ contract PlasmaMVP {
 
             // move onto the next oldest exit
             priority = queue[0];
-            if (isDeposits) {
-                currentExit = depositExits[priority];
-            } else {
-                // retrieve the right 128 bits from the priority to obtain the position
-                assembly {
-   			        position := and(priority, div(not(0x0), exp(256, 16)))
-		        }
-                currentExit = txExits[position];
-            }
+            
+            // retrieve the right 128 bits from the priority to obtain the position
+            assembly {
+   			    position := and(priority, div(not(0x0), exp(256, 16)))
+		    }
+             
+            currentExit = isDeposits ? depositExits[position] : txExits[position];
         }
     }
 
