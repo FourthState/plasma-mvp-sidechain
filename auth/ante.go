@@ -51,22 +51,17 @@ func NewAnteHandler(utxoMapper utxo.Mapper, plasmaStore kvstore.KVStore, feeUpda
 		if !res.IsOK() {
 			return ctx, res, true
 		}
-		fmt.Println("utxo checked")
 		exitErr := hasTXExited(plasmaClient, position0)
 		if exitErr != nil {
 			return ctx, exitErr.Result(), true
 		}
-		fmt.Println("past exit check")
 		if position0.IsDeposit() {
-			fmt.Println("hello there")
 			deposit, _ := DepositExists(position0.DepositNum, plasmaClient)
 			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), deposit.Amount.Uint64(), types.Denom, position0)
-			fmt.Println("is deposit")
 			utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 		}
 
 		res = processSig(addr0, sigs[0], signBytes)
-		fmt.Println("sig processed")
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -124,7 +119,6 @@ func NewAnteHandler(utxoMapper utxo.Mapper, plasmaStore kvstore.KVStore, feeUpda
 		if balanceErr != nil {
 			return ctx, balanceErr.Result(), true
 		}
-		fmt.Println("done")
 		// TODO: tx tags (?)
 		return ctx, sdk.Result{}, false // continue...
 	}
@@ -241,7 +235,6 @@ func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool)
 	if err != nil {
 		return types.Deposit{}, false
 	}
-	fmt.Println("before deposit exists return")
 	return *deposit, true
 }
 
