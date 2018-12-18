@@ -10,6 +10,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"reflect"
 
@@ -191,6 +192,15 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 		if !input.Valid {
 			return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
 		}
+		cdc := amino.NewCodec()
+		types.RegisterAmino(cdc)
+		parentPositions := input.InputPositions(cdc, types.ProtoPosition)
+		for _, pos := range parentPositions {
+			exited := hasTXExited(plasmaClient, pos)
+			if exited != nil {
+				return types.ErrInvalidTransaction(types.DefaultCodespace, "Parent UTXO has already exited").Result()
+			}
+		}
 	}
 
 	// Verify that utxo owner equals input address in the transaction
@@ -210,7 +220,8 @@ func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool)
 	return *deposit, true
 }
 
-func hasTXExited(plasmaClient *eth.Plasma, pos types.PlasmaPosition) sdk.Error {
+func hasTXExited(plasmaClient *eth.Plasma, pos utxo.Position) sdk.Error {
+	// has parents tx been exited?
 	var positions [4]sdk.Uint
 	for i, num := range pos.Get() {
 		positions[i] = num
