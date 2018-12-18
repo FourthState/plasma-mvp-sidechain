@@ -278,7 +278,7 @@ contract('[PlasmaMVP] Transactions', async (accounts) => {
         let secondOutput = [txPos[0], txPos[1], 1, 0];
         await instance.startTransactionExit(secondOutput, toHex(txBytes), toHex(proof),
             toHex(confirmSignatures), 0, {from: authority, value: minExitBond});
-        
+
         // operator will challenge with second output
         let err;
         [err] = await catchError(instance.challengeFeeMismatch(secondOutput, txPos2, toHex(txBytes2), proof2));
@@ -737,5 +737,61 @@ contract('[PlasmaMVP] Transactions', async (accounts) => {
         position = 1000000*txPos2[0];
         exit = await instance.txExits.call(position);
         assert.equal(exit[4].toNumber(), 1, "exit has been challenged or finalized");
+    });
+
+    it("Does finalize two transaction exits if given enough gas", async () => {
+        depositNonce = (await instance.depositNonce.call()).toNumber();
+        await instance.deposit(authority, {from: authority, value: amount});
+
+        // deposit is the first input. authority sends entire deposit to accounts[1]
+        let txList2 = Array(17).fill(0);
+        txList2[3] = depositNonce; txList2[12] = accounts[1]; txList2[13] = amount;
+        let txHash2 = web3.sha3(RLP.encode(txList2).toString('hex'), {encoding: 'hex'});
+
+        let sigs2 = [toHex(await web3.eth.sign(authority, txHash2)), toHex(Buffer.alloc(65).toString('hex'))];
+
+        txBytes2 = [txList2, sigs2];
+        txBytes2 = RLP.encode(txBytes2).toString('hex');
+
+        // submit the block
+        let merkleHash2 = sha256String(txBytes2);
+        let merkleRoot2, proof2;
+        [merkleRoot2, proof2] = generateMerkleRootAndProof([merkleHash2], 0);
+        let blockNum2 = (await instance.lastCommittedBlock.call()).toNumber() + 1;
+        await instance.submitBlock([toHex(merkleRoot2)], [1], [0], blockNum2, {from: authority});
+
+        // construct the confirm signature
+        let confirmHash2 = sha256String(merkleHash2 + merkleRoot2.slice(2));
+        confirmSignatures2 = await web3.eth.sign(authority, confirmHash2);
+
+        txPos2 = [blockNum2, 0, 0];
+
+        // Start txn exit on both utxos
+        await instance.startTransactionExit(txPos,
+            toHex(txBytes), toHex(proof), toHex(confirmSignatures), 0,
+            {from: accounts[1], value: minExitBond});
+
+        await instance.startTransactionExit(txPos2,
+            toHex(txBytes2), toHex(proof2), toHex(confirmSignatures2), 0,
+            {from: accounts[1], value: minExitBond});
+
+        fastForward(one_week + 1000);
+
+        // Provide enough gas for both txns to be finalized
+        await instance.finalizeTransactionExits({gas: 200000});
+
+        // The both utxo should have been exited correctly
+        let balance = (await instance.balanceOf.call(accounts[1])).toNumber();
+        assert.equal(balance, 2 * (amount + minExitBond));
+
+        // Verify that txn1 has been exited
+        let position = 1000000*txPos[0];
+        let exit = await instance.txExits.call(position);
+        assert.equal(exit[4].toNumber(), 3, "exit's state not set to finalized");
+
+        // Verify that txn2 has been exited
+        position = 1000000*txPos2[0];
+        exit = await instance.txExits.call(position);
+        assert.equal(exit[4].toNumber(), 3, "exit's state not set to finalized");
     });
 });
