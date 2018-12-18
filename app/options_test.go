@@ -46,7 +46,7 @@ func TestSetPrivKey(t *testing.T) {
 	require.NotEqual(t, empty, cc.rootchain)
 	require.Equal(t, rootchain, cc.rootchain)
 
-	require.Equal(t, uint64(200), cc.min_fees)
+	require.Equal(t, uint64(200), cc.minFees)
 
-	require.Equal(t, uint64(16), cc.block_finality)
+	require.Equal(t, uint64(16), cc.blockFinality)
 }

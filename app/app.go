@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
@@ -67,10 +66,10 @@ type ChildChain struct {
 	nodeURL string
 
 	// Minimum Fee a validator is willing to accept
-	min_fees uint64
+	minFees uint64
 
 	// Number of blocks required for a submitted block to be considered final
-	block_finality uint64
+	blockFinality uint64
 
 	ethConnection *eth.Plasma
 }
@@ -114,13 +113,12 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	app.SetEndBlocker(app.endBlocker)
 
 	// Set Ethereum connection
-	fmt.Println(app.nodeURL)
 	client, err := eth.InitEthConn(app.nodeURL, bapp.Logger)
 	if err != nil {
 		panic(err)
 	}
 
-	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), app.validatorPrivKey, client, app.BaseApp.Logger, app.block_finality, app.isValidator)
+	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), app.validatorPrivKey, client, app.BaseApp.Logger, app.blockFinality, app.isValidator)
 	if err != nil {
 		panic(err)
 	}
@@ -131,6 +129,10 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.plasmaStore, app.feeUpdater, app.ethConnection))
 
 	err = app.LoadLatestVersion(app.capKeyMainStore)
+	if err != nil {
+		cmn.Exit(err.Error())
+	}
+	err = app.LoadLatestVersion(app.capKeyPlasmaStore)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
