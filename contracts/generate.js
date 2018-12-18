@@ -8,7 +8,7 @@ shell.rm('-rf', 'build wrappers abi');
 shell.exec('truffle compile');
 
 // files to generate
-generate('./build/contracts/RootChain.json');
+generate('./build/contracts/PlasmaMVP.json');
 
 function generate(path) {
     shell.mkdir('-p', ['wrappers', 'abi']);
