@@ -95,7 +95,7 @@ func TestEthBlockWatching(t *testing.T) {
 	if err := client.rpc.Call(nil, "evm_mine"); err != nil {
 		t.Fatal("Could not mine a block -", err)
 	}
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	lastEthBlockNum := plasma.ethBlockNum.Uint64()
 
@@ -103,7 +103,7 @@ func TestEthBlockWatching(t *testing.T) {
 	if err := client.rpc.Call(nil, "evm_mine"); err != nil {
 		t.Fatal("Could not mine a block -", err)
 	}
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	currEthBlockNum := plasma.ethBlockNum.Uint64()
 	if currEthBlockNum != lastEthBlockNum+1 {

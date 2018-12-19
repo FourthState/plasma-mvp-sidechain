@@ -1,7 +1,7 @@
 language: go
 
 go:
-  - 1.10.x
+  - 1.11.x
 
 env:
   - DEP_VERSION="0.4.1"
@@ -16,7 +16,7 @@ install:
   - dep ensure -vendor-only
 
 before_script:
-  - npm install -g truffle@4.1.14 ganache-cli@6.1.8
+  - npm install -g truffle@4.1.14 ganache-cli@6.2.3
 
 script:
   - ganache-cli -m=plasma > /dev/null &
