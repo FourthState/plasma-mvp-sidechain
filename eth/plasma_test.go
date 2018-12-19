@@ -97,7 +97,9 @@ func TestEthBlockWatching(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 
+	plasma.lock.Lock()
 	lastEthBlockNum := plasma.ethBlockNum.Uint64()
+	plasma.lock.Unlock()
 
 	// mine another block that should get caught
 	if err := client.rpc.Call(nil, "evm_mine"); err != nil {
@@ -105,7 +107,9 @@ func TestEthBlockWatching(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 
+	plasma.lock.Lock()
 	currEthBlockNum := plasma.ethBlockNum.Uint64()
+	plasma.lock.Unlock()
 	if currEthBlockNum != lastEthBlockNum+1 {
 		t.Fatalf("EthBlockNum not incremented. Expected: %d, Got: %d",
 			lastEthBlockNum+1, currEthBlockNum)
