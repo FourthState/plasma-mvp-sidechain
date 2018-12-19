@@ -2,12 +2,15 @@ package eth
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/tendermint/tendermint/libs/log"
+	"math/big"
 )
 
 // Client defines wrappers to a remote endpoint
@@ -51,6 +54,23 @@ func (client *Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	}()
 
 	return c, nil
+}
+
+func (client *Client) CurrentBlockNum() (*big.Int, error) {
+	var res json.RawMessage
+	err := client.rpc.Call(&res, "eth_blockNumber")
+
+	var hexStr string
+	if err = json.Unmarshal(res, &hexStr); err != nil {
+		return nil, fmt.Errorf("Error unmarshaling blockNumber response - %s", err)
+	}
+
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, fmt.Errorf("Error converting hex string to bytes - %x", hexStr)
+	}
+
+	return new(big.Int).SetBytes(bytes), nil
 }
 
 // used for testing when running against a local client like ganache

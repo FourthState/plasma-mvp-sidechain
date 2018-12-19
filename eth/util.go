@@ -12,9 +12,6 @@ const (
 	transactionExitPrefix = "txExit"
 	depositExitPrefix     = "depositExit"
 
-	// keys
-	lastCommittedBlock = "lastCommittedBlock"
-
 	// constants
 	blockIndexFactor = 1000000
 	txIndexFactor    = 10
@@ -36,5 +33,6 @@ func calcPriority(position [3]*big.Int) *big.Int {
 	bFactor = bFactor.Mul(bFactor, position[0])
 	tFactor = tFactor.Mul(tFactor, position[1])
 
-	return new(big.Int).Add(bFactor, tFactor).Add(position[2], big.NewInt(0))
+	temp := new(big.Int).Add(bFactor, tFactor)
+	return temp.Add(temp, position[2])
 }
