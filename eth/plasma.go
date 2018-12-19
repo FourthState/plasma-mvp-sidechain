@@ -165,15 +165,47 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, error) {
 // HasTXBeenExited indicates if the position has ever been exited
 func (plasma *Plasma) HasTXBeenExited(position [4]*big.Int) bool {
 	var key []byte
+	var priority *big.Int
 	if position[3].Sign() == 0 { // utxo exit
-		pos := [3]*big.Int{position[0], position[1], position[3]}
-		priority := calcPriority(pos).Bytes()
-		key = prefixKey(transactionExitPrefix, priority)
+		txPos := [3]*big.Int{position[0], position[1], position[3]}
+		priority = calcPriority(txPos)
+		key = prefixKey(transactionExitPrefix, priority.Bytes())
 	} else { // deposit exit
-		key = prefixKey(depositExitPrefix, position[3].Bytes())
+		priority = position[3]
+		key = prefixKey(depositExitPrefix, priority.Bytes())
 	}
 
-	return plasma.memdb.Contains(key)
+	type exit struct {
+		Amount       *big.Int
+		CommittedFee *big.Int
+		CreatedAt    *big.Int
+		Owner        common.Address
+		State        uint8
+	}
+
+	if !plasma.memdb.Contains(key) {
+		var e exit
+		var err error
+		if position[3].Sign() == 0 {
+			e, err = plasma.session.TxExits(priority)
+		} else {
+			e, err = plasma.session.DepositExits(priority)
+		}
+
+		// default to true if the contract cannot be queried. Nothing should be spent
+		if err != nil {
+			plasma.logger.Error(fmt.Sprintf("Error querying contract %s", err))
+			return true
+		}
+
+		if e.State == 1 || e.State == 3 {
+			return true
+		} else {
+			return false
+		}
+	}
+
+	return true
 }
 
 func watchDeposits(plasma *Plasma) {
