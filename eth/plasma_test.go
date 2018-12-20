@@ -130,8 +130,8 @@ func TestDepositWatching(t *testing.T) {
 
 	// Deposit 10 eth from the operator
 	plasma.session.TransactOpts.Value = big.NewInt(10)
-	operatorPubKey := crypto.PubkeyToAddress(privKey.PublicKey)
-	_, err = plasma.session.Deposit(operatorPubKey)
+	operatorAddress := crypto.PubkeyToAddress(privKey.PublicKey)
+	_, err = plasma.session.Deposit(operatorAddress)
 	if err != nil {
 		t.Fatalf("Error sending a deposit tx")
 	}
@@ -146,8 +146,8 @@ func TestDepositWatching(t *testing.T) {
 		t.Errorf("Deposit amount incorrect. Expected 10, Got %d", deposit.Amount.Uint64())
 	}
 
-	if !bytes.Equal(operatorPubKey[:], deposit.Owner[:]) {
-		t.Errorf("Deposit owner incorrect. Expected %x, Got %x", operatorPubKey, deposit.Owner)
+	if !bytes.Equal(operatorAddress[:], deposit.Owner[:]) {
+		t.Errorf("Deposit owner incorrect. Expected %x, Got %x", operatorAddress, deposit.Owner)
 	}
 
 	// check persistence in the db

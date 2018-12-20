@@ -137,14 +137,14 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, error) {
 			Amount:   sdk.NewUintFromBigInt(d.Amount),
 			BlockNum: sdk.NewUintFromBigInt(d.EthBlockNum),
 		}
-	}
 
-	// save to the db
-	data, err = json.Marshal(deposit)
-	if err != nil {
-		plasma.logger.Error("error encoding deposit. will not be cached")
-	} else {
-		plasma.memdb.Put(key, data)
+		// save to the db
+		data, err = json.Marshal(deposit)
+		if err != nil {
+			plasma.logger.Error("error encoding deposit. will not be cached")
+		} else {
+			plasma.memdb.Put(key, data)
+		}
 	}
 
 	// check finality bound for the deposit
