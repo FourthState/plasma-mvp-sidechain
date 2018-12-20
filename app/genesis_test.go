@@ -9,6 +9,7 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -18,7 +19,11 @@ import (
 func TestGenesisState(t *testing.T) {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
-	app := NewChildChain(logger, db, nil)
+	privkeyFile, _ := ioutil.TempFile("", "privateKey")
+	privkeyFile.Write([]byte(privkey))
+	defer os.Remove(privkeyFile.Name())
+
+	app := NewChildChain(logger, db, nil, SetEthConfig(true, privkeyFile.Name(), plasmaContractAddr, nodeURL, "0", "5"))
 
 	addrs := []common.Address{utils.GenerateAddress(), utils.GenerateAddress()}
 
