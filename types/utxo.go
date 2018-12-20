@@ -1,10 +1,10 @@
 package types
 
 import (
-	amino "github.com/tendermint/go-amino"
-
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
+	amino "github.com/tendermint/go-amino"
 )
 
 const (
@@ -49,6 +49,12 @@ func (position PlasmaPosition) IsValid() bool {
 		// If position represents deposit, depositnum is not 0 and txindex and oindex are 0.
 		return position.DepositNum != 0 && position.TxIndex == 0 && position.Oindex == 0
 	}
+}
+
+type Deposit struct {
+	Owner    common.Address
+	Amount   sdk.Uint
+	BlockNum sdk.Uint
 }
 
 //-------------------------------------------------------

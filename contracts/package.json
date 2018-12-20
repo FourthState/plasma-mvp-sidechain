@@ -1,0 +1,25 @@
+{
+  "name": "plasma-mvp-rootchain",
+  "version": "1.0.0",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "clean": "rm -rf build wrappers abi",
+    "test": "rm -rf build && truffle test",
+    "coverage": "./node_modules/.bin/solidity-coverage"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "coveralls": "^3.0.2",
+    "solidity-coverage": "^0.5.11"
+  },
+  "dependencies": {
+    "ethereumjs-util": "^6.0.0",
+    "npm": "^5.10.0",
+    "openzeppelin-solidity": "^2.0.0",
+    "rlp": "^2.1.0",
+    "shelljs": "^0.8.3",
+    "solidity-rlp": "^1.1.0"
+  }
+}
