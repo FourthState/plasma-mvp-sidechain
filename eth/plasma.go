@@ -114,9 +114,6 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, error) {
 	key := prefixKey(depositPrefix, nonce.Bytes())
 	data, err := plasma.memdb.Get(key)
 
-	fmt.Println("here is the data retrieved")
-	fmt.Println(data)
-
 	var deposit plasmaTypes.Deposit
 	// check against the contract if the deposit is not in the cache or decoding fails
 	if err != nil || json.Unmarshal(data, &deposit) != nil {
@@ -223,11 +220,6 @@ func watchDeposits(plasma *Plasma) {
 	for deposit := range deposits {
 		key := prefixKey(depositPrefix, deposit.DepositNonce.Bytes())
 
-		fmt.Println("Watched a deposit!!!!1")
-		fmt.Println(deposit)
-		fmt.Println(deposit.Amount)
-		fmt.Println(deposit.EthBlockNum)
-
 		// remove the nonce, encode, and store
 		data, err := json.Marshal(plasmaTypes.Deposit{
 			Owner:    deposit.Depositor,
@@ -258,10 +250,6 @@ func watchExits(plasma *Plasma) {
 
 	go func() {
 		for depositExit := range startedDepositExits {
-			fmt.Println("Deposit EXIT")
-			fmt.Println(depositExit)
-			fmt.Println("End Exit")
-			panic("Oh no!")
 			nonce := depositExit.Nonce.Bytes()
 			key := prefixKey(depositExitPrefix, nonce)
 			plasma.memdb.Put(key, nil)
@@ -272,7 +260,6 @@ func watchExits(plasma *Plasma) {
 
 	go func() {
 		for transactionExit := range startedTransactionExits {
-			panic("Oh no!")
 			priority := calcPriority(transactionExit.Position).Bytes()
 			key := prefixKey(transactionExitPrefix, priority)
 			plasma.memdb.Put(key, nil)

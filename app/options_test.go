@@ -6,20 +6,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-const (
-	privkey = "713bd18559e878e0fa3ee32c8ff3ef4393b82ff9f272a3d7de707882f9a3f7d7"
-)
-
-func TestSetPrivKey(t *testing.T) {
-	rootchain := utils.GenerateAddress()
-
+func TestSetEthConfig(t *testing.T) {
 	// create a private key file
 	privkey_file, err := ioutil.TempFile("", "private_key")
 	require.NoError(t, err)
@@ -33,7 +26,7 @@ func TestSetPrivKey(t *testing.T) {
 	db := dbm.NewMemDB()
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
 	cc := NewChildChain(logger, db, nil,
-		SetEthConfig(true, privkey_file.Name(), rootchain.String(), nodeURL, "200", "16"),
+		SetEthConfig(true, privkey_file.Name(), plasmaContractAddr, nodeURL, "200", "16"),
 	)
 
 	private_key, _ := crypto.LoadECDSA(privkey_file.Name())
@@ -43,9 +36,9 @@ func TestSetPrivKey(t *testing.T) {
 
 	var empty ethcmn.Address
 	require.NotEqual(t, empty, cc.rootchain)
-	require.Equal(t, rootchain, cc.rootchain)
+	require.Equal(t, ethcmn.HexToAddress(plasmaContractAddr), cc.rootchain)
 
-	require.Equal(t, uint64(200), cc.min_fees)
+	require.Equal(t, uint64(200), cc.minFees)
 
-	require.Equal(t, uint64(16), cc.block_finality)
+	require.Equal(t, uint64(16), cc.blockFinality)
 }

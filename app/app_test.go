@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -24,16 +25,43 @@ import (
 	rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
-/*
-	Note: Check() has been taken out from testing
-	at the moment because it increments txIndex
-
-*/
+const (
+	privkey            = "9cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c17181"
+	nodeURL            = "ws://127.0.0.1:8545"
+	plasmaContractAddr = "5cae340fb2c2bb0a2f194a95cda8a1ffdc9d2f85"
+)
 
 func newChildChain() *ChildChain {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
-	return NewChildChain(logger, db, nil)
+	privkeyFile, _ := ioutil.TempFile("", "privateKey")
+	privkeyFile.Write([]byte(privkey))
+	defer os.Remove(privkeyFile.Name())
+	return NewChildChain(logger, db, nil, SetEthConfig(true, privkeyFile.Name(), plasmaContractAddr, nodeURL, "0", "5"))
+}
+
+// Adds a initial utxo at the specified position
+// Note: The input keys, txHash, and blockHash are not accurate
+// Use only for spending
+func storeInitUTXO(cc *ChildChain, position types.PlasmaPosition, addr common.Address) {
+	// Add blockhash to plasmaStore
+	blknumKey := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(blknumKey, uint64(position.Blknum))
+	key := append(utils.RootHashPrefix, blknumKey...)
+	blockHash := []byte("merkle root")
+
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: int64(position.Blknum) + 1}})
+	ctx := cc.NewContext(false, abci.Header{})
+	cc.plasmaStore.Set(ctx, key, blockHash)
+
+	// Creates an input key that maps to itself
+	var inputKeys [][]byte
+	inKey := cc.utxoMapper.ConstructKey(addr.Bytes(), position)
+	inputKeys = append(inputKeys, inKey)
+
+	txhash := []byte("txhash")
+	input := utxo.NewUTXOwithInputs(addr.Bytes(), 100, "Ether", position, txhash, inputKeys)
+	cc.utxoMapper.ReceiveUTXO(ctx, input)
 }
 
 // Creates a deposit of value 100 for each address in input
@@ -171,51 +199,6 @@ func TestBadSpendMsg(t *testing.T) {
 
 }
 
-func TestSpendDeposit(t *testing.T) {
-	cc := newChildChain()
-
-	privKeyA, _ := ethcrypto.GenerateKey()
-	privKeyB, _ := ethcrypto.GenerateKey()
-	addrA := utils.PrivKeyToAddress(privKeyA)
-	addrB := utils.PrivKeyToAddress(privKeyB)
-
-	InitTestChain(cc, utils.GenerateAddress(), addrA)
-
-	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
-
-	// no confirmation signatures needed for spending a deposit
-
-	// Signs the hash of the transaction
-	tx := GetTx(msg, privKeyA, nil, false)
-	txBytes, _ := rlp.EncodeToBytes(tx)
-
-	// Must commit for checkState to be set correctly. Should be fixed in next version of SDK
-	cc.BeginBlock(abci.RequestBeginBlock{})
-	cc.EndBlock(abci.RequestEndBlock{})
-	cc.Commit()
-
-	// Simulate a block
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
-
-	// Deliver tx, updates states
-	dres := cc.DeliverTx(txBytes)
-
-	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
-
-	// Create context
-	ctx := cc.NewContext(false, abci.Header{})
-
-	// Retrieve UTXO from context
-	position := types.NewPlasmaPosition(1, 0, 0, 0)
-	res := cc.utxoMapper.GetUTXO(ctx, addrB.Bytes(), position)
-
-	inputKey := cc.utxoMapper.ConstructKey(addrA.Bytes(), types.NewPlasmaPosition(0, 0, 0, 1))
-	txHash := tmhash.Sum(txBytes)
-	expected := utxo.NewUTXOwithInputs(addrB.Bytes(), 100, "Ether", position, txHash, [][]byte{inputKey})
-
-	require.Equal(t, expected, res, "UTXO did not get added to store correctly")
-}
-
 func TestSpendTx(t *testing.T) {
 	cc := newChildChain()
 
@@ -227,44 +210,33 @@ func TestSpendTx(t *testing.T) {
 	InitTestChain(cc, utils.GenerateAddress(), addrA)
 	cc.Commit()
 
-	msg := GenerateSimpleMsg(addrA, addrB, [4]uint64{0, 0, 0, 1}, 100, 0)
-
-	// Signs the hash of the transaction
-	tx := GetTx(msg, privKeyA, nil, false)
-	txBytes, _ := rlp.EncodeToBytes(tx)
-	txHash := tmhash.Sum(txBytes)
-
-	// Simulate a block
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
-
-	// Deliver tx, updates states
-	res := cc.DeliverTx(txBytes)
-
-	require.True(t, res.IsOK(), res.Log)
-
-	cc.EndBlock(abci.RequestEndBlock{})
+	// Add a UTXO into the utxoMapper
+	position := types.NewPlasmaPosition(1, 0, 0, 0)
+	storeInitUTXO(cc, position, addrB)
 	cc.Commit()
 
+	txHash := []byte("txhash")
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 5}})
 
 	// Create context
 	ctx := cc.NewContext(false, abci.Header{})
 	blknumKey := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(blknumKey, uint64(1))
-	blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+	key := append(utils.RootHashPrefix, blknumKey...)
+	blockHash := cc.plasmaStore.Get(ctx, key)
 
 	// Test that spending from a non-deposit/non-genesis UTXO works
 
 	// generate simple msg
-	msg = GenerateSimpleMsg(addrB, addrA, [4]uint64{1, 0, 0, 0}, 100, 0)
+	msg := GenerateSimpleMsg(addrB, addrA, [4]uint64{1, 0, 0, 0}, 100, 0)
 
-	hash := tmhash.Sum(append(txHash, blockhash...))
+	hash := tmhash.Sum(append(txHash, blockHash...))
 	// Set confirm signatures
-	msg.Input0ConfirmSigs = CreateConfirmSig(hash, privKeyA, &ecdsa.PrivateKey{}, false)
+	msg.Input0ConfirmSigs = CreateConfirmSig(hash, privKeyB, &ecdsa.PrivateKey{}, false)
 
 	// Signs the hash of the transaction
-	tx = GetTx(msg, privKeyB, nil, false)
-	txBytes, _ = rlp.EncodeToBytes(tx)
+	tx := GetTx(msg, privKeyB, nil, false)
+	txBytes, _ := rlp.EncodeToBytes(tx)
 	txHash = tmhash.Sum(txBytes)
 
 	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 5}})
@@ -274,7 +246,7 @@ func TestSpendTx(t *testing.T) {
 	require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
 	// Retrieve UTXO from context
-	position := types.NewPlasmaPosition(5, 0, 0, 0)
+	position = types.NewPlasmaPosition(5, 0, 0, 0)
 	actual := cc.utxoMapper.GetUTXO(ctx, addrA.Bytes(), position)
 
 	inputKey := cc.utxoMapper.ConstructKey(addrB.Bytes(), types.NewPlasmaPosition(1, 0, 0, 0))
@@ -307,6 +279,10 @@ func TestDifferentTxForms(t *testing.T) {
 	}
 
 	InitTestChain(cc, utils.GenerateAddress(), addrs...)
+
+	// Add inital utxo
+	position := types.NewPlasmaPosition(6, 0, 0, 0)
+	storeInitUTXO(cc, position, addrs[0])
 	cc.Commit()
 
 	cases := []struct {
@@ -320,7 +296,7 @@ func TestDifferentTxForms(t *testing.T) {
 		// Test Case 0: 1 input 2 output
 		// Tx spends the genesis deposit and creates 2 new ouputs for addr[1] and addr[2]
 		{
-			Input{0, addrs[0], types.NewPlasmaPosition(0, 0, 0, 1), 0, -1},
+			Input{0, addrs[0], types.NewPlasmaPosition(6, 0, 0, 0), 0, -1},
 			Input{0, common.Address{}, types.PlasmaPosition{}, -1, -1},
 			addrs[1], 20,
 			addrs[2], 80,
@@ -396,8 +372,9 @@ func TestDifferentTxForms(t *testing.T) {
 			// and therefore we only need to grab the first txhash from the inptus
 			input_utxo := cc.utxoMapper.GetUTXO(ctx, tc.input0.addr.Bytes(), tc.input0.position)
 			blknumKey := make([]byte, binary.MaxVarintLen64)
-			binary.PutUvarint(blknumKey, uint64(7+uint64(index-1)))
-			blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+			binary.PutUvarint(blknumKey, uint64(7+int64(index-1)))
+			key := append(utils.RootHashPrefix, blknumKey...)
+			blockhash := cc.plasmaStore.Get(ctx, key)
 			hash := tmhash.Sum(append(input_utxo.TxHash, blockhash...))
 
 			msg.Input0ConfirmSigs = CreateConfirmSig(hash, keys[tc.input0.input_index0], keys[input0_index1], tc.input0.input_index1 != -1)
@@ -462,10 +439,18 @@ func TestMultiTxBlocks(t *testing.T) {
 
 	InitTestChain(cc, utils.GenerateAddress(), addrs...)
 	cc.Commit()
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
 
 	for i := uint64(0); i < N; i++ {
-		msgs[i] = GenerateSimpleMsg(addrs[i], addrs[i], [4]uint64{0, 0, 0, i + 1}, 100, 0)
+		cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: int64(i + 1)}})
+		position := types.NewPlasmaPosition(i+1, 0, 0, 0)
+		storeInitUTXO(cc, position, addrs[i])
+		cc.Commit()
+		cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: N + 1}})
+
+		msgs[i] = GenerateSimpleMsg(addrs[i], addrs[i], [4]uint64{i + 1, 0, 0, 0}, 100, 0)
+		hash := tmhash.Sum(append([]byte("txhash"), []byte("merkle root")...))
+		msgs[i].Input0ConfirmSigs = CreateConfirmSig(hash, keys[i], &ecdsa.PrivateKey{}, false)
+
 		txs[i] = GetTx(msgs[i], keys[i], &ecdsa.PrivateKey{}, false)
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
 
@@ -473,38 +458,38 @@ func TestMultiTxBlocks(t *testing.T) {
 		require.Equal(t, sdk.CodeType(0), sdk.CodeType(dres.Code), dres.Log)
 
 	}
-	ctx := cc.NewContext(false, abci.Header{})
+	cc.EndBlock(abci.RequestEndBlock{})
+	cc.Commit()
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: N + 2}})
+	ctx := cc.NewContext(false, abci.Header{Height: N + 1})
 
 	// Retrieve and check UTXO from context
 	for i := uint16(0); i < N; i++ {
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
-		position := types.NewPlasmaPosition(1, i, 0, 0)
+		position := types.NewPlasmaPosition(N+1, i, 0, 0)
 		actual := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
 
-		inputKey := cc.utxoMapper.ConstructKey(addrs[i].Bytes(), types.NewPlasmaPosition(0, 0, 0, uint64(i+1)))
+		inputKey := cc.utxoMapper.ConstructKey(addrs[i].Bytes(), types.NewPlasmaPosition(uint64(i+1), 0, 0, 0))
 		expected := utxo.NewUTXOwithInputs(addrs[i].Bytes(), 100, "Ether", position, tmhash.Sum(txBytes), [][]byte{inputKey})
 		expected.TxHash = tmhash.Sum(txBytes)
 
 		require.Equal(t, expected, actual, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
-		position = types.NewPlasmaPosition(0, 0, 0, uint64(i)+1)
+		position = types.NewPlasmaPosition(uint64(i)+1, 0, 0, 0)
 		deposit := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), position)
-		require.False(t, deposit.Valid, fmt.Sprintf("deposit %d did not get removed correctly from the utxo store", i+1))
+		require.False(t, deposit.Valid, fmt.Sprintf("utxo %d did not get removed correctly from the utxo store", i+1))
 	}
-
-	cc.EndBlock(abci.RequestEndBlock{})
-	cc.Commit()
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 2}})
 
 	// send to different address
 	for i := uint16(0); i < N; i++ {
-		msgs[i].Blknum0 = 1
+		msgs[i].Blknum0 = N + 1
 		msgs[i].Txindex0 = i
 		msgs[i].DepositNum0 = 0
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
-		binary.PutUvarint(blknumKey, uint64(1))
-		blockhash := cc.metadataMapper.GetMetadata(ctx, blknumKey)
+		binary.PutUvarint(blknumKey, uint64(N+1))
+		key := append(utils.RootHashPrefix, blknumKey...)
+		blockhash := cc.plasmaStore.Get(ctx, key)
 
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
 		txHash := tmhash.Sum(txBytes)
@@ -525,14 +510,14 @@ func TestMultiTxBlocks(t *testing.T) {
 	// Retrieve and check UTXO from context
 	for i := uint16(0); i < N; i++ {
 		txBytes, _ := rlp.EncodeToBytes(txs[i])
-		actual := cc.utxoMapper.GetUTXO(ctx, addrs[(i+1)%N].Bytes(), types.NewPlasmaPosition(2, i, 0, 0))
+		actual := cc.utxoMapper.GetUTXO(ctx, addrs[(i+1)%N].Bytes(), types.NewPlasmaPosition(N+2, i, 0, 0))
 
-		inputKey := cc.utxoMapper.ConstructKey(addrs[i].Bytes(), types.NewPlasmaPosition(1, i, 0, 0))
-		expected := utxo.NewUTXOwithInputs(addrs[(i+1)%N].Bytes(), 100, "Ether", types.NewPlasmaPosition(2, i, 0, 0), tmhash.Sum(txBytes), [][]byte{inputKey})
+		inputKey := cc.utxoMapper.ConstructKey(addrs[i].Bytes(), types.NewPlasmaPosition(N+1, i, 0, 0))
+		expected := utxo.NewUTXOwithInputs(addrs[(i+1)%N].Bytes(), 100, "Ether", types.NewPlasmaPosition(N+2, i, 0, 0), tmhash.Sum(txBytes), [][]byte{inputKey})
 
 		require.Equal(t, expected, actual, fmt.Sprintf("UTXO %d did not get added to store correctly", i+1))
 
-		input := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), types.NewPlasmaPosition(1, i, 0, 0))
+		input := cc.utxoMapper.GetUTXO(ctx, addrs[i].Bytes(), types.NewPlasmaPosition(N+1, i, 0, 0))
 		require.False(t, input.Valid, fmt.Sprintf("UTXO %d  did not get removed from the utxo store correctly", i))
 	}
 
@@ -552,13 +537,23 @@ func TestFee(t *testing.T) {
 	}
 
 	InitTestChain(cc, valAddr, addrs...)
+	position := types.NewPlasmaPosition(1, 0, 0, 0)
+	storeInitUTXO(cc, position, addrs[0])
+	position = types.NewPlasmaPosition(2, 0, 0, 0)
+	storeInitUTXO(cc, position, addrs[1])
+
 	cc.Commit()
 
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 1}})
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 3}})
+	// Create tx's with fees and deliver them in block 3
+	msg1 := GenerateSimpleMsg(addrs[0], addrs[1], [4]uint64{1, 0, 0, 0}, 90, 10)
+	msg2 := GenerateSimpleMsg(addrs[1], addrs[0], [4]uint64{2, 0, 0, 0}, 90, 10)
 
-	// Create tx's with fees and deliver them in block 1
-	msg1 := GenerateSimpleMsg(addrs[0], addrs[1], [4]uint64{0, 0, 0, 1}, 90, 10)
-	msg2 := GenerateSimpleMsg(addrs[1], addrs[0], [4]uint64{0, 0, 0, 2}, 90, 10)
+	blockHash := []byte("merkle root")
+	txHash := []byte("txhash")
+	hash := tmhash.Sum(append(txHash, blockHash...))
+	msg1.Input0ConfirmSigs = CreateConfirmSig(hash, privKeys[0], &ecdsa.PrivateKey{}, false)
+	msg2.Input0ConfirmSigs = CreateConfirmSig(hash, privKeys[1], &ecdsa.PrivateKey{}, false)
 
 	tx1 := GetTx(msg1, privKeys[0], nil, false)
 	tx2 := GetTx(msg2, privKeys[1], nil, false)
@@ -580,14 +575,14 @@ func TestFee(t *testing.T) {
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
 
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 2}})
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 4}})
 
-	expectedPosition1 := types.NewPlasmaPosition(1, uint16(0), uint8(0), 0)
-	expectedPosition2 := types.NewPlasmaPosition(1, uint16(1), uint8(0), 0)
+	expectedPosition1 := types.NewPlasmaPosition(3, uint16(0), uint8(0), 0)
+	expectedPosition2 := types.NewPlasmaPosition(3, uint16(1), uint8(0), 0)
 
-	expectedValPosition := types.NewPlasmaPosition(1, uint16(1<<16-1), uint8(0), 0)
+	expectedValPosition := types.NewPlasmaPosition(3, uint16(1<<16-1), uint8(0), 0)
 
-	ctx := cc.NewContext(false, abci.Header{Height: 2})
+	ctx := cc.NewContext(false, abci.Header{Height: 4})
 
 	utxo1 := cc.utxoMapper.GetUTXO(ctx, addrs[1].Bytes(), expectedPosition1)
 	utxo2 := cc.utxoMapper.GetUTXO(ctx, addrs[0].Bytes(), expectedPosition2)
@@ -600,7 +595,7 @@ func TestFee(t *testing.T) {
 	require.Equal(t, uint64(20), valUTXO.Amount, "Validator fees did not get collected into UTXO correctly")
 
 	// Check that validator can spend his fees as if they were a regular UTXO on sidechain
-	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{1, 1<<16 - 1, 0, 0}, 10, 10)
+	valMsg := GenerateSimpleMsg(valAddr, addrs[0], [4]uint64{3, 1<<16 - 1, 0, 0}, 10, 10)
 
 	valTx := GetTx(valMsg, valPrivKey, nil, false)
 
@@ -611,11 +606,11 @@ func TestFee(t *testing.T) {
 	cc.EndBlock(abci.RequestEndBlock{})
 	cc.Commit()
 
-	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 3}})
+	cc.BeginBlock(abci.RequestBeginBlock{Header: abci.Header{Height: 5}})
 
 	ctx = cc.NewContext(false, abci.Header{Height: 3})
 
 	// Check that fee Amount gets reset between blocks. feeAmount for block 2 is 10 not 30.
-	feeUTXO2 := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), types.NewPlasmaPosition(2, 1<<16-1, 0, 0))
+	feeUTXO2 := cc.utxoMapper.GetUTXO(ctx, valAddr.Bytes(), types.NewPlasmaPosition(4, 1<<16-1, 0, 0))
 	require.Equal(t, uint64(10), feeUTXO2.Amount, "Fee Amount on second block is incorrect")
 }

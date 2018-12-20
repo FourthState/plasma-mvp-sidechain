@@ -6,12 +6,13 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	types "github.com/FourthState/plasma-mvp-sidechain/types"
 	utils "github.com/FourthState/plasma-mvp-sidechain/utils"
-	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
+	"github.com/FourthState/plasma-mvp-sidechain/x/kvstore"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"math/big"
 	"reflect"
 
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
@@ -19,7 +20,7 @@ import (
 
 // NewAnteHandler returns an AnteHandler that checks signatures,
 // confirm signatures, and increments the feeAmount
-func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper, feeUpdater utxo.FeeUpdater, plasmaClient *eth.Plasma) sdk.AnteHandler {
+func NewAnteHandler(utxoMapper utxo.Mapper, plasmaStore kvstore.KVStore, feeUpdater utxo.FeeUpdater, plasmaClient *eth.Plasma) sdk.AnteHandler {
 	return func(
 		ctx sdk.Context, tx sdk.Tx, simulate bool,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
@@ -29,13 +30,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			return ctx, sdk.ErrInternal("tx must be in form of BaseTx").Result(), true
 		}
 
-		// Assert that there are signatures
 		sigs := baseTx.GetSignatures()
-		if len(sigs) == 0 {
-			return ctx,
-				sdk.ErrUnauthorized("no signers").Result(),
-				true
-		}
 
 		// Base Tx must have only one msg
 		msg := baseTx.GetMsgs()[0]
@@ -53,7 +48,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		addr0 := common.BytesToAddress(signerAddrs[0].Bytes())
 		position0 := types.PlasmaPosition{spendMsg.Blknum0, spendMsg.Txindex0, spendMsg.Oindex0, spendMsg.DepositNum0}
 
-		res := checkUTXO(ctx, plasmaClient, utxoMapper, position0, addr0)
+		res := checkUTXO(ctx, plasmaClient, utxoMapper, position0, addr0, spendMsg.FeeAmount)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -61,26 +56,25 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		if exitErr != nil {
 			return ctx, exitErr.Result(), true
 		}
-		fmt.Println("I got past Tx Exited")
 		if position0.IsDeposit() {
 			deposit, _ := DepositExists(position0.DepositNum, plasmaClient)
 			inputUTXO := utxo.NewUTXO(deposit.Owner.Bytes(), deposit.Amount.Uint64(), types.Denom, position0)
 			utxoMapper.ReceiveUTXO(ctx, inputUTXO)
 		}
-		fmt.Println("I got past second Deposit check")
 
 		res = processSig(addr0, sigs[0], signBytes)
-
 		if !res.IsOK() {
 			return ctx, res, true
 		}
 
 		// verify the confirmation signature if the input is not a deposit
 		if position0.DepositNum == 0 && position0.TxIndex != 1<<16-1 {
-			res = processConfirmSig(ctx, utxoMapper, metadataMapper, position0, addr0, spendMsg.Input0ConfirmSigs)
+			res = processConfirmSig(ctx, utxoMapper, plasmaStore, position0, addr0, spendMsg.Input0ConfirmSigs)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
+
+			setConfirmSigs(ctx, plasmaStore, spendMsg.Blknum0, uint64(spendMsg.Txindex0), spendMsg.Input0ConfirmSigs)
 		}
 
 		// Verify the second input
@@ -92,7 +86,9 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			if exitErr != nil {
 				return ctx, exitErr.Result(), true
 			}
-			res := checkUTXO(ctx, plasmaClient, utxoMapper, position1, addr1)
+
+			// second input can be less than fee amount
+			res := checkUTXO(ctx, plasmaClient, utxoMapper, position1, addr1, 0)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -109,9 +105,13 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			}
 
 			if position1.DepositNum == 0 && position1.TxIndex != 1<<16-1 {
-				res = processConfirmSig(ctx, utxoMapper, metadataMapper, position1, addr1, spendMsg.Input1ConfirmSigs)
+				res = processConfirmSig(ctx, utxoMapper, plasmaStore, position1, addr1, spendMsg.Input1ConfirmSigs)
 				if !res.IsOK() {
 					return ctx, res, true
+				}
+
+				if spendMsg.Blknum0 != spendMsg.Blknum1 && spendMsg.Txindex0 != spendMsg.Txindex1 {
+					setConfirmSigs(ctx, plasmaStore, spendMsg.Blknum1, uint64(spendMsg.Txindex1), spendMsg.Input1ConfirmSigs)
 				}
 			}
 		}
@@ -120,7 +120,6 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		if balanceErr != nil {
 			return ctx, balanceErr.Result(), true
 		}
-
 		// TODO: tx tags (?)
 		return ctx, sdk.Result{}, false // continue...
 	}
@@ -142,7 +141,7 @@ func processSig(
 }
 
 func processConfirmSig(
-	ctx sdk.Context, utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper,
+	ctx sdk.Context, utxoMapper utxo.Mapper, plasmaStore kvstore.KVStore,
 	position types.PlasmaPosition, addr common.Address, sigs [][65]byte) (
 	res sdk.Result) {
 
@@ -160,7 +159,8 @@ func processConfirmSig(
 	// Get the block hash that input was created in
 	blknumKey := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(blknumKey, input.Position.Get()[0].Uint64())
-	blockHash := metadataMapper.GetMetadata(ctx, blknumKey)
+	key := append(utils.RootHashPrefix, blknumKey...)
+	blockHash := plasmaStore.Get(ctx, key)
 
 	// Create confirm signature hash
 	hash := append(input.TxHash, blockHash...)
@@ -177,30 +177,50 @@ func processConfirmSig(
 	return sdk.Result{}
 }
 
+// Helper function for setting confirmation signatures into app state
+// Key is formed as :  prefix + {Blknum, TxIndex}
+// This prevents double storage of confirmation signatures
+// Returns true if successful
+func setConfirmSigs(ctx sdk.Context, plasmaStore kvstore.KVStore, blknum, txindex uint64, sigs [][65]byte) bool {
+	cdc := amino.NewCodec()
+	pos := [2]uint64{blknum, txindex}
+
+	bz, err := cdc.MarshalBinaryBare(pos)
+	if err != nil {
+		return false
+	}
+
+	plasmaKey := append(utils.ConfirmSigPrefix, bz...)
+
+	var confirmSigs []byte
+	confirmSigs = append(confirmSigs, sigs[0][:]...)
+	if len(sigs) == 2 {
+		confirmSigs = append(confirmSigs, sigs[1][:]...)
+	}
+	plasmaStore.Set(ctx, plasmaKey, confirmSigs)
+	return true
+}
+
 // Checks that utxo at the position specified exists, matches the address in the SpendMsg
 // and returns the denomination associated with the utxo
-func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address) sdk.Result {
+func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address, feeAmount uint64) sdk.Result {
 	var inputAddress []byte
-	if position.IsDeposit() {
+	input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
+	if position.IsDeposit() && reflect.DeepEqual(input, utxo.UTXO{}) {
 		deposit, ok := DepositExists(position.DepositNum, plasmaClient)
 		if !ok {
 			return utxo.ErrInvalidUTXO(2, "Deposit UTXO does not exist yet").Result()
 		}
 		inputAddress = deposit.Owner.Bytes()
 	} else {
-		input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
 		if !input.Valid {
 			return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
 		}
-		cdc := amino.NewCodec()
-		types.RegisterAmino(cdc)
-		parentPositions := input.InputPositions(cdc, types.ProtoPosition)
-		for _, pos := range parentPositions {
-			exited := hasTXExited(plasmaClient, pos)
-			if exited != nil {
-				return types.ErrInvalidTransaction(types.DefaultCodespace, "Parent UTXO has already exited").Result()
-			}
-		}
+		inputAddress = input.Address
+	}
+
+	if input.Amount < feeAmount {
+		return types.ErrInvalidTransaction(types.DefaultCodespace, "Fee cannot be worth more than first input amount").Result()
 	}
 
 	// Verify that utxo owner equals input address in the transaction
@@ -211,8 +231,7 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 }
 
 func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool) {
-	fmt.Println("Called Deposit Exists")
-	deposit, err := plasmaClient.GetDeposit(sdk.NewUint(nonce))
+	deposit, err := plasmaClient.GetDeposit(big.NewInt(int64(nonce)))
 
 	if err != nil {
 		return types.Deposit{}, false
@@ -220,11 +239,14 @@ func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool)
 	return *deposit, true
 }
 
-func hasTXExited(plasmaClient *eth.Plasma, pos utxo.Position) sdk.Error {
-	// has parents tx been exited?
-	var positions [4]sdk.Uint
+func hasTXExited(plasmaClient *eth.Plasma, pos types.PlasmaPosition) sdk.Error {
+	if plasmaClient == nil {
+		return nil
+	}
+
+	var positions [4]*big.Int
 	for i, num := range pos.Get() {
-		positions[i] = num
+		positions[i] = big.NewInt(int64(num.Uint64()))
 	}
 	exited := plasmaClient.HasTXBeenExited(positions)
 	if exited {

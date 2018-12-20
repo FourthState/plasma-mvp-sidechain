@@ -51,6 +51,13 @@ func (position PlasmaPosition) IsValid() bool {
 	}
 }
 
+func (position PlasmaPosition) IsDeposit() bool {
+	if !position.IsValid() {
+		return false
+	}
+	return position.DepositNum != 0
+}
+
 type Deposit struct {
 	Owner    common.Address
 	Amount   sdk.Uint

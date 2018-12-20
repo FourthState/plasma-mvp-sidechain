@@ -72,7 +72,7 @@ var signCmd = &cobra.Command{
 		blknumKey := make([]byte, binary.MaxVarintLen64)
 		binary.PutUvarint(blknumKey, input.Position.Get()[0].Uint64())
 
-		blockhash, err := ctx.QueryStore(blknumKey, ctx.MetadataStore)
+		blockhash, err := ctx.QueryStore(blknumKey, ctx.PlasmaStore)
 		if err != nil {
 			return err
 		}
