@@ -219,7 +219,7 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 		inputAddress = input.Address
 	}
 
-	if input.Amount < feeAmount {
+	if input.Amount <= feeAmount {
 		return types.ErrInvalidTransaction(types.DefaultCodespace, "Fee cannot be worth more than first input amount").Result()
 	}
 

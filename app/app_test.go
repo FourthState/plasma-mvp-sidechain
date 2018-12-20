@@ -31,13 +31,20 @@ const (
 	plasmaContractAddr = "5cae340fb2c2bb0a2f194a95cda8a1ffdc9d2f85"
 )
 
+/* Note: Since the headers only contain information about the height
+ *       of a block, the updated header is not being set in the context
+ *		 and therefore the block hash set in end blocker will be nil.
+ *	 	 This is only true for these tests, it works as expected when
+ *		 you run a full node via plasmad.
+ */
+
 func newChildChain() *ChildChain {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
 	privkeyFile, _ := ioutil.TempFile("", "privateKey")
 	privkeyFile.Write([]byte(privkey))
 	defer os.Remove(privkeyFile.Name())
-	return NewChildChain(logger, db, nil, SetEthConfig(true, privkeyFile.Name(), plasmaContractAddr, nodeURL, "0", "5"))
+	return NewChildChain(logger, db, nil, SetEthConfig(true, privkeyFile.Name(), plasmaContractAddr, nodeURL, "0", "0"))
 }
 
 // Adds a initial utxo at the specified position
@@ -283,6 +290,7 @@ func TestDifferentTxForms(t *testing.T) {
 	// Add inital utxo
 	position := types.NewPlasmaPosition(6, 0, 0, 0)
 	storeInitUTXO(cc, position, addrs[0])
+
 	cc.Commit()
 
 	cases := []struct {
@@ -294,7 +302,7 @@ func TestDifferentTxForms(t *testing.T) {
 		amount1   uint64
 	}{
 		// Test Case 0: 1 input 2 output
-		// Tx spends the genesis deposit and creates 2 new ouputs for addr[1] and addr[2]
+		// Tx spends the init tx and creates 2 new ouputs for addr[1] and addr[2]
 		{
 			Input{0, addrs[0], types.NewPlasmaPosition(6, 0, 0, 0), 0, -1},
 			Input{0, common.Address{}, types.PlasmaPosition{}, -1, -1},
@@ -347,7 +355,7 @@ func TestDifferentTxForms(t *testing.T) {
 		input1_index1 := utils.GetIndex(tc.input1.input_index1)
 
 		// Create context
-		ctx := cc.NewContext(false, abci.Header{})
+		ctx := cc.NewContext(false, abci.Header{Height: 7 + int64(index)})
 
 		msg := types.SpendMsg{
 			Blknum0:     tc.input0.position.Blknum,
@@ -416,7 +424,7 @@ func TestDifferentTxForms(t *testing.T) {
 			require.False(t, recovered.Valid, fmt.Sprintf("second input was not removed from the utxo store. Failed on test case: %d", index))
 		}
 
-		cc.EndBlock(abci.RequestEndBlock{})
+		cc.EndBlock(abci.RequestEndBlock{Height: 7 + int64(index)})
 		cc.Commit()
 	}
 }

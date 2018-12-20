@@ -185,7 +185,6 @@ func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abc
 	blknumKey := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(blknumKey, uint64(ctx.BlockHeight()))
 	key := append(utils.RootHashPrefix, blknumKey...)
-
 	if ctx.BlockHeader().DataHash != nil {
 		app.plasmaStore.Set(ctx, key, ctx.BlockHeader().DataHash)
 	}
