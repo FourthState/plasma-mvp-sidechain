@@ -39,7 +39,7 @@ func InitEthConn(nodeUrl string, logger log.Logger) (*Client, error) {
 func (client *Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	c := make(chan *types.Header)
 
-	_, err := client.ec.SubscribeNewHead(context.Background(), c)
+	sub, err := client.ec.SubscribeNewHead(context.Background(), c)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -24,16 +25,19 @@ import (
 	rlp "github.com/ethereum/go-ethereum/rlp"
 )
 
-/*
-	Note: Check() has been taken out from testing
-	at the moment because it increments txIndex
-
-*/
+const (
+	privkey            = "9cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c17181"
+	nodeURL            = "ws://127.0.0.1:8545"
+	plasmaContractAddr = "5cae340fb2c2bb0a2f194a95cda8a1ffdc9d2f85"
+)
 
 func newChildChain() *ChildChain {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 	db := dbm.NewMemDB()
-	return NewChildChain(logger, db, nil)
+	privkeyFile, _ := ioutil.TempFile("", "privateKey")
+	privkeyFile.Write([]byte(privkey))
+	defer os.Remove(privkeyFile.Name())
+	return NewChildChain(logger, db, nil, SetEthConfig(true, privkeyFile.Name(), plasmaContractAddr, nodeURL, "0", "5"))
 }
 
 // Creates a deposit of value 100 for each address in input

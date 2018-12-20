@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
@@ -119,7 +118,7 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 		panic(err)
 	}
 
-	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), app.validatorPrivKey, client, app.BaseApp.Logger, app.blockFinality, app.isValidator)
+	plasmaClient, err := eth.InitPlasma(app.rootchain, app.validatorPrivKey, client, app.BaseApp.Logger, app.blockFinality)
 	if err != nil {
 		panic(err)
 	}

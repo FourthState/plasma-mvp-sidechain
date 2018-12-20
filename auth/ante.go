@@ -12,6 +12,7 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"math/big"
 	"reflect"
 
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
@@ -230,7 +231,7 @@ func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, po
 }
 
 func DepositExists(nonce uint64, plasmaClient *eth.Plasma) (types.Deposit, bool) {
-	deposit, err := plasmaClient.GetDeposit(sdk.NewUint(nonce))
+	deposit, err := plasmaClient.GetDeposit(big.NewInt(int64(nonce)))
 
 	if err != nil {
 		return types.Deposit{}, false
@@ -243,9 +244,9 @@ func hasTXExited(plasmaClient *eth.Plasma, pos types.PlasmaPosition) sdk.Error {
 		return nil
 	}
 
-	var positions [4]sdk.Uint
+	var positions [4]*big.Int
 	for i, num := range pos.Get() {
-		positions[i] = num
+		positions[i] = big.NewInt(int64(num.Uint64()))
 	}
 	exited := plasmaClient.HasTXBeenExited(positions)
 	if exited {

@@ -13,12 +13,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-const (
-	privkey = "713bd18559e878e0fa3ee32c8ff3ef4393b82ff9f272a3d7de707882f9a3f7d7"
-	nodeURL = "http://127.0.0.1:8545"
-)
-
-func TestSetPrivKey(t *testing.T) {
+func TestSetEthConfig(t *testing.T) {
 	rootchain := utils.GenerateAddress()
 
 	// create a private key file
