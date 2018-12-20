@@ -20,7 +20,6 @@ library PriorityQueue {
         returns (uint256)
     {
         require(heapList.length > 0, "empty queue");
-
         return heapList[0];
     }
 
