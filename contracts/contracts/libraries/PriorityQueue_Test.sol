@@ -11,5 +11,9 @@ contract PriorityQueue_Test {
     function insert(uint256 k) public { heapList.insert(k); }
     function getMin() public view returns (uint256) { return heapList.getMin(); }
     function delMin() public { heapList.delMin(); }
+<<<<<<< HEAD
     function currentSize() public view returns (uint256) { return heapList.currentSize(); }
+=======
+    function currentSize() public view returns (uint256) { return heapList.length; }
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 }

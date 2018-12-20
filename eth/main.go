@@ -2,12 +2,22 @@ package eth
 
 import (
 	"context"
+<<<<<<< HEAD
 	"encoding/json"
+=======
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/tendermint/tendermint/libs/log"
+<<<<<<< HEAD
+=======
+	"math/big"
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 )
 
 // Client defines wrappers to a remote endpoint
@@ -36,7 +46,11 @@ func InitEthConn(nodeUrl string, logger log.Logger) (*Client, error) {
 func (client *Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	c := make(chan *types.Header)
 
+<<<<<<< HEAD
 	sub, err := client.ec.SubscribeNewHead(context.Background(), c)
+=======
+	_, err := client.ec.SubscribeNewHead(context.Background(), c)
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +67,26 @@ func (client *Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	return c, nil
 }
 
+<<<<<<< HEAD
+=======
+func (client *Client) CurrentBlockNum() (*big.Int, error) {
+	var res json.RawMessage
+	err := client.rpc.Call(&res, "eth_blockNumber")
+
+	var hexStr string
+	if err = json.Unmarshal(res, &hexStr); err != nil {
+		return nil, fmt.Errorf("Error unmarshaling blockNumber response - %s", err)
+	}
+
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, fmt.Errorf("Error converting hex string to bytes - %x", hexStr)
+	}
+
+	return new(big.Int).SetBytes(bytes), nil
+}
+
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 // used for testing when running against a local client like ganache
 func (client *Client) accounts() ([]common.Address, error) {
 	var res json.RawMessage

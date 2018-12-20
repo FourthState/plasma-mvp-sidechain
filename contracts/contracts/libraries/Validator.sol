@@ -1,5 +1,6 @@
 pragma solidity ^0.4.24;
 
+<<<<<<< HEAD
 import "openzeppelin-solidity/contracts/ECRecovery.sol";
 
 library Validator {
@@ -67,13 +68,24 @@ library Validator {
             return sha256(abi.encodePacked(b, proofElement, b, rightHash));
         }
     }
+=======
+import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+import "./BytesUtil.sol";
+
+library Validator {
+    using BytesUtil for bytes;
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 
     // @param txHash      transaction hash
     // @param rootHash    block header of the merkle tree
     // @param input1      indicator for the second input
     // @param sigs        transaction signatures
     // @notice            when one input is present, we require it to be the first input by convention
+<<<<<<< HEAD
     function checkSigs(bytes32 txHash, bytes32 confirmationHash, bool input1, bytes sig0, bytes sig1, bytes confirmSignatures)
+=======
+    function checkSignatures(bytes32 txHash, bytes32 confirmationHash, bool input1, bytes sig0, bytes sig1, bytes confirmSignatures)
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         internal
         pure
         returns (bool)
@@ -86,8 +98,13 @@ library Validator {
             address recoveredAddr0 = recover(txHash, sig0);
             address recoveredAddr1 = recover(txHash, sig1);
 
+<<<<<<< HEAD
             return recoveredAddr0 == recover(confirmationHash, slice(confirmSignatures, 0, 65))
                    && recoveredAddr1 == recover(confirmationHash, slice(confirmSignatures, 65, 65))
+=======
+            return recoveredAddr0 == recover(confirmationHash, confirmSignatures.slice(0, 65))
+                   && recoveredAddr1 == recover(confirmationHash, confirmSignatures.slice(65, 65))
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
                    && recoveredAddr0 != address(0) && recoveredAddr1 != address(0);
         }
 
@@ -103,6 +120,7 @@ library Validator {
         pure
         returns (address)
     {
+<<<<<<< HEAD
 
         hash = ECRecovery.toEthSignedMessageHash(hash);
         return ECRecovery.recover(hash, sig);
@@ -156,5 +174,8 @@ library Validator {
             }
 
             return result;
+=======
+        return ECDSA.recover(ECDSA.toEthSignedMessageHash(hash), sig);
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     }
 }

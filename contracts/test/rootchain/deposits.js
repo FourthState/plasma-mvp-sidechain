@@ -3,7 +3,11 @@ let assert = require('chai').assert;
 
 let RootChain = artifacts.require("RootChain");
 
+<<<<<<< HEAD
 let { fastForward, proof, zeroHashes, sha256String, generateMerkleRootAndProof } = require('./rootchain_helpers.js');
+=======
+let { fastForward, mineNBlocks, proof, zeroHashes } = require('./rootchain_helpers.js');
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 let { catchError, toHex } = require('../utilities.js');
 
 contract('[RootChain] Deposits', async (accounts) => {
@@ -23,8 +27,11 @@ contract('[RootChain] Deposits', async (accounts) => {
         assert.equal(tx.logs[0].args.depositor, accounts[1], "incorrect deposit owner");
         assert.equal(tx.logs[0].args.amount.toNumber(), 100, "incorrect deposit amount");
         assert.equal(tx.logs[0].args.depositNonce, nonce, "incorrect deposit nonce");
+<<<<<<< HEAD
 
         await rootchain.startDepositExit(nonce, {from: accounts[1], value: minExitBond});
+=======
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     });
 
     /*
@@ -38,7 +45,11 @@ contract('[RootChain] Deposits', async (accounts) => {
         assert.equal(tx.logs[0].args.depositNonce, nonce, "incorrect deposit nonce");
 
         // check rootchain deposit mapping
+<<<<<<< HEAD
         let deposit = await rootchain.deposits.call(nonce);
+=======
+        let deposit = await rootchain.getDeposit.call(nonce);
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         assert.equal(deposit[0], accounts[2], "incorrect deposit owner");
         assert.equal(deposit[1], 100, "incorrect deposit amount");
     });
@@ -110,7 +121,11 @@ contract('[RootChain] Deposits', async (accounts) => {
         let balance = (await rootchain.balanceOf.call(accounts[2])).toNumber();
         assert.equal(balance, 100 + minExitBond, "deposit exit not finalized after a week");
 
+<<<<<<< HEAD
         let exit = await rootchain.depositExits.call(nonce);
+=======
+        let exit = await rootchain.getDepositExit.call(nonce);
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         assert.equal(exit[3], 3, "exit's state not set to finalized");
     });
 
@@ -150,6 +165,7 @@ contract('[RootChain] Deposits', async (accounts) => {
         let sigs = (await web3.eth.sign(accounts[2], hashedEncodedMsg));
         sigs = sigs + Buffer.alloc(65).toString('hex');
 
+<<<<<<< HEAD
         let merkleHash = sha256String(txBytes.toString('hex'));
 
         // include this transaction in the next block
@@ -161,6 +177,20 @@ contract('[RootChain] Deposits', async (accounts) => {
 
         // create the confirm sig
         let confirmHash = sha256String(merkleHash + root.slice(2));
+=======
+        let merkleHash = web3.sha3(txBytes.toString('hex'), {encoding: 'hex'});
+
+        // include this transaction in the next block
+        let root = merkleHash;
+        for (let i = 0; i < 16; i++)
+            root = web3.sha3(root + zeroHashes[i], {encoding: 'hex'}).slice(2)
+        let blockNum = (await rootchain.currentChildBlock.call()).toNumber();
+        mineNBlocks(5); // presumed finality before submitting the block
+        await rootchain.submitBlock(toHex(root), {from: authority});
+
+        // create the confirm sig
+        let confirmHash = web3.sha3(merkleHash.slice(2) + root, {encoding: 'hex'});
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         let confirmSig = await web3.eth.sign(accounts[2], confirmHash);
 
         // start the malicious exit
@@ -180,7 +210,11 @@ contract('[RootChain] Deposits', async (accounts) => {
         let balance = (await rootchain.balanceOf.call(accounts[3])).toNumber();
         assert.equal(balance, minExitBond, "challenger not awarded exit bond");
 
+<<<<<<< HEAD
         let exit = await rootchain.depositExits.call(nonce);
+=======
+        let exit = await rootchain.getDepositExit.call(nonce);
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         assert.equal(exit[3], 2, "exit state not changed to challenged");
 
         // Cannot challenge twice

@@ -1,4 +1,5 @@
 let assert = require('chai').assert;
+<<<<<<< HEAD
 let RLP = require('rlp');
 
 let Validator_Test = artifacts.require("Validator_Test");
@@ -121,6 +122,19 @@ contract('Validator', async (accounts) => {
         assert.equal((await instance.slice.call(toHex(input), 1, 40)).toString(), toHex(input.substring(4, 84)), "Didn't copy over a whole word size then left over bytes");
     });
 
+=======
+
+let Validator_Test = artifacts.require("Validator_Test");
+let { catchError, toHex } = require('../utilities.js');
+let { generateMerkleRootAndProof } = require('../plasmamvp/plasmamvp_helpers.js');
+
+contract('Validator', async (accounts) => {
+    let instance;
+    before(async () => {
+        instance = await Validator_Test.new();
+    });
+
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     it("Correctly recovers the signee of a signature", async () => {
         // create tx hash
         let txHash = web3.sha3("inputSeed");
@@ -153,6 +167,7 @@ contract('Validator', async (accounts) => {
 
         let invalidConfirmSignatures = await web3.eth.sign(invalidSigner, confirmationHash);
 
+<<<<<<< HEAD
         // assert valid confirmSignatures will pass checkSigs
         assert.isTrue(await instance.checkSigs.call(txHash, toHex(confirmationHash), false, toHex(sig0), toHex(sig1), toHex(confirmSignatures)),
             "checkSigs should pass");
@@ -160,6 +175,15 @@ contract('Validator', async (accounts) => {
         // assert invalid confirmSignatures will not pass checkSigs
         assert.isFalse(await instance.checkSigs.call(txHash, toHex(confirmationHash), false, toHex(sig0), toHex(sig1), toHex(invalidConfirmSignatures)),
             "checkSigs should not pass given invalid confirmSignatures");
+=======
+        // assert valid confirmSignatures will pass checkSignatures
+        assert.isTrue(await instance.checkSignatures.call(txHash, toHex(confirmationHash), false, toHex(sig0), toHex(sig1), toHex(confirmSignatures)),
+            "checkSignatures should pass");
+
+        // assert invalid confirmSignatures will not pass checkSignatures
+        assert.isFalse(await instance.checkSignatures.call(txHash, toHex(confirmationHash), false, toHex(sig0), toHex(sig1), toHex(invalidConfirmSignatures)),
+            "checkSignatures should not pass given invalid confirmSignatures");
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     });
 
     it("Correctly handles empty signatures", async () => {
@@ -171,11 +195,19 @@ contract('Validator', async (accounts) => {
         let txHash = web3.sha3(Buffer.alloc(65).toString('hex'), {encoding: 'hex'});
         let confirmationHash = web3.sha3(Buffer.alloc(65).toString('hex'), {encoding: 'hex'});
 
+<<<<<<< HEAD
         assert.isFalse(await instance.checkSigs.call(txHash, toHex(confirmationHash), false, toHex(emptySig0), toHex(emptySig1), toHex(singleEmptyConfirmSig)),
             "checkSigs should not pass given empty tx sigs and confirm signatures");
 
         assert.isFalse(await instance.checkSigs.call(txHash, toHex(confirmationHash), true, toHex(emptySig0), toHex(emptySig1), toHex(doubleEmptyConfirmSigs)),
             "checkSigs should not pass given empty tx sigs and confirm signatures");
+=======
+        assert.isFalse(await instance.checkSignatures.call(txHash, toHex(confirmationHash), false, toHex(emptySig0), toHex(emptySig1), toHex(singleEmptyConfirmSig)),
+            "checkSignatures should not pass given empty tx sigs and confirm signatures");
+
+        assert.isFalse(await instance.checkSignatures.call(txHash, toHex(confirmationHash), true, toHex(emptySig0), toHex(emptySig1), toHex(doubleEmptyConfirmSigs)),
+            "checkSignatures should not pass given empty tx sigs and confirm signatures");
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     });
 
     it("Checks incorrect signature lengths", async () => {
@@ -187,11 +219,19 @@ contract('Validator', async (accounts) => {
         let confirmationHash = web3.sha3(Buffer.alloc(65).toString('hex'), {encoding: 'hex'});
 
         let err;
+<<<<<<< HEAD
         [err] = await catchError(instance.checkSigs.call(txHash, toHex(confirmationHash), false, toHex(sig0 + "0000"), toHex(emptySig1), toHex(confirmSignatures)));
         if (!err)
             assert.fail("Didn't revert on signature of wrong size");
 
         [err] = await catchError(instance.checkSigs.call(txHash, toHex(confirmationHash), false, toHex(sig0), toHex(emptySig1), toHex(confirmSignatures + "0000")));
+=======
+        [err] = await catchError(instance.checkSignatures.call(txHash, toHex(confirmationHash), false, toHex(sig0 + "0000"), toHex(emptySig1), toHex(confirmSignatures)));
+        if (!err)
+            assert.fail("Didn't revert on signature of wrong size");
+
+        [err] = await catchError(instance.checkSignatures.call(txHash, toHex(confirmationHash), false, toHex(sig0), toHex(emptySig1), toHex(confirmSignatures + "0000")));
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         if (!err)
             assert.fail("Didn't revert on confirm signature of wrong size");
     });
@@ -214,8 +254,13 @@ contract('Validator', async (accounts) => {
         // create confirmSignatures
         let confirmSignatures = await web3.eth.sign(signer, confirmationHash);
 
+<<<<<<< HEAD
         assert.isTrue(await instance.checkSigs.call(txHash, toHex(confirmationHash), false, toHex(sigOverTxHash), toHex(sig1), toHex(confirmSignatures)),
             "checkSigs should pass");
+=======
+        assert.isTrue(await instance.checkSignatures.call(txHash, toHex(confirmationHash), false, toHex(sigOverTxHash), toHex(sig1), toHex(confirmSignatures)),
+            "checkSignatures should pass");
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     });
 
     it("Asserts that the first input cannot be empty", async () => {
@@ -237,8 +282,13 @@ contract('Validator', async (accounts) => {
         let confirmSignatures = Buffer.alloc(65).toString('hex');
         confirmSignatures += (await web3.eth.sign(signer, confirmationHash)).slice(2);
 
+<<<<<<< HEAD
         assert.isFalse(await instance.checkSigs.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(sigOverTxHash), toHex(confirmSignatures)),
             "checkSigs should not pass given an empty first confirmsig and non-empty second confirmsig");
+=======
+        assert.isFalse(await instance.checkSignatures.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(sigOverTxHash), toHex(confirmSignatures)),
+            "checkSignatures should not pass given an empty first confirmsig and non-empty second confirmsig");
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     });
 
     it("Handles incorrect transaction signatures", async () => {
@@ -268,11 +318,20 @@ contract('Validator', async (accounts) => {
         let invalidConfirmSignatures = await web3.eth.sign(invalidSigner, confirmationHash);
         invalidConfirmSignatures += await web3.eth.sign(invalidSigner2, confirmationHash).slice(2);
 
+<<<<<<< HEAD
         assert.isFalse(await instance.checkSigs.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(invalidSig), toHex(confirmSignatures)),
             "checkSigs should not pass given invalid transaction sigs");
         assert.isFalse(await instance.checkSigs.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(validSig), toHex(invalidConfirmSignatures)),
             "checkSigs should not pass given invalid transaction sigs");
         assert.isTrue(await instance.checkSigs.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(validSig), toHex(confirmSignatures)),
             "checkSigs should pass for valid transaction sigs");
+=======
+        assert.isFalse(await instance.checkSignatures.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(invalidSig), toHex(confirmSignatures)),
+            "checkSignatures should not pass given invalid transaction sigs");
+        assert.isFalse(await instance.checkSignatures.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(validSig), toHex(invalidConfirmSignatures)),
+            "checkSignatures should not pass given invalid transaction sigs");
+        assert.isTrue(await instance.checkSignatures.call(txHash, toHex(confirmationHash), true, toHex(sig0), toHex(validSig), toHex(confirmSignatures)),
+            "checkSignatures should pass for valid transaction sigs");
+>>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     });
 });
