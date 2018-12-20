@@ -7,11 +7,7 @@ library PriorityQueue {
     using SafeMath for uint256;
 
     function insert(uint256[] storage heapList, uint256 k)
-<<<<<<< HEAD
-        public
-=======
         internal
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
     {
         heapList.push(k);
         if (heapList.length > 1)
@@ -19,28 +15,17 @@ library PriorityQueue {
     }
 
     function getMin(uint256[] storage heapList)
-<<<<<<< HEAD
-        public
-=======
         internal
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         view
         returns (uint256)
     {
         require(heapList.length > 0, "empty queue");
-<<<<<<< HEAD
 
-=======
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         return heapList[0];
     }
 
     function delMin(uint256[] storage heapList)
-<<<<<<< HEAD
-        public
-=======
         internal
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
         returns (uint256)
     {
         require(heapList.length > 0, "empty queue");
@@ -106,15 +91,4 @@ library PriorityQueue {
         // place value in the correct child
         if (position != i) heapList[i] = value;
     }
-<<<<<<< HEAD
-
-    function currentSize(uint256[] storage heapList)
-        internal
-        view
-        returns (uint256)
-    {
-        return heapList.length;
-    }
-=======
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 }
