@@ -1,10 +1,10 @@
 package app
 
 import (
-	"fmt"
 	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
@@ -67,17 +67,10 @@ type ChildChain struct {
 	nodeURL string
 
 	// Minimum Fee a validator is willing to accept
-<<<<<<< HEAD
 	minFees uint64
 
 	// Number of blocks required for a submitted block to be considered final
 	blockFinality uint64
-=======
-	min_fees uint64
-
-	// Number of blocks required for a submitted block to be considered final
-	block_finality uint64
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 
 	ethConnection *eth.Plasma
 }
@@ -121,20 +114,12 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	app.SetEndBlocker(app.endBlocker)
 
 	// Set Ethereum connection
-<<<<<<< HEAD
-=======
-	fmt.Println(app.nodeURL)
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 	client, err := eth.InitEthConn(app.nodeURL, bapp.Logger)
 	if err != nil {
 		panic(err)
 	}
 
-<<<<<<< HEAD
 	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), app.validatorPrivKey, client, app.BaseApp.Logger, app.blockFinality, app.isValidator)
-=======
-	plasmaClient, err := eth.InitPlasma(app.rootchain.Hex(), app.validatorPrivKey, client, app.BaseApp.Logger, app.block_finality, app.isValidator)
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 	if err != nil {
 		panic(err)
 	}
@@ -142,7 +127,6 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 	app.ethConnection = plasmaClient
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-<<<<<<< HEAD
 	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.plasmaStore, app.feeUpdater, app.ethConnection))
 
 	err = app.LoadLatestVersion(app.capKeyMainStore)
@@ -150,11 +134,6 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options .
 		cmn.Exit(err.Error())
 	}
 	err = app.LoadLatestVersion(app.capKeyPlasmaStore)
-=======
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.metadataMapper, app.feeUpdater, app.ethConnection))
-
-	err = app.LoadLatestVersion(app.capKeyMainStore)
->>>>>>> b3167013cb609ec55bd2a944e44a4d169ed332c9
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
