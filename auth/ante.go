@@ -206,20 +206,23 @@ func setConfirmSigs(ctx sdk.Context, plasmaStore kvstore.KVStore, blknum, txinde
 func checkUTXO(ctx sdk.Context, plasmaClient *eth.Plasma, mapper utxo.Mapper, position types.PlasmaPosition, addr common.Address, feeAmount uint64) sdk.Result {
 	var inputAddress []byte
 	input := mapper.GetUTXO(ctx, addr.Bytes(), &position)
+	var amount uint64
 	if position.IsDeposit() && reflect.DeepEqual(input, utxo.UTXO{}) {
 		deposit, ok := DepositExists(position.DepositNum, plasmaClient)
 		if !ok {
 			return utxo.ErrInvalidUTXO(2, "Deposit UTXO does not exist yet").Result()
 		}
+		amount = uint64(deposit.Amount.Uint64())
 		inputAddress = deposit.Owner.Bytes()
 	} else {
 		if !input.Valid {
 			return sdk.ErrUnknownRequest(fmt.Sprintf("UTXO trying to be spent, is not valid: %v.", position)).Result()
 		}
 		inputAddress = input.Address
+		amount = input.Amount
 	}
 
-	if input.Amount <= feeAmount {
+	if amount <= feeAmount {
 		return types.ErrInvalidTransaction(types.DefaultCodespace, "Fee cannot be worth more than first input amount").Result()
 	}
 
