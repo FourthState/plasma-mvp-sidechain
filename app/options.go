@@ -4,16 +4,20 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func SetEthConfig(isValidator bool, privkey_file string, rootchain_addr string) func(*ChildChain) {
+func SetEthConfig(isValidator bool, privkeyFile, rootchainAddr, nodeURL, minFeesStr, finality string) func(*ChildChain) {
 	var privkey *ecdsa.PrivateKey
 	var rootchain ethcmn.Address
+	var minFees uint64
+	var blockFinality uint64
+
 	if isValidator {
-		path, err := filepath.Abs(privkey_file)
+		path, err := filepath.Abs(privkeyFile)
 		if err != nil {
 			errMsg := fmt.Sprintf("Could not resolve provided private key file path: %v", err)
 			panic(errMsg)
@@ -25,11 +29,23 @@ func SetEthConfig(isValidator bool, privkey_file string, rootchain_addr string) 
 			panic(errMsg)
 		}
 
-		rootchain = ethcmn.HexToAddress(rootchain_addr)
+		minFees, err = strconv.ParseUint(minFeesStr, 10, 64)
+		if err != nil {
+			panic(err)
+		}
 	}
+	blockFinality, err := strconv.ParseUint(finality, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	rootchain = ethcmn.HexToAddress(rootchainAddr)
+
 	return func(cc *ChildChain) {
 		cc.validatorPrivKey = privkey
 		cc.isValidator = isValidator
 		cc.rootchain = rootchain
+		cc.nodeURL = nodeURL
+		cc.minFees = minFees
+		cc.blockFinality = blockFinality
 	}
 }

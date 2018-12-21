@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/context"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
+	amino "github.com/tendermint/go-amino"
 )
 
 func init() {
@@ -52,10 +54,35 @@ var proveCmd = &cobra.Command{
 			return err
 		}
 
+		// Look for confirmation signatures
+		cdc := amino.NewCodec()
+		pos := [2]uint64{position[0].Blknum, uint64(position[0].TxIndex)}
+		bz, err := cdc.MarshalBinaryBare(pos)
+		if err != nil {
+			return err
+		}
+
+		key = append(utils.ConfirmSigPrefix, bz...)
+		res, err = ctx.QueryStore(key, ctx.PlasmaStore)
+
+		var sigs [][65]byte
+		if err == nil {
+			err = ctx.Codec.UnmarshalBinaryBare(res, &sigs)
+			if err != nil {
+				return err
+			}
+		}
 		fmt.Printf("Roothash: 0x%s\n", hex.EncodeToString(result.Proof.RootHash))
 		fmt.Printf("Total: %d\n", result.Proof.Proof.Total)
 		fmt.Printf("LeafHash: 0x%s\n", hex.EncodeToString(result.Proof.Proof.LeafHash))
 		fmt.Printf("TxBytes: 0x%s\n", hex.EncodeToString(result.Tx))
+
+		switch len(sigs) {
+		case 1:
+			fmt.Printf("Confirmation Signatures: %v\n", sigs[0])
+		case 2:
+			fmt.Printf("Confirmation Signatures: %v,%v\n", sigs[0], sigs[1])
+		}
 
 		// flatten aunts
 		var proof []byte
