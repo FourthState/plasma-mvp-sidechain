@@ -11,9 +11,9 @@ type Output struct {
 	Amount *big.Int       `json:"Amount"`
 }
 
-func newOutput(owner common.Address, amount []byte) *Output {
+func NewOutput(owner common.Address, amount *big.Int) *Output {
 	return &Output{
 		Owner:  owner,
-		Amount: new(big.Int).SetBytes(amount),
+		Amount: amount,
 	}
 }

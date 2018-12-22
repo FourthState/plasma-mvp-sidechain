@@ -22,14 +22,14 @@ type Transaction struct {
 
 type txList struct {
 	BlkNum0           []byte
-	TxIndex0          []byte
-	OIndex0           []byte
+	TxIndex0          uint16
+	OIndex0           uint8
 	DepositNonce0     []byte
 	Owner0            common.Address
 	Input0ConfirmSigs [][65]byte
 	BlkNum1           []byte
-	TxIndex1          []byte
-	OIndex1           []byte
+	TxIndex1          uint16
+	OIndex1           uint8
 	DepositNonce1     []byte
 	Owner1            common.Address
 	Input1ConfirmSigs [][65]byte
@@ -59,10 +59,12 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 
-	tx.Input0 = newInput(t.Tx.BlkNum0, t.Tx.TxIndex0, t.Tx.OIndex0, t.Tx.DepositNonce0, t.Tx.Owner0, t.Tx.Input0ConfirmSigs)
-	tx.Input1 = newInput(t.Tx.BlkNum1, t.Tx.TxIndex1, t.Tx.OIndex1, t.Tx.DepositNonce1, t.Tx.Owner1, t.Tx.Input1ConfirmSigs)
-	tx.Output0 = newOutput(t.Tx.NewOwner0, t.Tx.Amount0)
-	tx.Output1 = newOutput(t.Tx.NewOwner1, t.Tx.Amount1)
+	tx.Input0 = NewInput(new(big.Int).SetBytes(t.Tx.BlkNum0), t.Tx.TxIndex0, t.Tx.OIndex0,
+		new(big.Int).SetBytes(t.Tx.DepositNonce0), t.Tx.Owner0, t.Tx.Input0ConfirmSigs)
+	tx.Input1 = NewInput(new(big.Int).SetBytes(t.Tx.BlkNum1), t.Tx.TxIndex1, t.Tx.OIndex1,
+		new(big.Int).SetBytes(t.Tx.DepositNonce1), t.Tx.Owner1, t.Tx.Input1ConfirmSigs)
+	tx.Output0 = NewOutput(t.Tx.NewOwner0, new(big.Int).SetBytes(t.Tx.Amount0))
+	tx.Output1 = NewOutput(t.Tx.NewOwner1, new(big.Int).SetBytes(t.Tx.Amount1))
 	tx.Sig0 = t.Sigs[0]
 	tx.Sig1 = t.Sigs[1]
 	tx.Fee = new(big.Int).SetBytes(t.Tx.Fee)
@@ -120,14 +122,14 @@ func (tx *Transaction) SigAt(i uint8) [65]byte {
 func (tx *Transaction) toTxList() *txList {
 	return &txList{
 		BlkNum0:           tx.Input0.BlockNum.Bytes(),
-		TxIndex0:          tx.Input0.TxIndex.Bytes(),
-		OIndex0:           tx.Input0.OutputIndex.Bytes(),
+		TxIndex0:          tx.Input0.TxIndex,
+		OIndex0:           tx.Input0.OutputIndex,
 		DepositNonce0:     tx.Input0.DepositNonce.Bytes(),
 		Owner0:            tx.Input0.Owner,
 		Input0ConfirmSigs: tx.Input0.ConfirmSignatures,
 		BlkNum1:           tx.Input1.BlockNum.Bytes(),
-		TxIndex1:          tx.Input1.TxIndex.Bytes(),
-		OIndex1:           tx.Input1.OutputIndex.Bytes(),
+		TxIndex1:          tx.Input1.TxIndex,
+		OIndex1:           tx.Input1.OutputIndex,
 		DepositNonce1:     tx.Input1.DepositNonce.Bytes(),
 		Owner1:            tx.Input1.Owner,
 		Input1ConfirmSigs: tx.Input1.ConfirmSignatures,

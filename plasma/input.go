@@ -8,19 +8,19 @@ import (
 // Input represents the input to a spend
 type Input struct {
 	BlockNum          *big.Int       `json:"BlockNum"`
-	TxIndex           *big.Int       `json:"TxIndex"`
-	OutputIndex       *big.Int       `json:"OutputIndex"`
+	TxIndex           uint16         `json:"TxIndex"`
+	OutputIndex       uint8          `json:"OutputIndex"`
 	DepositNonce      *big.Int       `json:"DepositNonce"`
 	Owner             common.Address `json:"Owner"`
 	ConfirmSignatures [][65]byte     `json:"ConfirmSignature"`
 }
 
-func newInput(blkNum, txIndex, oIndex, nonce []byte, owner common.Address, confirmsigs [][65]byte) *Input {
+func NewInput(blkNum *big.Int, txIndex uint16, oIndex uint8, nonce *big.Int, owner common.Address, confirmsigs [][65]byte) *Input {
 	return &Input{
-		BlockNum:          new(big.Int).SetBytes(blkNum),
-		TxIndex:           new(big.Int).SetBytes(txIndex),
-		OutputIndex:       new(big.Int).SetBytes(oIndex),
-		DepositNonce:      new(big.Int).SetBytes(nonce),
+		BlockNum:          blkNum,
+		TxIndex:           txIndex,
+		OutputIndex:       oIndex,
+		DepositNonce:      nonce,
 		Owner:             owner,
 		ConfirmSignatures: confirmsigs,
 	}

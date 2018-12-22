@@ -10,20 +10,20 @@ import (
 )
 
 func TestTransactionSerialization(t *testing.T) {
-	one := big.NewInt(1).Bytes()
-	zero := big.NewInt(0).Bytes()
+	one := big.NewInt(1)
+	zero := big.NewInt(0)
 
 	// contstruct a transaction
 	tx := &Transaction{}
-	tx.Input0 = newInput(one, one, one, one,
+	tx.Input0 = NewInput(one, 1, 1, one,
 		common.HexToAddress("1"), [][65]byte{[65]byte{}})
 	tx.Sig0 = [65]byte{}
 	tx.Sig0[1] = byte(1)
-	tx.Input1 = newInput(zero, zero, zero, zero,
+	tx.Input1 = NewInput(zero, 0, 0, zero,
 		common.HexToAddress("0"), [][65]byte{[65]byte{}})
 	tx.Sig1 = [65]byte{}
-	tx.Output0 = newOutput(common.HexToAddress("1"), one)
-	tx.Output1 = newOutput(common.HexToAddress("0"), zero)
+	tx.Output0 = NewOutput(common.HexToAddress("1"), one)
+	tx.Output1 = NewOutput(common.HexToAddress("0"), zero)
 	tx.Fee = big.NewInt(1)
 
 	bytes, err := rlp.EncodeToBytes(tx)
