@@ -16,12 +16,10 @@ func TestTransactionSerialization(t *testing.T) {
 	// contstruct a transaction
 	tx := &Transaction{}
 	tx.Input0 = NewInput(one, 1, 1, one,
-		common.HexToAddress("1"), [][65]byte{[65]byte{}})
-	tx.Sig0 = [65]byte{}
-	tx.Sig0[1] = byte(1)
+		common.HexToAddress("1"), [65]byte{}, [][65]byte{[65]byte{}})
+	tx.Input0.Signature[1] = byte(1)
 	tx.Input1 = NewInput(zero, 0, 0, zero,
-		common.HexToAddress("0"), [][65]byte{[65]byte{}})
-	tx.Sig1 = [65]byte{}
+		common.HexToAddress("0"), [65]byte{}, [][65]byte{[65]byte{}})
 	tx.Output0 = NewOutput(common.HexToAddress("1"), one)
 	tx.Output1 = NewOutput(common.HexToAddress("0"), zero)
 	tx.Fee = big.NewInt(1)

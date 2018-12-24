@@ -11,12 +11,10 @@ import (
 
 // Transaction represents a spend of inputs. Fields should not be accessed directly
 type Transaction struct {
-	Input0  *Input   `json:"Input0"`
-	Sig0    [65]byte `json:"Sig0"`
-	Input1  *Input   `json:"Input1"`
-	Sig1    [65]byte `json:"Sig1"`
-	Output0 *Output  `json:"Output0"`
-	Output1 *Output  `json:"Output1"`
+	Input0  Input    `json:"Input0"`
+	Input1  Input    `json:"Input1"`
+	Output0 Output   `json:"Output0"`
+	Output1 Output   `json:"Output1"`
 	Fee     *big.Int `json:"Fee"`
 }
 
@@ -47,7 +45,7 @@ type rawTx struct {
 
 // EncodeRLP satisfies the rlp interface for Transaction
 func (tx *Transaction) EncodeRLP(w io.Writer) error {
-	t := &rawTx{*tx.toTxList(), [2][65]byte{tx.Sig0, tx.Sig1}}
+	t := &rawTx{*tx.toTxList(), [2][65]byte{tx.Input0.Signature, tx.Input1.Signature}}
 
 	return rlp.Encode(w, t)
 }
@@ -60,13 +58,11 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 	}
 
 	tx.Input0 = NewInput(new(big.Int).SetBytes(t.Tx.BlkNum0), t.Tx.TxIndex0, t.Tx.OIndex0,
-		new(big.Int).SetBytes(t.Tx.DepositNonce0), t.Tx.Owner0, t.Tx.Input0ConfirmSigs)
+		new(big.Int).SetBytes(t.Tx.DepositNonce0), t.Tx.Owner0, t.Sigs[0], t.Tx.Input0ConfirmSigs)
 	tx.Input1 = NewInput(new(big.Int).SetBytes(t.Tx.BlkNum1), t.Tx.TxIndex1, t.Tx.OIndex1,
-		new(big.Int).SetBytes(t.Tx.DepositNonce1), t.Tx.Owner1, t.Tx.Input1ConfirmSigs)
+		new(big.Int).SetBytes(t.Tx.DepositNonce1), t.Tx.Owner1, t.Sigs[1], t.Tx.Input1ConfirmSigs)
 	tx.Output0 = NewOutput(t.Tx.NewOwner0, new(big.Int).SetBytes(t.Tx.Amount0))
 	tx.Output1 = NewOutput(t.Tx.NewOwner1, new(big.Int).SetBytes(t.Tx.Amount1))
-	tx.Sig0 = t.Sigs[0]
-	tx.Sig1 = t.Sigs[1]
 	tx.Fee = new(big.Int).SetBytes(t.Tx.Fee)
 
 	return nil
@@ -90,31 +86,10 @@ func (tx *Transaction) MerkleHash() [32]byte {
 	return sha256.Sum256(bytes)
 }
 
-// IndexAt returns the input specified by i, 0/1
-func (tx *Transaction) IndexAt(i uint8) *Input {
-	if i == 0 {
-		return tx.Input0
-	}
-
-	return tx.Input1
-}
-
-// OutputAt returns the output specified by i, 0/1
-func (tx *Transaction) OutputAt(i uint8) *Output {
-	if i == 0 {
-		return tx.Output0
-	}
-
-	return tx.Output1
-}
-
-// SigAt returns the transaction signature specified by i, 0/1
-func (tx *Transaction) SigAt(i uint8) [65]byte {
-	if i == 0 {
-		return tx.Sig0
-	}
-
-	return tx.Sig1
+// HasSecondInput is an indicator for the existence of a second input
+func (tx *Transaction) HasSecondInput() bool {
+	return tx.Input1.BlockNum.Sign() != 0 || tx.Input1.TxIndex > 0 || tx.Input1.OutputIndex > 0 ||
+		tx.Input1.DepositNonce.Sign() != 0
 }
 
 /* Helpers */
