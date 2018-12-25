@@ -48,6 +48,9 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	if utils.IsZeroAddress(msg.Output0.Owner) {
 		return ErrInvalidAddress(DefaultCodespace, "no recipients of transaction")
 	}
+	if utils.IsZeroAddress(msg.Output1.Owner) && msg.Output1.Amount.Sign() != 0 {
+		return ErrInvalidTransaction(DefaultCodespace, "Cannot send funds to the nil address")
+	}
 
 	if msg.Output0.Amount.Sign() == 0 {
 		return ErrInvalidAmount(DefaultCodespace, "first output must have a positive amount")
