@@ -21,6 +21,11 @@ type position struct {
 	DepositNonce []byte
 }
 
+const (
+	blockIndexFactor = 1000000
+	txIndexFactor    = 10
+)
+
 func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *big.Int) Position {
 	return Position{
 		BlockNum:     blkNum,
@@ -57,4 +62,19 @@ func (p Position) Bytes() []byte {
 
 func (p Position) IsDeposit() bool {
 	return p.DepositNonce.Sign() == 0
+}
+
+func (p Position) Priority() *big.Int {
+	if p.IsDeposit() {
+		return p.DepositNonce
+	}
+
+	bFactor := big.NewInt(blockIndexFactor)
+	tFactor := big.NewInt(txIndexFactor)
+
+	bFactor = bFactor.Mul(bFactor, p.BlockNum)
+	tFactor = tFactor.Mul(tFactor, big.NewInt(int64(p.TxIndex)))
+
+	temp := new(big.Int).Add(bFactor, tFactor)
+	return temp.Add(temp, big.NewInt(int64(p.OutputIndex)))
 }
