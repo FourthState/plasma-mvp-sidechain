@@ -45,7 +45,7 @@ type rawTx struct {
 
 // EncodeRLP satisfies the rlp interface for Transaction
 func (tx *Transaction) EncodeRLP(w io.Writer) error {
-	t := &rawTx{*tx.toTxList(), [2][65]byte{tx.Input0.Signature, tx.Input1.Signature}}
+	t := &rawTx{tx.toTxList(), [2][65]byte{tx.Input0.Signature, tx.Input1.Signature}}
 
 	return rlp.Encode(w, t)
 }
@@ -69,7 +69,7 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 }
 
 // TxHash returns the bytes the signatures are signed over
-func (tx *Transaction) TxHash() [32]byte {
+func (tx Transaction) TxHash() [32]byte {
 	txList := tx.toTxList()
 	bytes, _ := rlp.EncodeToBytes(txList)
 	bytes = crypto.Keccak256(bytes)
@@ -80,22 +80,22 @@ func (tx *Transaction) TxHash() [32]byte {
 }
 
 // MerkleHash returns the bytes that is included in the merkle tree
-func (tx *Transaction) MerkleHash() [32]byte {
+func (tx Transaction) MerkleHash() [32]byte {
 	bytes, _ := rlp.EncodeToBytes(tx)
 
 	return sha256.Sum256(bytes)
 }
 
 // HasSecondInput is an indicator for the existence of a second input
-func (tx *Transaction) HasSecondInput() bool {
+func (tx Transaction) HasSecondInput() bool {
 	return tx.Input1.BlockNum.Sign() != 0 || tx.Input1.TxIndex > 0 || tx.Input1.OutputIndex > 0 ||
 		tx.Input1.DepositNonce.Sign() != 0
 }
 
 /* Helpers */
 
-func (tx *Transaction) toTxList() *txList {
-	return &txList{
+func (tx Transaction) toTxList() txList {
+	return txList{
 		BlkNum0:           tx.Input0.BlockNum.Bytes(),
 		TxIndex0:          tx.Input0.TxIndex,
 		OIndex0:           tx.Input0.OutputIndex,

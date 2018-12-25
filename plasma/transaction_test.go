@@ -31,5 +31,5 @@ func TestTransactionSerialization(t *testing.T) {
 	err = rlp.DecodeBytes(bytes, recoveredTx)
 	require.NoError(t, err, "Error deserializing transaction")
 
-	require.True(t, reflect.DeepEqual(tx, recoveredTx), "serialized and deserialized objects not deeply equal")
+	require.True(t, reflect.DeepEqual(tx, recoveredTx), "serialized and deserialized transactions not deeply equal")
 }

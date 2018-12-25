@@ -1,7 +1,8 @@
 package plasma
 
 import (
-	"bytes"
+	"github.com/ethereum/go-ethereum/rlp"
+	"io"
 	"math/big"
 )
 
@@ -13,6 +14,13 @@ type Position struct {
 	DepositNonce *big.Int `json:"DepositNonce"`
 }
 
+type position struct {
+	BlockNum     []byte
+	TxIndex      uint16
+	OutputIndex  uint8
+	DepositNonce []byte
+}
+
 func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *big.Int) Position {
 	return Position{
 		BlockNum:     blkNum,
@@ -22,14 +30,29 @@ func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *bi
 	}
 }
 
-func (p Position) Bytes() []byte {
-	buffer := new(bytes.Buffer)
-	buffer.Write(p.BlockNum.Bytes())
-	buffer.WriteByte(byte(p.TxIndex))
-	buffer.WriteByte(byte(p.OutputIndex))
-	buffer.Write(p.DepositNonce.Bytes())
+func (p *Position) EncodeRLP(w io.Writer) error {
+	pos := position{p.BlockNum.Bytes(), p.TxIndex, p.OutputIndex, p.DepositNonce.Bytes()}
 
-	return buffer.Bytes()
+	return rlp.Encode(w, pos)
+}
+
+func (p *Position) DecodeRLP(s *rlp.Stream) error {
+	var pos position
+	if err := s.Decode(&pos); err != nil {
+		return err
+	}
+
+	p.BlockNum = new(big.Int).SetBytes(pos.BlockNum)
+	p.TxIndex = pos.TxIndex
+	p.OutputIndex = pos.OutputIndex
+	p.DepositNonce = new(big.Int).SetBytes(pos.DepositNonce)
+
+	return nil
+}
+
+func (p Position) Bytes() []byte {
+	bytes, _ := rlp.EncodeToBytes(&p)
+	return bytes
 }
 
 func (p Position) IsDeposit() bool {
