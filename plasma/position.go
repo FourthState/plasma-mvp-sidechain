@@ -61,7 +61,7 @@ func (p Position) Bytes() []byte {
 }
 
 func (p Position) IsDeposit() bool {
-	return p.DepositNonce.Sign() == 0
+	return p.DepositNonce.Sign() != 0
 }
 
 func (p Position) Priority() *big.Int {
