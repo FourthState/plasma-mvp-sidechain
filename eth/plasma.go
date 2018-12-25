@@ -157,7 +157,7 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, bool) {
 }
 
 // HasTXBeenExited indicates if the position has ever been exited
-func (plasma *Plasma) HasTXBeenExited(position plasmaTypes.Position) bool {
+func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 	var key []byte
 	priority := position.Priority()
 
