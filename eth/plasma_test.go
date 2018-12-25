@@ -162,7 +162,7 @@ func TestDepositWatching(t *testing.T) {
 		t.Fatalf("Error unmarshaling cache'd deposit - %s", err)
 	}
 
-	if !reflect.DeepEqual(deposit, &d) {
+	if !reflect.DeepEqual(deposit, d) {
 		t.Fatalf("Mismatch in the persisted deposit and `GetDeposit`")
 	}
 }
@@ -191,7 +191,7 @@ func TestDepositExitWatching(t *testing.T) {
 
 	zero := big.NewInt(0)
 	position := plasmaTypes.NewPosition(zero, 0, 0, nonce)
-	exited := plasma.HasTXBeenExited(position)
+	exited := plasma.HasTxBeenExited(position)
 
 	if !exited {
 		t.Errorf("Deposit nonce not marked as exited")
@@ -286,7 +286,7 @@ func TestTxExitWatchingAndChallenge(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	txPos := plasmaTypes.NewPosition(plasma.blockNum, 0, 0, zero)
-	exited := plasma.HasTXBeenExited(txPos)
+	exited := plasma.HasTxBeenExited(txPos)
 	if !exited {
 		t.Errorf("Transaction not marked as exited")
 	}
@@ -299,7 +299,7 @@ func TestTxExitWatchingAndChallenge(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	exited = plasma.HasTXBeenExited(depositPos)
+	exited = plasma.HasTxBeenExited(depositPos)
 	if !exited {
 		t.Errorf("Deposit not marked as exited after exiting")
 	}
@@ -310,7 +310,7 @@ func TestTxExitWatchingAndChallenge(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	exited = plasma.HasTXBeenExited(depositPos)
+	exited = plasma.HasTxBeenExited(depositPos)
 	if exited {
 		t.Errorf("Deposit marked as exited after being challenged")
 	}

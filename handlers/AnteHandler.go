@@ -148,7 +148,7 @@ func validateSignatures(ctx sdk.Context, input plasma.Input, txHash [32]byte, ut
 		for i, key := range inputUTXO.InputKeys {
 			address := key[:common.AddressLength]
 
-			pubKey, err := crypto.SigToPub(confirmationHash, input.ConfirmSignatures[i][:])
+			pubKey, _ := crypto.SigToPub(confirmationHash, input.ConfirmSignatures[i][:])
 			signer = crypto.PubkeyToAddress(*pubKey)
 			if !bytes.Equal(signer[:], address) {
 				return sdk.ErrUnauthorized(fmt.Sprintf("Confirm signature not signed by the correct address. Got: %x. Expected %x", signer, address)).Result()

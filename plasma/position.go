@@ -27,6 +27,10 @@ const (
 )
 
 func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *big.Int) Position {
+	if depositNonce == nil {
+		depositNonce = big.NewInt(0)
+	}
+
 	return Position{
 		BlockNum:     blkNum,
 		TxIndex:      txIndex,

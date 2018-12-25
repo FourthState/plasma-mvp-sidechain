@@ -2,6 +2,7 @@ package plasma
 
 import (
 	"crypto/sha256"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -90,6 +91,29 @@ func (tx Transaction) MerkleHash() [32]byte {
 func (tx Transaction) HasSecondInput() bool {
 	return tx.Input1.BlockNum.Sign() != 0 || tx.Input1.TxIndex > 0 || tx.Input1.OutputIndex > 0 ||
 		tx.Input1.DepositNonce.Sign() != 0
+}
+
+// HasSecondOutput is an indicator if the second output is used in this transaction
+func (tx Transaction) HasSecondOutput() bool {
+	return utils.IsZeroAddress(tx.Output1.Owner)
+}
+
+// OutputAt is a selector for the outputs
+func (tx Transaction) OutputAt(i uint8) Output {
+	if i == 0 {
+		return tx.Output0
+	}
+
+	return tx.Output1
+}
+
+// InputAt is a selector for the inputs
+func (tx Transaction) InputAt(i uint8) Input {
+	if i == 0 {
+		return tx.Input0
+	}
+
+	return tx.Input1
 }
 
 /* Helpers */

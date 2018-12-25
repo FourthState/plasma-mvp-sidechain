@@ -109,7 +109,7 @@ func (plasma *Plasma) SubmitBlock(header [32]byte, numTxns *big.Int, fee *big.In
 }
 
 // GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, bool) {
+func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, bool) {
 	key := prefixKey(depositPrefix, nonce.Bytes())
 	data, err := plasma.memdb.Get(key)
 
@@ -124,11 +124,11 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, bool) {
 		deposit, err := plasma.session.Deposits(nonce)
 		if err != nil {
 			plasma.logger.Error("contract call, deposits, failed")
-			return nil, false
+			return plasmaTypes.Deposit{}, false
 		}
 
 		if deposit.CreatedAt.Sign() == 0 {
-			return nil, false
+			return plasmaTypes.Deposit{}, false
 		}
 
 		// save to the db
@@ -146,14 +146,14 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, bool) {
 	plasma.lock.Unlock()
 	if ethBlockNum.Sign() < 0 {
 		plasma.logger.Error("Failed `GetDeposit`. Not subscribed to ethereum headers")
-		return nil, false
+		return plasmaTypes.Deposit{}, false
 	}
 
 	if new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum).Uint64() < plasma.finalityBound {
-		return nil, false
+		return plasmaTypes.Deposit{}, false
 	}
 
-	return &deposit, true
+	return deposit, true
 }
 
 // HasTXBeenExited indicates if the position has ever been exited
