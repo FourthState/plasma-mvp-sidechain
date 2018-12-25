@@ -3,8 +3,7 @@ package eth
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
-	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/types"
+	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -137,9 +136,9 @@ func TestDepositWatching(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	deposit, err := plasma.GetDeposit(nonce)
-	if err != nil {
-		t.Fatalf("Deposit not caught - %s", err)
+	deposit, ok := plasma.GetDeposit(nonce)
+	if !ok {
+		t.Fatal("Deposit not caught")
 	}
 
 	if deposit.Amount.Uint64() != uint64(10) {
@@ -158,12 +157,12 @@ func TestDepositWatching(t *testing.T) {
 	}
 
 	var d plasmaTypes.Deposit
-	err = json.Unmarshal(data, &d)
+	err = rlp.DecodeBytes(data, &d)
 	if err != nil {
 		t.Fatalf("Error unmarshaling cache'd deposit - %s", err)
 	}
 
-	if !reflect.DeepEqual(*deposit, d) {
+	if !reflect.DeepEqual(deposit, &d) {
 		t.Fatalf("Mismatch in the persisted deposit and `GetDeposit`")
 	}
 }
@@ -191,7 +190,7 @@ func TestDepositExitWatching(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	zero := big.NewInt(0)
-	position := [4]*big.Int{zero, zero, zero, nonce}
+	position := plasmaTypes.NewPosition(zero, 0, 0, nonce)
 	exited := plasma.HasTXBeenExited(position)
 
 	if !exited {
@@ -286,14 +285,14 @@ func TestTxExitWatchingAndChallenge(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	txPos := [4]*big.Int{plasma.blockNum, zero, zero, zero}
+	txPos := plasmaTypes.NewPosition(plasma.blockNum, 0, 0, zero)
 	exited := plasma.HasTXBeenExited(txPos)
 	if !exited {
 		t.Errorf("Transaction not marked as exited")
 	}
 
 	// attempt to exit the deposit & challenge
-	depositPos := [4]*big.Int{zero, zero, zero, nonce}
+	depositPos := plasmaTypes.NewPosition(zero, 0, 0, nonce)
 	_, err = plasma.session.StartDepositExit(nonce, zero)
 	if err != nil {
 		t.Fatal("Error exiting deposit -", err)
@@ -305,7 +304,7 @@ func TestTxExitWatchingAndChallenge(t *testing.T) {
 		t.Errorf("Deposit not marked as exited after exiting")
 	}
 	plasma.session.TransactOpts.Value = nil
-	_, err = plasma.session.ChallengeExit(depositPos, [2]*big.Int{plasma.blockNum, zero}, txBytes, []byte{}, confirmSignature)
+	_, err = plasma.session.ChallengeExit(depositPos.ToBigIntArray(), [2]*big.Int{plasma.blockNum, zero}, txBytes, []byte{}, confirmSignature)
 	if err != nil {
 		t.Fatal("Error challenging exit -", err)
 	}

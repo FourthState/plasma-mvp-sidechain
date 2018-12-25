@@ -3,14 +3,13 @@ package eth
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"fmt"
 	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
-	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/comparer"
 	"github.com/syndtr/goleveldb/leveldb/memdb"
@@ -110,36 +109,30 @@ func (plasma *Plasma) SubmitBlock(header [32]byte, numTxns *big.Int, fee *big.In
 }
 
 // GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, error) {
+func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, bool) {
 	key := prefixKey(depositPrefix, nonce.Bytes())
 	data, err := plasma.memdb.Get(key)
 
 	var deposit plasmaTypes.Deposit
 	// check against the contract if the deposit is not in the cache or decoding fails
-	if err != nil || json.Unmarshal(data, &deposit) != nil {
+	if err != nil || rlp.DecodeBytes(data, &deposit) != nil {
 		if plasma.memdb.Contains(key) {
 			plasma.logger.Info("corrupted deposit found within db")
 			plasma.memdb.Delete(key)
 		}
 
-		d, err := plasma.session.Deposits(nonce)
+		deposit, err := plasma.session.Deposits(nonce)
 		if err != nil {
 			plasma.logger.Error("contract call, deposits, failed")
-			return nil, err
+			return nil, false
 		}
 
-		if d.CreatedAt.Sign() == 0 {
-			return nil, fmt.Errorf("deposit does not exist")
-		}
-
-		deposit = plasmaTypes.Deposit{
-			Owner:    d.Owner,
-			Amount:   sdk.NewUintFromBigInt(d.Amount),
-			BlockNum: sdk.NewUintFromBigInt(d.EthBlockNum),
+		if deposit.CreatedAt.Sign() == 0 {
+			return nil, false
 		}
 
 		// save to the db
-		data, err = json.Marshal(deposit)
+		data, err = rlp.EncodeToBytes(deposit)
 		if err != nil {
 			plasma.logger.Error("error encoding deposit. will not be cached")
 		} else {
@@ -152,28 +145,21 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (*plasmaTypes.Deposit, error) {
 	ethBlockNum := plasma.ethBlockNum
 	plasma.lock.Unlock()
 	if ethBlockNum.Sign() < 0 {
-		return nil, fmt.Errorf("not subscribed to ethereum block headers")
+		plasma.logger.Error("Failed `GetDeposit`. Not subscribed to ethereum headers")
+		return nil, false
 	}
 
-	if new(big.Int).Sub(ethBlockNum, deposit.BlockNum.BigInt()).Uint64() < plasma.finalityBound {
-		return nil, fmt.Errorf("deposit not finalized")
+	if new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum).Uint64() < plasma.finalityBound {
+		return nil, false
 	}
 
-	return &deposit, nil
+	return &deposit, true
 }
 
 // HasTXBeenExited indicates if the position has ever been exited
-func (plasma *Plasma) HasTXBeenExited(position [4]*big.Int) bool {
+func (plasma *Plasma) HasTXBeenExited(position plasmaTypes.Position) bool {
 	var key []byte
-	var priority *big.Int
-	if position[3].Sign() == 0 { // utxo exit
-		txPos := [3]*big.Int{position[0], position[1], position[3]}
-		priority = calcPriority(txPos)
-		key = prefixKey(transactionExitPrefix, priority.Bytes())
-	} else { // deposit exit
-		priority = position[3]
-		key = prefixKey(depositExitPrefix, priority.Bytes())
-	}
+	priority := position.Priority()
 
 	type exit struct {
 		Amount       *big.Int
@@ -186,10 +172,10 @@ func (plasma *Plasma) HasTXBeenExited(position [4]*big.Int) bool {
 	if !plasma.memdb.Contains(key) {
 		var e exit
 		var err error
-		if position[3].Sign() == 0 {
-			e, err = plasma.session.TxExits(priority)
-		} else {
+		if position.IsDeposit() {
 			e, err = plasma.session.DepositExits(priority)
+		} else {
+			e, err = plasma.session.TxExits(priority)
 		}
 
 		// default to true if the contract cannot be queried. Nothing should be spent
@@ -221,11 +207,7 @@ func watchDeposits(plasma *Plasma) {
 		key := prefixKey(depositPrefix, deposit.DepositNonce.Bytes())
 
 		// remove the nonce, encode, and store
-		data, err := json.Marshal(plasmaTypes.Deposit{
-			Owner:    deposit.Depositor,
-			Amount:   sdk.NewUintFromBigInt(deposit.Amount),
-			BlockNum: sdk.NewUintFromBigInt(deposit.EthBlockNum),
-		})
+		data, err := rlp.EncodeToBytes(&plasmaTypes.Deposit{deposit.Depositor, deposit.Amount, deposit.EthBlockNum})
 
 		if err != nil {
 			plasma.logger.Error("Error encoding deposit event from contract -", deposit)
@@ -259,9 +241,9 @@ func watchExits(plasma *Plasma) {
 	}()
 
 	go func() {
-		for transactionExit := range startedTransactionExits {
-			priority := calcPriority(transactionExit.Position).Bytes()
-			key := prefixKey(transactionExitPrefix, priority)
+		for txExit := range startedTransactionExits {
+			position := plasmaTypes.NewPosition(txExit.Position[0], uint16(txExit.Position[1].Uint64()), uint8(txExit.Position[2].Uint64()), big.NewInt(0))
+			key := prefixKey(transactionExitPrefix, position.Priority().Bytes())
 			plasma.memdb.Put(key, nil)
 		}
 

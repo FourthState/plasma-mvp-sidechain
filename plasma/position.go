@@ -78,3 +78,7 @@ func (p Position) Priority() *big.Int {
 	temp := new(big.Int).Add(bFactor, tFactor)
 	return temp.Add(temp, big.NewInt(int64(p.OutputIndex)))
 }
+
+func (p Position) ToBigIntArray() [4]*big.Int {
+	return [4]*big.Int{p.BlockNum, big.NewInt(int64(p.TxIndex)), big.NewInt(int64(p.OutputIndex)), p.DepositNonce}
+}
