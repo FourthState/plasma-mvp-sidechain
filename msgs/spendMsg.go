@@ -45,7 +45,6 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	if utils.IsZeroAddress(msg.Input0.Owner) {
 		return ErrInvalidAddress(DefaultCodespace, "first input owner must have a valid address: %x", msg.Input0.Owner)
 	}
-	// TODO: we should allow outputs to be burned.
 	if utils.IsZeroAddress(msg.Output0.Owner) {
 		return ErrInvalidAddress(DefaultCodespace, "no recipients of transaction")
 	}
@@ -72,4 +71,10 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	}
 
 	return nil
+}
+
+// Also satisfy the sdk.Tx interface
+
+func (msg SpendMsg) GetMsgs() []sdk.Msg {
+	return []sdk.Msg{msg}
 }
