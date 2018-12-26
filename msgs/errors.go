@@ -6,7 +6,7 @@ import (
 
 // Reserve errors 100 ~ 199
 const (
-	DefaultCodespace sdk.CodespaceType = 3
+	DefaultCodespace sdk.CodespaceType = "msgs"
 
 	CodeInvalidAddress     sdk.CodeType = 201
 	CodeInvalidOIndex      sdk.CodeType = 202

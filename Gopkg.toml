@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -26,37 +26,52 @@
 
 
 [[constraint]]
+  name = "github.com/bgentry/speakeasy"
+  version = "0.1.0"
+
+[[constraint]]
   name = "github.com/cosmos/cosmos-sdk"
-  version = "0.26.0"
+  version = "0.29.0"
+
+[[constraint]]
+  name = "github.com/ethereum/go-ethereum"
+  version = "1.8.20"
+
+[[constraint]]
+  name = "github.com/mattn/go-isatty"
+  version = "0.0.4"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.3"
+
+[[constraint]]
+  name = "github.com/spf13/pflag"
+  version = "1.0.3"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "1.0.3"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
   version = "1.2.1"
 
 [[constraint]]
-  name = "github.com/ethereum/go-ethereum"
-  version = "1.8.8"
+  branch = "master"
+  name = "github.com/syndtr/goleveldb"
 
-[[override]]
-  name = "github.com/golang/protobuf"
-  version = "=1.1.0"
-
-[[override]]
+[[constraint]]
   name = "github.com/tendermint/go-amino"
-  version = "v0.14.0"
+  version = "0.14.1"
 
-[[override]]
-  name = "github.com/tendermint/iavl"
-  version = "=v0.11.1"
-
-[[override]]
+[[constraint]]
   name = "github.com/tendermint/tendermint"
-  version = "v0.26.1-rc0" 
-
-[[override]]
-  name = "golang.org/x/crypto"
-  source = "https://github.com/tendermint/crypto"
-  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
+  version = "0.27.4"
 
 [prune]
   go-tests = true
