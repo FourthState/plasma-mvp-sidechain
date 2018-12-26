@@ -1,8 +1,9 @@
 package plasma
 
 import (
-	"bytes"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
+	"io"
 	"math/big"
 )
 
@@ -12,6 +13,11 @@ type Output struct {
 	Amount *big.Int       `json:"Amount"`
 }
 
+type output struct {
+	Owner  common.Address
+	Amount []byte
+}
+
 func NewOutput(owner common.Address, amount *big.Int) Output {
 	return Output{
 		Owner:  owner,
@@ -19,10 +25,25 @@ func NewOutput(owner common.Address, amount *big.Int) Output {
 	}
 }
 
-func (o *Output) Bytes() []byte {
-	buffer := new(bytes.Buffer)
-	buffer.Write(o.Owner.Bytes())
-	buffer.Write(o.Amount.Bytes())
+func (o *Output) EncodeRLP(w io.Writer) error {
+	output := output{o.Owner, o.Amount.Bytes()}
 
-	return buffer.Bytes()
+	return rlp.Encode(w, output)
+}
+
+func (o *Output) DecodeRLP(s *rlp.Stream) error {
+	var output output
+	if err := s.Decode(&output); err != nil {
+		return err
+	}
+
+	o.Owner = output.Owner
+	o.Amount = new(big.Int).SetBytes(output.Amount)
+
+	return nil
+}
+
+func (o Output) Bytes() []byte {
+	bytes, _ := rlp.EncodeToBytes(&o)
+	return bytes
 }
