@@ -130,6 +130,8 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 	block := plasma.NewBlock(header, app.numTxns, app.feeAmount)
 	app.plasmaStore.StoreBlock(ctx, blockHeight, block)
 
+	app.ethConnection.SubmitBlock(block)
+
 	app.txIndex = 0
 	app.feeAmount = big.NewInt(0)
 	app.numTxns = app.txIndex
