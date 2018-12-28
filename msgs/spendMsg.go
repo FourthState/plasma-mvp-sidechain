@@ -57,20 +57,27 @@ func (msg SpendMsg) ValidateBasic() sdk.Error {
 	}
 
 	/* First input/output validation */
-
 	if msg.Input0.OutputIndex != 0 && msg.Input0.OutputIndex != 1 {
 		return ErrInvalidOIndex(DefaultCodespace, "first output index 0 must be either 0 or 1")
 	}
-	if msg.Input0.DepositNonce.Sign() != 0 && (msg.Input0.BlockNum.Sign() != 0 || msg.Input0.TxIndex != 0 || msg.Input0.OutputIndex != 0) {
+	if msg.Input0.Position.IsDeposit() && (msg.Input0.BlockNum.Sign() != 0 || msg.Input0.TxIndex != 0 || msg.Input0.OutputIndex != 0) {
 		return ErrInvalidTransaction(DefaultCodespace, "first input is malformed. cannot specify a deposit nonce and utxo position simultaneously")
+	}
+	if !msg.Input0.Position.IsDeposit() && len(msg.Input0.ConfirmSignatures) == 0 {
+		return ErrInvalidTransaction(DefaultCodespace, "first input must include confirm signatures")
 	}
 
 	/* Second input/output validation if applicable */
-	if msg.Input1.DepositNonce.Sign() != 0 && (msg.Input1.BlockNum.Sign() != 0 || msg.Input1.TxIndex != 0 || msg.Input1.OutputIndex != 0) {
-		return ErrInvalidTransaction(DefaultCodespace, "second input is malformed. cannot specify a deposit nonce and utxo position simultaneously")
-	}
-	if msg.Input1.BlockNum.Sign() != 0 && (msg.Input1.OutputIndex != 0 && msg.Input1.OutputIndex != 1) {
-		return ErrInvalidOIndex(DefaultCodespace, "second output index 0 must be either 0 or 1")
+	if msg.HasSecondInput() {
+		if msg.Input1.IsDeposit() && (msg.Input1.BlockNum.Sign() != 0 || msg.Input1.TxIndex != 0 || msg.Input1.OutputIndex != 0) {
+			return ErrInvalidTransaction(DefaultCodespace, "second input is malformed. cannot specify a deposit nonce and utxo position simultaneously")
+		}
+		if msg.Input1.IsDeposit() && (msg.Input1.OutputIndex != 0 && msg.Input1.OutputIndex != 1) {
+			return ErrInvalidOIndex(DefaultCodespace, "second output index 0 must be either 0 or 1")
+		}
+		if !msg.Input1.IsDeposit() && len(msg.Input1.ConfirmSignatures) == 0 {
+			return ErrInvalidTransaction(DefaultCodespace, "second input must include confirm signatures")
+		}
 	}
 
 	return nil

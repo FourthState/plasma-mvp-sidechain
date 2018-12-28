@@ -14,8 +14,12 @@ import (
 // generate a sample spend with no owners
 func genSpendMsg() SpendMsg {
 	spendMsg := SpendMsg{}
-	spendMsg.Input0 = plasma.NewInput(big.NewInt(1), 0, 0, big.NewInt(0), common.Address{}, [][65]byte{})
-	spendMsg.Input1 = plasma.NewInput(big.NewInt(1), 1, 0, big.NewInt(0), common.Address{}, [][65]byte{})
+	nilAddress := common.Address{}
+	sig := [65]byte{}
+	confirmSig := [][65]byte{}
+
+	spendMsg.Input0 = plasma.NewInput(big.NewInt(1), 0, 0, nil, nilAddress, sig, confirmSig)
+	spendMsg.Input1 = plasma.NewInput(big.NewInt(1), 1, 0, nil, nilAddress, sig, confirmSig)
 	spendMsg.Output0 = plasma.NewOutput(common.Address{}, big.NewInt(150))
 	spendMsg.Output1 = plasma.NewOutput(common.Address{}, big.NewInt(50))
 	spendMsg.Fee = big.NewInt(0)
@@ -34,7 +38,7 @@ func TestNoOwners(t *testing.T) {
 	msg := genSpendMsg()
 	err := msg.ValidateBasic()
 
-	require.Equal(t, sdk.CodeType(201), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidAddress, err.Code(), err.Error())
 }
 
 func TestNoRecipients(t *testing.T) {
@@ -44,7 +48,7 @@ func TestNoRecipients(t *testing.T) {
 	msg.Input1.Owner = addr
 
 	err := msg.ValidateBasic()
-	require.Equal(t, sdk.CodeType(201), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidAddress, err.Code(), err.Error())
 }
 
 func TestIncorrectOutputIndex(t *testing.T) {
@@ -55,13 +59,13 @@ func TestIncorrectOutputIndex(t *testing.T) {
 	msg.Output0.Owner = addr
 
 	err := msg.ValidateBasic()
-	require.Equal(t, sdk.CodeType(202), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidOIndex, err.Code(), err.Error())
 
 	msg.Input0.OutputIndex = 0
 	msg.Input1.OutputIndex = 2
 	msg.Input1.Owner = addr
 	err = msg.ValidateBasic()
-	require.Equal(t, sdk.CodeType(202), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidOIndex, err.Code(), err.Error())
 }
 
 func TestInvalidDepositSpend(t *testing.T) {
@@ -73,13 +77,13 @@ func TestInvalidDepositSpend(t *testing.T) {
 	msg.Input0.DepositNonce = big.NewInt(10)
 
 	err := msg.ValidateBasic()
-	require.Equal(t, sdk.CodeType(204), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidTransaction, err.Code(), err.Error())
 
 	msg.Input0.DepositNonce = big.NewInt(0)
 	msg.Input1.Owner = addr
 	msg.Input1.DepositNonce = big.NewInt(10)
 	err = msg.ValidateBasic()
-	require.Equal(t, sdk.CodeType(204), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidTransaction, err.Code(), err.Error())
 }
 
 func TestInvalidPosition(t *testing.T) {
@@ -91,7 +95,7 @@ func TestInvalidPosition(t *testing.T) {
 	msg.Output0.Owner = addr
 
 	err := msg.ValidateBasic()
-	require.Equal(t, sdk.CodeType(204), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidTransaction, err.Code(), err.Error())
 }
 
 func TestInvalidDenomination(t *testing.T) {
@@ -102,7 +106,7 @@ func TestInvalidDenomination(t *testing.T) {
 	msg.Output0.Amount = big.NewInt(0)
 
 	err := msg.ValidateBasic()
-	require.Equal(t, sdk.CodeType(203), err.Code(), err.Error())
+	require.Equal(t, CodeInvalidAmount, err.Code(), err.Error())
 }
 
 func TestGetSigners(t *testing.T) {
