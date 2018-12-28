@@ -1,6 +1,7 @@
 package plasma
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math/big"
@@ -29,6 +30,9 @@ const (
 func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *big.Int) Position {
 	if depositNonce == nil {
 		depositNonce = big.NewInt(0)
+	}
+	if blkNum == nil {
+		blkNum = big.NewInt(0)
 	}
 
 	return Position{
@@ -85,4 +89,9 @@ func (p Position) Priority() *big.Int {
 
 func (p Position) ToBigIntArray() [4]*big.Int {
 	return [4]*big.Int{p.BlockNum, big.NewInt(int64(p.TxIndex)), big.NewInt(int64(p.OutputIndex)), p.DepositNonce}
+}
+
+func (p Position) String() string {
+	return fmt.Sprintf("BlockNum: %s, TxIndex: %d, OutputIndex: %d, DepositNonce: %s",
+		p.BlockNum.String(), p.TxIndex, p.OutputIndex, p.DepositNonce.String())
 }

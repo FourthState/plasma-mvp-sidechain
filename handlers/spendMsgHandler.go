@@ -12,10 +12,6 @@ import (
 // returns the next tx index in the current block
 type NextTxIndex func() uint16
 
-type UtxoStore interface {
-	// methods it expects the store to implement
-}
-
 func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		spendMsg, ok := msg.(msgs.SpendMsg)
@@ -47,7 +43,7 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 			position := plasma.NewPosition(big.NewInt(ctx.BlockHeight()), txIndex, uint8(i), nil)
 
 			// Hacky solution. Keys should only be constructed within the store module.
-			spenderKeys[i] = append(spenderKeys[1], position.Bytes()...)
+			spenderKeys[i] = append(spenderKeys[i], position.Bytes()...)
 
 			utxo := store.UTXO{
 				InputKeys:        inputKeys,

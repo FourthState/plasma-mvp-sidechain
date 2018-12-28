@@ -3,10 +3,10 @@ package handlers
 import (
 	"bytes"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -16,7 +16,12 @@ import (
 // FeeUpdater updates the aggregate fee amount in a block
 type FeeUpdater func(amt *big.Int) sdk.Error
 
-func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client *eth.Plasma, feeUpdater FeeUpdater) sdk.AnteHandler {
+type plasmaConn interface {
+	GetDeposit(*big.Int) (plasma.Deposit, bool)
+	HasTxBeenExited(plasma.Position) bool
+}
+
+func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, feeUpdater FeeUpdater, client plasmaConn) sdk.AnteHandler {
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
 		spendMsg, ok := tx.(msgs.SpendMsg)
 		if !ok {
@@ -24,7 +29,6 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 		}
 
 		txHash := spendMsg.TxHash()
-
 		var totalInputAmt, totalOutputAmt *big.Int
 
 		/* validate the first input */
@@ -70,9 +74,15 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 		}
 
 		// input0 + input1 (totalInputAmt) == output0 + output1 + Fee (totalOutputAmt)
-		totalOutputAmt = totalOutputAmt.Add(totalOutputAmt.Add(spendMsg.Output0.Amount, spendMsg.Output1.Amount), spendMsg.Fee)
+		totalOutputAmt = spendMsg.Output0.Amount
+		if spendMsg.HasSecondOutput() {
+			totalOutputAmt = totalOutputAmt.Add(totalOutputAmt.Add(totalOutputAmt, spendMsg.Output1.Amount), spendMsg.Fee)
+		} else {
+			totalOutputAmt = totalOutputAmt.Add(totalOutputAmt, spendMsg.Fee)
+		}
+
 		if totalInputAmt.Cmp(totalOutputAmt) != 0 {
-			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Inputs do not equal Outputs (+ fee)").Result(), true
+			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "inputs do not equal Outputs (+ fee)").Result(), true
 		}
 
 		// only update fee when we are actually delivering tx
@@ -88,14 +98,13 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 }
 
 // validates the inputs against the utxo store and returns the amount of the respective input
-func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmount *big.Int,
-	utxoStore store.UTXOStore, client *eth.Plasma) (*big.Int, sdk.Result) {
+func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmount *big.Int, utxoStore store.UTXOStore, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
 	if input.IsDeposit() {
 		// TODO: add utxo to the app state?
 		deposit, ok := client.GetDeposit(input.DepositNonce)
 		if !ok {
-			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit input does not exist").Result()
+			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist", input.DepositNonce.String()).Result()
 		}
 		if !bytes.Equal(deposit.Owner[:], input.Owner[:]) {
 			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the deposit: Signer: %x, Owner: %x", deposit.Owner, input.Owner)).Result()
@@ -105,7 +114,10 @@ func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmou
 	} else {
 		inputUTXO, ok := utxoStore.GetUTXO(ctx, input.Owner, input.Position)
 		if !ok {
-			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "first input does not exist").Result()
+			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist", inputUTXO.Position).Result()
+		}
+		if inputUTXO.Spent {
+			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", inputUTXO.Position).Result()
 		}
 		if !bytes.Equal(inputUTXO.Output.Owner[:], input.Owner[:]) {
 			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the input: Signer: %x, Owner: %x", inputUTXO.Output.Owner, input.Owner)).Result()
@@ -125,14 +137,14 @@ func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmou
 // validates the input's signature and confirm signatures
 func validateSignatures(ctx sdk.Context, input plasma.Input, txHash [32]byte, utxoStore store.UTXOStore) sdk.Result {
 	/* check transaction signatures */
-	pubKey, err := crypto.SigToPub(txHash[:], input.Signature[:])
+	pubKey, err := crypto.SigToPub(utils.ToEthSignedMessageHash(txHash)[:], input.Signature[:])
 	if err != nil {
-		return sdk.ErrInternal("Error recovering address from signature").Result()
+		return sdk.ErrInternal(fmt.Sprintf("error recovering address from signature. %s", err)).Result()
 	}
 
 	signer := crypto.PubkeyToAddress(*pubKey)
 	if !bytes.Equal(signer[:], input.Owner[:]) {
-		return sdk.ErrUnauthorized(fmt.Sprintf("Signature mismatch. Signer: %x, Owner: %x", signer, input.Owner)).Result()
+		return sdk.ErrUnauthorized(fmt.Sprintf("signature mismatch. Signer: %x, Owner: %x", signer, input.Owner)).Result()
 	}
 
 	/* check input confirm signatures if the input is not a deposit nor fee utxo */
@@ -144,14 +156,14 @@ func validateSignatures(ctx sdk.Context, input plasma.Input, txHash [32]byte, ut
 			return msgs.ErrInvalidTransaction(DefaultCodespace, "incorrect number of confirm signatures").Result()
 		}
 
-		confirmationHash := inputUTXO.ConfirmationHash[:]
+		confirmationHash := utils.ToEthSignedMessageHash(inputUTXO.ConfirmationHash)[:]
 		for i, key := range inputUTXO.InputKeys {
 			address := key[:common.AddressLength]
 
 			pubKey, _ := crypto.SigToPub(confirmationHash, input.ConfirmSignatures[i][:])
 			signer = crypto.PubkeyToAddress(*pubKey)
 			if !bytes.Equal(signer[:], address) {
-				return sdk.ErrUnauthorized(fmt.Sprintf("Confirm signature not signed by the correct address. Got: %x. Expected %x", signer, address)).Result()
+				return sdk.ErrUnauthorized(fmt.Sprintf("confirm signature not signed by the correct address. Got: %x. Expected %x", signer, address)).Result()
 			}
 		}
 	}

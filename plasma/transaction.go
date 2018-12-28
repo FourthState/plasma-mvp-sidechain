@@ -58,10 +58,10 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 
-	tx.Input0 = NewInput(new(big.Int).SetBytes(t.Tx.BlkNum0), t.Tx.TxIndex0, t.Tx.OIndex0,
-		new(big.Int).SetBytes(t.Tx.DepositNonce0), t.Tx.Owner0, t.Sigs[0], t.Tx.Input0ConfirmSigs)
-	tx.Input1 = NewInput(new(big.Int).SetBytes(t.Tx.BlkNum1), t.Tx.TxIndex1, t.Tx.OIndex1,
-		new(big.Int).SetBytes(t.Tx.DepositNonce1), t.Tx.Owner1, t.Sigs[1], t.Tx.Input1ConfirmSigs)
+	tx.Input0 = NewInput(NewPosition(new(big.Int).SetBytes(t.Tx.BlkNum0), t.Tx.TxIndex0, t.Tx.OIndex0, new(big.Int).SetBytes(t.Tx.DepositNonce0)),
+		t.Tx.Owner0, t.Sigs[0], t.Tx.Input0ConfirmSigs)
+	tx.Input1 = NewInput(NewPosition(new(big.Int).SetBytes(t.Tx.BlkNum1), t.Tx.TxIndex1, t.Tx.OIndex1, new(big.Int).SetBytes(t.Tx.DepositNonce1)),
+		t.Tx.Owner1, t.Sigs[1], t.Tx.Input1ConfirmSigs)
 	tx.Output0 = NewOutput(t.Tx.NewOwner0, new(big.Int).SetBytes(t.Tx.Amount0))
 	tx.Output1 = NewOutput(t.Tx.NewOwner1, new(big.Int).SetBytes(t.Tx.Amount1))
 	tx.Fee = new(big.Int).SetBytes(t.Tx.Fee)
@@ -95,7 +95,7 @@ func (tx Transaction) HasSecondInput() bool {
 
 // HasSecondOutput is an indicator if the second output is used in this transaction
 func (tx Transaction) HasSecondOutput() bool {
-	return utils.IsZeroAddress(tx.Output1.Owner)
+	return !utils.IsZeroAddress(tx.Output1.Owner)
 }
 
 // OutputAt is a selector for the outputs
