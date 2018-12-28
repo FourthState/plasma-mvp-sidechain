@@ -38,7 +38,7 @@ type PlasmaMVPChain struct {
 	fauxMerkleMode bool
 
 	// smart contract connection
-	ethConnection *eth.Plasma
+	ethConnection eth.Plasma
 
 	/* Config */
 	isValidator           bool // A validator is not the contract operator but a full node
@@ -80,6 +80,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	app.ethConnection = plasmaConn
 
 	// mount and load stores
 	// IAVL store used by default. `fauxMerkleMode` defaults to false
