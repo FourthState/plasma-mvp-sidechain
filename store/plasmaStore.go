@@ -14,6 +14,7 @@ type PlasmaStore struct {
 
 const (
 	confirmSigPrefix = "confirmSig"
+	deposit          = "deposit"
 	blockKey         = "block"
 )
 
@@ -23,15 +24,15 @@ func NewPlasmaStore(ctxKey sdk.StoreKey) PlasmaStore {
 	}
 }
 
-func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (*plasma.Block, bool) {
+func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma.Block, bool) {
 	key := prefixKey(blockKey, blockHeight.Bytes())
 	data := store.Get(ctx, key)
 	if data == nil {
-		return nil, false
+		return plasma.Block{}, false
 	}
 
-	block := &plasma.Block{}
-	if err := rlp.DecodeBytes(data, block); err != nil {
+	block := plasma.Block{}
+	if err := rlp.DecodeBytes(data, &block); err != nil {
 		panic(fmt.Sprintf("plasma store corrupted: %s", err))
 	}
 
@@ -42,7 +43,7 @@ func (store PlasmaStore) StoreConfirmSignatures(ctx sdk.Context, position plasma
 	key := prefixKey(confirmSigPrefix, position.Bytes())
 
 	var sigs []byte
-	sigs = append(sigs, confirmSignatures[1][:]...)
+	sigs = append(sigs, confirmSignatures[0][:]...)
 	if len(confirmSignatures) == 2 {
 		sigs = append(sigs, confirmSignatures[1][:]...)
 	}

@@ -5,7 +5,9 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	amino "github.com/tendermint/go-amino"
+	"io"
 )
 
 // Wrapper around
@@ -16,6 +18,39 @@ type UTXO struct {
 	Output   plasma.Output
 	Spent    bool
 	Position plasma.Position
+}
+
+type utxo struct {
+	InputKeys        [][]byte
+	ConfirmationHash [32]byte
+	Output           []byte
+	Spent            bool
+	Position         []byte
+}
+
+func (u *UTXO) EncodeRLP(w io.Writer) error {
+	utxo := utxo{u.InputKeys, u.ConfirmationHash, u.Output.Bytes(), u.Spent, u.Position.Bytes()}
+
+	return rlp.Encode(w, &utxo)
+}
+
+func (u *UTXO) DecodeRLP(s *rlp.Stream) error {
+	utxo := utxo{}
+	if err := s.Decode(&utxo); err != nil {
+		return err
+	}
+	if err := rlp.DecodeBytes(utxo.Output, &u.Output); err != nil {
+		return err
+	}
+	if err := rlp.DecodeBytes(utxo.Position, &u.Position); err != nil {
+		return err
+	}
+
+	u.InputKeys = utxo.InputKeys
+	u.ConfirmationHash = utxo.ConfirmationHash
+	u.Spent = utxo.Spent
+
+	return nil
 }
 
 type UTXOStore struct {
@@ -38,7 +73,7 @@ func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.
 	}
 
 	var utxo UTXO
-	err := store.cdc.UnmarshalBinaryBare(data, &utxo)
+	err := rlp.DecodeBytes(data, &utxo)
 	if err != nil {
 		panic(fmt.Sprintf("utxo store corrupted: %s", err))
 	}
@@ -48,7 +83,7 @@ func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.
 
 func (store UTXOStore) StoreUTXO(ctx sdk.Context, utxo UTXO) {
 	key := append(utxo.Output.Owner.Bytes(), utxo.Position.Bytes()...)
-	data, err := store.cdc.MarshalBinaryBare(utxo)
+	data, err := rlp.EncodeToBytes(&utxo)
 	if err != nil {
 		panic(fmt.Sprintf("Error marshaling utxo: %s", err))
 	}
@@ -57,7 +92,6 @@ func (store UTXOStore) StoreUTXO(ctx sdk.Context, utxo UTXO) {
 }
 
 func (store UTXOStore) SpendUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position, spenderKeys [][]byte) sdk.Error {
-	key := append(addr.Bytes(), pos.Bytes()...)
 	utxo, ok := store.GetUTXO(ctx, addr, pos)
 	if !ok {
 		return sdk.ErrUnknownRequest("utxo does not exist")
@@ -69,11 +103,7 @@ func (store UTXOStore) SpendUTXO(ctx sdk.Context, addr common.Address, pos plasm
 	utxo.Spent = true
 	utxo.InputKeys = spenderKeys
 
-	data, err := store.cdc.MarshalBinaryBare(utxo)
-	if err != nil {
-		panic(fmt.Sprintf("Error marshaling utxo: %s", err))
-	}
+	store.StoreUTXO(ctx, utxo)
 
-	store.Set(ctx, key, data)
 	return nil
 }
