@@ -39,6 +39,16 @@ func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma
 	return block, true
 }
 
+func (store PlasmaStore) StoreBlock(ctx sdk.Context, blockHeight *big.Int, block plasma.Block) {
+	key := prefixKey(blockKey, blockHeight.Bytes())
+	data, err := rlp.EncodeToBytes(&block)
+	if err != nil {
+		panic(fmt.Sprintf("error rlp encoding block: %s", err))
+	}
+
+	store.Set(ctx, key, data)
+}
+
 func (store PlasmaStore) StoreConfirmSignatures(ctx sdk.Context, position plasma.Position, confirmSignatures [][65]byte) {
 	key := prefixKey(confirmSigPrefix, position.Bytes())
 

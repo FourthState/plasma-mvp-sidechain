@@ -7,6 +7,10 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+const (
+	SpendMsgRoute = "spend"
+)
+
 type SpendMsg struct {
 	plasma.Transaction
 }
@@ -15,7 +19,7 @@ type SpendMsg struct {
 
 func (msg SpendMsg) Type() string { return "spend_utxo" }
 
-func (msg SpendMsg) Route() string { return "spend" }
+func (msg SpendMsg) Route() string { return SpendMsgRoute }
 
 func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 	addrs := make([]sdk.AccAddress, 1)

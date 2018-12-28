@@ -9,19 +9,19 @@ import (
 // Block represent one plasma block
 type Block struct {
 	Header   [32]byte `json:"header"`
-	TxnCount uint64   `json:"txnCount"`
+	TxnCount uint16   `json:"txnCount"`
 	TotalFee *big.Int `json:"totalFee"`
 }
 
 type block struct {
 	Header   [32]byte
-	TxnCount uint64
+	TxnCount uint16
 	Fee      []byte
 }
 
 // NewBlock is a constructor for Block
-func NewBlock(header [32]byte, txnCount uint64, totalFee *big.Int) *Block {
-	return &Block{header, txnCount, totalFee}
+func NewBlock(header [32]byte, txnCount uint16, totalFee *big.Int) Block {
+	return Block{header, txnCount, totalFee}
 }
 
 // EncodeRLP satisfies the rlp interface for Block

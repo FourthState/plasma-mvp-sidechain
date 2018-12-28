@@ -21,7 +21,7 @@ import (
 // Plasma holds related unexported members
 type Plasma struct {
 	session *contracts.PlasmaMVPSession
-	client  *Client
+	client  Client
 	logger  log.Logger
 
 	memdb *memdb.DB
@@ -35,10 +35,10 @@ type Plasma struct {
 }
 
 // InitPlasma binds the go wrapper to the deployed contract. This private key provides authentication for the operator
-func InitPlasma(contractAddr common.Address, privateKey *ecdsa.PrivateKey, client *Client, logger log.Logger, finalityBound uint64) (*Plasma, error) {
+func InitPlasma(contractAddr common.Address, privateKey *ecdsa.PrivateKey, client Client, finalityBound uint64, logger log.Logger) (Plasma, error) {
 	plasmaContract, err := contracts.NewPlasmaMVP(contractAddr, client.ec)
 	if err != nil {
-		return nil, err
+		return Plasma{}, err
 	}
 
 	// Create a session with the contract and operator account
@@ -58,10 +58,10 @@ func InitPlasma(contractAddr common.Address, privateKey *ecdsa.PrivateKey, clien
 	// TODO: deal with syncing issues
 	lastCommittedBlock, err := plasmaSession.LastCommittedBlock()
 	if err != nil {
-		return nil, fmt.Errorf("Contract session not correctly established - %s", err)
+		return Plasma{}, fmt.Errorf("Contract session not correctly established - %s", err)
 	}
 
-	plasma := &Plasma{
+	plasma := Plasma{
 		session: plasmaSession,
 		client:  client,
 		// capacity argument is advisory and not enforced in the memdb implementation
@@ -80,7 +80,7 @@ func InitPlasma(contractAddr common.Address, privateKey *ecdsa.PrivateKey, clien
 	ethCh, err := client.SubscribeToHeads()
 	if err != nil {
 		logger.Error("Could not successfully subscribe to heads: %v", err)
-		return nil, err
+		return Plasma{}, err
 	}
 
 	// start listeners
@@ -92,7 +92,7 @@ func InitPlasma(contractAddr common.Address, privateKey *ecdsa.PrivateKey, clien
 }
 
 // SubmitBlock proxy. TODO: handle batching with a timmer interrupt
-func (plasma *Plasma) SubmitBlock(header [32]byte, numTxns *big.Int, fee *big.Int) (*types.Transaction, error) {
+func (plasma Plasma) SubmitBlock(header [32]byte, numTxns *big.Int, fee *big.Int) (*types.Transaction, error) {
 	plasma.blockNum = plasma.blockNum.Add(plasma.blockNum, big.NewInt(1))
 
 	tx, err := plasma.session.SubmitBlock(
@@ -109,7 +109,7 @@ func (plasma *Plasma) SubmitBlock(header [32]byte, numTxns *big.Int, fee *big.In
 }
 
 // GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, bool) {
+func (plasma Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, bool) {
 	key := prefixKey(depositPrefix, nonce.Bytes())
 	data, err := plasma.memdb.Get(key)
 
@@ -157,7 +157,7 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, bool) {
 }
 
 // HasTXBeenExited indicates if the position has ever been exited
-func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
+func (plasma Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 	var key []byte
 	priority := position.Priority()
 
@@ -194,7 +194,7 @@ func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 	return true
 }
 
-func watchDeposits(plasma *Plasma) {
+func watchDeposits(plasma Plasma) {
 	// suscribe to future deposits
 	deposits := make(chan *contracts.PlasmaMVPDeposit)
 	opts := &bind.WatchOpts{
@@ -217,7 +217,7 @@ func watchDeposits(plasma *Plasma) {
 	}
 }
 
-func watchExits(plasma *Plasma) {
+func watchExits(plasma Plasma) {
 	startedDepositExits := make(chan *contracts.PlasmaMVPStartedDepositExit)
 	startedTransactionExits := make(chan *contracts.PlasmaMVPStartedTransactionExit)
 	challengedExits := make(chan *contracts.PlasmaMVPChallengedExit)
@@ -266,7 +266,7 @@ func watchExits(plasma *Plasma) {
 	}()
 }
 
-func watchEthBlocks(plasma *Plasma, ch <-chan *types.Header) {
+func watchEthBlocks(plasma Plasma, ch <-chan *types.Header) {
 	for header := range ch {
 		plasma.lock.Lock()
 		plasma.ethBlockNum = header.Number
