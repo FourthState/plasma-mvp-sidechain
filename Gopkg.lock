@@ -29,11 +29,12 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:f5322546f652db78b7a8efd35047a61d1e492abca2263e1c647eca49e1c8a354"
+  branch = "master"
+  digest = "1:7d191fd0c54ff370eaf6116a14dafe2a328df487baea280699f597aae858d00d"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
   pruneopts = "UT"
-  revision = "ea17b1a17847fb6e4c0a91de0b674704693469b0"
+  revision = "0ca71131d8f76e0739563d97cc9f95c021825a2b"
 
 [[projects]]
   branch = "master"
@@ -75,13 +76,16 @@
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
 [[projects]]
-  digest = "1:039728fa0a74758b5f5529f34c0115a3471c77899f6aecb654e9a8cbea8ba0be"
+  digest = "1:52701d2502a7dd2fa48d958c2c24a9ae48f5c2c68e14c68ae74561a517c9537a"
   name = "github.com/cosmos/cosmos-sdk"
   packages = [
     "baseapp",
     "client",
+    "client/context",
     "client/keys",
+    "client/utils",
     "cmd/gaia/app",
+    "cmd/gaia/init",
     "codec",
     "crypto",
     "crypto/keys",
@@ -94,6 +98,7 @@
     "types",
     "version",
     "x/auth",
+    "x/auth/client/txbuilder",
     "x/bank",
     "x/bank/simulation",
     "x/distribution",
@@ -110,6 +115,7 @@
     "x/params/subspace",
     "x/slashing",
     "x/stake",
+    "x/stake/client/cli",
     "x/stake/keeper",
     "x/stake/querier",
     "x/stake/simulation",
@@ -136,11 +142,12 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:1aeb4854a1c278e842712cd6684f48d595cbdd7839655d37a77248efa08c9fc0"
+  digest = "1:e47d51dab652d26c3fba6f8cba403f922d02757a82abdc77e90df7948daf296e"
   name = "github.com/deckarep/golang-set"
   packages = ["."]
   pruneopts = "UT"
-  revision = "504e848d77ea4752b3057b8fb46da0e7f746ccf3"
+  revision = "cbaa98ba5575e67703b32b4b19f73c91f3c4159e"
+  version = "v1.7.1"
 
 [[projects]]
   digest = "1:81cdea2cb729a674dc6e3f9e85ca1169b6a13157676b5ff6e15f1561371a729d"
@@ -208,12 +215,12 @@
   version = "v0.4.0"
 
 [[projects]]
-  digest = "1:33542eaf895b5489ccfb059502a721f0e8875379da8b3ff60fdd9212d503705c"
+  digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
   name = "github.com/go-stack/stack"
   packages = ["."]
   pruneopts = "UT"
-  revision = "54be5f394ed2c3e19dac9134a40a95ba5a017f7b"
-  version = "v1.5.4"
+  revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
+  version = "v1.8.0"
 
 [[projects]]
   digest = "1:35621fe20f140f05a0c4ef662c26c0ab4ee50bca78aa30fe87d33120bd28165e"
@@ -251,6 +258,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
+
+[[projects]]
+  digest = "1:236d7e1bdb50d8f68559af37dbcf9d142d56b431c9b2176d41e2a009b664cda8"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
@@ -352,11 +367,12 @@
   version = "v1.1.2"
 
 [[projects]]
-  digest = "1:361de06aa7ae272616cbe71c3994a654cc6316324e30998e650f7765b20c5b33"
+  digest = "1:e5d0bd87abc2781d14e274807a470acd180f0499f8bf5bb18606e9ec22ad9de9"
   name = "github.com/pborman/uuid"
   packages = ["."]
   pruneopts = "UT"
-  revision = "1b00554d822231195d1babd97ff4a781231955c9"
+  revision = "adf5a7427709b9deb95d29d3fa8a2bf9cfd388f1"
+  version = "v1.2"
 
 [[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
@@ -435,12 +451,12 @@
   revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
 
 [[projects]]
-  digest = "1:8f4b365e527c00e2ba6b25a4c41ee7b84078c375fba83c971e54d2f0582df279"
+  digest = "1:31d83d1b1c288073c91abadee3caec87de2a1fb5dbe589039264a802e67a26b8"
   name = "github.com/rjeczalik/notify"
   packages = ["."]
   pruneopts = "UT"
-  revision = "0f065fa99b48b842c3fd3e2c8b194c6f2b69f6b8"
-  version = "v0.9.1"
+  revision = "69d839f37b13a8cb7a78366f7633a4071cb43be7"
+  version = "v0.9.2"
 
 [[projects]]
   digest = "1:b0c25f00bad20d783d259af2af8666969e2fc343fa0dc9efe52936bbd67fb758"
@@ -634,7 +650,7 @@
   version = "v0.9.2"
 
 [[projects]]
-  digest = "1:5c393ab5be7655f00c50f58c169ba64ac0d38072b06c4589acc27145db84e66e"
+  digest = "1:9ee7b5b1fdcf6dcb0d609912076bb8da0c1c953a55141c7d83fa21dee29ad4f2"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -657,7 +673,8 @@
     "scrypt",
   ]
   pruneopts = "UT"
-  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
+  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
+  source = "https://github.com/tendermint/crypto"
 
 [[projects]]
   digest = "1:f1afc9fbc40f720896e8090b19bd6ab2ae4f88a1e12ce0edbefa641d1a6cfc80"
@@ -678,14 +695,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b9a5b255010eff293ac236a559771a8d6a7464cd341b9c3174bfe334a953d20f"
+  digest = "1:40efb75e7c2681e4fb5d886930a7074d0c2918334ea0e62a0fc8661245d9a7c8"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "b4a75ba826a64a70990f11a225237acd6ef35c9f"
+  revision = "9a3f9b0469bbc6b8802087ae5c0af9f61502de01"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -780,7 +797,7 @@
   input-imports = [
     "github.com/bgentry/speakeasy",
     "github.com/cosmos/cosmos-sdk/baseapp",
-    "github.com/cosmos/cosmos-sdk/client",
+    "github.com/cosmos/cosmos-sdk/cmd/gaia/init",
     "github.com/cosmos/cosmos-sdk/codec",
     "github.com/cosmos/cosmos-sdk/server",
     "github.com/cosmos/cosmos-sdk/store",
@@ -800,29 +817,20 @@
     "github.com/mattn/go-isatty",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",
-    "github.com/spf13/pflag",
     "github.com/spf13/viper",
-    "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/comparer",
     "github.com/syndtr/goleveldb/leveldb/memdb",
     "github.com/tendermint/go-amino",
     "github.com/tendermint/tendermint/abci/types",
-    "github.com/tendermint/tendermint/cmd/tendermint/commands",
     "github.com/tendermint/tendermint/config",
-    "github.com/tendermint/tendermint/crypto",
-    "github.com/tendermint/tendermint/crypto/encoding/amino",
-    "github.com/tendermint/tendermint/crypto/secp256k1",
     "github.com/tendermint/tendermint/crypto/tmhash",
     "github.com/tendermint/tendermint/libs/cli",
-    "github.com/tendermint/tendermint/libs/cli/flags",
     "github.com/tendermint/tendermint/libs/common",
     "github.com/tendermint/tendermint/libs/db",
     "github.com/tendermint/tendermint/libs/log",
     "github.com/tendermint/tendermint/lite",
-    "github.com/tendermint/tendermint/p2p",
-    "github.com/tendermint/tendermint/privval",
     "github.com/tendermint/tendermint/rpc/client",
     "github.com/tendermint/tendermint/rpc/core/types",
     "github.com/tendermint/tendermint/types",

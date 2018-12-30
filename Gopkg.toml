@@ -50,10 +50,6 @@
   version = "0.0.3"
 
 [[constraint]]
-  name = "github.com/spf13/pflag"
-  version = "1.0.3"
-
-[[constraint]]
   name = "github.com/spf13/viper"
   version = "1.0.3"
 
@@ -72,6 +68,11 @@
 [[constraint]]
   name = "github.com/tendermint/tendermint"
   version = "0.27.4"
+
+[[override]]
+  name = "golang.org/x/crypto"
+  source = "https://github.com/tendermint/crypto"
+  revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
 
 [prune]
   go-tests = true

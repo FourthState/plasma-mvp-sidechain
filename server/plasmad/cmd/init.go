@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	app "github.com/FourthState/plasma-mvp-sidechain"
+	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/app"
 	pConfig "github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
 	gaiaInit "github.com/cosmos/cosmos-sdk/cmd/gaia/init"
 
@@ -43,15 +43,15 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 			config := ctx.Config
 			config.SetRoot(viper.GetString(cli.HomeFlag))
 
-			chainID := viper.GetString(client.FlagChainID)
+			chainID := viper.GetString(flagChainID)
 			if chainID == "" {
-				chainID = fmt.Sprintf("test-chain-%v", common.RandStr(6))
+				chainID = fmt.Sprintf("test-chain-%v", tmCommon.RandStr(6))
 			}
 			if viper.GetString(flagMoniker) != "" {
 				config.Moniker = viper.GetString(flagMoniker)
 			}
 
-			_, _, err := gaiaInit.InitializeNodeValidatorFiles(config)
+			nodeID, _, err := gaiaInit.InitializeNodeValidatorFiles(config)
 			if err != nil {
 				return err
 			}
@@ -60,13 +60,16 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 			if !viper.GetBool(flagOverwrite) && tmCommon.FileExists(genFile) {
 				return fmt.Errorf("genesis.json file already exists: %v", genFile)
 			}
+			if viper.GetBool(flagOverwrite) && tmCommon.FileExists(genFile) {
+				fmt.Printf("overwriting genesis.json...\n")
+			}
+			valPubKey := gaiaInit.ReadOrCreatePrivValidator(config.PrivValidatorFile())
 
-			appState, err = json.MarshalIndent(app.GenesisState{}, "\t")
+			// create genesis and write to disk
+			appState, err = json.MarshalIndent(app.NewDefaultGenesisState(valPubKey), "", "\t")
 			if err != nil {
 				return err
 			}
-
-			pubKey := gaiaInit.ReadOrCreatePrivValidator(config.PrivValidatorFile())
 
 			if err = gaiaInit.ExportGenesisFile(genFile, chainID, nil, appState); err != nil {
 				return err
@@ -83,7 +86,7 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 				Moniker:    config.Moniker,
 				NodeID:     nodeID,
 				AppMessage: appState,
-			}, "\t")
+			}, "", "\t")
 			if err != nil {
 				return err
 			}
@@ -93,7 +96,7 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String(cli.HomeFlag, app.DefaultNodeHome, "node's home directory")
+	cmd.Flags().String(cli.HomeFlag, os.ExpandEnv("$HOME/.plasmad"), "node's home directory")
 	cmd.Flags().BoolP(flagOverwrite, "o", false, "overwrite the genesis.json file")
 	cmd.Flags().String(flagChainID, "", "genesis file chain-id, if left blank will be randomly created")
 	cmd.Flags().String(flagMoniker, "m", "set the validator's moniker")

@@ -2,24 +2,21 @@ package main
 
 import (
 	"encoding/json"
-	"io"
-	"os"
-	"path/filepath"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
+	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/app"
+	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/cmd"
+	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/cli"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
-
-	app "github.com/FourthState/plasma-mvp-sidechain"
-	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/cmd"
-	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
+	"io"
+	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -32,7 +29,7 @@ func main() {
 		Short:             "Plasma Daemon (server)",
 		PersistentPreRunE: persistentPreRunEFn(ctx),
 	}
-	rootCmd.AddCommand(cmd.InitCmd(ctx, cdc))
+	rootCmd.AddCommand(cmd.InitCmd(ctx))
 	server.AddCommands(ctx, cdc, rootCmd, newApp, exportAppState)
 
 	// HomeFlag in tendermint cli will be set to `~/.plasmad`
@@ -45,7 +42,7 @@ func main() {
 func persistentPreRunEFn(context *server.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		// run sdk/tendermint configuration
-		if err := server.PersistentPreRunE(context)(cmd)(args); err != nil {
+		if err := server.PersistentPreRunEFn(context)(cmd, args); err != nil {
 			return err
 		}
 
@@ -53,14 +50,16 @@ func persistentPreRunEFn(context *server.Context) func(*cobra.Command, []string)
 		plasmaConfigFilePath := filepath.Join(context.Config.RootDir, "config/plasma.toml")
 
 		if _, err := os.Stat(plasmaConfigFilePath); os.IsNotExist(err) {
-			plasmaConfig, _ := config.DefaultPlasmaConfig()
+			plasmaConfig := config.DefaultPlasmaConfig()
 			config.WritePlasmaConfigFile(plasmaConfigFilePath, plasmaConfig)
 		}
 
 		viper.SetConfigName("plasma")
-		if err = viper.MergeInConfig(); err != nil {
+		if err := viper.MergeInConfig(); err != nil {
 			return err
 		}
+
+		return nil
 	}
 }
 
@@ -72,45 +71,12 @@ func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application
 	finality := viper.GetString("ethereum_finality")
 
 	return app.NewPlasmaMVPChain(logger, db, traceStore,
-		setPlasmaOptions(isOperator, keyFile, contractAddr, nodeURL, finality),
+		app.SetPlasmaOptions(isOperator, keyFile, contractAddr, nodeURL, finality),
 	)
 }
 
-func setPlasmaOptions(isValidator bool, privkeyFile, contractAddr, finality string) func(*PlasmaMVPChain) {
-	var privkey *ecdsa.PrivateKey
-	var contractAddr common.Address
-	var blockFinality uint64
-
-	if isValidator {
-		path, err := filepath.Abs(privkeyFile)
-		if err != nil {
-			errMsg := fmt.Sprintf("Could not resolve provided private key file path: %v", err)
-			panic(errMsg)
-		}
-
-		privkey, err = crypto.LoadECDSA(path)
-		if err != nil {
-			errMsg := fmt.Sprintf("Could not load provided private key file to ecdsa private key: %v", err)
-			panic(errMsg)
-		}
-	}
-
-	blockFinality, err := strconv.ParseUint(finality, 10, 64)
-	if err != nil {
-		panic(err)
-	}
-
-	return func(pc *PlasmaMVPChain) {
-		pc.operatorPrivateKey = privkey
-		pc.isOperator = isValidator
-		pc.plasmaContractAddress = commmon.HexToAddress(contractAddr)
-		pc.nodeURL = nodeURL
-		pc.blockFinality = blockFinality
-	}
-}
-
 // non-functional
-func exportAppState(logger log.Logger, db dbm.DB, traceStore io.Writer) (json.RawMessage, []tmtypes.GenesisValidator, error) {
+func exportAppState(logger log.Logger, db dbm.DB, traceStore io.Writer, _ int64, _ bool) (json.RawMessage, []tmtypes.GenesisValidator, error) {
 	papp := app.NewPlasmaMVPChain(logger, db, traceStore)
 	return papp.ExportAppStateJSON()
 }
