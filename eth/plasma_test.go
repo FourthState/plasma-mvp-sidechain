@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 )
@@ -26,7 +25,7 @@ const (
 )
 
 func TestConnection(t *testing.T) {
-	logger := log.NewTMLogger(os.Stderr)
+	logger := log.NewNopLogger()
 
 	t.Logf("Connecting to remote client: %s", clientAddr)
 	client, err := InitEthConn(clientAddr, logger)
@@ -37,7 +36,7 @@ func TestConnection(t *testing.T) {
 }
 
 func TestPlasmaInit(t *testing.T) {
-	logger := log.NewTMLogger(os.Stderr)
+	logger := log.NewNopLogger()
 	client, err := InitEthConn(clientAddr, logger)
 
 	_, err = InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, logger, false, nil)
@@ -45,7 +44,7 @@ func TestPlasmaInit(t *testing.T) {
 }
 
 func TestSubmitBlock(t *testing.T) {
-	logger := log.NewTMLogger(os.Stderr)
+	logger := log.NewNopLogger()
 	client, _ := InitEthConn(clientAddr, logger)
 
 	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
@@ -69,7 +68,7 @@ func TestSubmitBlock(t *testing.T) {
 }
 
 func TestEthBlockWatching(t *testing.T) {
-	logger := log.NewTMLogger(os.Stderr)
+	logger := log.NewNopLogger()
 	client, _ := InitEthConn(clientAddr, logger)
 
 	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, logger, false, nil)
@@ -97,7 +96,7 @@ func TestEthBlockWatching(t *testing.T) {
 }
 
 func TestDepositFinalityBound(t *testing.T) {
-	logger := log.NewTMLogger(os.Stderr)
+	logger := log.NewNopLogger()
 	client, _ := InitEthConn(clientAddr, logger)
 
 	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
