@@ -101,11 +101,22 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmount *big.Int, utxoStore store.UTXOStore, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
 	if input.IsDeposit() {
-		// TODO: add utxo to the app state?
 		deposit, ok := client.GetDeposit(input.DepositNonce)
 		if !ok {
 			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist", input.DepositNonce.String()).Result()
 		}
+
+		// add deposit to app state if non existent
+		if !utxoStore.HasUTXO(ctx, deposit.Owner, input.Position) {
+			utxo := store.UTXO{
+				Output:   plasma.NewOutput(deposit.Owner, deposit.Amount),
+				Position: input.Position,
+				Spent:    false,
+			}
+
+			utxoStore.StoreUTXO(ctx, utxo)
+		}
+
 		if !bytes.Equal(deposit.Owner[:], input.Owner[:]) {
 			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the deposit: Signer: %x, Owner: %x", deposit.Owner, input.Owner)).Result()
 		}

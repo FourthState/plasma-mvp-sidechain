@@ -48,6 +48,7 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 			utxo := store.UTXO{
 				InputKeys:        inputKeys,
 				ConfirmationHash: confirmationHash,
+				MerkleHash:       merkleHash,
 				Output:           spendMsg.OutputAt(uint8(i)),
 				Spent:            false,
 				Position:         position,

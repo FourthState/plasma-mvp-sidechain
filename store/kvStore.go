@@ -28,3 +28,9 @@ func (kvstore KVStore) Delete(ctx sdk.Context, key []byte) {
 	store := ctx.KVStore(kvstore.contextKey)
 	store.Delete(key)
 }
+
+func (kvstore KVStore) Has(ctx sdk.Context, key []byte) bool {
+	store := ctx.KVStore(kvstore.contextKey)
+
+	return store.Has(key)
+}

@@ -6,14 +6,15 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	amino "github.com/tendermint/go-amino"
 	"io"
 )
 
 // Wrapper around
 type UTXO struct {
 	InputKeys        [][]byte // keys to retrieve the inputs of this output
+	SpenderKeys      [][]byte // keys to retrieve the spenders of this output
 	ConfirmationHash [32]byte // confirmation hash of the input transaction
+	MerkleHash       [32]byte // merkle hash of the input transaction
 
 	Output   plasma.Output
 	Spent    bool
@@ -53,9 +54,62 @@ func (u *UTXO) DecodeRLP(s *rlp.Stream) error {
 	return nil
 }
 
+/* UTXO helper functions */
+
+func (u UTXO) InputAddresses() []common.Address {
+	var result []common.Address
+	for _, key := range u.InputKeys {
+		addr := key[:common.AddressLength]
+		result = append(result, common.BytesToAddress(addr[:]))
+	}
+
+	return result
+}
+
+func (u UTXO) InputPositions() []plasma.Position {
+	var result []plasma.Position
+	for _, key := range u.InputKeys {
+		bytes := key[common.AddressLength:]
+		pos := plasma.Position{}
+		if err := rlp.DecodeBytes(bytes, &pos); err != nil {
+			panic(fmt.Errorf("utxo store corrupted %s", err))
+		}
+
+		result = append(result, pos)
+	}
+
+	return result
+}
+
+func (u UTXO) SpenderAddresses() []common.Address {
+	var result []common.Address
+	for _, key := range u.SpenderKeys {
+		addr := key[:common.AddressLength]
+		result = append(result, common.BytesToAddress(addr[:]))
+	}
+
+	return result
+}
+
+func (u UTXO) SpenderPositions() []plasma.Position {
+	var result []plasma.Position
+	for _, key := range u.SpenderKeys {
+		bytes := key[common.AddressLength:]
+		pos := plasma.Position{}
+		if err := rlp.DecodeBytes(bytes, &pos); err != nil {
+			panic(fmt.Errorf("utxo store corrupted %s", err))
+		}
+
+		result = append(result, pos)
+	}
+
+	return result
+}
+
+/* Store */
+
 type UTXOStore struct {
 	KVStore
-	cdc *amino.Codec
 }
 
 func NewUTXOStore(ctxKey sdk.StoreKey) UTXOStore {
@@ -81,6 +135,12 @@ func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.
 	return utxo, true
 }
 
+func (store UTXOStore) HasUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) bool {
+	key := append(addr.Bytes(), pos.Bytes()...)
+
+	return store.Has(ctx, key)
+}
+
 func (store UTXOStore) StoreUTXO(ctx sdk.Context, utxo UTXO) {
 	key := append(utxo.Output.Owner.Bytes(), utxo.Position.Bytes()...)
 	data, err := rlp.EncodeToBytes(&utxo)
@@ -101,7 +161,7 @@ func (store UTXOStore) SpendUTXO(ctx sdk.Context, addr common.Address, pos plasm
 	}
 
 	utxo.Spent = true
-	utxo.InputKeys = spenderKeys
+	utxo.SpenderKeys = spenderKeys
 
 	store.StoreUTXO(ctx, utxo)
 

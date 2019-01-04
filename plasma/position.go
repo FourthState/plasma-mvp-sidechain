@@ -5,6 +5,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math/big"
+	"strconv"
+	"strings"
 )
 
 // Position for an input/output
@@ -92,6 +94,71 @@ func (p Position) ToBigIntArray() [4]*big.Int {
 }
 
 func (p Position) String() string {
-	return fmt.Sprintf("BlockNum: %s, TxIndex: %d, OutputIndex: %d, DepositNonce: %s",
+	return fmt.Sprintf("(%s.%d.%d.%s)",
 		p.BlockNum.String(), p.TxIndex, p.OutputIndex, p.DepositNonce.String())
+}
+
+func (p Position) Validate() error {
+	if p.OutputIndex > 2 {
+		return fmt.Errorf("output index can only be 0 or 1")
+	}
+
+	if p.DepositNonce.Sign() > 0 && (p.BlockNum.Sign() > 0 || p.TxIndex > 0 || p.OutputIndex > 0) {
+		return fmt.Errorf("cannot specify nonce and chain position simultaneously")
+	}
+
+	return nil
+}
+
+func FromPositionString(posStr string) (Position, error) {
+	posStr = strings.TrimSpace(posStr)
+	if string(posStr[0]) != "(" || string(posStr[len(posStr)-1]) != ")" {
+		return Position{}, fmt.Errorf("positions must be enclosed in parens")
+	}
+
+	// remove the parens
+	posStr = posStr[1 : len(posStr)-1]
+
+	blkNum := new(big.Int)
+	depositNonce := new(big.Int)
+
+	var txIndex uint16
+	var oIndex uint8
+
+	tokens := strings.Split(posStr, ".")
+	if len(tokens) != 4 {
+		return Position{},
+			fmt.Errorf("invalid position. positions follow (blockNum.txIndex.oIndex.depositNonce). ex: (1.0.0.0)")
+	}
+
+	var err error
+	var ok bool
+	var num uint64
+	for i, token := range tokens {
+		token = strings.TrimSpace(token)
+		if i == 0 {
+			blkNum, ok = blkNum.SetString(token, 10)
+			if !ok {
+				return Position{}, fmt.Errorf("error parsing the block number")
+			}
+		} else if i == 1 {
+			num, err = strconv.ParseUint(token, 0, 16)
+			txIndex = uint16(num)
+		} else if i == 2 {
+			num, err = strconv.ParseUint(token, 0, 8)
+			oIndex = uint8(num)
+		} else {
+			depositNonce, ok = depositNonce.SetString(token, 10)
+			if !ok {
+				return Position{}, fmt.Errorf("error parsing the deposit nonce")
+			}
+		}
+
+		if err != nil {
+			return Position{}, err
+		}
+	}
+
+	pos := NewPosition(blkNum, txIndex, oIndex, depositNonce)
+	return pos, pos.Validate()
 }

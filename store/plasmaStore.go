@@ -13,7 +13,7 @@ type PlasmaStore struct {
 }
 
 const (
-	confirmSigPrefix = "confirmSig"
+	confirmSigPrefix = "confirmSignature"
 	deposit          = "deposit"
 	blockKey         = "block"
 )
