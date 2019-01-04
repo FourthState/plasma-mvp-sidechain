@@ -2,27 +2,27 @@ package app
 
 import (
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"path/filepath"
 	"strconv"
 )
 
-func SetPlasmaOptions(isOperator bool, privkeyFile, contractAddr, nodeURL, finality string) func(*PlasmaMVPChain) {
-	var privkey *ecdsa.PrivateKey
+func SetPlasmaOptions(isOperator bool, privKey, contractAddr, nodeURL, finality string) func(*PlasmaMVPChain) {
+	var privateKey *ecdsa.PrivateKey
 	var blockFinality uint64
 
 	if isOperator {
-		path, err := filepath.Abs(privkeyFile)
+		d, err := hex.DecodeString(privKey)
 		if err != nil {
-			errMsg := fmt.Sprintf("Could not resolve provided private key file path: %v", err)
+			errMsg := fmt.Sprintf("Could not parse private key: %v", err)
 			panic(errMsg)
 		}
 
-		privkey, err = crypto.LoadECDSA(path)
+		privateKey, err = crypto.ToECDSA(d)
 		if err != nil {
-			errMsg := fmt.Sprintf("Could not load provided private key file to ecdsa private key: %v", err)
+			errMsg := fmt.Sprintf("Could not load the private key: %v", err)
 			panic(errMsg)
 		}
 	}
@@ -33,7 +33,7 @@ func SetPlasmaOptions(isOperator bool, privkeyFile, contractAddr, nodeURL, final
 	}
 
 	return func(pc *PlasmaMVPChain) {
-		pc.operatorPrivateKey = privkey
+		pc.operatorPrivateKey = privateKey
 		pc.isOperator = isOperator
 		pc.plasmaContractAddress = common.HexToAddress(contractAddr)
 		pc.nodeURL = nodeURL

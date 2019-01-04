@@ -10,7 +10,7 @@ type GenesisState struct {
 
 type GenesisValidator struct {
 	ConsPubKey crypto.PubKey `json:"validator_pubkey"`
-	Abddmdress string        `json:"fee_address"`
+	Address    string        `json:"fee_address"`
 }
 
 func NewDefaultGenesisState(pubKey crypto.PubKey) GenesisState {

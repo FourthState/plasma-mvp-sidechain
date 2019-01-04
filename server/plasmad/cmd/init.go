@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/app"
-	pConfig "github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
+	//pConfig "github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
 	gaiaInit "github.com/cosmos/cosmos-sdk/cmd/gaia/init"
 
 	"github.com/cosmos/cosmos-sdk/server"
@@ -45,7 +45,7 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 
 			chainID := viper.GetString(flagChainID)
 			if chainID == "" {
-				chainID = fmt.Sprintf("test-chain-%v", tmCommon.RandStr(6))
+				chainID = fmt.Sprintf("test-chain-%v", tmCommon.RandStr(7))
 			}
 			if viper.GetString(flagMoniker) != "" {
 				config.Moniker = viper.GetString(flagMoniker)
@@ -66,7 +66,7 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 			valPubKey := gaiaInit.ReadOrCreatePrivValidator(config.PrivValidatorFile())
 
 			// create genesis and write to disk
-			appState, err = json.MarshalIndent(app.NewDefaultGenesisState(valPubKey), "", "\t")
+			appState, err = json.Marshal(app.NewDefaultGenesisState(valPubKey))
 			if err != nil {
 				return err
 			}
@@ -77,8 +77,10 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 
 			// write tendermint and plasma config files to disk
 			tmConfig.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
-			plasmaConfig := pConfig.DefaultPlasmaConfig()
-			pConfig.WritePlasmaConfigFile(filepath.Join(config.RootDir, "config", "plasma.toml"), plasmaConfig)
+			/*
+				plasmaConfig := pConfig.DefaultPlasmaConfig()
+				pConfig.WritePlasmaConfigFile(filepath.Join(config.RootDir, "config", "plasma.toml"), plasmaConfig)
+			*/
 
 			// display chain info
 			info, err := json.MarshalIndent(chainInfo{

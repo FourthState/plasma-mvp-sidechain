@@ -18,16 +18,16 @@ is_operator = "{{ .IsOperator }}"
 # File containing unencrypted private key
 # Used to sign eth transactions interacting with the rootchain 
 # Default directory is $HOME/.plasmad/config/
-ethereum_privkey_file = "{{ .EthPrivKeyFile }}"
+ethereum_operator_privatekey = "{{ .EthOperatorPrivateKey }}"
 
 # Ethereum rootchain contract address
-ethereum_plasma_contract_addr = "{{.EthPlasmaContractAddr}}"
+ethereum_plasma_contract_address = "{{ .EthPlasmaContractAddr }}"
 
 # Node URL for eth client
-ethereum_nodeurl = "{{.EthNodeURL}}"
+ethereum_nodeurl = "{{ .EthNodeURL }}"
 
 # Number of Ethereum blocks until a submitted block header is considered final
-ethereum_finality = "{{.EthBlockFinality}}"`
+ethereum_finality = "{{ .EthBlockFinality }}"`
 
 var configTemplate *template.Template
 

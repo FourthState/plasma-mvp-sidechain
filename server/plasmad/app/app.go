@@ -40,7 +40,7 @@ type PlasmaMVPChain struct {
 	fauxMerkleMode bool
 
 	// smart contract connection
-	ethConnection eth.Plasma
+	ethConnection *eth.Plasma
 
 	/* Config */
 	isOperator            bool // contract operator
@@ -72,29 +72,18 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	}
 
 	// connect to remote client
-	conn, err := eth.InitEthConn(app.nodeURL, logger)
+	ethClient, err := eth.InitEthConn(app.nodeURL, logger)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	plasmaConn, err := eth.InitPlasma(app.plasmaContractAddress, app.operatorPrivateKey, conn, app.blockFinality, logger)
+	plasmaClient, err := eth.InitPlasma(app.plasmaContractAddress, ethClient, app.blockFinality, logger,
+		app.isOperator, app.operatorPrivateKey)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	app.ethConnection = plasmaConn
-
-	// mount and load stores
-	// IAVL store used by default. `fauxMerkleMode` defaults to false
-	app.MountStores(utxoStoreKey, plasmaStoreKey)
-	if err := app.LoadLatestVersion(utxoStoreKey); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	if err := app.LoadLatestVersion(utxoStoreKey); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	app.ethConnection = plasmaClient
 
 	// Route spends to the handler
 	nextTxIndex := func() uint16 {
@@ -108,11 +97,25 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		app.feeAmount = app.feeAmount.Add(app.feeAmount, amt)
 		return nil
 	}
-	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, feeUpdater, plasmaConn))
+	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, feeUpdater, plasmaClient))
 
 	// set the rest of the chain flow
 	app.SetEndBlocker(app.endBlocker)
 	app.SetInitChainer(app.initChainer)
+
+	// mount and load stores
+	// IAVL store used by default. `fauxMerkleMode` defaults to false
+	app.MountStores(utxoStoreKey, plasmaStoreKey)
+	if err := app.LoadLatestVersion(utxoStoreKey); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	/*
+		if err := app.LoadLatestVersion(plasmaStoreKey); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	*/
 
 	return app
 }
@@ -121,18 +124,22 @@ func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChai
 	stateJSON := req.AppStateBytes
 	// TODO is this now the whole genesis file?
 
-	var genesisState GenesisState
+	genesisState := GenesisState{}
 	err := json.Unmarshal(stateJSON, &genesisState)
 	if err != nil {
+		fmt.Println("ERROR:", err)
 		panic(err) // TODO https://github.com/cosmos/cosmos-sdk/issues/468
 		// return sdk.ErrGenesisParse("").TraceCause(err, "")
 	}
 
 	// load the initial stake information
-	return abci.ResponseInitChain{Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{
-		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
-		Power:  1,
-	}}}
+	/*
+		return abci.ResponseInitChain{Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{
+			PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
+			Power:  1,
+		}}}
+	*/
+	return abci.ResponseInitChain{}
 }
 
 // Reset state at the end of each block
