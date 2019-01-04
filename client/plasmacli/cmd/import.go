@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client"
+	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/viper"
 
@@ -33,28 +33,21 @@ You must remember this passphrase to unlock your account in the future.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		keyfile := args[0]
 		if len(keyfile) == 0 {
-			return errors.New("keyfile must be given as argument")
+			return fmt.Errorf("keyfile must be given as argument")
 		}
 		key, err := crypto.LoadECDSA(keyfile)
 		if err != nil {
 			return err
 		}
 
-		buf := client.BufferStdin()
-		passphrase, err := client.GetCheckPassword("Please set a passphrase for your imported account.\nPassphrase:", "Repeat the passphrase:", buf)
+		dir := viper.GetString(client.FlagHomeDir)
+		keystore.InitKeystore(dir)
+		acct, err := ks.ImportECDSA(key)
 		if err != nil {
 			return err
 		}
 
-		dir := viper.GetString(FlagHomeDir)
-		ks := client.GetKeyStore(dir)
-
-		acct, err := ks.ImportECDSA(key, passphrase)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Address: {%x}\n", acct.Address)
+		fmt.Printf("Successfully imported. Address: {%x}\n", acct.Address)
 		return nil
 	},
 }

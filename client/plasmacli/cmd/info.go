@@ -3,12 +3,13 @@ package cmd
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client"
-	"github.com/FourthState/plasma-mvp-sidechain/client/context"
-	"github.com/FourthState/plasma-mvp-sidechain/types"
-	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 func init() {
@@ -19,47 +20,45 @@ func init() {
 
 var infoCmd = &cobra.Command{
 	Use:   "info <address>",
+	Args:  cobra.ExactArgs(1),
 	Short: "Information on owned utxos valid and invalid",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewClientContextFromViper()
-
-		ethAddr := common.HexToAddress(args[0])
-
-		res, err2 := ctx.QuerySubspace(ethAddr.Bytes(), ctx.UTXOStore)
-		if err2 != nil {
-			return err2
+		ctx := context.NewCLIContext()
+		addrStr := strings.TrimSpace(args[0])
+		if !common.IsHexAddress(addrStr) {
+			return fmt.Errorf("Invalid address provided. Please use hex format")
 		}
 
+		// query for all utxos owned by this address
+		res, err := ctx.QuerySubspace(common.HexToAddres(addrStr).Bytes(), "utxo")
+		if err != nil {
+			return err
+		}
+
+		utxo := store.UTXO{}
 		for i, pair := range res {
-			fmt.Printf("Start UTXO %d info:\n", i)
-			var resUTXO utxo.UTXO
-			err := ctx.Codec.UnmarshalBinaryBare(pair.Value, &resUTXO)
-			if err != nil {
+			if err := rlp.DecodeBytes(pair.Value, &utxo); err != nil {
 				return err
 			}
-			fmt.Printf("\nPosition: %v \nAmount: %d \nDenomination: %s \nValid: %t\n", resUTXO.Position, resUTXO.Amount, resUTXO.Denom, resUTXO.Valid)
 
-			if resUTXO.InputKeys != nil {
-				inputOwners := resUTXO.InputAddresses()
-				inputs := resUTXO.InputPositions(ctx.Codec, types.ProtoPosition)
-				for i, key := range resUTXO.InputKeys {
-					plasmaInput, _ := inputs[i].(*types.PlasmaPosition)
-					fmt.Printf("\nInput Owner %d: %s\nInput Position %d: %v\nInputKey %d in UTXO store: %s\n", i, hex.EncodeToString(inputOwners[i]),
-						i, *plasmaInput, i, hex.EncodeToString(key))
-				}
+			fmt.Printf("UTXO %d\n", i)
+			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Amount.String(), utxo.Denom, utxo.Spent)
+
+			// print inputs if applicable
+			inputAddresses := utxo.InputAddresses()
+			positions := utxo.InputPositions()
+			for i, addr := range inputAddresses {
+				fmt.Printf("Input Owner %d, Position: %s\n", i, positions[i])
 			}
 
-			if resUTXO.SpenderKeys != nil {
-				spenders := resUTXO.SpenderAddresses()
-				spenderPositions := resUTXO.SpenderPositions(ctx.Codec, types.ProtoPosition)
-				for i, key := range resUTXO.SpenderKeys {
-					plasmaPosition, _ := spenderPositions[i].(*types.PlasmaPosition)
-					fmt.Printf("\nSpender %d: %s\nSpending Position %d: %v\nSpendKey %d in UTXO store: %s\n", i, hex.EncodeToString(spenders[i]),
-						i, *plasmaPosition, i, hex.EncodeToString(key))
-				}
+			// print spenders if applicable
+			spenderAddresses := utxo.SpenderAddresses()
+			positions = utxo.SpenderPositions()
+			for i, addr := range spenderAddresses {
+				fmt.Printf("Spender Owner %d, Position: %s", i, positions[i])
 			}
 
-			fmt.Printf("End UTXO %d info:\n", i)
+			fmt.Printf("End UTXO %d info\n\n", i)
 		}
 
 		fmt.Println()

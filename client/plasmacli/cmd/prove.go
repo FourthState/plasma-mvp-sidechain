@@ -1,55 +1,54 @@
 package cmd
 
 import (
-	"encoding/hex"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client"
-	"github.com/FourthState/plasma-mvp-sidechain/client/context"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
-	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	amino "github.com/tendermint/go-amino"
+	"strings"
 )
 
 func init() {
 	rootCmd.AddCommand(proveCmd)
 	proveCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
-
 }
 
 var proveCmd = &cobra.Command{
 	Use:   "prove",
-	Short: "Prove tx inclusion: prove <address> <position>",
-	Long:  "Returns proof for tx inclusion. Use to exit tx on rootchain",
+	Short: "Prove transaction inclusion: prove <address> <position>",
+	Args:  cobra.ExactArgs(2),
+	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewClientContextFromViper()
+		ctx := context.NewCLIContext()
 
-		ethAddr := common.HexToAddress(args[0])
-		position, err := client.ParsePositions(args[1])
+		// validate arguments
+		addrStr := strings.TrimSpace(args[0])
+		if !common.IsHexAddress(addrStr) {
+			return fmt.Errorf("Invalid address provided. Please use hex format")
+		}
+		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
 			return err
 		}
 
-		posBytes, err := ctx.Codec.MarshalBinaryBare(position[0])
+		// query for the output
+		key := append(ethAddr.Bytes(), position.Bytes()...)
+		res, err := ctx.QueryStore(key, ctx.UTXOStore)
 		if err != nil {
-			return err
-		}
-
-		key := append(ethAddr.Bytes(), posBytes...)
-
-		res, err2 := ctx.QueryStore(key, ctx.UTXOStore)
-		if err2 != nil {
 			return err2
 		}
-
-		var resUTXO utxo.UTXO
-		err = ctx.Codec.UnmarshalBinaryBare(res, &resUTXO)
-		if err != nil {
+		utxo := store.UTXO{}
+		if err := rlp.DecodeBytes(res, &utxo); err != nil {
 			return err
 		}
 
-		result, err := ctx.Client.Tx(resUTXO.TxHash, true)
+		// query tm node for information about this tx
+		result, err := ctx.Client.Tx(utxo.MerkleHash[:], true)
 		if err != nil {
 			return err
 		}
@@ -72,10 +71,12 @@ var proveCmd = &cobra.Command{
 				return err
 			}
 		}
-		fmt.Printf("Roothash: 0x%s\n", hex.EncodeToString(result.Proof.RootHash))
+
+		// print meta data
+		fmt.Printf("Roothash: 0x%x\n", result.Proof.RootHash)
 		fmt.Printf("Total: %d\n", result.Proof.Proof.Total)
-		fmt.Printf("LeafHash: 0x%s\n", hex.EncodeToString(result.Proof.Proof.LeafHash))
-		fmt.Printf("TxBytes: 0x%s\n", hex.EncodeToString(result.Tx))
+		fmt.Printf("LeafHash: 0x%x\n", result.Proof.Proof.LeafHash)
+		fmt.Printf("TxBytes: 0x%x\n", result.Tx)
 
 		switch len(sigs) {
 		case 1:

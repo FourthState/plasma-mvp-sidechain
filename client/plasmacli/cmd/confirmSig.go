@@ -4,17 +4,19 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
-	"github.com/FourthState/plasma-mvp-sidechain/client"
-	"github.com/FourthState/plasma-mvp-sidechain/client/context"
+	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
-	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"math/big"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -24,8 +26,8 @@ const (
 
 func init() {
 	rootCmd.AddCommand(signCmd)
-	signCmd.Flags().String(flagFrom, "", "Address used to sign the confirmation signature")
-	signCmd.Flags().String(flagOwner, "", "Owner of the newly created utxo")
+	signCmd.Flags().String(flagFrom, "", "Address used to sign the confirmation signature (required)")
+	signCmd.Flags().String(flagOwner, "", "Owner of the newly created utxo (required)")
 	viper.BindPFlags(signCmd.Flags())
 }
 
@@ -34,76 +36,53 @@ var signCmd = &cobra.Command{
 	Short: "Sign confirmation signatures for position provided (0.0.0.0), if it exists.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := client.NewCLIContext()
 
-		ctx := context.NewClientContextFromViper()
-
-		position, err := client.ParsePositions(args[0])
+		position, err := plasma.FromPositionString(args[0])
 		if err != nil {
 			return err
 		}
 
+		// parse flags
 		fromStr := viper.GetString(flagFrom)
 		if fromStr == "" {
 			return errors.New("must provide the address to sign with using the --from flag")
 		}
-
 		ownerStr := viper.GetString(flagOwner)
 		if ownerStr == "" {
-			return fmt.Errorf("must provide the address that owns position %v using the --owner flag", position)
+			return fmt.Errorf("must provide the address that owns position %s using the --owner flag", position)
 		}
-
-		ethAddr := common.HexToAddress(ownerStr)
+		ownerAddr := common.HexToAddress(ownerStr)
 		signerAddr := common.HexToAddress(fromStr)
 
-		posBytes, err := ctx.Codec.MarshalBinaryBare(position[0])
+		// retrieve the new output
+		utxo := store.UTXO{}
+		key := append(ownerAddr.Bytes(), position.Bytes()...)
+		res, err := ctx.QueryStore(key, "utxo")
+		if err != nil {
+			return err
+		}
+		if err := rlp.DecodeBytes(res, &input); err != nil {
+			return err
+		}
+
+		// create the signature
+		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
+		dir := viper.GetString(client.FlagHomeDir)
+		keystore.InitKeyStore(dir)
+		acct, err := keystore.Find(signerAddr)
+		if err != nil {
+			return err
+		}
+		sig, err := keystore.SignHashWithPassphrase(acct, hash)
 		if err != nil {
 			return err
 		}
 
-		key := append(ethAddr.Bytes(), posBytes...)
-		res, err := ctx.QueryStore(key, ctx.UTXOStore)
-		if err != nil {
-			return err
-		}
+		// print the results
+		fmt.Printf("Confirmation Signature for utxo with position: %s\n", input.Position, input.Amount.String())
+		fmt.Printf("Signature: %x\n", sig)
 
-		var input utxo.UTXO
-		err = ctx.Codec.UnmarshalBinaryBare(res, &input)
-
-		blknumKey := make([]byte, binary.MaxVarintLen64)
-		binary.PutUvarint(blknumKey, input.Position.Get()[0].Uint64())
-
-		blockhash, err := ctx.QueryStore(blknumKey, ctx.PlasmaStore)
-		if err != nil {
-			return err
-		}
-
-		hash := tmhash.Sum(append(input.TxHash, blockhash...))
-		signHash := utils.SignHash(hash)
-
-		dir := viper.GetString(FlagHomeDir)
-		ks := client.GetKeyStore(dir)
-
-		acc := accounts.Account{
-			Address: signerAddr,
-		}
-		// get account to sign with
-		acct, err := ks.Find(acc)
-		if err != nil {
-			return err
-		}
-
-		// get passphrase
-		passphrase, err := ctx.GetPassphraseFromStdin(signerAddr)
-		if err != nil {
-			return err
-		}
-
-		sig, err := ks.SignHashWithPassphrase(acct, passphrase, signHash)
-
-		fmt.Printf("\nConfirmation Signature for utxo with\nposition: %v \namount: %d\n", input.Position, input.Amount)
-		fmt.Printf("signature: %x\n", sig)
-
-		fmt.Printf("UTXO had %d inputs\n", len(input.InputAddresses()))
 		return nil
 	},
 }
