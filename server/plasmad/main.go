@@ -5,7 +5,6 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/app"
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/cmd"
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
-	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,7 +20,7 @@ import (
 
 func main() {
 	// codec only used for server.AddCommand
-	cdc := codec.New()
+	cdc := app.MakeCodec()
 	ctx := server.NewDefaultContext()
 
 	rootCmd := &cobra.Command{
@@ -29,13 +28,15 @@ func main() {
 		Short:             "Plasma Daemon (server)",
 		PersistentPreRunE: persistentPreRunEFn(ctx),
 	}
-	rootCmd.AddCommand(cmd.InitCmd(ctx))
+	rootCmd.AddCommand(cmd.InitCmd(ctx, cdc))
 	server.AddCommands(ctx, cdc, rootCmd, newApp, exportAppState)
 
 	// HomeFlag in tendermint cli will be set to `~/.plasmad`
 	rootDir := os.ExpandEnv("$HOME/.plasmad")
 	executor := cli.PrepareBaseCmd(rootCmd, "PD", rootDir)
-	executor.Execute()
+	if err := executor.Execute(); err != nil {
+		panic(err)
+	}
 }
 
 // wraps the default cosmos-sdk function with additional logic to handle plasma specific configuration

@@ -9,6 +9,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/app"
 	//pConfig "github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
 	gaiaInit "github.com/cosmos/cosmos-sdk/cmd/gaia/init"
+	"github.com/cosmos/cosmos-sdk/codec"
 
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/spf13/cobra"
@@ -33,7 +34,7 @@ type chainInfo struct {
 
 // get cmd to initialize all files for tendermint and application
 // nolint
-func InitCmd(ctx *server.Context) *cobra.Command {
+func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize private validator, p2p, genesis, and application configuration files",
@@ -66,7 +67,7 @@ func InitCmd(ctx *server.Context) *cobra.Command {
 			valPubKey := gaiaInit.ReadOrCreatePrivValidator(config.PrivValidatorFile())
 
 			// create genesis and write to disk
-			appState, err = json.Marshal(app.NewDefaultGenesisState(valPubKey))
+			appState, err = codec.MarshalJSONIndent(cdc, app.NewDefaultGenesisState(valPubKey))
 			if err != nil {
 				return err
 			}

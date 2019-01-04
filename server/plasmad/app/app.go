@@ -10,6 +10,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -29,6 +30,7 @@ const (
 // Extended ABCI application
 type PlasmaMVPChain struct {
 	*baseapp.BaseApp
+	cdc *codec.Codec
 
 	txIndex   uint16
 	feeAmount *big.Int
@@ -52,12 +54,14 @@ type PlasmaMVPChain struct {
 
 func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options ...func(*PlasmaMVPChain)) *PlasmaMVPChain {
 	baseApp := baseapp.NewBaseApp(appName, logger, db, msgs.TxDecoder)
+	cdc := MakeCodec()
 	baseApp.SetCommitMultiStoreTracer(traceStore)
 
 	utxoStoreKey := sdk.NewKVStoreKey("utxo")
 	plasmaStoreKey := sdk.NewKVStoreKey("plasma")
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
+		cdc:       cdc,
 		txIndex:   0,
 		numTxns:   0,
 		feeAmount: big.NewInt(0), // we do not use `utils.BigZero` because the feeAmount is going to be updated
@@ -110,36 +114,25 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	/*
-		if err := app.LoadLatestVersion(plasmaStoreKey); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	*/
 
 	return app
 }
 
 func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	stateJSON := req.AppStateBytes
-	// TODO is this now the whole genesis file?
+	fmt.Println(string(stateJSON))
 
 	genesisState := GenesisState{}
-	err := json.Unmarshal(stateJSON, &genesisState)
-	if err != nil {
-		fmt.Println("ERROR:", err)
+	if err := app.cdc.UnmarshalJSON(stateJSON, &genesisState); err != nil {
 		panic(err) // TODO https://github.com/cosmos/cosmos-sdk/issues/468
 		// return sdk.ErrGenesisParse("").TraceCause(err, "")
 	}
 
 	// load the initial stake information
-	/*
-		return abci.ResponseInitChain{Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{
-			PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
-			Power:  1,
-		}}}
-	*/
-	return abci.ResponseInitChain{}
+	return abci.ResponseInitChain{Validators: []abci.ValidatorUpdate{abci.ValidatorUpdate{
+		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator.ConsPubKey),
+		Power:  1,
+	}}}
 }
 
 // Reset state at the end of each block
@@ -177,4 +170,11 @@ func (app *PlasmaMVPChain) ExportAppStateJSON() (appState json.RawMessage, valid
 	appState, err = json.MarshalIndent(tx, "", "\t")
 	validators = []tmtypes.GenesisValidator{}
 	return appState, validators, err
+}
+
+func MakeCodec() *codec.Codec {
+	cdc := codec.New()
+	sdk.RegisterCodec(cdc)
+	codec.RegisterCrypto(cdc)
+	return cdc
 }
