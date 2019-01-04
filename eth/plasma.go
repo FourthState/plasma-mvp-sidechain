@@ -54,7 +54,7 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 	// TODO: deal with syncing issues
 	lastCommittedBlock, err := plasmaContract.LastCommittedBlock(nil)
 	if err != nil {
-		return nil, fmt.Errorf("Contract connection not correctly established - %s", err)
+		return nil, fmt.Errorf("contract connection not correctly established: %s", err)
 	}
 
 	plasma := &Plasma{
@@ -73,8 +73,7 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 	// listen to new ethereum block headers
 	ethCh, err := client.SubscribeToHeads()
 	if err != nil {
-		logger.Error("Could not successfully subscribe to heads: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("could not successfully subscribe to heads: %s", err)
 	}
 
 	go watchEthBlocks(plasma, ethCh)
