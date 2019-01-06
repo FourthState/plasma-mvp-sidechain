@@ -67,7 +67,7 @@ func persistentPreRunEFn(context *server.Context) func(*cobra.Command, []string)
 func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
 	keyFile := viper.GetString(cli.HomeFlag) + "/config/" + viper.GetString("ethereum_privkey_file")
 	isOperator := viper.GetBool("is_operator")
-	contractAddr := viper.GetString("ethereum_plasma_contract_addr")
+	contractAddr := viper.GetString("ethereum_plasma_contract_address")
 	nodeURL := viper.GetString("ethereum_nodeurl")
 	finality := viper.GetString("ethereum_finality")
 
