@@ -29,6 +29,7 @@ type Plasma struct {
 
 // InitPlasma binds the go wrapper to the deployed contract. This private key provides authentication for the operator
 func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64, logger log.Logger, isOperator bool, operatorPrivKey *ecdsa.PrivateKey) (*Plasma, error) {
+	logger.Info(fmt.Sprintf("binding to contract: %x", contractAddr))
 	plasmaContract, err := contracts.NewPlasmaMVP(contractAddr, client.ec)
 	if err != nil {
 		return nil, err
@@ -83,6 +84,10 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 
 // SubmitBlock proxy. TODO: handle batching with a timmer interrupt
 func (plasma *Plasma) SubmitBlock(block plasmaTypes.Block) error {
+	if plasma.operatorSession == nil {
+		return nil
+	}
+
 	plasma.blockNum = plasma.blockNum.Add(plasma.blockNum, big.NewInt(1))
 
 	_, err := plasma.operatorSession.SubmitBlock(
