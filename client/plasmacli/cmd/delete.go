@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
-	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"strings"
 )
 
@@ -29,8 +25,6 @@ var deleteKeyCmd = &cobra.Command{
 		}
 
 		// delete from the keystore
-		dir := viper.GetString(client.FlagHomeDir)
-		keystore.InitKeystore(dir)
 		if err := keystore.Delete(common.HexToAddress(addrStr)); err != nil {
 			return err
 		}

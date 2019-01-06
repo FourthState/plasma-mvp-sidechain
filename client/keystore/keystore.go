@@ -14,7 +14,7 @@ import (
 const (
 	MinPasswordLength = 8
 
-	NewPassphrasePrompt       = "Enter a passphrase for your key:"
+	NewPassphrasePrompt       = "Enter new passphrase for your key:"
 	NewPassphrasePromptRepeat = "Repeat passphrase:"
 
 	PassphrasePrompt = "Enter passphrase:"
@@ -98,6 +98,20 @@ func Delete(addr common.Address) error {
 	return ks.Delete(acc, password)
 }
 
+func Update(addr common.Address) error {
+	password, err := promptPassword(PassphrasePrompt, "")
+	newPassword, err := promptPassword(NewPassphrasePrompt, "")
+	if err != nil {
+		return err
+	}
+
+	acc := accounts.Account{
+		Address: addr,
+	}
+
+	return ks.Update(acc, password, newPassword)
+}
+
 func ImportECDSA(key *ecdsa.PrivateKey) (accounts.Account, error) {
 	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
 	if err != nil {
@@ -107,11 +121,16 @@ func ImportECDSA(key *ecdsa.PrivateKey) (accounts.Account, error) {
 	return ks.ImportECDSA(key, password)
 }
 
-func SignHashWithPassphrase(acc accounts.Account, hash [32]byte) ([]byte, error) {
+func SignHashWithPassphrase(signer common.Address, hash []byte) ([]byte, error) {
+	acc, err := Find(signer)
+	if err != nil {
+		return nil, err
+	}
+
 	password, err := promptPassword(PassphrasePrompt, "")
 	if err != nil {
 		return nil, err
 	}
 
-	return ks.SignHashWithPassphrase(acc, password, hash[:])
+	return ks.SignHashWithPassphrase(acc, password, hash)
 }

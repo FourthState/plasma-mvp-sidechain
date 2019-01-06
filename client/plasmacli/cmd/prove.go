@@ -4,18 +4,15 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
-	amino "github.com/tendermint/go-amino"
 	"strings"
 )
 
 func init() {
 	rootCmd.AddCommand(proveCmd)
-	proveCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 }
 
 var proveCmd = &cobra.Command{
@@ -37,10 +34,10 @@ var proveCmd = &cobra.Command{
 		}
 
 		// query for the output
-		key := append(ethAddr.Bytes(), position.Bytes()...)
-		res, err := ctx.QueryStore(key, ctx.UTXOStore)
+		key := append(common.HexToAddress(addrStr).Bytes(), position.Bytes()...)
+		res, err := ctx.QueryStore(key, "main")
 		if err != nil {
-			return err2
+			return err
 		}
 		utxo := store.UTXO{}
 		if err := rlp.DecodeBytes(res, &utxo); err != nil {
@@ -54,21 +51,16 @@ var proveCmd = &cobra.Command{
 		}
 
 		// Look for confirmation signatures
-		cdc := amino.NewCodec()
-		pos := [2]uint64{position[0].Blknum, uint64(position[0].TxIndex)}
-		bz, err := cdc.MarshalBinaryBare(pos)
-		if err != nil {
-			return err
-		}
-
-		key = append(utils.ConfirmSigPrefix, bz...)
-		res, err = ctx.QueryStore(key, ctx.PlasmaStore)
-
-		var sigs [][65]byte
-		if err == nil {
-			err = ctx.Codec.UnmarshalBinaryBare(res, &sigs)
-			if err != nil {
-				return err
+		var confirmSignatures [][65]byte
+		key = store.CreateConfirmSignatureKey(utxo.Position)
+		res, err = ctx.QueryStore(key, "plasma")
+		if err == nil { // confirm signatures exist
+			var signature [65]byte
+			copy(signature[:], res)
+			confirmSignatures = append(confirmSignatures, signature)
+			if len(res) > 65 {
+				copy(signature[:], res[65:])
+				confirmSignatures = append(confirmSignatures, signature)
 			}
 		}
 
@@ -78,11 +70,11 @@ var proveCmd = &cobra.Command{
 		fmt.Printf("LeafHash: 0x%x\n", result.Proof.Proof.LeafHash)
 		fmt.Printf("TxBytes: 0x%x\n", result.Tx)
 
-		switch len(sigs) {
+		switch len(confirmSignatures) {
 		case 1:
-			fmt.Printf("Confirmation Signatures: %v\n", sigs[0])
+			fmt.Printf("Confirmation Signatures: 0x%x\n", confirmSignatures[0])
 		case 2:
-			fmt.Printf("Confirmation Signatures: %v,%v\n", sigs[0], sigs[1])
+			fmt.Printf("Confirmation Signatures: 0x%x, 0x%x\n", confirmSignatures[0], confirmSignatures[1])
 		}
 
 		// flatten aunts
@@ -92,9 +84,9 @@ var proveCmd = &cobra.Command{
 		}
 
 		if len(proof) == 0 {
-			fmt.Println("Proof: nil")
+			fmt.Printf("Proof: nil\n")
 		} else {
-			fmt.Printf("Proof: 0x%s\n", hex.EncodeToString(proof))
+			fmt.Printf("Proof: 0x%x\n", proof)
 		}
 
 		return nil

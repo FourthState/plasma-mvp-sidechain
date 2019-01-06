@@ -2,16 +2,17 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
+	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
-var homeDir string = os.ExpandEnv("$HOME/.plasmacli/keys")
+var keystoreHomeDir string = os.ExpandEnv("$HOME/.plasmacli/keys")
 
 const (
-	FlagHomeDir = "home"
+	flagKeystore = "keystore"
 )
 
 var rootCmd = &cobra.Command{
@@ -29,12 +30,13 @@ func Execute() {
 func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringP(FlagHomeDir, "", homeDir, "directory for keystore")
+	rootCmd.PersistentFlags().StringP(flagKeystore, "", keystoreHomeDir, "directory for keystore")
+	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	viper.BindPFlags(rootCmd.Flags())
-	viper.Set(FlagHomeDir, homeDir)
 }
 
 // initConfig reads in config file and ENV variables if set
 func initConfig() {
 	viper.AutomaticEnv()
+	keystore.InitKeystore(viper.GetString(flagKeystore))
 }

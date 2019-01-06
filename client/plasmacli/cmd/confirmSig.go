@@ -1,22 +1,17 @@
 package cmd
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
-	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"math/big"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -36,7 +31,7 @@ var signCmd = &cobra.Command{
 	Short: "Sign confirmation signatures for position provided (0.0.0.0), if it exists.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := client.NewCLIContext()
+		ctx := context.NewCLIContext()
 
 		position, err := plasma.FromPositionString(args[0])
 		if err != nil {
@@ -62,25 +57,23 @@ var signCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if err := rlp.DecodeBytes(res, &input); err != nil {
+		if err := rlp.DecodeBytes(res, &utxo); err != nil {
 			return err
 		}
 
 		// create the signature
 		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
-		dir := viper.GetString(client.FlagHomeDir)
-		keystore.InitKeyStore(dir)
 		acct, err := keystore.Find(signerAddr)
 		if err != nil {
 			return err
 		}
-		sig, err := keystore.SignHashWithPassphrase(acct, hash)
+		sig, err := keystore.SignHashWithPassphrase(acct.Address, hash)
 		if err != nil {
 			return err
 		}
 
 		// print the results
-		fmt.Printf("Confirmation Signature for utxo with position: %s\n", input.Position, input.Amount.String())
+		fmt.Printf("Confirmation Signature for utxo with position: %s\n", utxo.Position)
 		fmt.Printf("Signature: %x\n", sig)
 
 		return nil

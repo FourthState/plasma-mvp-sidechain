@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
@@ -12,7 +12,6 @@ import (
 
 func init() {
 	rootCmd.AddCommand(balanceCmd)
-	balanceCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 }
 
 var balanceCmd = &cobra.Command{
@@ -20,10 +19,10 @@ var balanceCmd = &cobra.Command{
 	Short: "Query Balances",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := client.NewCLIConetxt()
+		ctx := context.NewCLIContext()
 		addr := common.HexToAddress(args[0])
 
-		res, err = ctx.QuerySubspace(addr.Bytes(), "utxo")
+		res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
 		if err != nil {
 			return err
 		}
@@ -36,8 +35,8 @@ var balanceCmd = &cobra.Command{
 			}
 
 			if !utxo.Spent {
-				fmt.Printf("Position: %s , Amount: %d\n", utxo.Position, utxo.Amount.Uint64())
-				total = total.Add(total, resUTXO.Amount)
+				fmt.Printf("Position: %s , Amount: %d\n", utxo.Position, utxo.Output.Amount.Uint64())
+				total = total.Add(total, utxo.Output.Amount)
 			}
 		}
 

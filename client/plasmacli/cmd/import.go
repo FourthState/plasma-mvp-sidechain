@@ -3,10 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/spf13/viper"
-
 	"github.com/spf13/cobra"
 )
 
@@ -40,9 +37,7 @@ You must remember this passphrase to unlock your account in the future.
 			return err
 		}
 
-		dir := viper.GetString(client.FlagHomeDir)
-		keystore.InitKeystore(dir)
-		acct, err := ks.ImportECDSA(key)
+		acct, err := keystore.ImportECDSA(key)
 		if err != nil {
 			return err
 		}

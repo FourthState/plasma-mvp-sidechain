@@ -3,9 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func init() {
@@ -17,9 +15,6 @@ var addKeyCmd = &cobra.Command{
 	Short: "Create a new account",
 	Long:  `Add an encrypted account to the keystore.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		dir := viper.GetString(client.FlagHomeDir)
-		keystore.InitKeyStore(dir)
-
 		address, err := keystore.NewAccount()
 		if err != nil {
 			return err

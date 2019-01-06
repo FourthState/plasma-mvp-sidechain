@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/hex"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -30,7 +29,7 @@ var infoCmd = &cobra.Command{
 		}
 
 		// query for all utxos owned by this address
-		res, err := ctx.QuerySubspace(common.HexToAddres(addrStr).Bytes(), "utxo")
+		res, err := ctx.QuerySubspace(common.HexToAddress(addrStr).Bytes(), "utxo")
 		if err != nil {
 			return err
 		}
@@ -42,19 +41,19 @@ var infoCmd = &cobra.Command{
 			}
 
 			fmt.Printf("UTXO %d\n", i)
-			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Amount.String(), utxo.Denom, utxo.Spent)
+			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent)
 
 			// print inputs if applicable
 			inputAddresses := utxo.InputAddresses()
 			positions := utxo.InputPositions()
-			for i, addr := range inputAddresses {
+			for i, _ := range inputAddresses {
 				fmt.Printf("Input Owner %d, Position: %s\n", i, positions[i])
 			}
 
 			// print spenders if applicable
 			spenderAddresses := utxo.SpenderAddresses()
 			positions = utxo.SpenderPositions()
-			for i, addr := range spenderAddresses {
+			for i, _ := range spenderAddresses {
 				fmt.Printf("Spender Owner %d, Position: %s", i, positions[i])
 			}
 
