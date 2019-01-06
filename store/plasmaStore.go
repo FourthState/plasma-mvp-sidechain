@@ -25,7 +25,7 @@ func NewPlasmaStore(ctxKey sdk.StoreKey) PlasmaStore {
 }
 
 func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma.Block, bool) {
-	key := prefixKey(blockKey, blockHeight.Bytes())
+	key := CreateBlockKey(blockHeight)
 	data := store.Get(ctx, key)
 	if data == nil {
 		return plasma.Block{}, false
@@ -40,7 +40,7 @@ func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma
 }
 
 func (store PlasmaStore) StoreBlock(ctx sdk.Context, blockHeight *big.Int, block plasma.Block) {
-	key := prefixKey(blockKey, blockHeight.Bytes())
+	key := CreateBlockKey(blockHeight)
 	data, err := rlp.EncodeToBytes(&block)
 	if err != nil {
 		panic(fmt.Sprintf("error rlp encoding block: %s", err))
@@ -49,8 +49,12 @@ func (store PlasmaStore) StoreBlock(ctx sdk.Context, blockHeight *big.Int, block
 	store.Set(ctx, key, data)
 }
 
+func CreateBlockKey(blockHeight *big.Int) []byte {
+	return prefixKey(blockKey, blockHeight.Bytes())
+}
+
 func (store PlasmaStore) StoreConfirmSignatures(ctx sdk.Context, position plasma.Position, confirmSignatures [][65]byte) {
-	key := prefixKey(confirmSigPrefix, position.Bytes())
+	key := CreateConfirmSignatureKey(position)
 
 	var sigs []byte
 	sigs = append(sigs, confirmSignatures[0][:]...)
@@ -59,4 +63,11 @@ func (store PlasmaStore) StoreConfirmSignatures(ctx sdk.Context, position plasma
 	}
 
 	store.Set(ctx, key, sigs)
+}
+
+func CreateConfirmSignatureKey(pos plasma.Position) []byte {
+	// zero out the output index to prevent duplicates
+	pos.OutputIndex = 0
+
+	return prefixKey(confirmSigPrefix, pos.Bytes())
 }

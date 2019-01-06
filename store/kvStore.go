@@ -16,7 +16,9 @@ func NewKVStore(contextKey sdk.StoreKey) KVStore {
 
 func (kvstore KVStore) Set(ctx sdk.Context, key []byte, value []byte) {
 	store := ctx.KVStore(kvstore.contextKey)
-	store.Set(key, value)
+	if !store.Has(key) {
+		store.Set(key, value)
+	}
 }
 
 func (kvstore KVStore) Get(ctx sdk.Context, key []byte) []byte {
