@@ -46,6 +46,12 @@ func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *bi
 }
 
 func (p *Position) EncodeRLP(w io.Writer) error {
+	if p.BlockNum == nil {
+		p.BlockNum = big.NewInt(0)
+	}
+	if p.DepositNonce == nil {
+		p.DepositNonce = big.NewInt(0)
+	}
 	pos := position{p.BlockNum.Bytes(), p.TxIndex, p.OutputIndex, p.DepositNonce.Bytes()}
 
 	return rlp.Encode(w, pos)
