@@ -8,10 +8,10 @@ import (
 const (
 	DefaultCodespace sdk.CodespaceType = "msgs"
 
-	CodeInvalidAddress     sdk.CodeType = 201
-	CodeInvalidOIndex      sdk.CodeType = 202
-	CodeInvalidAmount      sdk.CodeType = 203
-	CodeInvalidTransaction sdk.CodeType = 204
+	CodeInvalidAddress     sdk.CodeType = 1
+	CodeInvalidOIndex      sdk.CodeType = 2
+	CodeInvalidAmount      sdk.CodeType = 3
+	CodeInvalidTransaction sdk.CodeType = 4
 )
 
 func ErrInvalidTransaction(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {

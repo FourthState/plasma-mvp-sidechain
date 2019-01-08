@@ -7,8 +7,8 @@ import (
 const (
 	DefaultCodespace sdk.CodespaceType = "handlers"
 
-	CodeInsufficientFee sdk.CodeType = 6969
-	CodeExitedInput     sdk.CodeType = 666
+	CodeInsufficientFee sdk.CodeType = 1
+	CodeExitedInput     sdk.CodeType = 2
 )
 
 func ErrInsufficientFee(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {

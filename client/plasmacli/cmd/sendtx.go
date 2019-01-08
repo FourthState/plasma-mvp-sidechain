@@ -147,7 +147,7 @@ var sendTxCmd = &cobra.Command{
 		var amounts []*big.Int // [ammount0, amount1, fee]
 		amountTokens := strings.Split(strings.TrimSpace(viper.GetString(flagAmounts)), ",")
 		if len(amountTokens) != 3 {
-			fmt.Errorf("3 amounts must be passed in. amount0, amount1, fee")
+			return fmt.Errorf("3 amounts must be passed in. amount0, amount1, fee")
 		}
 		if len(amountTokens)-1 != len(toAddrs) {
 			return fmt.Errorf("provided amounts to not match the number of outputs")
@@ -156,7 +156,7 @@ var sendTxCmd = &cobra.Command{
 			token = strings.TrimSpace(token)
 			num, ok := new(big.Int).SetString(token, 10)
 			if !ok {
-				fmt.Errorf("error parsing number: %s", token)
+				return fmt.Errorf("error parsing number: %s", token)
 			}
 			amounts = append(amounts, num)
 		}

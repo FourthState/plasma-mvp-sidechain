@@ -35,7 +35,7 @@ func Accounts() []accounts.Account {
 
 // Prompts for a password one-time
 // Enforces minimum password length
-func promptPassword(prompt, repeatPrompt string) (password string, err error) {
+func promptPassword(prompt, repeatPrompt string) (string, error) {
 	if !isatty.IsTerminal(os.Stdin.Fd()) && !isatty.IsCygwinTerminal(os.Stdin.Fd()) {
 		return "", fmt.Errorf("Only interactive terminals are supported")
 	}
@@ -56,11 +56,11 @@ func promptPassword(prompt, repeatPrompt string) (password string, err error) {
 		}
 	}
 
-	if len(password) < MinPasswordLength {
+	if len(password0) < MinPasswordLength {
 		return "", fmt.Errorf("Password must be at least %d characters", MinPasswordLength)
 	}
 
-	return password, nil
+	return password0, nil
 }
 
 func NewAccount() (common.Address, error) {
