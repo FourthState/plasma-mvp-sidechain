@@ -3,20 +3,18 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/app"
-	//pConfig "github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
+	"github.com/FourthState/plasma-mvp-sidechain/server/app"
+	pConfig "github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
 	gaiaInit "github.com/cosmos/cosmos-sdk/cmd/gaia/init"
 	"github.com/cosmos/cosmos-sdk/codec"
-
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tmConfig "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	tmCommon "github.com/tendermint/tendermint/libs/common"
+	"os"
+	"path/filepath"
 )
 
 const (
@@ -43,6 +41,8 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			config := ctx.Config
 			config.SetRoot(viper.GetString(cli.HomeFlag))
+
+			/* Tendermint configuration */
 
 			chainID := viper.GetString(flagChainID)
 			if chainID == "" {
@@ -78,10 +78,7 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 
 			// write tendermint and plasma config files to disk
 			tmConfig.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
-			/*
-				plasmaConfig := pConfig.DefaultPlasmaConfig()
-				pConfig.WritePlasmaConfigFile(filepath.Join(config.RootDir, "config", "plasma.toml"), plasmaConfig)
-			*/
+			pConfig.WritePlasmaConfigFile(filepath.Join(config.RootDir, "config", "plasma.toml"), pConfig.DefaultPlasmaConfig())
 
 			// display chain info
 			info, err := json.MarshalIndent(chainInfo{

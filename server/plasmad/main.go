@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/app"
+	"github.com/FourthState/plasma-mvp-sidechain/server/app"
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/cmd"
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
 	"github.com/cosmos/cosmos-sdk/server"
@@ -55,6 +55,7 @@ func persistentPreRunEFn(context *server.Context) func(*cobra.Command, []string)
 			config.WritePlasmaConfigFile(plasmaConfigFilePath, plasmaConfig)
 		}
 
+		// try read in plasma.toml from the config directory
 		viper.SetConfigName("plasma")
 		if err := viper.MergeInConfig(); err != nil {
 			return err
@@ -65,14 +66,13 @@ func persistentPreRunEFn(context *server.Context) func(*cobra.Command, []string)
 }
 
 func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
-	keyFile := viper.GetString(cli.HomeFlag) + "/config/" + viper.GetString("ethereum_privkey_file")
-	isOperator := viper.GetBool("is_operator")
-	contractAddr := viper.GetString("ethereum_plasma_contract_address")
-	nodeURL := viper.GetString("ethereum_nodeurl")
-	finality := viper.GetString("ethereum_finality")
+	plasmaConfig, err := config.ParsePlasmaConfigFromViper()
+	if err != nil {
+		panic(err)
+	}
 
 	return app.NewPlasmaMVPChain(logger, db, traceStore,
-		app.SetPlasmaOptions(isOperator, keyFile, contractAddr, nodeURL, finality),
+		app.SetPlasmaOptionsFromConfig(plasmaConfig),
 	)
 }
 
