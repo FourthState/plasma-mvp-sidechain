@@ -134,6 +134,14 @@ func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmou
 			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the input: Signer: %x, Owner: %x", inputUTXO.Output.Owner, input.Owner)).Result()
 		}
 
+		// check if the parent utxo has exited
+		for _, key := range inputUTXO.InputKeys {
+			utxo, _ := utxoStore.GetUTXOWithKey(ctx, key)
+			if client.HasTxBeenExited(utxo.Position) {
+				return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %s", utxo.Output.Owner, utxo.Position)).Result()
+			}
+		}
+
 		amt = inputUTXO.Output.Amount
 	}
 

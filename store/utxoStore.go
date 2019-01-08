@@ -118,21 +118,23 @@ func NewUTXOStore(ctxKey sdk.StoreKey) UTXOStore {
 	}
 }
 
-func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) (UTXO, bool) {
-	key := append(addr.Bytes(), pos.Bytes()...)
-
+func (store UTXOStore) GetUTXOWithKey(ctx sdk.Context, key []byte) (UTXO, bool) {
 	data := store.Get(ctx, key)
 	if data == nil {
 		return UTXO{}, false
 	}
 
 	var utxo UTXO
-	err := rlp.DecodeBytes(data, &utxo)
-	if err != nil {
+	if err := rlp.DecodeBytes(data, &utxo); err != nil {
 		panic(fmt.Sprintf("utxo store corrupted: %s", err))
 	}
 
 	return utxo, true
+}
+
+func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) (UTXO, bool) {
+	key := append(addr.Bytes(), pos.Bytes()...)
+	return store.GetUTXOWithKey(ctx, key)
 }
 
 func (store UTXOStore) HasUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) bool {

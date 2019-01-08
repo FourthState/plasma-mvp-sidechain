@@ -49,10 +49,6 @@ func (store PlasmaStore) StoreBlock(ctx sdk.Context, blockHeight *big.Int, block
 	store.Set(ctx, key, data)
 }
 
-func CreateBlockKey(blockHeight *big.Int) []byte {
-	return prefixKey(blockKey, blockHeight.Bytes())
-}
-
 func (store PlasmaStore) StoreConfirmSignatures(ctx sdk.Context, position plasma.Position, confirmSignatures [][65]byte) {
 	key := CreateConfirmSignatureKey(position)
 
@@ -63,6 +59,10 @@ func (store PlasmaStore) StoreConfirmSignatures(ctx sdk.Context, position plasma
 	}
 
 	store.Set(ctx, key, sigs)
+}
+
+func CreateBlockKey(blockHeight *big.Int) []byte {
+	return prefixKey(blockKey, blockHeight.Bytes())
 }
 
 func CreateConfirmSignatureKey(pos plasma.Position) []byte {
