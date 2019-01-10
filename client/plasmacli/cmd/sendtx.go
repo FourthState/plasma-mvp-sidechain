@@ -50,25 +50,14 @@ var sendTxCmd = &cobra.Command{
 		ctx := context.NewCLIContext()
 
 		// validate addresses
-		var fromAddrs, toAddrs, signers []common.Address
-		fromAddrTokens := strings.Split(strings.TrimSpace(viper.GetString(flagFrom)), ",")
+		var toAddrs, signers []common.Address
 		toAddrTokens := strings.Split(strings.TrimSpace(viper.GetString(flagTo)), ",")
 		signerAddrTokens := strings.Split(strings.TrimSpace(viper.GetString(flagAddress)), ",")
-		if len(fromAddrTokens) == 0 || len(toAddrTokens) == 0 {
-			return fmt.Errorf("at least one input and one output must be specified")
+		if len(toAddrTokens) == 0 || len(toAddrTokens) > 2 {
+			return fmt.Errorf("1 or 2 outputs must be specified")
 		}
 		if len(signerAddrTokens) == 0 || len(signerAddrTokens) > 2 {
-			return fmt.Errorf("at least 1 or 2 signers must be provided. Same signer will be used for both inputs if 1 is provided")
-		}
-		if len(fromAddrTokens) > 2 || len(toAddrTokens) > 2 {
-			return fmt.Errorf("can only spend at most 2 inputs to at most 2 outputs")
-		}
-		for _, token := range fromAddrTokens {
-			token := strings.TrimSpace(token)
-			if !common.IsHexAddress(token) {
-				return fmt.Errorf("invalid address provided. please use hex format")
-			}
-			fromAddrs = append(fromAddrs, common.HexToAddress(token))
+			return fmt.Errorf("1 or 2 signers must be provided. Same signer will be used for both inputs if 1 is provided")
 		}
 		for _, token := range toAddrTokens {
 			token := strings.TrimSpace(token)
@@ -163,9 +152,9 @@ var sendTxCmd = &cobra.Command{
 
 		// create the transaction without signatures
 		tx := plasma.Transaction{}
-		tx.Input0 = plasma.NewInput(inputs[0], fromAddrs[0], [65]byte{}, confirmSignatures[0])
+		tx.Input0 = plasma.NewInput(inputs[0], [65]byte{}, confirmSignatures[0])
 		if len(inputs) > 1 {
-			tx.Input1 = plasma.NewInput(inputs[1], fromAddrs[1], [65]byte{}, confirmSignatures[1])
+			tx.Input1 = plasma.NewInput(inputs[1], [65]byte{}, confirmSignatures[1])
 		}
 		tx.Output0 = plasma.NewOutput(toAddrs[0], amounts[0])
 		if len(toAddrs) > 1 {

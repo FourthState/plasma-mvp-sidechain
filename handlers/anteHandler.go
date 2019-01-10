@@ -32,16 +32,16 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 		var totalInputAmt, totalOutputAmt *big.Int
 
 		/* validate the first input */
-		amt, res := validateInput(ctx, spendMsg.Input0, true, spendMsg.Fee, utxoStore, client)
-		if !res.IsOK() {
-			return ctx, res, true
-		}
-		res = validateSignatures(ctx, spendMsg.Input0, txHash, utxoStore)
+		amt, res := validateInput(ctx, spendMsg.Input0, txHash, utxoStore, client)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
 		if client.HasTxBeenExited(spendMsg.Input0.Position) {
 			return ctx, ErrExitedInput(DefaultCodespace, "first input utxo has exited").Result(), true
+		}
+		// must cover the fee
+		if amt.Cmp(spendMsg.Fee) < 0 {
+			return ctx, ErrInsufficientFee(DefaultCodespace, "first input has an insufficient amount to pay the fee").Result(), true
 		}
 
 		totalInputAmt = amt
@@ -53,11 +53,7 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 
 		/* validate second input if applicable */
 		if spendMsg.HasSecondInput() {
-			amt, res = validateInput(ctx, spendMsg.Input1, false, nil, utxoStore, client)
-			if !res.IsOK() {
-				return ctx, res, true
-			}
-			res = validateSignatures(ctx, spendMsg.Input1, txHash, utxoStore)
+			amt, res = validateInput(ctx, spendMsg.Input1, txHash, utxoStore, client)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -98,8 +94,16 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 }
 
 // validates the inputs against the utxo store and returns the amount of the respective input
-func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmount *big.Int, utxoStore store.UTXOStore, client plasmaConn) (*big.Int, sdk.Result) {
+func validateInput(ctx sdk.Context, input plasma.Input, txHash []byte, utxoStore store.UTXOStore, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
+
+	// recover owner from signature
+	pubKey, err := crypto.SigToPub(txHash, input.Signature[:])
+	if err != nil {
+		return nil, ErrSignatureVerificationFailure(DefaultCodespace, err.Error()).Result()
+	}
+	owner := crypto.PubkeyToAddress(*pubKey)
+
 	if input.IsDeposit() {
 		deposit, ok := client.GetDeposit(input.DepositNonce)
 		if !ok {
@@ -117,21 +121,32 @@ func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmou
 			utxoStore.StoreUTXO(ctx, utxo)
 		}
 
-		if !bytes.Equal(deposit.Owner[:], input.Owner[:]) {
-			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the deposit: Signer: %x, Owner: %x", deposit.Owner, input.Owner)).Result()
+		// the owner of the deposit might not equal the signer so we must explicity
+		// check for a match
+
+		if !bytes.Equal(deposit.Owner[:], owner[:]) {
+			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the deposit: Signer: %x, Owner: %x", owner, deposit.Owner)).Result()
 		}
 
 		amt = deposit.Amount
 	} else {
-		inputUTXO, ok := utxoStore.GetUTXO(ctx, input.Owner, input.Position)
+		// inputUTXO must be owned by the signer due to the prefix so we do not need to
+		// check the owner of the position
+
+		inputUTXO, ok := utxoStore.GetUTXO(ctx, owner, input.Position)
 		if !ok {
-			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist", inputUTXO.Position).Result()
+			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", inputUTXO.Position, owner).Result()
 		}
 		if inputUTXO.Spent {
 			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", inputUTXO.Position).Result()
 		}
-		if !bytes.Equal(inputUTXO.Output.Owner[:], input.Owner[:]) {
-			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the input: Signer: %x, Owner: %x", inputUTXO.Output.Owner, input.Owner)).Result()
+
+		// validate confirm signatures if not a fee utxo
+		if input.TxIndex < 1<<16-1 {
+			res := validateConfirmSignatures(ctx, input, inputUTXO)
+			if !res.IsOK() {
+				return nil, res
+			}
 		}
 
 		// check if the parent utxo has exited
@@ -145,45 +160,23 @@ func validateInput(ctx sdk.Context, input plasma.Input, firstInput bool, feeAmou
 		amt = inputUTXO.Output.Amount
 	}
 
-	// first input must pay the fee
-	if firstInput && amt.Cmp(feeAmount) < 0 {
-		return nil, ErrInsufficientFee(DefaultCodespace, "first input has an insufficient amount to pay the fee").Result()
-	}
-
 	return amt, sdk.Result{}
 }
 
 // validates the input's signature and confirm signatures
-func validateSignatures(ctx sdk.Context, input plasma.Input, txHash [32]byte, utxoStore store.UTXOStore) sdk.Result {
-	/* check transaction signatures */
-	pubKey, err := crypto.SigToPub(utils.ToEthSignedMessageHash(txHash)[:], input.Signature[:])
-	if err != nil {
-		return sdk.ErrInternal(fmt.Sprintf("error recovering address from signature. %s", err)).Result()
+func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputUTXO store.UTXO) sdk.Result {
+	if len(inputUTXO.InputKeys) != len(input.ConfirmSignatures) {
+		return msgs.ErrInvalidTransaction(DefaultCodespace, "incorrect number of confirm signatures").Result()
 	}
 
-	signer := crypto.PubkeyToAddress(*pubKey)
-	if !bytes.Equal(signer[:], input.Owner[:]) {
-		return sdk.ErrUnauthorized(fmt.Sprintf("signature mismatch. Signer: %x, Owner: %x", signer, input.Owner)).Result()
-	}
+	confirmationHash := utils.ToEthSignedMessageHash(inputUTXO.ConfirmationHash[:])[:]
+	for i, key := range inputUTXO.InputKeys {
+		address := key[:common.AddressLength]
 
-	/* check input confirm signatures if the input is not a deposit nor fee utxo */
-	if !input.IsDeposit() && input.TxIndex != 1<<16-1 {
-		// `validateInput` ensures the output exists
-		inputUTXO, _ := utxoStore.GetUTXO(ctx, input.Owner, input.Position)
-
-		if len(inputUTXO.InputKeys) != len(input.ConfirmSignatures) {
-			return msgs.ErrInvalidTransaction(DefaultCodespace, "incorrect number of confirm signatures").Result()
-		}
-
-		confirmationHash := utils.ToEthSignedMessageHash(inputUTXO.ConfirmationHash)[:]
-		for i, key := range inputUTXO.InputKeys {
-			address := key[:common.AddressLength]
-
-			pubKey, _ := crypto.SigToPub(confirmationHash, input.ConfirmSignatures[i][:])
-			signer = crypto.PubkeyToAddress(*pubKey)
-			if !bytes.Equal(signer[:], address) {
-				return sdk.ErrUnauthorized(fmt.Sprintf("confirm signature not signed by the correct address. Got: %x. Expected %x", signer, address)).Result()
-			}
+		pubKey, _ := crypto.SigToPub(confirmationHash, input.ConfirmSignatures[i][:])
+		signer := crypto.PubkeyToAddress(*pubKey)
+		if !bytes.Equal(signer[:], address) {
+			return sdk.ErrUnauthorized(fmt.Sprintf("confirm signature not signed by the correct address. Got: %x. Expected %x", signer, address)).Result()
 		}
 	}
 

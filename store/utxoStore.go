@@ -13,8 +13,8 @@ import (
 type UTXO struct {
 	InputKeys        [][]byte // keys to retrieve the inputs of this output
 	SpenderKeys      [][]byte // keys to retrieve the spenders of this output
-	ConfirmationHash [32]byte // confirmation hash of the input transaction
-	MerkleHash       [32]byte // merkle hash of the input transaction
+	ConfirmationHash []byte   // confirmation hash of the input transaction
+	MerkleHash       []byte   // merkle hash of the input transaction
 
 	Output   plasma.Output
 	Spent    bool
@@ -23,14 +23,15 @@ type UTXO struct {
 
 type utxo struct {
 	InputKeys        [][]byte
-	ConfirmationHash [32]byte
+	ConfirmationHash []byte
+	MerkleHash       []byte
 	Output           []byte
 	Spent            bool
 	Position         []byte
 }
 
 func (u *UTXO) EncodeRLP(w io.Writer) error {
-	utxo := utxo{u.InputKeys, u.ConfirmationHash, u.Output.Bytes(), u.Spent, u.Position.Bytes()}
+	utxo := utxo{u.InputKeys, u.ConfirmationHash, u.MerkleHash, u.Output.Bytes(), u.Spent, u.Position.Bytes()}
 
 	return rlp.Encode(w, &utxo)
 }

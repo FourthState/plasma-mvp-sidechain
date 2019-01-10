@@ -6,6 +6,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 )
 
@@ -24,7 +25,7 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 		// construct the confirmation hash
 		merkleHash := spendMsg.MerkleHash()
 		header := ctx.BlockHeader().DataHash
-		confirmationHash := sha256.Sum256(append(merkleHash[:], header...))
+		confirmationHash := sha256.Sum256(append(merkleHash, header...))
 
 		var spenderKeys [][]byte
 		spenderKeys = append(spenderKeys, spendMsg.Output0.Owner[:])
@@ -33,9 +34,8 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 		}
 
 		var inputKeys [][]byte
-		inputKeys = append(inputKeys, spendMsg.Input0.Owner[:])
-		if spendMsg.HasSecondInput() {
-			inputKeys = append(inputKeys, spendMsg.Input1.Owner[:])
+		for _, key := range spendMsg.GetSigners() {
+			inputKeys = append(inputKeys, key[:])
 		}
 
 		// create new outputs
@@ -47,7 +47,7 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 
 			utxo := store.UTXO{
 				InputKeys:        inputKeys,
-				ConfirmationHash: confirmationHash,
+				ConfirmationHash: confirmationHash[:],
 				MerkleHash:       merkleHash,
 				Output:           spendMsg.OutputAt(uint8(i)),
 				Spent:            false,
@@ -58,9 +58,9 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 		}
 
 		// spend the inputs
-		utxoStore.SpendUTXO(ctx, spendMsg.Input0.Owner, spendMsg.Input0.Position, spenderKeys)
+		utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[0]), spendMsg.Input0.Position, spenderKeys)
 		if spendMsg.HasSecondInput() {
-			utxoStore.SpendUTXO(ctx, spendMsg.Input1.Owner, spendMsg.Input1.Position, spenderKeys)
+			utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[1]), spendMsg.Input1.Position, spenderKeys)
 		}
 
 		return sdk.Result{}
