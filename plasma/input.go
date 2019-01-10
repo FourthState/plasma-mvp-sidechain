@@ -47,9 +47,9 @@ func (i Input) ValidateBasic() error {
 		}
 
 		confSigLen := len(i.ConfirmSignatures)
-		if i.Position.IsDeposit() {
+		if i.Position.IsDeposit() || i.TxIndex == 1<<16-1 {
 			if confSigLen != 0 {
-				return fmt.Errorf("deposit inputs must not include confirm signatures")
+				return fmt.Errorf("deposit or fee inputs must not include confirm signatures")
 			}
 		} else {
 			if confSigLen != 1 && confSigLen != 2 {

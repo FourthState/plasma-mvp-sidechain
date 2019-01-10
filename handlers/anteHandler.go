@@ -163,7 +163,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, txHash []byte, utxoStore
 	return amt, sdk.Result{}
 }
 
-// validates the input's signature and confirm signatures
+// validates the input's confirm signatures
 func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputUTXO store.UTXO) sdk.Result {
 	if len(inputUTXO.InputKeys) != len(input.ConfirmSignatures) {
 		return msgs.ErrInvalidTransaction(DefaultCodespace, "incorrect number of confirm signatures").Result()
