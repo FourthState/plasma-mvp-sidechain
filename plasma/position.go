@@ -11,10 +11,10 @@ import (
 
 // Position for an input/output
 type Position struct {
-	BlockNum     *big.Int `json:"BlockNum"`
-	TxIndex      uint16   `json:"TxIndex"`
-	OutputIndex  uint8    `json:"OutputIndex"`
-	DepositNonce *big.Int `json:"DepositNonce"`
+	BlockNum     *big.Int
+	TxIndex      uint16
+	OutputIndex  uint8
+	DepositNonce *big.Int
 }
 
 type position struct {
@@ -76,8 +76,36 @@ func (p Position) Bytes() []byte {
 	return bytes
 }
 
+// ValidateBasic ensures depsit and child chain positions are mutually exclusive.
+// Either a deposit or utxo position must be specified. Block numbering starts at 1
+func (p Position) ValidateBasic() error {
+	if p.IsNilPosition() {
+		return fmt.Errorf("nil position is not a valid position")
+	}
+
+	// deposit position
+	if p.IsDeposit() {
+		if p.BlockNum.Sign() > 0 || p.TxIndex > 0 || p.OutputIndex > 0 {
+			return fmt.Errorf("chain postion must be all zero if a deposit nonce is specified. (0.0.0.nonce)")
+		}
+	} else {
+		if p.BlockNum.Sign() == 0 {
+			return fmt.Errorf("block numbering starts at 1")
+		}
+		if p.OutputIndex > 1 {
+			return fmt.Errorf("output index must be 0 or 1")
+		}
+	}
+
+	return nil
+}
+
 func (p Position) IsDeposit() bool {
 	return p.DepositNonce.Sign() != 0
+}
+
+func (p Position) IsNilPosition() bool {
+	return p.BlockNum.Sign() == 0 && p.TxIndex == 0 && p.OutputIndex == 0 && p.DepositNonce.Sign() == 0
 }
 
 func (p Position) Priority() *big.Int {
@@ -100,26 +128,20 @@ func (p Position) ToBigIntArray() [4]*big.Int {
 }
 
 func (p Position) String() string {
+	if p.BlockNum == nil {
+		p.BlockNum = big.NewInt(0)
+	}
+	if p.DepositNonce == nil {
+		p.DepositNonce = big.NewInt(0)
+	}
 	return fmt.Sprintf("(%s.%d.%d.%s)",
-		p.BlockNum.String(), p.TxIndex, p.OutputIndex, p.DepositNonce.String())
-}
-
-func (p Position) Validate() error {
-	if p.OutputIndex > 2 {
-		return fmt.Errorf("output index can only be 0 or 1")
-	}
-
-	if p.DepositNonce.Sign() > 0 && (p.BlockNum.Sign() > 0 || p.TxIndex > 0 || p.OutputIndex > 0) {
-		return fmt.Errorf("cannot specify nonce and chain position simultaneously")
-	}
-
-	return nil
+		p.BlockNum, p.TxIndex, p.OutputIndex, p.DepositNonce)
 }
 
 func FromPositionString(posStr string) (Position, error) {
 	posStr = strings.TrimSpace(posStr)
 	if string(posStr[0]) != "(" || string(posStr[len(posStr)-1]) != ")" {
-		return Position{}, fmt.Errorf("positions must be enclosed in parens")
+		return Position{}, fmt.Errorf("position must be enclosed in parens. (blockNum,txIndex,oIndex,depositNonce)")
 	}
 
 	// remove the parens
@@ -166,5 +188,5 @@ func FromPositionString(posStr string) (Position, error) {
 	}
 
 	pos := NewPosition(blkNum, txIndex, oIndex, depositNonce)
-	return pos, pos.Validate()
+	return pos, pos.ValidateBasic()
 }

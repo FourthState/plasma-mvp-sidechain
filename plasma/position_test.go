@@ -42,3 +42,27 @@ func TestPositionFromString(t *testing.T) {
 	pos, err = FromPositionString(posStr)
 	require.Error(t, err, "converted with nonce and chain positions specified")
 }
+
+func TestPositionValidation(t *testing.T) {
+	posStr := "(1.0.0.0)"
+	pos, _ := FromPositionString(posStr)
+	require.NoError(t, pos.ValidateBasic(), "valid position marked as an error")
+
+	// specifiy both deposit nonce and chain position
+	cases := []string{
+		// mutual exclusivity between deposit nonce and chain position requried
+		"(1.0.0.5)",
+		"(0.1.0.5)",
+		"(0.0.1.5)",
+		// chain position with block number zero
+		"(0.1.1.0)",
+		// invalid output index
+		"(1.1.3.0)",
+		// nil position is not a valid position
+		"(0.0.0.0)",
+	}
+	for _, posStr := range cases {
+		pos, _ = FromPositionString(posStr)
+		require.Errorf(t, pos.ValidateBasic(), "invalid position: %s", posStr)
+	}
+}
