@@ -27,11 +27,11 @@ func TestTransactionSerialization(t *testing.T) {
 	tx.Fee = big.NewInt(1)
 
 	bytes, err := rlp.EncodeToBytes(tx)
-	require.NoError(t, err, "Error serializing transaction")
+	require.NoError(t, err, "error serializing transaction")
 
 	recoveredTx := &Transaction{}
 	err = rlp.DecodeBytes(bytes, recoveredTx)
-	require.NoError(t, err, "Error deserializing transaction")
+	require.NoError(t, err, "error deserializing transaction")
 
 	require.True(t, reflect.DeepEqual(tx, recoveredTx), "serialized and deserialized transactions not deeply equal")
 }
@@ -104,29 +104,51 @@ func TestTransactionValidation(t *testing.T) {
 		require.Error(t, err, tx.reason)
 	}
 
-	// test signature check
-	tx := Transaction{
-		Input0:  NewInput(GetPosition("(0.0.0.1)"), [65]byte{}, nil),
-		Input1:  NewInput(GetPosition("(0.0.0.2)"), [65]byte{}, nil),
-		Output0: NewOutput(addr, utils.Big1),
-		Output1: NewOutput(utils.ZeroAddress, utils.Big0),
-		Fee:     utils.Big0,
+	validTxs := []validationCase{
+		validationCase{
+			reason: "tx with one input and one output",
+			Transaction: Transaction{
+				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
+				Input1:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
+				Output0: NewOutput(addr, utils.Big1),
+				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Fee:     utils.Big0,
+			},
+		},
+		validationCase{
+			reason: "tx with one input and two output",
+			Transaction: Transaction{
+				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
+				Input1:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
+				Output0: NewOutput(addr, utils.Big1),
+				Output1: NewOutput(addr, utils.Big1),
+				Fee:     utils.Big0,
+			},
+		},
+		validationCase{
+			reason: "tx with two input and one output",
+			Transaction: Transaction{
+				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
+				Input1:  NewInput(GetPosition("(1.0.1.0)"), sampleSig, sampleConfirmSig),
+				Output0: NewOutput(addr, utils.Big1),
+				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Fee:     utils.Big0,
+			},
+		},
+		validationCase{
+			reason: "tx with two input and two outputs",
+			Transaction: Transaction{
+				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
+				Input1:  NewInput(GetPosition("(1.0.1.0)"), sampleSig, sampleConfirmSig),
+				Output0: NewOutput(addr, utils.Big1),
+				Output1: NewOutput(addr, utils.Big1),
+				Fee:     utils.Big0,
+			},
+		},
 	}
-	// create a signature with the private key
-	sig, _ := crypto.Sign(tx.TxHash(), privKey)
-	var signature [65]byte
-	copy(signature[:], sig)
-	tx.Input0.Signature = signature
-	tx.Input1.Signature = signature
 
-	// corrupt only the first signature
-	tx.Input0.Signature[0] = byte(10)
-	err := tx.ValidateBasic()
-	require.NoError(t, err)
-
-	// corrupt only the second signature
-	tx.Input0.Signature = signature
-	tx.Input1.Signature[0] = byte(10)
-	err = tx.ValidateBasic()
-	require.NoError(t, err)
+	for _, tx := range validTxs {
+		err := tx.ValidateBasic()
+		require.NoError(t, err, tx.reason)
+	}
 }

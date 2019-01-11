@@ -76,8 +76,8 @@ func (p Position) Bytes() []byte {
 	return bytes
 }
 
-// ValidateBasic ensures depsit and child chain positions are mutually exclusive.
-// Either a deposit or utxo position must be specified. Block numbering starts at 1
+// ValidateBasic ensures deposit and child chain positions are mutually exclusive.
+// Block numbering starts at 1
 func (p Position) ValidateBasic() error {
 	if p.IsNilPosition() {
 		return fmt.Errorf("nil position is not a valid position")
@@ -105,7 +105,7 @@ func (p Position) IsDeposit() bool {
 }
 
 func (p Position) IsNilPosition() bool {
-	return p.BlockNum.Sign() == 0 && p.TxIndex == 0 && p.OutputIndex == 0 && p.DepositNonce.Sign() == 0
+	return p.BlockNum.Sign() == 0 && p.DepositNonce.Sign() == 0
 }
 
 func (p Position) Priority() *big.Int {

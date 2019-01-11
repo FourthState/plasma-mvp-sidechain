@@ -95,19 +95,6 @@ func (tx Transaction) ValidateBasic() error {
 		return fmt.Errorf("invalid second output { %s }", err)
 	}
 
-	// validate signatures
-	txHash := tx.TxHash()
-	_, err := crypto.SigToPub(txHash, tx.Input0.Signature[:])
-	if err != nil {
-		return fmt.Errorf("first input has an invalid signature { %s }", err)
-	}
-	if tx.HasSecondInput() {
-		_, err := crypto.SigToPub(txHash, tx.Input1.Signature[:])
-		if err != nil {
-			return fmt.Errorf("second input has an invalid signature { %s }", err)
-		}
-	}
-
 	return nil
 }
 

@@ -49,4 +49,14 @@ func TestInputValidation(t *testing.T) {
 		err := input.ValidateBasic()
 		require.Error(t, err, input.reason)
 	}
+
+	pos, _ = FromPositionString("(1.1.0.0)")
+	input := NewInput(pos, sampleSig, [][65]byte{sampleSig})
+	err := input.ValidateBasic()
+	require.NoError(t, err)
+
+	pos, _ = FromPositionString("(0.0.0.0)")
+	input = NewInput(pos, [65]byte{}, nil)
+	err = input.ValidateBasic()
+	require.NoError(t, err)
 }
