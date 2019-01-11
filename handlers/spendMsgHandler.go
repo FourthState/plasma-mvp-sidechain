@@ -21,46 +21,52 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 		}
 
 		txIndex := nextTxIndex()
+		blockHeight := big.NewInt(ctx.BlockHeight())
 
 		// construct the confirmation hash
 		merkleHash := spendMsg.MerkleHash()
 		header := ctx.BlockHeader().DataHash
 		confirmationHash := sha256.Sum256(append(merkleHash, header...))
 
+		// positional part of these keys addeded when the new positions are created
 		var spenderKeys [][]byte
-		spenderKeys = append(spenderKeys, spendMsg.Output0.Owner[:])
+		var positions []plasma.Position
+		positions = append(positions, plasma.NewPosition(blockHeight, txIndex, 0, nil))
+		spenderKeys = append(spenderKeys, append(spendMsg.Output0.Owner[:], positions[0].Bytes()...))
 		if spendMsg.HasSecondOutput() {
-			spenderKeys = append(spenderKeys, spendMsg.Output1.Owner[:])
+			positions = append(positions, plasma.NewPosition(blockHeight, txIndex, 1, nil))
+			spenderKeys = append(spenderKeys, append(spendMsg.Output1.Owner[:], positions[1].Bytes()...))
 		}
 
 		var inputKeys [][]byte
-		for _, key := range spendMsg.GetSigners() {
-			inputKeys = append(inputKeys, key[:])
+		for i, key := range spendMsg.GetSigners() {
+			inputKeys = append(inputKeys, append(key[:], spendMsg.InputAt(uint8(i)).Position.Bytes()...))
+		}
+
+		// try to spend the inputs. Abort if the inputs don't exist or have been spent
+		res := utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[0][:common.AddressLength]), spendMsg.Input0.Position, spenderKeys)
+		if !res.IsOK() {
+			return res
+		}
+		if spendMsg.HasSecondInput() {
+			res := utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[1][:common.AddressLength]), spendMsg.Input1.Position, spenderKeys)
+			if !res.IsOK() {
+				return res
+			}
 		}
 
 		// create new outputs
 		for i, _ := range spenderKeys {
-			position := plasma.NewPosition(big.NewInt(ctx.BlockHeight()), txIndex, uint8(i), nil)
-
-			// Hacky solution. Keys should only be constructed within the store module.
-			spenderKeys[i] = append(spenderKeys[i], position.Bytes()...)
-
 			utxo := store.UTXO{
 				InputKeys:        inputKeys,
 				ConfirmationHash: confirmationHash[:],
 				MerkleHash:       merkleHash,
 				Output:           spendMsg.OutputAt(uint8(i)),
 				Spent:            false,
-				Position:         position,
+				Position:         positions[i],
 			}
 
 			utxoStore.StoreUTXO(ctx, utxo)
-		}
-
-		// spend the inputs
-		utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[0]), spendMsg.Input0.Position, spenderKeys)
-		if spendMsg.HasSecondInput() {
-			utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[1]), spendMsg.Input1.Position, spenderKeys)
 		}
 
 		return sdk.Result{}

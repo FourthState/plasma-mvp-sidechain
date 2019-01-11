@@ -12,10 +12,6 @@ import (
 	"testing"
 )
 
-var feeUpdater FeeUpdater = func(amt *big.Int) sdk.Error {
-	return nil
-}
-
 var (
 	privKey, _ = crypto.GenerateKey()
 	addr       = crypto.PubkeyToAddress(privKey.PublicKey)
@@ -32,119 +28,110 @@ func (p conn) HasTxBeenExited(pos plasma.Position) bool { return false }
 
 var _ plasmaConn = conn{}
 
-func TestIncorrectFirstSignature(t *testing.T) {
+func TestAnteChecks(t *testing.T) {
+	// setup
 	ctx, utxoStore, plasmaStore := setup()
-	msg := msgs.SpendMsg{
-		Transaction: plasma.Transaction{
-			Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), addr, [65]byte{}, [][65]byte{}),
-			Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, nil), common.Address{}, [65]byte{}, [][65]byte{}),
-			Output0: plasma.NewOutput(addr, big.NewInt(10)),
-			Output1: plasma.NewOutput(common.Address{}, utils.Big0),
-			Fee:     utils.Big0,
+	var feeUpdater FeeUpdater = func(amt *big.Int) sdk.Error { return nil }
+	handler := NewAnteHandler(utxoStore, plasmaStore, feeUpdater, conn{})
+
+	// bad keys to check against the deposit
+	badPrivKey, _ := crypto.GenerateKey()
+
+	type validationCase struct {
+		reason string
+		msgs.SpendMsg
+	}
+
+	// cases to check for. cases with signature checks will get set subsequent to this step
+	// array of pointers because we are setting signatures after using `range`
+	invalidCases := []*validationCase{
+		&validationCase{
+			reason: "incorrect first signature",
+			SpendMsg: msgs.SpendMsg{
+				Transaction: plasma.Transaction{
+					Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil),
+					Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big0), [65]byte{}, nil),
+					Output0: plasma.NewOutput(addr, big.NewInt(10)),
+					Output1: plasma.NewOutput(common.Address{}, utils.Big0),
+					Fee:     utils.Big0,
+				},
+			},
+		},
+		&validationCase{
+			reason: "incorrect second signature",
+			SpendMsg: msgs.SpendMsg{
+				Transaction: plasma.Transaction{
+					Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil),
+					Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, big.NewInt(2)), [65]byte{}, nil),
+					Output0: plasma.NewOutput(addr, big.NewInt(20)),
+					Output1: plasma.NewOutput(common.Address{}, utils.Big0),
+					Fee:     utils.Big0,
+				},
+			},
+		},
+		&validationCase{
+			reason: "no signatures",
+			SpendMsg: msgs.SpendMsg{
+				Transaction: plasma.Transaction{
+					Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil),
+					Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, big.NewInt(2)), [65]byte{}, nil),
+					Output0: plasma.NewOutput(addr, big.NewInt(20)),
+					Output1: plasma.NewOutput(common.Address{}, utils.Big0),
+					Fee:     utils.Big0,
+				},
+			},
+		},
+		&validationCase{
+			reason: "invalid fee",
+			SpendMsg: msgs.SpendMsg{
+				Transaction: plasma.Transaction{
+					Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil),
+					Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, big.NewInt(2)), [65]byte{}, nil),
+					Output0: plasma.NewOutput(addr, big.NewInt(20)),
+					Output1: plasma.NewOutput(common.Address{}, utils.Big0),
+					Fee:     big.NewInt(20),
+				},
+			},
+		},
+		&validationCase{
+			reason: "unbalanced transaction",
+			SpendMsg: msgs.SpendMsg{
+				Transaction: plasma.Transaction{
+					Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil),
+					Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, big.NewInt(2)), [65]byte{}, nil),
+					Output0: plasma.NewOutput(addr, big.NewInt(10)),
+					Output1: plasma.NewOutput(addr, big.NewInt(10)),
+					Fee:     utils.Big1,
+				},
+			},
 		},
 	}
 
-	// Input0's signature signed by the wrong address
-	badKey, _ := crypto.GenerateKey()
-	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
-	var sig [65]byte
-	s, _ := crypto.Sign(txHash[:], badKey)
-	copy(sig[:], s)
-	msg.Input0.Signature = sig
+	// set invalid first signature
+	txHash := utils.ToEthSignedMessageHash(invalidCases[0].SpendMsg.TxHash())
+	sig, _ := crypto.Sign(txHash, badPrivKey)
+	copy(invalidCases[0].SpendMsg.Input0.Signature[:], sig)
 
-	handler := NewAnteHandler(utxoStore, plasmaStore, feeUpdater, conn{})
-	_, res, abort := handler(ctx, msg, false)
+	// set invalid second signature but correct first signature
+	txHash = utils.ToEthSignedMessageHash(invalidCases[1].SpendMsg.TxHash())
+	sig, _ = crypto.Sign(txHash, badPrivKey)
+	copy(invalidCases[1].SpendMsg.Input1.Signature[:], sig)
+	sig, _ = crypto.Sign(txHash, privKey)
+	copy(invalidCases[1].SpendMsg.Input0.Signature[:], sig)
 
-	require.True(t, abort, "handler did not abort with no signatures")
-	require.Equal(t, sdk.CodeUnauthorized, res.Code, "handler did not catch signature authorization error")
-}
-
-func TestIncorrectSecondSignature(t *testing.T) {
-	ctx, utxoStore, plasmaStore := setup()
-	// two deposits
-	msg := msgs.SpendMsg{
-		Transaction: plasma.Transaction{
-			Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), addr, [65]byte{}, [][65]byte{}),
-			Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, big.NewInt(1)), addr, [65]byte{}, [][65]byte{}),
-			Output0: plasma.NewOutput(addr, big.NewInt(10)),
-			Output1: plasma.NewOutput(common.Address{}, utils.Big0),
-			Fee:     utils.Big0,
-		},
+	// set valid signatures for remaining cases
+	for _, txCase := range invalidCases[3:] {
+		txHash = utils.ToEthSignedMessageHash(txCase.SpendMsg.TxHash())
+		sig, _ = crypto.Sign(txHash, privKey)
+		copy(txCase.SpendMsg.Input0.Signature[:], sig[:])
+		copy(txCase.SpendMsg.Input1.Signature[:], sig[:])
 	}
 
-	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
-
-	// first signature will be correct but second will be incorrect
-	var sig0 [65]byte
-	s0, _ := crypto.Sign(txHash[:], privKey)
-	copy(sig0[:], s0)
-	msg.Input0.Signature = sig0
-
-	// second signature will be corrupt
-	var sig1 [65]byte
-	badKey, _ := crypto.GenerateKey()
-	s1, _ := crypto.Sign(txHash[:], badKey)
-	copy(sig1[:], s1)
-	msg.Input1.Signature = sig1
-
-	handler := NewAnteHandler(utxoStore, plasmaStore, feeUpdater, conn{})
-	_, res, abort := handler(ctx, msg, false)
-
-	require.True(t, abort, "handler did not abort in the abscence of a second signature")
-	require.Equal(t, sdk.CodeUnauthorized, res.Code, "handler did catch signature authorization error")
-}
-
-func TestInvalidFee(t *testing.T) {
-	ctx, utxoStore, plasmaStore := setup()
-	msg := msgs.SpendMsg{
-		Transaction: plasma.Transaction{
-			Input0:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), addr, [65]byte{}, [][65]byte{}),
-			Input1:  plasma.NewInput(plasma.NewPosition(nil, 0, 0, nil), common.Address{}, [65]byte{}, [][65]byte{}),
-			Output0: plasma.NewOutput(addr, big.NewInt(10)),
-			Output1: plasma.NewOutput(common.Address{}, utils.Big0),
-			Fee:     big.NewInt(11), // larger than the first input
-		},
+	for _, txCase := range invalidCases {
+		_, res, abort := handler(ctx, txCase.SpendMsg, false)
+		require.False(t, res.IsOK(), txCase.reason)
+		require.True(t, abort, txCase.reason)
 	}
-	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
-
-	var sig0 [65]byte
-	s0, _ := crypto.Sign(txHash[:], privKey)
-	copy(sig0[:], s0)
-	msg.Input0.Signature = sig0
-
-	handler := NewAnteHandler(utxoStore, plasmaStore, feeUpdater, conn{})
-	_, res, abort := handler(ctx, msg, false)
-
-	require.True(t, abort, "handler did not catch a fee amount larger than the first input")
-	require.Equal(t, CodeInsufficientFee, res.Code, "handler did not catch insufficient fee error")
-}
-
-func TestUnbalancedTransaction(t *testing.T) {
-	ctx, utxoStore, plasmaStore := setup()
-	msg := msgs.SpendMsg{
-		Transaction: plasma.Transaction{
-			// 20eth of inputs
-			Input0: plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), addr, [65]byte{}, [][65]byte{}),
-			Input1: plasma.NewInput(plasma.NewPosition(nil, 0, 0, big.NewInt(2)), addr, [65]byte{}, [][65]byte{}),
-			// 20eth of outputd
-			Output0: plasma.NewOutput(addr, big.NewInt(20)),
-			Output1: plasma.NewOutput(common.Address{}, utils.Big0),
-			Fee:     big.NewInt(1), // creates an unbalanced equation
-		},
-	}
-	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
-
-	var sig0 [65]byte
-	s0, _ := crypto.Sign(txHash[:], privKey)
-	copy(sig0[:], s0)
-	msg.Input0.Signature = sig0
-	msg.Input1.Signature = sig0
-
-	handler := NewAnteHandler(utxoStore, plasmaStore, feeUpdater, conn{})
-	_, res, abort := handler(ctx, msg, false)
-
-	require.True(t, abort, "handler did not catch unbalanced inputs and outputs")
-	require.Equal(t, msgs.CodeInvalidTransaction, res.Code, "handler did not catch invalid transaction due to unbalanced inputs and outputs")
 }
 
 // TODO: set handlers with position inputs

@@ -28,11 +28,16 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 			return ctx, sdk.ErrInternal("tx must in the form of a spendMsg").Result(), true
 		}
 
-		txHash := spendMsg.TxHash()
 		var totalInputAmt, totalOutputAmt *big.Int
 
+		// attempt to recover signers
+		signers := spendMsg.GetSigners()
+		if len(signers) == 0 {
+			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true
+		}
+
 		/* validate the first input */
-		amt, res := validateInput(ctx, spendMsg.Input0, txHash, utxoStore, client)
+		amt, res := validateInput(ctx, spendMsg.Input0, common.BytesToAddress(signers[0]), utxoStore, client)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -53,7 +58,10 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 
 		/* validate second input if applicable */
 		if spendMsg.HasSecondInput() {
-			amt, res = validateInput(ctx, spendMsg.Input1, txHash, utxoStore, client)
+			if len(signers) != 2 {
+				return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "second signature not present").Result(), true
+			}
+			amt, res = validateInput(ctx, spendMsg.Input1, common.BytesToAddress(signers[1]), utxoStore, client)
 			if !res.IsOK() {
 				return ctx, res, true
 			}
@@ -94,15 +102,8 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 }
 
 // validates the inputs against the utxo store and returns the amount of the respective input
-func validateInput(ctx sdk.Context, input plasma.Input, txHash []byte, utxoStore store.UTXOStore, client plasmaConn) (*big.Int, sdk.Result) {
+func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, utxoStore store.UTXOStore, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
-
-	// recover owner from signature
-	pubKey, err := crypto.SigToPub(txHash, input.Signature[:])
-	if err != nil {
-		return nil, ErrSignatureVerificationFailure(DefaultCodespace, err.Error()).Result()
-	}
-	owner := crypto.PubkeyToAddress(*pubKey)
 
 	if input.IsDeposit() {
 		deposit, ok := client.GetDeposit(input.DepositNonce)
@@ -124,18 +125,17 @@ func validateInput(ctx sdk.Context, input plasma.Input, txHash []byte, utxoStore
 		// the owner of the deposit might not equal the signer so we must explicity
 		// check for a match
 
-		if !bytes.Equal(deposit.Owner[:], owner[:]) {
-			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the deposit: Signer: %x, Owner: %x", owner, deposit.Owner)).Result()
+		if !bytes.Equal(deposit.Owner[:], signer[:]) {
+			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the deposit: Signer: %x, Owner: %x", signer, deposit.Owner)).Result()
 		}
 
 		amt = deposit.Amount
 	} else {
 		// inputUTXO must be owned by the signer due to the prefix so we do not need to
 		// check the owner of the position
-
-		inputUTXO, ok := utxoStore.GetUTXO(ctx, owner, input.Position)
+		inputUTXO, ok := utxoStore.GetUTXO(ctx, signer, input.Position)
 		if !ok {
-			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", inputUTXO.Position, owner).Result()
+			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", inputUTXO.Position, signer).Result()
 		}
 		if inputUTXO.Spent {
 			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", inputUTXO.Position).Result()
