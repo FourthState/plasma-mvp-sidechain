@@ -39,7 +39,7 @@ type PlasmaMVPChain struct {
 	// persistent stores
 	utxoStore      store.UTXOStore
 	plasmaStore    store.PlasmaStore
-	fauxMerkleMode bool
+	fauxMerkleMode bool // when set to false, StoreIAVL is used
 
 	// smart contract connection
 	ethConnection *eth.Plasma
@@ -120,7 +120,6 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	stateJSON := req.AppStateBytes
-	fmt.Println(string(stateJSON))
 
 	genesisState := GenesisState{}
 	if err := app.cdc.UnmarshalJSON(stateJSON, &genesisState); err != nil {

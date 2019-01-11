@@ -154,13 +154,13 @@ func (store UTXOStore) StoreUTXO(ctx sdk.Context, utxo UTXO) {
 	store.Set(ctx, key, data)
 }
 
-func (store UTXOStore) SpendUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position, spenderKeys [][]byte) sdk.Error {
+func (store UTXOStore) SpendUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position, spenderKeys [][]byte) sdk.Result {
 	utxo, ok := store.GetUTXO(ctx, addr, pos)
 	if !ok {
-		return sdk.ErrUnknownRequest("utxo does not exist")
+		return sdk.ErrUnknownRequest("utxo does not exist").Result()
 	}
 	if utxo.Spent {
-		return sdk.ErrUnauthorized("utxo already marked as spent")
+		return sdk.ErrUnauthorized("utxo already marked as spent").Result()
 	}
 
 	utxo.Spent = true
@@ -168,5 +168,5 @@ func (store UTXOStore) SpendUTXO(ctx sdk.Context, addr common.Address, pos plasm
 
 	store.StoreUTXO(ctx, utxo)
 
-	return nil
+	return sdk.Result{}
 }
