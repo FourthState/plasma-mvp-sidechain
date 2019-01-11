@@ -23,6 +23,7 @@ type UTXO struct {
 
 type utxo struct {
 	InputKeys        [][]byte
+	SpenderKeys      [][]byte
 	ConfirmationHash []byte
 	MerkleHash       []byte
 	Output           []byte
@@ -31,7 +32,7 @@ type utxo struct {
 }
 
 func (u *UTXO) EncodeRLP(w io.Writer) error {
-	utxo := utxo{u.InputKeys, u.ConfirmationHash, u.MerkleHash, u.Output.Bytes(), u.Spent, u.Position.Bytes()}
+	utxo := utxo{u.InputKeys, u.SpenderKeys, u.ConfirmationHash, u.MerkleHash, u.Output.Bytes(), u.Spent, u.Position.Bytes()}
 
 	return rlp.Encode(w, &utxo)
 }
@@ -49,7 +50,9 @@ func (u *UTXO) DecodeRLP(s *rlp.Stream) error {
 	}
 
 	u.InputKeys = utxo.InputKeys
+	u.SpenderKeys = utxo.SpenderKeys
 	u.ConfirmationHash = utxo.ConfirmationHash
+	u.MerkleHash = utxo.MerkleHash
 	u.Spent = utxo.Spent
 
 	return nil
