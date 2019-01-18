@@ -8,25 +8,25 @@ import (
 
 // Block represent one plasma block
 type Block struct {
-	Header   [32]byte `json:"header"`
-	TxnCount uint16   `json:"txnCount"`
-	TotalFee *big.Int `json:"totalFee"`
+	Header    [32]byte `json:"header"`
+	TxnCount  uint16   `json:"txnCount"`
+	FeeAmount *big.Int `json:"FeeAmount"`
 }
 
 type block struct {
-	Header   [32]byte
-	TxnCount uint16
-	Fee      []byte
+	Header    [32]byte
+	TxnCount  uint16
+	FeeAmount []byte
 }
 
 // NewBlock is a constructor for Block
-func NewBlock(header [32]byte, txnCount uint16, totalFee *big.Int) Block {
-	return Block{header, txnCount, totalFee}
+func NewBlock(header [32]byte, txnCount uint16, feeAmount *big.Int) Block {
+	return Block{header, txnCount, feeAmount}
 }
 
 // EncodeRLP satisfies the rlp interface for Block
 func (b *Block) EncodeRLP(w io.Writer) error {
-	blk := &block{b.Header, b.TxnCount, b.TotalFee.Bytes()}
+	blk := &block{b.Header, b.TxnCount, b.FeeAmount.Bytes()}
 
 	return rlp.Encode(w, blk)
 }
@@ -40,7 +40,7 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 
 	b.Header = blk.Header
 	b.TxnCount = blk.TxnCount
-	b.TotalFee = new(big.Int).SetBytes(blk.Fee)
+	b.FeeAmount = new(big.Int).SetBytes(blk.FeeAmount)
 
 	return nil
 }

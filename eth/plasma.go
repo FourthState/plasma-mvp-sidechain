@@ -84,6 +84,7 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 
 // SubmitBlock proxy. TODO: handle batching with a timmer interrupt
 func (plasma *Plasma) SubmitBlock(block plasmaTypes.Block) error {
+	// only the contract operator can submit blocks
 	if plasma.operatorSession == nil {
 		return nil
 	}
@@ -93,7 +94,7 @@ func (plasma *Plasma) SubmitBlock(block plasmaTypes.Block) error {
 	_, err := plasma.operatorSession.SubmitBlock(
 		[][32]byte{block.Header},
 		[]*big.Int{big.NewInt(int64(block.TxnCount))},
-		[]*big.Int{block.TotalFee},
+		[]*big.Int{block.FeeAmount},
 		plasma.blockNum)
 
 	return err

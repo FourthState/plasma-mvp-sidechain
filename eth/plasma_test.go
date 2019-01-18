@@ -50,20 +50,23 @@ func TestSubmitBlock(t *testing.T) {
 	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
 	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, logger, true, privKey)
 
-	header := crypto.Keccak256([]byte("blah"))
-	var root [32]byte
-	copy(root[:], header)
-	block := plasmaTypes.Block{root, 0, utils.Big0}
+	var header [32]byte
+	copy(header[:], crypto.Keccak256([]byte("blah")))
+	block := plasmaTypes.Block{
+		Header:    header,
+		TxnCount:  1,
+		FeeAmount: utils.Big0,
+	}
 	err := plasma.SubmitBlock(block)
 	require.NoError(t, err, "block submission error")
 
 	blockNum, err := plasma.contract.LastCommittedBlock(nil)
 	require.NoError(t, err, "failed to query for the last committed block")
 
-	result, err := plasma.contract.ChildChain(nil, blockNum)
+	result, err := plasma.contract.PlasmaChain(nil, blockNum)
 	require.NoError(t, err, "failed contract plasma chain query")
 
-	require.Truef(t, bytes.Compare(result.Root[:], header) == 0,
+	require.Truef(t, bytes.Compare(result.Header[:], header[:]) == 0,
 		"Mismatch in block headers. Got: %x. Expected: %x", result, header)
 }
 

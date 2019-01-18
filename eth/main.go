@@ -56,7 +56,7 @@ func (client Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	return c, nil
 }
 
-func (client Client) CurrentBlockNum() (*big.Int, error) {
+func (client Client) LatestBlockNum() (*big.Int, error) {
 	var res json.RawMessage
 	err := client.rpc.Call(&res, "eth_blockNumber")
 
