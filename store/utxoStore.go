@@ -32,9 +32,15 @@ type utxo struct {
 }
 
 func (u *UTXO) EncodeRLP(w io.Writer) error {
-	utxo := utxo{u.InputKeys, u.SpenderKeys, u.ConfirmationHash, u.MerkleHash, u.Output.Bytes(), u.Spent, u.Position.Bytes()}
-
-	return rlp.Encode(w, &utxo)
+	return rlp.Encode(w, &utxo{
+		u.InputKeys,
+		u.SpenderKeys,
+		u.ConfirmationHash,
+		u.MerkleHash,
+		u.Output.Bytes(),
+		u.Spent,
+		u.Position.Bytes(),
+	})
 }
 
 func (u *UTXO) DecodeRLP(s *rlp.Stream) error {
@@ -143,7 +149,6 @@ func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.
 
 func (store UTXOStore) HasUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) bool {
 	key := append(addr.Bytes(), pos.Bytes()...)
-
 	return store.Has(ctx, key)
 }
 
@@ -161,8 +166,7 @@ func (store UTXOStore) SpendUTXO(ctx sdk.Context, addr common.Address, pos plasm
 	utxo, ok := store.GetUTXO(ctx, addr, pos)
 	if !ok {
 		return sdk.ErrUnknownRequest("utxo does not exist").Result()
-	}
-	if utxo.Spent {
+	} else if utxo.Spent {
 		return sdk.ErrUnauthorized("utxo already marked as spent").Result()
 	}
 
