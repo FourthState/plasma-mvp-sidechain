@@ -30,7 +30,7 @@ func Execute() {
 func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringP(flagKeystore, "", keystoreHomeDir, "directory for keystore")
+	rootCmd.PersistentFlags().String(flagKeystore, keystoreHomeDir, "directory for the keystore")
 	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	viper.BindPFlags(rootCmd.Flags())
 }
