@@ -5,33 +5,15 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
-	"io"
 )
 
 const (
 	SpendMsgRoute = "spend"
 )
 
+// SpendMsg implements the RLP interface through `Transaction`
 type SpendMsg struct {
 	plasma.Transaction
-}
-
-// satisfy rlp interface
-func (msg *SpendMsg) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &msg.Transaction)
-}
-
-// satisfy rlp interface
-func (msg *SpendMsg) DecodeRLP(s rlp.Stream) error {
-	tx := plasma.Transaction{}
-	if err := s.Decode(&tx); err != nil {
-		return nil
-	}
-
-	msg.Transaction = tx
-
-	return nil
 }
 
 // Implement the sdk.Msg interface
@@ -67,7 +49,7 @@ func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 
 func (msg SpendMsg) GetSignBytes() []byte {
 	txHash := msg.TxHash()
-	return txHash[:]
+	return txHash
 }
 
 func (msg SpendMsg) ValidateBasic() sdk.Error {

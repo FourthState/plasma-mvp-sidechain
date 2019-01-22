@@ -16,6 +16,8 @@ import (
 // FeeUpdater updates the aggregate fee amount in a block
 type FeeUpdater func(amt *big.Int) sdk.Error
 
+// the reason for an interface is to allow the connection object
+// to be cooked when testing the ante handler
 type plasmaConn interface {
 	GetDeposit(*big.Int) (plasma.Deposit, bool)
 	HasTxBeenExited(plasma.Position) bool

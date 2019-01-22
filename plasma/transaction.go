@@ -149,6 +149,28 @@ func (tx Transaction) String() string {
 /* Helpers */
 
 func (tx Transaction) toTxList() txList {
+
+	// pointer safety if a transaction
+	// object was ever created with Transaction{}
+
+	if tx.Input0.BlockNum == nil {
+		tx.Input0.BlockNum = utils.Big0
+	} else if tx.Input1.BlockNum == nil {
+		tx.Input1.BlockNum = utils.Big0
+	}
+
+	if tx.Input0.DepositNonce == nil {
+		tx.Input0.DepositNonce = utils.Big0
+	} else if tx.Input1.DepositNonce == nil {
+		tx.Input1.DepositNonce = utils.Big0
+	}
+
+	if tx.Output0.Amount == nil {
+		tx.Output0.Amount = utils.Big0
+	} else if tx.Output1.Amount == nil {
+		tx.Output1.Amount = utils.Big0
+	}
+
 	return txList{
 		BlkNum0:           tx.Input0.BlockNum.Bytes(),
 		TxIndex0:          tx.Input0.TxIndex,
