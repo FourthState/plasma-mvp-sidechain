@@ -27,9 +27,11 @@ type Plasma struct {
 	finalityBound uint64
 }
 
+// TODO: synching issues when rebooting a full node that contains plasma headers that have not been committed
+
 // InitPlasma binds the go wrapper to the deployed contract. This private key provides authentication for the operator
 func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64, logger log.Logger, isOperator bool, operatorPrivKey *ecdsa.PrivateKey) (*Plasma, error) {
-	logger.Info(fmt.Sprintf("binding to contract: %x", contractAddr))
+	logger.Info(fmt.Sprintf("binding to contract address 0x%x", contractAddr))
 	plasmaContract, err := contracts.NewPlasmaMVP(contractAddr, client.ec)
 	if err != nil {
 		return nil, err
@@ -52,10 +54,14 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 		}
 	}
 
-	// TODO: deal with syncing issues
+	ethBlockNum, err := client.LatestBlockNum()
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving latest ethereum block number { %s }", err)
+	}
+
 	lastCommittedBlock, err := plasmaContract.LastCommittedBlock(nil)
 	if err != nil {
-		return nil, fmt.Errorf("contract connection not correctly established: %s", err)
+		return nil, fmt.Errorf("contract connection not correctly established { %s }", err)
 	}
 
 	plasma := &Plasma{
@@ -64,7 +70,7 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 		client:          client,
 		logger:          logger,
 
-		ethBlockNum:   big.NewInt(-1),
+		ethBlockNum:   ethBlockNum,
 		blockNum:      lastCommittedBlock,
 		finalityBound: finalityBound,
 
@@ -74,7 +80,7 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 	// listen to new ethereum block headers
 	ethCh, err := client.SubscribeToHeads()
 	if err != nil {
-		return nil, fmt.Errorf("could not successfully subscribe to heads: %s", err)
+		return nil, fmt.Errorf("could not successfully subscribe to heads: { %s }", err)
 	}
 
 	go watchEthBlocks(plasma, ethCh)
@@ -117,7 +123,7 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, bool) {
 	ethBlockNum := plasma.ethBlockNum
 	plasma.Unlock()
 	if ethBlockNum.Sign() < 0 {
-		plasma.logger.Error("failed `GetDeposit`. not subscribed to ethereum headers")
+		plasma.logger.Error(fmt.Sprintf("failed to retreive information about deposit %s", nonce))
 		return plasmaTypes.Deposit{}, false
 	}
 
@@ -154,9 +160,10 @@ func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 		e, err = plasma.contract.TxExits(nil, priority)
 	}
 
+	// censor spends until the error is fixed
 	if err != nil {
-		// TODO: log the error
-		return true // censor spends until resolved
+		plasma.logger.Error(fmt.Sprintf("failed to retrieve exit information about position %s { %s }", position, err))
+		return true
 	}
 
 	return e.State == 1 || e.State == 3
@@ -172,5 +179,6 @@ func watchEthBlocks(plasma *Plasma, ch <-chan *types.Header) {
 		plasma.Unlock()
 	}
 
-	plasma.logger.Info("etheruem block header subscription closed")
+	// block header subsciprtion should never close unless the daemon is shut off
+	plasma.logger.Error("etheruem block header subscription closed")
 }

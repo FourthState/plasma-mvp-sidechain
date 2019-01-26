@@ -16,3 +16,13 @@ var (
 func IsZeroAddress(addr common.Address) bool {
 	return bytes.Equal(addr[:], ZeroAddress[:])
 }
+
+func RemoveHexPrefix(hexStr string) string {
+	if len(hexStr) < 2 {
+		return hexStr
+	} else if hexStr[:2] == "0x" {
+		return hexStr[2:]
+	}
+
+	return hexStr
+}

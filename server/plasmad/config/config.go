@@ -2,10 +2,10 @@ package config
 
 import (
 	"bytes"
-	"text/template"
-
+	"fmt"
 	"github.com/spf13/viper"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"text/template"
 )
 
 const defaultConfigTemplate = `# This is a TOML config file.
@@ -15,12 +15,11 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # Boolean specifying if this node is the operator of the plasma contract
 is_operator = "{{ .IsOperator }}"
 
-# hex encoded private key
-# Used to sign eth transactions interacting with the rootchain 
-# Default directory is $HOME/.plasmad/config/
-ethereum_operator_private_key = "{{ .EthOperatorPrivateKey }}"
+# Hex encoded private key
+# Used to sign eth transactions interacting with the contract
+ethereum_operator_privatekey = "{{ .EthOperatorPrivateKey }}"
 
-# Ethereum rootchain contract address
+# Ethereum plasma contract address
 ethereum_plasma_contract_address = "{{ .EthPlasmaContractAddr }}"
 
 # Node URL for eth client
@@ -56,6 +55,7 @@ func DefaultPlasmaConfig() PlasmaConfig {
 func ParsePlasmaConfigFromViper() (PlasmaConfig, error) {
 	config := DefaultPlasmaConfig()
 	err := viper.Unmarshal(&config)
+	fmt.Println("Parsed Config:", config)
 	return config, err
 }
 

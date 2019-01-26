@@ -34,6 +34,7 @@ func SetPlasmaOptionsFromConfig(conf config.PlasmaConfig) func(*PlasmaMVPChain) 
 		panic(errMsg)
 	}
 
+	fmt.Println("contract addr: ", conf.EthPlasmaContractAddr)
 	if !common.IsHexAddress(conf.EthPlasmaContractAddr) {
 		panic("invalid contract address. please use hex format")
 	}

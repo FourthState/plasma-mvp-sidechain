@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -35,6 +36,27 @@ func InitEthConn(nodeUrl string, logger log.Logger) (Client, error) {
 	return Client{c, ec, logger}, nil
 }
 
+func (client Client) LatestBlockNum() (*big.Int, error) {
+	var hexStr string
+	if err := client.rpc.Call(&hexStr, "eth_blockNumber"); err != nil {
+		return nil, fmt.Errorf("RPC error { %s }", err)
+	}
+
+	hexStr = utils.RemoveHexPrefix(hexStr)
+
+	// pad if hex length is odd
+	if len(hexStr)%2 != 0 {
+		hexStr = "0" + hexStr
+	}
+
+	hexBytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, fmt.Errorf("Hex decoding error: { %s }", err)
+	}
+
+	return new(big.Int).SetBytes(hexBytes), nil
+}
+
 // SubscribeToHeads returns a channel that funnels new ethereum headers to the returned channel
 func (client Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	c := make(chan *types.Header)
@@ -54,23 +76,6 @@ func (client Client) SubscribeToHeads() (<-chan *types.Header, error) {
 	}()
 
 	return c, nil
-}
-
-func (client Client) LatestBlockNum() (*big.Int, error) {
-	var res json.RawMessage
-	err := client.rpc.Call(&res, "eth_blockNumber")
-
-	var hexStr string
-	if err = json.Unmarshal(res, &hexStr); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling blockNumber response - %s", err)
-	}
-
-	bytes, err := hex.DecodeString(hexStr)
-	if err != nil {
-		return nil, fmt.Errorf("Error converting hex string to bytes - %x", hexStr)
-	}
-
-	return new(big.Int).SetBytes(bytes), nil
 }
 
 // used for testing when running against a local client like ganache

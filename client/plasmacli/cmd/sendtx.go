@@ -89,7 +89,10 @@ var sendTxCmd = &cobra.Command{
 
 			}
 			confirmSigTokens := strings.Split(strings.TrimSpace(viper.GetString(flag)), ",")
-			if len(confirmSigTokens) > 2 {
+			// empty confirmsig
+			if len(confirmSigTokens) == 1 && confirmSigTokens[0] == "" {
+				continue
+			} else if len(confirmSigTokens) > 2 {
 				return fmt.Errorf("only pass in 0, 1 or 2, confirm signatures")
 			}
 
@@ -133,10 +136,10 @@ var sendTxCmd = &cobra.Command{
 		}
 
 		// validate amounts and fee
-		var amounts []*big.Int // [ammount0, amount1, fee]
+		var amounts []*big.Int // [amount0, amount1, fee]
 		amountTokens := strings.Split(strings.TrimSpace(viper.GetString(flagAmounts)), ",")
-		if len(amountTokens) != 3 {
-			return fmt.Errorf("3 amounts must be passed in. amount0, amount1, fee")
+		if len(amountTokens) != 2 && len(amountTokens) != 3 {
+			return fmt.Errorf("number of amounts must equal the number of outputs in addition to the fee")
 		}
 		if len(amountTokens)-1 != len(toAddrs) {
 			return fmt.Errorf("provided amounts to not match the number of outputs")
@@ -155,15 +158,20 @@ var sendTxCmd = &cobra.Command{
 		tx.Input0 = plasma.NewInput(inputs[0], [65]byte{}, confirmSignatures[0])
 		if len(inputs) > 1 {
 			tx.Input1 = plasma.NewInput(inputs[1], [65]byte{}, confirmSignatures[1])
+		} else {
+			tx.Input1 = plasma.NewInput(plasma.NewPosition(nil, 0, 0, nil), [65]byte{}, nil)
 		}
 		tx.Output0 = plasma.NewOutput(toAddrs[0], amounts[0])
 		if len(toAddrs) > 1 {
 			tx.Output1 = plasma.NewOutput(toAddrs[1], amounts[1])
+			tx.Fee = amounts[2]
+		} else {
+			tx.Output1 = plasma.NewOutput(common.Address{}, nil)
+			tx.Fee = amounts[1]
 		}
-		tx.Fee = amounts[2]
 
 		// create and fill in the signatures
-		txHash := tx.TxHash()
+		txHash := utils.ToEthSignedMessageHash(tx.TxHash())
 		var signature [65]byte
 		sig, err := keystore.SignHashWithPassphrase(signers[0], txHash[:])
 		if err != nil {
@@ -190,9 +198,13 @@ var sendTxCmd = &cobra.Command{
 		msg := msgs.SpendMsg{
 			Transaction: tx,
 		}
+		if err := msg.ValidateBasic(); err != nil {
+			return err
+		}
+
 		txBytes, err := rlp.EncodeToBytes(&msg)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		// broadcast to the node
