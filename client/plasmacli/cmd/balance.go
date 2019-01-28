@@ -3,11 +3,14 @@ package cmd
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"math/big"
+	"strings"
 )
 
 func init() {
@@ -19,8 +22,13 @@ var balanceCmd = &cobra.Command{
 	Short: "Query Balances",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext()
-		addr := common.HexToAddress(args[0])
+		ctx := context.NewCLIContext().WithCodec(codec.New())
+		addrStr := utils.RemoveHexPrefix(strings.TrimSpace(args[0]))
+		if !common.IsHexAddress(addrStr) {
+			return fmt.Errorf("address must be provided in hex format")
+		}
+
+		addr := common.HexToAddress(addrStr)
 
 		res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
 		if err != nil {

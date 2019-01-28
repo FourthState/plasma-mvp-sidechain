@@ -34,7 +34,6 @@ type PlasmaMVPChain struct {
 
 	txIndex   uint16
 	feeAmount *big.Int
-	numTxns   uint16
 
 	// persistent stores
 	utxoStore      store.UTXOStore
@@ -63,7 +62,6 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		BaseApp:   baseApp,
 		cdc:       cdc,
 		txIndex:   0,
-		numTxns:   0,
 		feeAmount: big.NewInt(0), // we do not use `utils.BigZero` because the feeAmount is going to be updated
 
 		utxoStore:   store.NewUTXOStore(utxoStoreKey),
@@ -94,7 +92,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		app.txIndex++
 		return app.txIndex - 1
 	}
-	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, nextTxIndex))
+	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, app.plasmaStore, nextTxIndex))
 
 	// Set the AnteHandler
 	feeUpdater := func(amt *big.Int) sdk.Error {
@@ -136,11 +134,23 @@ func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChai
 
 // Reset state at the end of each block
 func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	blockHeight := big.NewInt(ctx.BlockHeight())
+	// skip if the block is empty
+	if app.txIndex == 0 {
+		return abci.ResponseEndBlock{}
+	}
+
+	tmBlockHeight := big.NewInt(ctx.BlockHeight())
+
+	var header [32]byte
+	copy(header[:], ctx.BlockHeader().DataHash)
+	block := plasma.NewBlock(header, app.txIndex, app.feeAmount)
+	plasmaBlockNum := app.plasmaStore.StoreBlock(ctx, tmBlockHeight, block)
+	app.ethConnection.SubmitBlock(block)
+
 	if app.feeAmount.Sign() != 0 {
 		// add a utxo in the store with position 2^16-1
 		utxo := store.UTXO{
-			Position: plasma.NewPosition(blockHeight, 1<<16-1, 0, nil),
+			Position: plasma.NewPosition(plasmaBlockNum, 1<<16-1, 0, nil),
 			Output:   plasma.NewOutput(crypto.PubkeyToAddress(app.operatorPrivateKey.PublicKey), app.feeAmount),
 			Spent:    false,
 		}
@@ -148,16 +158,8 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 		app.utxoStore.StoreUTXO(ctx, utxo)
 	}
 
-	var header [32]byte
-	copy(header[:], ctx.BlockHeader().DataHash)
-	block := plasma.NewBlock(header, app.numTxns, app.feeAmount)
-	app.plasmaStore.StoreBlock(ctx, blockHeight, block)
-
-	app.ethConnection.SubmitBlock(block)
-
 	app.txIndex = 0
 	app.feeAmount = big.NewInt(0)
-	app.numTxns = app.txIndex
 
 	return abci.ResponseEndBlock{}
 }

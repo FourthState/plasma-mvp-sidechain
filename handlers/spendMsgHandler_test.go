@@ -15,12 +15,12 @@ import (
 var nextTxIndex = func() uint16 { return 0 }
 
 func TestSpend(t *testing.T) {
-	// ctx is at block height 0
-	ctx, utxoStore, _ := setup()
+	// plasmaStore is at next block height 1
+	ctx, utxoStore, plasmaStore := setup()
 	privKey, _ := crypto.GenerateKey()
 	addr := crypto.PubkeyToAddress(privKey.PublicKey)
 
-	spendHandler := NewSpendHandler(utxoStore, nextTxIndex)
+	spendHandler := NewSpendHandler(utxoStore, plasmaStore, nextTxIndex)
 
 	// store inputs to be spent
 	pos := plasma.NewPosition(utils.Big0, 0, 0, utils.Big1)
@@ -57,15 +57,15 @@ func TestSpend(t *testing.T) {
 	require.True(t, ok, "input to the msg does not exist in the store")
 	require.True(t, utxo.Spent, "input not marked as spent after the handler")
 
-	// new first output was created at BlockHeight 0 and txIndex 0 and outputIndex 0
-	pos = plasma.NewPosition(utils.Big0, 0, 0, nil)
+	// new first output was created at BlockHeight 1 and txIndex 0 and outputIndex 0
+	pos = plasma.NewPosition(utils.Big1, 0, 0, nil)
 	utxo, ok = utxoStore.GetUTXO(ctx, newOwner, pos)
 	require.True(t, ok, "new output was not created")
 	require.False(t, utxo.Spent, "new output marked as spent")
 	require.Equal(t, utxo.Output.Amount, big.NewInt(10), "new output has incorrect amount")
 
 	// new second output was created at BlockHeight 0 and txIndex 0 and outputIndex 1
-	pos = plasma.NewPosition(utils.Big0, 0, 1, nil)
+	pos = plasma.NewPosition(utils.Big1, 0, 1, nil)
 	utxo, ok = utxoStore.GetUTXO(ctx, newOwner, pos)
 	require.True(t, ok, "new output was not created")
 	require.False(t, utxo.Spent, "new output marked as spent")

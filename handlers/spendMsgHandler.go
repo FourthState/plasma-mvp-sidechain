@@ -7,13 +7,12 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"math/big"
 )
 
 // returns the next tx index in the current block
 type NextTxIndex func() uint16
 
-func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Handler {
+func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, nextTxIndex NextTxIndex) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		spendMsg, ok := msg.(msgs.SpendMsg)
 		if !ok {
@@ -21,7 +20,7 @@ func NewSpendHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex) sdk.Han
 		}
 
 		txIndex := nextTxIndex()
-		blockHeight := big.NewInt(ctx.BlockHeight())
+		blockHeight := plasmaStore.NextPlasmaBlockNum(ctx)
 
 		// construct the confirmation hash
 		merkleHash := spendMsg.MerkleHash()

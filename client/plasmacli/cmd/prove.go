@@ -21,7 +21,7 @@ var proveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext()
+		ctx := context.NewCLIContext().WithTrustNode(true)
 
 		// validate arguments
 		addrStr := strings.TrimSpace(args[0])
@@ -35,7 +35,7 @@ var proveCmd = &cobra.Command{
 
 		// query for the output
 		key := append(common.HexToAddress(addrStr).Bytes(), position.Bytes()...)
-		res, err := ctx.QueryStore(key, "main")
+		res, err := ctx.QueryStore(key, "utxo")
 		if err != nil {
 			return err
 		}
@@ -45,14 +45,14 @@ var proveCmd = &cobra.Command{
 		}
 
 		// query tm node for information about this tx
-		result, err := ctx.Client.Tx(utxo.MerkleHash[:], true)
+		result, err := ctx.Client.Tx(utxo.MerkleHash, true)
 		if err != nil {
 			return err
 		}
 
 		// Look for confirmation signatures
 		var confirmSignatures [][65]byte
-		key = store.CreateConfirmSignatureKey(utxo.Position)
+		key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
 		res, err = ctx.QueryStore(key, "plasma")
 		if err == nil { // confirm signatures exist
 			var signature [65]byte

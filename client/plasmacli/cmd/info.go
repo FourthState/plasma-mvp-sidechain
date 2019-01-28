@@ -5,6 +5,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
@@ -22,7 +23,7 @@ var infoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Information on owned utxos valid and invalid",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext()
+		ctx := context.NewCLIContext().WithCodec(codec.New())
 		addrStr := strings.TrimSpace(args[0])
 		if !common.IsHexAddress(addrStr) {
 			return fmt.Errorf("Invalid address provided. Please use hex format")
@@ -54,7 +55,7 @@ var infoCmd = &cobra.Command{
 			spenderAddresses := utxo.SpenderAddresses()
 			positions = utxo.SpenderPositions()
 			for i, _ := range spenderAddresses {
-				fmt.Printf("Spender Owner %d, Position: %s", i, positions[i])
+				fmt.Printf("Spender Owner %d, Position: %s\n", i, positions[i])
 			}
 
 			fmt.Printf("End UTXO %d info\n\n", i)

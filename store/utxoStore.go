@@ -9,7 +9,6 @@ import (
 	"io"
 )
 
-// Wrapper around
 type UTXO struct {
 	InputKeys        [][]byte // keys to retrieve the inputs of this output
 	SpenderKeys      [][]byte // keys to retrieve the spenders of this output

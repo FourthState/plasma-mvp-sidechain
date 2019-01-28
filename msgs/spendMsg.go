@@ -48,8 +48,7 @@ func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 }
 
 func (msg SpendMsg) GetSignBytes() []byte {
-	txHash := msg.TxHash()
-	return txHash
+	return msg.TxHash()
 }
 
 func (msg SpendMsg) ValidateBasic() sdk.Error {

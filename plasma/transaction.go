@@ -98,16 +98,21 @@ func (tx Transaction) ValidateBasic() error {
 	return nil
 }
 
+func (tx Transaction) TxBytes() []byte {
+	bytes, _ := rlp.EncodeToBytes(&tx)
+	return bytes
+}
+
 // TxHash returns the bytes the signatures are signed over
 func (tx Transaction) TxHash() []byte {
 	txList := tx.toTxList()
-	bytes, _ := rlp.EncodeToBytes(txList)
+	bytes, _ := rlp.EncodeToBytes(&txList)
 	return crypto.Keccak256(bytes)
 }
 
 // MerkleHash returns the bytes that is included in the merkle tree
 func (tx Transaction) MerkleHash() []byte {
-	bytes, _ := rlp.EncodeToBytes(tx)
+	bytes, _ := rlp.EncodeToBytes(&tx)
 	hash := sha256.Sum256(bytes)
 
 	return hash[:]
