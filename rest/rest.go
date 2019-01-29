@@ -16,6 +16,56 @@ import (
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router) {
 	r.HandleFunc("/plasma/block/{blockNum:[0-9]+}", blockHandler(cliCtx)).Methods("GET")
 	r.HandleFunc("/plasma/block/{blockNum:[0-9]+}/txs", txHandler(cliCtx)).Methods("GET")
+	r.HandleFunc("/plasma/block/", latestBlockHandler(cliCtx)).Methods("GET")
+}
+
+// retrieve the latest block
+func latestBlockHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// retrieve the latest block
+		key := []byte("plasmaBlockNum")
+		data, err := cliCtx.QueryStore(key, "plasma")
+		if err != nil || data == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		key = append([]byte("block::"), data...)
+		blockData, err := cliCtx.QueryStore(key, "plasma")
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		plasmaBlock := plasma.Block{}
+		if err := rlp.DecodeBytes(blockData, &plasmaBlock); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// serialize the plasma block
+		type blk struct {
+			Header    string `json:"header"`
+			TxnCount  uint16 `json:"txnCount"`
+			FeeAmount string `json:"feeAmount"`
+			BlockNum  string `json:"blockNum"`
+		}
+
+		resp, err := json.Marshal(blk{
+			Header:    fmt.Sprintf("%x", plasmaBlock.Header),
+			TxnCount:  plasmaBlock.TxnCount,
+			FeeAmount: plasmaBlock.FeeAmount.String(),
+			BlockNum:  new(big.Int).SetBytes(data).String(),
+		})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("json marshal error"))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(resp)
+	}
 }
 
 func blockHandler(cliCtx context.CLIContext) http.HandlerFunc {
@@ -61,7 +111,6 @@ func blockHandler(cliCtx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		fmt.Println(string(resp))
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
 	}
