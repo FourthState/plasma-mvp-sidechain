@@ -1,8 +1,6 @@
 package plasma
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math/big"
