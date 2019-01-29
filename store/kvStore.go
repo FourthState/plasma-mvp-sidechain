@@ -33,13 +33,3 @@ func (kvstore KVStore) Has(ctx sdk.Context, key []byte) bool {
 	store := ctx.KVStore(kvstore.contextKey)
 	return store.Has(key)
 }
-
-func (kvstore KVStore) Iterator(ctx sdk.Context, start, end []byte) sdk.Iterator {
-	store := ctx.KVStore(kvstore.contextKey)
-	return store.Iterator(start, end)
-}
-
-func (kvstore KVStore) ReverseIterator(ctx sdk.Context, start, end []byte) sdk.Iterator {
-	store := ctx.KVStore(kvstore.contextKey)
-	return store.ReverseIterator(start, end)
-}

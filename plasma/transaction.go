@@ -112,9 +112,7 @@ func (tx Transaction) TxHash() []byte {
 
 // MerkleHash returns the bytes that is included in the merkle tree
 func (tx Transaction) MerkleHash() []byte {
-	bytes, _ := rlp.EncodeToBytes(&tx)
-	hash := sha256.Sum256(bytes)
-
+	hash := sha256.Sum256(tx.TxBytes())
 	return hash[:]
 }
 
@@ -174,6 +172,10 @@ func (tx Transaction) toTxList() txList {
 		tx.Output0.Amount = utils.Big0
 	} else if tx.Output1.Amount == nil {
 		tx.Output1.Amount = utils.Big0
+	}
+
+	if tx.Fee == nil {
+		tx.Fee = utils.Big0
 	}
 
 	return txList{

@@ -33,6 +33,10 @@ func init() {
 	rootCmd.Flags().String(flagKeystore, keystoreHomeDir, "directory for the keystore")
 	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	viper.BindPFlags(rootCmd.Flags())
+
+	// TODO: Fix this
+	viper.Set(client.FlagTrustNode, true)
+	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
 }
 
 // initConfig reads in config file and ENV variables if set

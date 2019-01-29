@@ -22,7 +22,7 @@ var balanceCmd = &cobra.Command{
 	Short: "Query Balances",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext().WithCodec(codec.New())
+		ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
 		addrStr := utils.RemoveHexPrefix(strings.TrimSpace(args[0]))
 		if !common.IsHexAddress(addrStr) {
 			return fmt.Errorf("address must be provided in hex format")
@@ -49,7 +49,6 @@ var balanceCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Total: %d\n", total.Uint64())
-
 		return nil
 	},
 }

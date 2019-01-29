@@ -13,7 +13,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -46,6 +45,7 @@ type PlasmaMVPChain struct {
 	/* Config */
 	isOperator            bool // contract operator
 	operatorPrivateKey    *ecdsa.PrivateKey
+	operatorAddress       common.Address
 	plasmaContractAddress common.Address
 	nodeURL               string // client that satisfies the web3 interface
 	blockFinality         uint64 // presumed finality bound for the ethereum network
@@ -86,6 +86,14 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		os.Exit(1)
 	}
 	app.ethConnection = plasmaClient
+
+	// query for the operator address
+	addr, err := plasmaClient.OperatorAddress()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	app.operatorAddress = addr
 
 	// Route spends to the handler
 	nextTxIndex := func() uint16 {
@@ -151,7 +159,7 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 		// add a utxo in the store with position 2^16-1
 		utxo := store.UTXO{
 			Position: plasma.NewPosition(plasmaBlockNum, 1<<16-1, 0, nil),
-			Output:   plasma.NewOutput(crypto.PubkeyToAddress(app.operatorPrivateKey.PublicKey), app.feeAmount),
+			Output:   plasma.NewOutput(app.operatorAddress, app.feeAmount),
 			Spent:    false,
 		}
 

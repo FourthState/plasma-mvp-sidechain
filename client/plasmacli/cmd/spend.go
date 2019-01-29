@@ -99,19 +99,15 @@ var spendCmd = &cobra.Command{
 			var confirmSignature [][65]byte
 			for _, token := range confirmSigTokens {
 				token := strings.TrimSpace(token)
-				if len(token) != 65 {
-					return fmt.Errorf("signatures must be of length 65 bytes")
-				}
-				if !common.IsHexAddress(token) {
-					return fmt.Errorf("invalid first confirm signature provided. please use hex format")
-				}
-
-				var signature [65]byte
 				sig, err := hex.DecodeString(token)
 				if err != nil {
 					return err
 				}
+				if len(sig) != 65 {
+					return fmt.Errorf("signatures must be of length 65 bytes")
+				}
 
+				var signature [65]byte
 				copy(signature[:], sig)
 				confirmSignature = append(confirmSignature, signature)
 			}
@@ -173,7 +169,7 @@ var spendCmd = &cobra.Command{
 		// create and fill in the signatures
 		txHash := utils.ToEthSignedMessageHash(tx.TxHash())
 		var signature [65]byte
-		sig, err := keystore.SignHashWithPassphrase(signers[0], txHash[:])
+		sig, err := keystore.SignHashWithPassphrase(signers[0], txHash)
 		if err != nil {
 			return err
 		}
@@ -186,7 +182,7 @@ var spendCmd = &cobra.Command{
 			} else {
 				signer = signers[0]
 			}
-			sig, err := keystore.SignHashWithPassphrase(signer, txHash[:])
+			sig, err := keystore.SignHashWithPassphrase(signer, txHash)
 			if err != nil {
 				return err
 			}

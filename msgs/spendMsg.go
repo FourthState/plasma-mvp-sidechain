@@ -23,7 +23,7 @@ func (msg SpendMsg) Type() string { return "spend_utxo" }
 func (msg SpendMsg) Route() string { return SpendMsgRoute }
 
 // GetSigners will attempt to retrieve the signers of the message.
-// CONTRACT: nil is returned if recovery fails
+// CONTRACT: a nil slice is returned if recovery fails
 func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
 	var addrs []sdk.AccAddress

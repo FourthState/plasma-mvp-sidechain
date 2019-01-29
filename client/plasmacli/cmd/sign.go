@@ -30,7 +30,7 @@ func init() {
 
 var signCmd = &cobra.Command{
 	Use:   "sign <position>",
-	Short: "Sign confirmation signatures for position provided (blockNum.txIndex.oIndex.depositNonce),if it exists.",
+	Short: "Sign confirmation signatures for position provided (blockNum.txIndex.oIndex.depositNonce), if it exists.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)

@@ -1,6 +1,8 @@
 package plasma
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math/big"
@@ -8,9 +10,9 @@ import (
 
 // Block represent one plasma block
 type Block struct {
-	Header    [32]byte `json:"header"`
-	TxnCount  uint16   `json:"txnCount"`
-	FeeAmount *big.Int `json:"FeeAmount"`
+	Header    [32]byte
+	TxnCount  uint16
+	FeeAmount *big.Int
 }
 
 type block struct {
