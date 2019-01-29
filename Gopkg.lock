@@ -76,13 +76,17 @@
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
 [[projects]]
-  digest = "1:52701d2502a7dd2fa48d958c2c24a9ae48f5c2c68e14c68ae74561a517c9537a"
+  digest = "1:2cb359cd4f9315ba50e28c96d5d614211e99f4a32e0a7c1485a73a84ae0cc5c7"
   name = "github.com/cosmos/cosmos-sdk"
   packages = [
     "baseapp",
     "client",
     "client/context",
     "client/keys",
+    "client/lcd",
+    "client/lcd/statik",
+    "client/rpc",
+    "client/tx",
     "client/utils",
     "cmd/gaia/app",
     "cmd/gaia/init",
@@ -95,11 +99,15 @@
     "server",
     "server/config",
     "store",
+    "tests",
     "types",
     "version",
     "x/auth",
+    "x/auth/client/rest",
     "x/auth/client/txbuilder",
     "x/bank",
+    "x/bank/client",
+    "x/bank/client/rest",
     "x/bank/simulation",
     "x/distribution",
     "x/distribution/keeper",
@@ -107,6 +115,8 @@
     "x/distribution/tags",
     "x/distribution/types",
     "x/gov",
+    "x/gov/client/rest",
+    "x/gov/client/utils",
     "x/gov/tags",
     "x/mint",
     "x/mock",
@@ -114,8 +124,10 @@
     "x/params",
     "x/params/subspace",
     "x/slashing",
+    "x/slashing/client/rest",
     "x/stake",
     "x/stake/client/cli",
+    "x/stake/client/rest",
     "x/stake/keeper",
     "x/stake/querier",
     "x/stake/simulation",
@@ -166,10 +178,6 @@
     "core/types",
     "crypto",
     "crypto/secp256k1",
-    "crypto/secp256k1/libsecp256k1",
-    "crypto/secp256k1/libsecp256k1/include",
-    "crypto/secp256k1/libsecp256k1/src",
-    "crypto/secp256k1/libsecp256k1/src/modules/recovery",
     "crypto/sha3",
     "ethclient",
     "ethdb",
@@ -446,6 +454,14 @@
   ]
   pruneopts = "UT"
   revision = "1dc9a6cbc91aacc3e8b2d63db4d2e957a5394ac4"
+
+[[projects]]
+  digest = "1:ea0700160aca4ef099f4e06686a665a87691f4248dddd40796925eda2e46bd64"
+  name = "github.com/rakyll/statik"
+  packages = ["fs"]
+  pruneopts = "UT"
+  revision = "aa8a7b1baecd0f31a436bf7956fcdcc609a83035"
+  version = "v0.1.4"
 
 [[projects]]
   digest = "1:c4556a44e350b50a490544d9b06e9fba9c286c21d6c0e47f54f3a9214597298c"
@@ -801,6 +817,9 @@
   input-imports = [
     "github.com/bgentry/speakeasy",
     "github.com/cosmos/cosmos-sdk/baseapp",
+    "github.com/cosmos/cosmos-sdk/client",
+    "github.com/cosmos/cosmos-sdk/client/context",
+    "github.com/cosmos/cosmos-sdk/client/lcd",
     "github.com/cosmos/cosmos-sdk/cmd/gaia/init",
     "github.com/cosmos/cosmos-sdk/codec",
     "github.com/cosmos/cosmos-sdk/server",
@@ -818,25 +837,18 @@
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rlp",
     "github.com/ethereum/go-ethereum/rpc",
+    "github.com/gorilla/mux",
     "github.com/mattn/go-isatty",
-    "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/require",
-    "github.com/syndtr/goleveldb/leveldb",
-    "github.com/syndtr/goleveldb/leveldb/comparer",
-    "github.com/syndtr/goleveldb/leveldb/memdb",
-    "github.com/tendermint/go-amino",
     "github.com/tendermint/tendermint/abci/types",
     "github.com/tendermint/tendermint/config",
-    "github.com/tendermint/tendermint/crypto/tmhash",
+    "github.com/tendermint/tendermint/crypto",
     "github.com/tendermint/tendermint/libs/cli",
     "github.com/tendermint/tendermint/libs/common",
     "github.com/tendermint/tendermint/libs/db",
     "github.com/tendermint/tendermint/libs/log",
-    "github.com/tendermint/tendermint/lite",
-    "github.com/tendermint/tendermint/rpc/client",
-    "github.com/tendermint/tendermint/rpc/core/types",
     "github.com/tendermint/tendermint/types",
   ]
   solver-name = "gps-cdcl"
