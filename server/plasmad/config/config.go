@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/spf13/viper"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"text/template"
@@ -55,7 +54,6 @@ func DefaultPlasmaConfig() PlasmaConfig {
 func ParsePlasmaConfigFromViper() (PlasmaConfig, error) {
 	config := DefaultPlasmaConfig()
 	err := viper.Unmarshal(&config)
-	fmt.Println("Parsed Config:", config)
 	return config, err
 }
 

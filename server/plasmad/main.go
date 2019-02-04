@@ -67,9 +67,6 @@ func persistentPreRunEFn(context *server.Context) func(*cobra.Command, []string)
 
 func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
 	plasmaConfig, err := config.ParsePlasmaConfigFromViper()
-	plasmaConfig.EthNodeURL = "ws://localhost:8545"
-	plasmaConfig.EthPlasmaContractAddr = "5cae340fb2c2bb0a2f194a95cda8a1ffdc9d2f85"
-	plasmaConfig.EthOperatorPrivateKey = "9cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c17181"
 	if err != nil {
 		panic(err)
 	}
