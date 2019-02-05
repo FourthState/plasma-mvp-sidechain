@@ -4,7 +4,6 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -31,8 +30,7 @@ var _ plasmaConn = conn{}
 func TestAnteChecks(t *testing.T) {
 	// setup
 	ctx, utxoStore, plasmaStore := setup()
-	var feeUpdater FeeUpdater = func(amt *big.Int) sdk.Error { return nil }
-	handler := NewAnteHandler(utxoStore, plasmaStore, feeUpdater, conn{})
+	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
 
 	// bad keys to check against the deposit
 	badPrivKey, _ := crypto.GenerateKey()

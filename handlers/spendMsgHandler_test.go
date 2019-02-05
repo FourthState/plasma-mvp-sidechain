@@ -5,6 +5,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -13,6 +14,7 @@ import (
 )
 
 var nextTxIndex = func() uint16 { return 0 }
+var feeUpdater = func(num *big.Int) sdk.Error { return nil }
 
 func TestSpend(t *testing.T) {
 	// plasmaStore is at next block height 1
@@ -20,7 +22,7 @@ func TestSpend(t *testing.T) {
 	privKey, _ := crypto.GenerateKey()
 	addr := crypto.PubkeyToAddress(privKey.PublicKey)
 
-	spendHandler := NewSpendHandler(utxoStore, plasmaStore, nextTxIndex)
+	spendHandler := NewSpendHandler(utxoStore, plasmaStore, nextTxIndex, feeUpdater)
 
 	// store inputs to be spent
 	pos := plasma.NewPosition(utils.Big0, 0, 0, utils.Big1)
