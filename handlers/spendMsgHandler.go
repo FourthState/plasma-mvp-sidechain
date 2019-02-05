@@ -7,12 +7,16 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"math/big"
 )
 
 // returns the next tx index in the current block
 type NextTxIndex func() uint16
 
-func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, nextTxIndex NextTxIndex) sdk.Handler {
+// FeeUpdater updates the aggregate fee amount in a block
+type FeeUpdater func(amt *big.Int) sdk.Error
+
+func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, nextTxIndex NextTxIndex, feeUpdater FeeUpdater) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		spendMsg, ok := msg.(msgs.SpendMsg)
 		if !ok {
@@ -52,6 +56,11 @@ func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, n
 			if !res.IsOK() {
 				return res
 			}
+		}
+
+		// update the aggregate fee amount for the block
+		if err := feeUpdater(spendMsg.Fee); err != nil {
+			return sdk.ErrInternal("error updating the aggregate fee").Result()
 		}
 
 		// create new outputs

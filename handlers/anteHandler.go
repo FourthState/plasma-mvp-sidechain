@@ -13,9 +13,6 @@ import (
 	"math/big"
 )
 
-// FeeUpdater updates the aggregate fee amount in a block
-type FeeUpdater func(amt *big.Int) sdk.Error
-
 // the reason for an interface is to allow the connection object
 // to be cooked when testing the ante handler
 type plasmaConn interface {
@@ -23,7 +20,7 @@ type plasmaConn interface {
 	HasTxBeenExited(plasma.Position) bool
 }
 
-func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, feeUpdater FeeUpdater, client plasmaConn) sdk.AnteHandler {
+func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) sdk.AnteHandler {
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
 		spendMsg, ok := tx.(msgs.SpendMsg)
 		if !ok {
@@ -89,14 +86,6 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, fe
 
 		if totalInputAmt.Cmp(totalOutputAmt) != 0 {
 			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "inputs do not equal Outputs (+ fee)").Result(), true
-		}
-
-		// only update fee when we are actually delivering tx
-		if !ctx.IsCheckTx() && !simulate {
-			err := feeUpdater(spendMsg.Fee)
-			if err != nil {
-				return ctx, err.Result(), true
-			}
 		}
 
 		return ctx, sdk.Result{}, false
