@@ -100,14 +100,14 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		app.txIndex++
 		return app.txIndex - 1
 	}
-	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, app.plasmaStore, nextTxIndex))
-
-	// Set the AnteHandler
 	feeUpdater := func(amt *big.Int) sdk.Error {
 		app.feeAmount = app.feeAmount.Add(app.feeAmount, amt)
 		return nil
 	}
-	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, feeUpdater, plasmaClient))
+	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, app.plasmaStore, nextTxIndex, feeUpdater))
+
+	// Set the AnteHandler
+	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, plasmaClient))
 
 	// set the rest of the chain flow
 	app.SetEndBlocker(app.endBlocker)
