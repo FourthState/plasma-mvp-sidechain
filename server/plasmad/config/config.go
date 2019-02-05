@@ -29,11 +29,11 @@ ethereum_finality = "{{ .EthBlockFinality }}"`
 
 // Must match the above defaultConfigTemplate
 type PlasmaConfig struct {
-	IsOperator            bool
-	EthOperatorPrivateKey string
-	EthPlasmaContractAddr string
-	EthNodeURL            string
-	EthBlockFinality      string
+	IsOperator            bool   `mapstructure:"is_operator"`
+	EthOperatorPrivateKey string `mapstructure:"ethereum_operator_privatekey"`
+	EthPlasmaContractAddr string `mapstructure:"ethereum_plasma_contract_address"`
+	EthNodeURL            string `mapstructure:"ethereum_nodeurl"`
+	EthBlockFinality      string `mapstructure:"ethereum_finality"`
 }
 
 var configTemplate *template.Template
