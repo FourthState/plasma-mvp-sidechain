@@ -33,7 +33,7 @@ contract('TMSimpleMerkleTree', async (accounts) => {
     });
 
     it("Verifies the membership in a merkle tree with only one transaction", async () => {
-        let leafHash = web3.sha3("inputSeed");
+        let leafHash = web3.utils.keccak256("inputSeed");
 
         let root, proof;
         [root, proof] = generateMerkleRootAndProof([leafHash], 0);
@@ -42,19 +42,19 @@ contract('TMSimpleMerkleTree', async (accounts) => {
     });
 
     it("Catches bad input on checkMembership", async () => {
-        let leafHash1 = web3.sha3("inputSeed1");
-        let leafHash2 = web3.sha3("inputSeed2");
-        let leafHash3 = web3.sha3("inputSeed3");
+        let leafHash1 = web3.utils.keccak256("inputSeed1");
+        let leafHash2 = web3.utils.keccak256("inputSeed2");
+        let leafHash3 = web3.utils.keccak256("inputSeed3");
 
         let root, proof;
         [root, proof] = generateMerkleRootAndProof([leafHash1, leafHash2, leafHash3], 0);
 
-        let badLeafHash = web3.sha3("wrongInputSeed", {encoding: 'hex'});
+        let badLeafHash = web3.utils.keccak256("wrongInputSeed", {encoding: 'hex'});
         assert.isFalse(await instance.checkMembership.call(toHex(badLeafHash), 0, toHex(root), toHex(proof), 3), "Returned true on wrong leaf");
 
         assert.isFalse(await instance.checkMembership.call(toHex(leafHash1), 1, toHex(root), toHex(proof), 3), "Returned true on wrong index");
 
-        let badRoot = web3.sha3("wrongRoot", {encoding: 'hex'});
+        let badRoot = web3.utils.keccak256("wrongRoot", {encoding: 'hex'});
         assert.isFalse(await instance.checkMembership.call(toHex(leafHash1), 0, toHex(badRoot), toHex(proof), 3), "Returned true on wrong root");
 
         let badProof = "a".repeat(proof.length - 2);
@@ -67,11 +67,11 @@ contract('TMSimpleMerkleTree', async (accounts) => {
     });
 
     it("Verifies membership in a merkle tree with multiple transactions", async () => {
-        let leafHash1 = web3.sha3("inputSeed1");
-        let leafHash2 = web3.sha3("inputSeed2");
-        let leafHash3 = web3.sha3("inputSeed3");
-        let leafHash4 = web3.sha3("inputSeed4");
-        let leafHash5 = web3.sha3("inputSeed5");
+        let leafHash1 = web3.utils.keccak256("inputSeed1");
+        let leafHash2 = web3.utils.keccak256("inputSeed2");
+        let leafHash3 = web3.utils.keccak256("inputSeed3");
+        let leafHash4 = web3.utils.keccak256("inputSeed4");
+        let leafHash5 = web3.utils.keccak256("inputSeed5");
 
         let root, proof;
         [root, proof] = generateMerkleRootAndProof([leafHash1, leafHash2, leafHash3, leafHash4, leafHash5], 0);

@@ -11,7 +11,7 @@ contract('BytesUtil', async (accounts) => {
     });
 
     it("Slices bytes correctly", async () => {
-        let inputHash = web3.sha3("inputSeed");
+        let inputHash = web3.utils.keccak256("inputSeed");
 
         assert.equal((await instance.slice.call(toHex(inputHash), 0, 32)).toString(), inputHash, "Slice didn't get entire substring");
 
@@ -22,8 +22,14 @@ contract('BytesUtil', async (accounts) => {
         assert.equal((await instance.slice.call(toHex(inputHash), 8, 24)).toString(), toHex(inputHash.substring(18)), "Didn't get rest of the hash");
     });
 
+    it("Returns the same bytes if there's nothing to slice", async () => {
+        let inputHash = web3.utils.keccak256("seed");
+
+        assert.equal((await instance.slice.call(toHex(inputHash), 0, 32)), inputHash, "same slice not returned");
+    });
+
     it("Reverts if trying to slice out of range", async () => {
-        let inputHash = web3.sha3("inputSeed");
+        let inputHash = web3.utils.keccak256("inputSeed");
 
         // sha3 maps input to a 32 byte hash (64 charac
         let err;

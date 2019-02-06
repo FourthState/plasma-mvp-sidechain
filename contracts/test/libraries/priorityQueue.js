@@ -1,12 +1,12 @@
 let assert = require('chai').assert;
 
-let PriorityQueue_Test = artifacts.require("PriorityQueue_Test");
+let MinMinPriorityQueue_Test = artifacts.require("MinPriorityQueue_Test");
 let { catchError } = require('../utilities.js');
 
-contract('PriorityQueue', async (accounts) => {
+contract('MinMinPriorityQueue', async (accounts) => {
     let instance;
     beforeEach(async () => {
-        instance = await PriorityQueue_Test.new();
+        instance = await MinMinPriorityQueue_Test.new();
     });
 
     it("Reverts when deleting on an empty queue", async() => {
@@ -63,7 +63,7 @@ contract('PriorityQueue', async (accounts) => {
             await instance.delMin();
         }
         currSize = (await instance.currentSize.call()).toNumber();
-        assert.equal(currSize, 0, "The priority queue has not been emptied");
+        assert.equal(currSize, 0, "The MinMinPriority queue has not been emptied");
     });
 
     it("Can insert, delete min, then insert again", async () => {
@@ -92,7 +92,7 @@ contract('PriorityQueue', async (accounts) => {
         }
 
         currSize = (await instance.currentSize.call()).toNumber();
-        assert.equal(currSize, 0, "The priority queue has not been emptied");
+        assert.equal(currSize, 0, "The MinMinPriority queue has not been emptied");
     });
 
     it("Handles duplicate entries", async () => {
@@ -109,7 +109,7 @@ contract('PriorityQueue', async (accounts) => {
 
         await instance.insert(10);
         min = (await instance.getMin.call()).toNumber();
-        assert.equal(min, 10, "Second insert of same priority did not work");
+        assert.equal(min, 10, "Second insert of same MinMinPriority did not work");
         await instance.insert(5);
         await instance.insert(5);
 
@@ -118,13 +118,13 @@ contract('PriorityQueue', async (accounts) => {
 
         await instance.delMin();
         min = (await instance.getMin.call()).toNumber();
-        assert.equal(min, 5, "PriorityQueue did not handle same priorities correctly");
+        assert.equal(min, 5, "MinMinPriorityQueue did not handle same priorities correctly");
 
         await instance.delMin();
         await instance.delMin();
 
         min = (await instance.getMin.call()).toNumber();
-        assert.equal(min, 10, "PriorityQueue did not delete duplicate correctly")
+        assert.equal(min, 10, "MinMinPriorityQueue did not delete duplicate correctly")
 
         await instance.delMin();
         assert.equal(await instance.currentSize.call(), 0);

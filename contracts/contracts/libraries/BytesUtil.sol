@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 library BytesUtil {
     uint8 constant WORD_SIZE = 32;
@@ -6,12 +6,12 @@ library BytesUtil {
     // @param _bytes raw bytes that needs to be slices
     // @param start  start of the slice relative to `_bytes`
     // @param len    length of the sliced byte array
-    function slice(bytes _bytes, uint start, uint len)
+    function slice(bytes memory _bytes, uint start, uint len)
         internal
         pure
-        returns (bytes)
+        returns (bytes memory)
     {
-        require(_bytes.length - start >= len, "slice out of bounds");
+        require(_bytes.length - start >= len);
 
         if (_bytes.length == len)
             return _bytes;

@@ -5,16 +5,27 @@ let { toHex } = require('../utilities.js');
 
 // Fast forward 1 week
 let fastForward = async function(time) {
-    await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 0});
-    let oldTime = (await web3.eth.getBlock(await web3.eth.blockNumber)).timestamp;
+    let oldTime = (await web3.eth.getBlock("latest")).timestamp;
 
     // fast forward
-    await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [time], id: 0});
+    try {
+        await sendRPC({jsonrpc: "2.0", method: "evm_increaseTime", params: [time], id: 0});
+        await sendRPC({jsonrpc: "2.0", method: "evm_mine", params: [], id: 0});
+    } catch (err) {
+        assert.fail("failed to increase the evm time");
+    }
 
-    await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_mine", params: [], id: 0});
-    let currTime = (await web3.eth.getBlock(await web3.eth.blockNumber)).timestamp;
+    let newTime = (await web3.eth.getBlock("latest")).timestamp;
+    assert.isAtLeast(newTime - oldTime, time, `Did not fast forward at least ${time} seconds`);
+}
 
-    assert.isAtLeast(currTime - oldTime, time, `Block time was not fast forwarded by at least ${time} seconds`);
+let sendRPC = async function(payload) {
+    return new Promise((resolve, reject) => {
+        web3.currentProvider.send(payload, (err, result) => {
+            if (err) reject(err)
+            else resolve(result)
+        })
+    })
 }
 
 // SHA256 hash the input and returns it in string form.
@@ -35,7 +46,7 @@ let sha256StringMultiple = function(input1, input2) {
 // For a given list of leaves, this function constructs a simple merkle tree.
 // It returns the merkle root and the merkle proof for the txn at index.
 // @param leaves The leaves for which this function generates a merkle root and proof
-// @param txIndex The leaf for which this function generates a merkle proof
+// @param index The leaf for which this function generates a merkle proof
 //
 // Simple Tree: https://tendermint.com/docs/spec/blockchain/encoding.html#merkle-trees
 let generateMerkleRootAndProof = function(leaves, index) {
@@ -83,5 +94,6 @@ let generateMerkleRootAndProof = function(leaves, index) {
 module.exports = {
     fastForward,
     sha256String,
+    sendRPC,
     generateMerkleRootAndProof
 };

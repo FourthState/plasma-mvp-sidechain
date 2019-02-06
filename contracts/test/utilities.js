@@ -14,7 +14,12 @@ let toHex = function(buffer) {
     return '0x' + buffer;
 };
 
+let sleep = function(ms) {
+    return new Promise((resolve, reject) => setTimeout(resolve, ms) )
+}
+
 module.exports = {
     catchError,
+    sleep,
     toHex
 };

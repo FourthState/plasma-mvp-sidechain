@@ -16,7 +16,7 @@ install:
   - dep ensure -vendor-only
 
 before_script:
-  - npm install -g truffle@4.1.14 ganache-cli@6.2.3
+  - npm install -g truffle@5.0.2 ganache-cli@6.2.5
 
 script:
   - ganache-cli -m=plasma > /dev/null &

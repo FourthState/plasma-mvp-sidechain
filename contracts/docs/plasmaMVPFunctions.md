@@ -31,9 +31,10 @@ Validators catch deposits through event handlers and maintain a collection of sp
 ```solidity
 mapping(uint256 => depositStruct) deposits; // The key is the incrementing nonce
 struct depositStruct {
-    address owner;
-    uint256 amount;
-    uint256 created_at;
+    address owner,
+    uint256 amount,
+    uint256 ethBlockNum,
+    uint256 createdAt
 }
 ```
 
@@ -66,22 +67,11 @@ commit to any fee, `committedFee`.
 <br />
 
 ```solidity
-function startFeeExit(uint256 blockNumber)
+function startFeeExit(uint256 blockNumber, uint256 committedFee)
 ```
 The validator of any block should call this function to exit the fees they've collected for that particular block.
 The validator declares the `blockNumber` of the block for which they'd like to exit fees. This exit is then added to exit queue with the lowest priority for that block.
 Note that if the validator attempts to start an exit for a fee-UTXO that has already been spent in a later block, the exit can be challenged through `startTransactionExit` the same way as a regular transaction exit.
-
-<br />
-
-```solidity
-function challengeFeeMismatch(uint256[4] exitingTxPos, uint256[2] challengingTxPos, bytes txBytes, bytes proof)
-```
-`challengingTxPos` follows the convention - `[blockNumber, transactionIndex]`  
-`exitingTxPos` follows the convention - `[blockNumber, transactionIndex, outputIndex, depositNonce`]
-
-An exit which posts an invalid committed fee can be challenged with this function. The `txBytes` of `challengingTxPos` which includes the correct fee, along with it's merkle `proof` of inclusion is checked against the exiter's claimed
-committed fee. If there is a mismatch, the exit is invalidated and the bond is awarded to the challenger. `exitingTxPos` must be the first input of `challengingTxPos`. `exitingTxPos` is the full position including the deposit nonce.
 
 <br />
 
@@ -95,6 +85,9 @@ A uxto that has starting an exit phase but was already spent on the child chain 
 The `exitingTxPos` locates the malicious utxo and is used to calculate the priority. `challengingTxPos` locates the transaction that is the child (offending transaction is an input into this tx).
 The `proof`, `txBytes` and `sigs` is sufficient for a proof of inclusion in the child chain of the parent transaction. The `confirmSignature`, signed by the owner of the malicious transaction,
 acknowledges the inclusion of it's parent in the plasma chain and allows anyone with this confirm signature to challenge a malicious exit of the child.
+
+An operator can also use this function to do a fee mismatch challenge. In this case, the confirm singature can be empty. The exitingTxPos must be the first input of the challenging transaction
+and must have a mismatch in the committed fee. The first transaction signature is checked against to prevent the operator for performing invalid inclusions to challenge any exit.
 
 <br />
 
@@ -127,6 +120,6 @@ Getter for the withdrawable balance of `_address`
 <br />
 
 ```solidity
-function childChainBalance() returns (uint256 funds)
+function plasmaChainBalance() returns (uint256 funds)
 ```
 Query the total funds of the plasma chain

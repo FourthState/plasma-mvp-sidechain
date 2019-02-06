@@ -15,17 +15,17 @@ The root contract of a Plasma child chain represents an intermediary who can res
 A transaction is encoded in the following form:
 
 ```
-[
-  [Blknum1, TxIndex1, Oindex1, DepositNonce1, Owner1, Input1ConfirmSig,
+RLP_ENCODE([
+  [Blknum1, TxIndex1, Oindex1, DepositNonce1, Input1ConfirmSig,
 
-   Blknum2, TxIndex2, Oindex2, DepositNonce2, Owner2, Input2ConfirmSig,
+   Blknum2, TxIndex2, Oindex2, DepositNonce2, Input2ConfirmSig,
 
    NewOwner, Denom1, NewOwner, Denom2, Fee],
 
   [Signature1, Signature2]
-]
+])
 ```
-The signatures are over the hash of the transaction list signed by the owner of each respective utxo input.
+The signatures are over the hash of the transaction list (first list) signed by the owner of each respective utxo input.
 
 ### Documentation
 
