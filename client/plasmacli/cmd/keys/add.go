@@ -1,4 +1,4 @@
-package cmd
+package keys
 
 import (
 	"fmt"
@@ -6,14 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(addKeyCmd)
-}
-
-var addKeyCmd = &cobra.Command{
+var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Create a new account",
-	Long:  `Add an encrypted account to the keystore.`,
+	Long:  `Add an encrypted account to your local keystore.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		address, err := keystore.NewAccount()
 		if err != nil {

@@ -1,4 +1,4 @@
-package cmd
+package keys
 
 import (
 	"fmt"
@@ -6,19 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(listKeysCmd)
-}
-
-var listKeysCmd = &cobra.Command{
+var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all accounts",
 	Long:  "Return a list of all account addresses stored by this keystore",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Index:\t\tAddress:")
-		accounts := keystore.Accounts()
-		for i, acc := range accounts {
-			fmt.Printf("%d\t\t%s\n", i, acc.Address.Hex())
+		keys := keystore.Accounts()
+		for i, key := range keys {
+			fmt.Printf("%d\t\t%s\n", i, key.Address.Hex())
 		}
 
 		return nil

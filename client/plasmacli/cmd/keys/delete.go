@@ -1,4 +1,4 @@
-package cmd
+package keys
 
 import (
 	"fmt"
@@ -8,11 +8,7 @@ import (
 	"strings"
 )
 
-func init() {
-	rootCmd.AddCommand(deleteKeyCmd)
-}
-
-var deleteKeyCmd = &cobra.Command{
+var deleteCmd = &cobra.Command{
 	Use:   "delete <address>",
 	Short: "Delete the given address",
 	Long: `Deletes the account from the keystore matching the address provided, if the passphrase

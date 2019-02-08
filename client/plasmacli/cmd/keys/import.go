@@ -1,4 +1,4 @@
-package cmd
+package keys
 
 import (
 	"crypto/ecdsa"
@@ -14,14 +14,13 @@ const (
 )
 
 func init() {
-	rootCmd.AddCommand(importCmd)
 	importCmd.Flags().BoolP(flagPrivateKey, "P", false, "read the the private key directly from the argument in hexadecimal format")
 	viper.BindPFlags(importCmd.Flags())
 }
 
 var importCmd = &cobra.Command{
 	Use:   "import <keyfile>",
-	Short: "Import a private key into a new account on the sidechain",
+	Short: "Import a private key",
 	Long: `
 plasmacli import <keyfile>
 plasmacli import --key <private key>
