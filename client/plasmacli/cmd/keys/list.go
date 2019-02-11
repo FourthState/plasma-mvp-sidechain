@@ -2,19 +2,34 @@ package keys
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
+	"github.com/syndtr/goleveldb/leveldb"
 )
+
+func init() {
+	keysCmd.AddCommand(listCmd)
+}
 
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all accounts",
-	Long:  "Return a list of all account addresses stored by this keystore",
+	Long:  "Return a list of all account addresses stored by the local keystore",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Index:\t\tAddress:")
-		keys := keystore.Accounts()
-		for i, key := range keys {
-			fmt.Printf("%d\t\t%s\n", i, key.Address.Hex())
+		dir := accountDir()
+		db, err := leveldb.OpenFile(dir, nil)
+		if err != nil {
+			return err
+		}
+
+		iter := db.NewIterator(nil, nil)
+		for iter.Next() {
+			var name string
+			if err := rlp.DecodeBytes(iter.Key(), &name); err != nil {
+				return err
+			}
+			fmt.Printf("NAME: %s\t\tADDRESS: %s\n", name, ethcmn.BytesToAddress(iter.Value()).Hex())
 		}
 
 		return nil

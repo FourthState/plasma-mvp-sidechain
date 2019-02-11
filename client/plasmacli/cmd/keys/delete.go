@@ -3,25 +3,43 @@ package keys
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
-	"github.com/ethereum/go-ethereum/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
-	"strings"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <address>",
+	Use:   "delete <name>",
 	Short: "Delete the given address",
 	Long: `Deletes the account from the keystore matching the address provided, if the passphrase
 			is correct.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		addrStr := strings.TrimSpace(args[0])
-		if !common.IsHexAddress(addrStr) {
-			return fmt.Errorf("Invalid address provided. please use hex format")
+		name := args[0]
+
+		dir := accountDir()
+		db, err := leveldb.OpenFile(dir, nil)
+		if err != nil {
+			return err
+		}
+
+		key, err := rlp.EncodeToBytes(name)
+		if err != nil {
+			return err
+		}
+
+		addr, err := db.Get(key, nil)
+		if err != nil {
+			return err
 		}
 
 		// delete from the keystore
-		if err := keystore.Delete(common.HexToAddress(addrStr)); err != nil {
+		if err := keystore.Delete(ethcmn.BytesToAddress(addr)); err != nil {
+			return err
+		}
+
+		if err := db.Delete(key, nil); err != nil {
 			return err
 		}
 

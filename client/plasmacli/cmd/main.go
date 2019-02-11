@@ -2,12 +2,16 @@ package cmd
 
 import (
 	"fmt"
+	cli "github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/cmd/keys"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
 )
+
+// default directory
+var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 
 var rootCmd = &cobra.Command{
 	Use:   "plasmacli",
@@ -25,9 +29,15 @@ func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
 	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
-	viper.BindPFlags(rootCmd.Flags())
+	rootCmd.PersistentFlags().StringP(cli.DirFlag, "", homeDir, "directory for plasmacli")
+	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
+		fmt.Println(err)
+	}
 
-	// TODO: Fix this
+	if err := viper.BindPFlags(rootCmd.Flags()); err != nil {
+		fmt.Println(err)
+	}
+
 	viper.Set(client.FlagTrustNode, true)
 	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
 
