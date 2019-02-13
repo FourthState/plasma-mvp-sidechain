@@ -20,6 +20,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"time"
 )
 
 const (
@@ -47,6 +48,7 @@ type PlasmaMVPChain struct {
 	operatorPrivateKey    *ecdsa.PrivateKey
 	operatorAddress       common.Address
 	plasmaContractAddress common.Address
+	blockCommitmentRate   time.Duration
 	nodeURL               string // client that satisfies the web3 interface
 	blockFinality         uint64 // presumed finality bound for the ethereum network
 }
@@ -79,7 +81,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	plasmaClient, err := eth.InitPlasma(app.plasmaContractAddress, ethClient, app.blockFinality, logger,
+	plasmaClient, err := eth.InitPlasma(app.plasmaContractAddress, ethClient, app.blockFinality, app.blockCommitmentRate, logger,
 		app.isOperator, app.operatorPrivateKey)
 	if err != nil {
 		fmt.Println(err)
@@ -144,6 +146,8 @@ func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChai
 func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	// skip if the block is empty
 	if app.txIndex == 0 {
+		// try to commit any headers in the store
+		app.ethConnection.CommitPlasmaHeaders(ctx, app.plasmaStore)
 		return abci.ResponseEndBlock{}
 	}
 
@@ -153,7 +157,7 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 	copy(header[:], ctx.BlockHeader().DataHash)
 	block := plasma.NewBlock(header, app.txIndex, app.feeAmount)
 	plasmaBlockNum := app.plasmaStore.StoreBlock(ctx, tmBlockHeight, block)
-	app.ethConnection.SubmitBlock(block)
+	app.ethConnection.CommitPlasmaHeaders(ctx, app.plasmaStore)
 
 	if app.feeAmount.Sign() != 0 {
 		// add a utxo in the store with position 2^16-1

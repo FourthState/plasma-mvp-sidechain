@@ -5,12 +5,15 @@ import (
 	"fmt"
 	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
 	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"math/big"
 	"sync"
+	"time"
 )
 
 // Plasma holds related unexported members
@@ -19,19 +22,21 @@ type Plasma struct {
 	operatorSession *contracts.PlasmaMVPSession
 	contract        *contracts.PlasmaMVP
 
+	commitmentRate      time.Duration
+	lastBlockSubmission time.Time
+
 	client Client
 	logger log.Logger
 
-	blockNum      *big.Int
-	ethBlockNum   *big.Int
 	finalityBound uint64
 }
 
 // TODO: synching issues when rebooting a full node that contains plasma headers that have not been committed
 
 // InitPlasma binds the go wrapper to the deployed contract. This private key provides authentication for the operator
-func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64, logger log.Logger, isOperator bool, operatorPrivKey *ecdsa.PrivateKey) (*Plasma, error) {
+func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64, commitmentRate time.Duration, logger log.Logger, isOperator bool, operatorPrivKey *ecdsa.PrivateKey) (*Plasma, error) {
 	logger.Info(fmt.Sprintf("binding to contract address 0x%x", contractAddr))
+	logger.Info(fmt.Sprintf("block commitment rate set to %s", commitmentRate))
 	plasmaContract, err := contracts.NewPlasmaMVP(contractAddr, client.ec)
 	if err != nil {
 		return nil, err
@@ -52,16 +57,8 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 				GasLimit: 3141592, // aribitrary. TODO: check this
 			},
 		}
-	}
 
-	ethBlockNum, err := client.LatestBlockNum()
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving latest ethereum block number { %s }", err)
-	}
-
-	lastCommittedBlock, err := plasmaContract.LastCommittedBlock(nil)
-	if err != nil {
-		return nil, fmt.Errorf("contract connection not correctly established { %s }", err)
+		logger.Info("operator mode. authenticated contract session started")
 	}
 
 	plasma := &Plasma{
@@ -70,20 +67,13 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 		client:          client,
 		logger:          logger,
 
-		ethBlockNum:   ethBlockNum,
-		blockNum:      lastCommittedBlock,
+		commitmentRate:      commitmentRate,
+		lastBlockSubmission: time.Now(),
+
 		finalityBound: finalityBound,
 
 		Mutex: &sync.Mutex{},
 	}
-
-	// listen to new ethereum block headers
-	ethCh, err := client.SubscribeToHeads()
-	if err != nil {
-		return nil, fmt.Errorf("could not successfully subscribe to heads: { %s }", err)
-	}
-
-	go watchEthBlocks(plasma, ethCh)
 
 	return plasma, nil
 }
@@ -92,20 +82,52 @@ func (plasma *Plasma) OperatorAddress() (common.Address, error) {
 	return plasma.contract.Operator(nil)
 }
 
-// SubmitBlock proxy. TODO: handle batching with a timmer interrupt
-func (plasma *Plasma) SubmitBlock(block plasmaTypes.Block) error {
-	// only the contract operator can submit blocks
-	if plasma.operatorSession == nil {
+// SubmitBlock proxy. Blocks are committed ever > commitment interval
+func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.PlasmaStore) error {
+	// only the contract operator can submit blocks. The commitment duration must also pass
+	if plasma.operatorSession == nil || time.Since(plasma.lastBlockSubmission).Seconds() < plasma.commitmentRate.Seconds() {
 		return nil
 	}
 
-	plasma.blockNum = plasma.blockNum.Add(plasma.blockNum, big.NewInt(1))
+	plasma.logger.Info("attempting to commit plasma headers...")
 
-	_, err := plasma.operatorSession.SubmitBlock(
-		[][32]byte{block.Header},
-		[]*big.Int{big.NewInt(int64(block.TxnCount))},
-		[]*big.Int{block.FeeAmount},
-		plasma.blockNum)
+	lastCommittedBlock, err := plasma.contract.LastCommittedBlock(nil)
+	if err != nil {
+		plasma.logger.Error("error retrieving the last committed block number")
+		return err
+	}
+
+	firstBlockNum := new(big.Int).Add(lastCommittedBlock, utils.Big1)
+	blockNum := lastCommittedBlock.Add(lastCommittedBlock, utils.Big1)
+
+	var (
+		headers      [][32]byte
+		txnsPerBlock []*big.Int
+		feesPerBlock []*big.Int
+	)
+
+	block, ok := plasmaStore.GetBlock(ctx, blockNum)
+	if !ok { // no blocks to submit
+		plasma.logger.Info("no plasma blocks to commit")
+		return nil
+	}
+
+	for ok {
+		headers = append(headers, block.Header)
+		txnsPerBlock = append(txnsPerBlock, big.NewInt(int64(block.TxnCount)))
+		feesPerBlock = append(feesPerBlock, block.FeeAmount)
+
+		blockNum = blockNum.Add(blockNum, utils.Big1)
+		block, ok = plasmaStore.GetBlock(ctx, blockNum)
+	}
+
+	plasma.logger.Info(fmt.Sprintf("committing %d plasma blocks. first block num: %s", len(headers), firstBlockNum))
+	plasma.lastBlockSubmission = time.Now()
+	_, err = plasma.operatorSession.SubmitBlock(headers, txnsPerBlock, feesPerBlock, firstBlockNum)
+	if err != nil {
+		plasma.logger.Error(fmt.Sprintf("error committing headers { %s }", err))
+		return err
+	}
 
 	return err
 }
@@ -123,11 +145,14 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, bool) {
 	}
 
 	// check the finality bound
-	plasma.Lock()
-	ethBlockNum := plasma.ethBlockNum
-	plasma.Unlock()
+	ethBlockNum, err := plasma.client.LatestBlockNum()
+	if err != nil {
+		plasma.logger.Error(fmt.Sprintf("failed to retrieve the latest ethereum block number { %s }", err))
+		return plasmaTypes.Deposit{}, false
+	}
+
 	if ethBlockNum.Sign() < 0 {
-		plasma.logger.Error(fmt.Sprintf("failed to retreive information about deposit %s", nonce))
+		plasma.logger.Error(fmt.Sprintf("failed to retrieve information about deposit %s", nonce))
 		return plasmaTypes.Deposit{}, false
 	}
 
@@ -171,18 +196,4 @@ func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 	}
 
 	return e.State == 1 || e.State == 3
-}
-
-// keep track of the probabilistic latest ethereum state (reorgs) for finality purposes
-func watchEthBlocks(plasma *Plasma, ch <-chan *types.Header) {
-	plasma.logger.Info("listening to ethereum block headers")
-
-	for header := range ch {
-		plasma.Lock()
-		plasma.ethBlockNum = header.Number
-		plasma.Unlock()
-	}
-
-	// block header subsciprtion should never close unless the daemon is shut off
-	plasma.logger.Error("etheruem block header subscription closed")
 }
