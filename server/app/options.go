@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"strconv"
+	"time"
 )
 
 func SetPlasmaOptionsFromConfig(conf config.PlasmaConfig) func(*PlasmaMVPChain) {
@@ -38,10 +39,16 @@ func SetPlasmaOptionsFromConfig(conf config.PlasmaConfig) func(*PlasmaMVPChain) 
 		panic("invalid contract address. please use hex format")
 	}
 
+	dur, err := time.ParseDuration(conf.PlasmaCommitmentRate)
+	if err != nil {
+		panic("commitment rate must be able to be parsed into a golang Duration type")
+	}
+
 	return func(pc *PlasmaMVPChain) {
 		pc.operatorPrivateKey = privateKey
 		pc.isOperator = conf.IsOperator
 		pc.plasmaContractAddress = common.HexToAddress(conf.EthPlasmaContractAddr)
+		pc.blockCommitmentRate = dur
 		pc.nodeURL = conf.EthNodeURL
 		pc.blockFinality = blockFinality
 	}
