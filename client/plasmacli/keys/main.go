@@ -15,17 +15,10 @@ const (
 var keysCmd = &cobra.Command{
 	Use:   "keys",
 	Short: "Manage local private keys",
-	Long: `Keys allows you to add, import, delete, and view your local keystore
-         
-The default keystore location is $HOME/.plasmacli/keys`,
+	Long:  `Keys allows you to manage your local keystore.`,
 }
 
 func KeysCmd() *cobra.Command {
-	keysCmd.AddCommand(
-		deleteCmd,
-		importCmd,
-		updateCmd,
-	)
 	keystore.InitKeystore(filepath.Join(viper.GetString(cli.DirFlag), "keys"))
 	return keysCmd
 }

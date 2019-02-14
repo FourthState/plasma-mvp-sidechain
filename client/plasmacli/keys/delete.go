@@ -9,12 +9,15 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+func init() {
+	keysCmd.AddCommand(deleteCmd)
+}
+
 var deleteCmd = &cobra.Command{
 	Use:   "delete <name>",
 	Short: "Delete the given address",
-	Long: `Deletes the account from the keystore matching the address provided, if the passphrase
-			is correct.`,
-	Args: cobra.ExactArgs(1),
+	Long:  `Deletes the account from the keystore if the passphrase is correct.`,
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 

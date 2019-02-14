@@ -1,9 +1,8 @@
-package cmd
+package query
 
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
@@ -11,12 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"strings"
 )
-
-func init() {
-	rootCmd.AddCommand(infoCmd)
-	infoCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
-
-}
 
 var infoCmd = &cobra.Command{
 	Use:   "info <address>",

@@ -1,4 +1,4 @@
-package cmd
+package query
 
 import (
 	"fmt"
@@ -14,9 +14,10 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(balanceCmd)
+	queryCmd.AddCommand(balanceCmd)
 }
 
+// TODO: Change to querying account, add flag for getting all info
 var balanceCmd = &cobra.Command{
 	Use:   "balance <address>",
 	Short: "Query Balances",

@@ -24,12 +24,13 @@ var listCmd = &cobra.Command{
 		}
 
 		iter := db.NewIterator(nil, nil)
+		fmt.Printf("NAME:\t\tADDRESS:\n")
 		for iter.Next() {
 			var name string
 			if err := rlp.DecodeBytes(iter.Key(), &name); err != nil {
 				return err
 			}
-			fmt.Printf("NAME: %s\t\tADDRESS: %s\n", name, ethcmn.BytesToAddress(iter.Value()).Hex())
+			printAccount(name, ethcmn.BytesToAddress(iter.Value()))
 		}
 
 		return nil

@@ -1,4 +1,4 @@
-package cmd
+package query
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(blockCmd)
+	queryCmd.AddCommand(blockCmd)
 }
 
 var blockCmd = &cobra.Command{
