@@ -21,6 +21,9 @@ ethereum_operator_privatekey = "{{ .EthOperatorPrivateKey }}"
 # Ethereum plasma contract address
 ethereum_plasma_contract_address = "{{ .EthPlasmaContractAddr }}"
 
+# Plasma block commitment rate. i.e 1m30s, 1m, 1h, etc.
+plasma_block_commitment_rate = "{{ .PlasmaCommitmentRate }}"
+
 # Node URL for eth client
 ethereum_nodeurl = "{{ .EthNodeURL }}"
 
@@ -32,6 +35,7 @@ type PlasmaConfig struct {
 	IsOperator            bool   `mapstructure:"is_operator"`
 	EthOperatorPrivateKey string `mapstructure:"ethereum_operator_privatekey"`
 	EthPlasmaContractAddr string `mapstructure:"ethereum_plasma_contract_address"`
+	PlasmaCommitmentRate  string `mapstructure:"plasma_block_commitment_rate"`
 	EthNodeURL            string `mapstructure:"ethereum_nodeurl"`
 	EthBlockFinality      string `mapstructure:"ethereum_finality"`
 }
@@ -47,7 +51,7 @@ func init() {
 }
 
 func DefaultPlasmaConfig() PlasmaConfig {
-	return PlasmaConfig{false, "", "", "", "0"}
+	return PlasmaConfig{false, "", "", "", "", "0"}
 }
 
 // parses the plasma.toml file and unmarshals it into a Config struct
