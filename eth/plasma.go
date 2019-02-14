@@ -82,7 +82,8 @@ func (plasma *Plasma) OperatorAddress() (common.Address, error) {
 	return plasma.contract.Operator(nil)
 }
 
-// SubmitBlock proxy. Blocks are committed ever > commitment interval
+// CommitPlasmaHeaders will commit all new non-committed headers to the smart contract.
+// the commitmentRate interval must pass since the last commitment
 func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.PlasmaStore) error {
 	// only the contract operator can submit blocks. The commitment duration must also pass
 	if plasma.operatorSession == nil || time.Since(plasma.lastBlockSubmission).Seconds() < plasma.commitmentRate.Seconds() {
