@@ -4,27 +4,18 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/ethereum/go-ethereum/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"math/big"
 	"strings"
-)
-
-const (
-	flagTo           = "to"
-	flagPositions    = "position"
-	flagConfirmSigs0 = "Input0ConfirmSigs"
-	flagConfirmSigs1 = "Input1ConfirmSigs"
-	flagAmounts      = "amounts"
-	flagAddress      = "address"
-	flagSync         = "sync"
 )
 
 func init() {
@@ -36,7 +27,7 @@ func init() {
 	spendCmd.Flags().String(flagConfirmSigs1, "", "Input Confirmation Signatures for second input to be spent (separated by commas)")
 
 	spendCmd.Flags().String(flagAmounts, "", "Amounts to be spent, format: amount1, amount2, fee")
-	spendCmd.Flags().String(flagAddress, "", "Addresses to sign with. One address will be used to sign both inputs if two addresses are not provided (seperated by commas)")
+	spendCmd.Flags().StringP(flagAccount, "a", "", "Account to sign with")
 
 	spendCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	spendCmd.Flags().BoolP(flagSync, "s", false, "wait for transaction commitment synchronously")
@@ -45,37 +36,34 @@ func init() {
 
 var spendCmd = &cobra.Command{
 	Use:   "spend",
-	Short: "Build, Sign, and Send transactions",
+	Short: "Send a transaction spending utxos",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
+		name := viper.GetString(flagAccount)
+
+		db, signer, err := keys.OpenAndGet(name)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
 
 		// validate addresses
-		var toAddrs, signers []common.Address
+		var toAddrs []ethcmn.Address
 		toAddrTokens := strings.Split(strings.TrimSpace(viper.GetString(flagTo)), ",")
-		signerAddrTokens := strings.Split(strings.TrimSpace(viper.GetString(flagAddress)), ",")
 		if len(toAddrTokens) == 0 || len(toAddrTokens) > 2 {
 			return fmt.Errorf("1 or 2 outputs must be specified")
 		}
-		if len(signerAddrTokens) == 0 || len(signerAddrTokens) > 2 {
-			return fmt.Errorf("1 or 2 signers must be provided. Same signer will be used for both inputs if 1 is provided")
-		}
+
 		for _, token := range toAddrTokens {
 			token := strings.TrimSpace(token)
-			if !common.IsHexAddress(token) {
+			if !ethcmn.IsHexAddress(token) {
 				return fmt.Errorf("invalid address provided. please use hex format")
 			}
-			addr := common.HexToAddress(token)
+			addr := ethcmn.HexToAddress(token)
 			if utils.IsZeroAddress(addr) {
 				return fmt.Errorf("cannot spend to the zero address")
 			}
 			toAddrs = append(toAddrs, addr)
-		}
-		for _, token := range signerAddrTokens {
-			token := strings.TrimSpace(token)
-			if !common.IsHexAddress(token) {
-				return fmt.Errorf("invalid address provided. please use hex format")
-			}
-			signers = append(signers, common.HexToAddress(token))
 		}
 
 		// validate confirm signatures
@@ -162,26 +150,20 @@ var spendCmd = &cobra.Command{
 			tx.Output1 = plasma.NewOutput(toAddrs[1], amounts[1])
 			tx.Fee = amounts[2]
 		} else {
-			tx.Output1 = plasma.NewOutput(common.Address{}, nil)
+			tx.Output1 = plasma.NewOutput(ethcmn.Address{}, nil)
 			tx.Fee = amounts[1]
 		}
 
 		// create and fill in the signatures
 		txHash := utils.ToEthSignedMessageHash(tx.TxHash())
 		var signature [65]byte
-		sig, err := keystore.SignHashWithPassphrase(signers[0], txHash)
+		sig, err := keystore.SignHashWithPassphrase(signer, txHash)
 		if err != nil {
 			return err
 		}
 		copy(signature[:], sig)
 		tx.Input0.Signature = signature
 		if len(inputs) > 1 {
-			var signer common.Address
-			if len(signers) > 1 {
-				signer = signers[1]
-			} else {
-				signer = signers[0]
-			}
 			sig, err := keystore.SignHashWithPassphrase(signer, txHash)
 			if err != nil {
 				return err

@@ -13,6 +13,18 @@ import (
 // default directory
 var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 
+// Flags
+const (
+	flagAccount      = "account"
+	flagOwner        = "owner"
+	flagTo           = "to"
+	flagPositions    = "position"
+	flagConfirmSigs0 = "Input0ConfirmSigs"
+	flagConfirmSigs1 = "Input1ConfirmSigs"
+	flagAmounts      = "amounts"
+	flagSync         = "sync"
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "plasmacli",
 	Short: "Plasma Client",

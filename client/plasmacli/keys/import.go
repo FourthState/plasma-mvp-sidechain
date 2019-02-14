@@ -19,7 +19,7 @@ const (
 func init() {
 	keysCmd.AddCommand(importCmd)
 	importCmd.Flags().StringP(flagPrivateKey, "P", "", "read the the private key directly from the argument in hexadecimal format")
-	importCmd.Flags().String(flagFile, "", "read the private key from the specified keyfile")
+	importCmd.Flags().String(flagFile, "", "read the private key from the specified keyfile (must be absolute path)")
 	viper.BindPFlags(importCmd.Flags())
 }
 
@@ -59,11 +59,13 @@ You must remember this passphrase to unlock your account in the future.
 			}
 		}
 
-		dir := accountDir()
+		// retieve account
+		dir := AccountDir()
 		db, err := leveldb.OpenFile(dir, nil)
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 
 		acct, err := keystore.ImportECDSA(key)
 		if err != nil {

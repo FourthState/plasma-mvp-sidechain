@@ -1,29 +1,24 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/ethereum/go-ethereum/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"strings"
 )
 
-const (
-	flagSinger = "signer"
-	flagOwner  = "owner"
-)
-
 func init() {
 	rootCmd.AddCommand(signCmd)
-	signCmd.Flags().String(flagSinger, "", "Address used to sign the confirmation signature (required)")
+	signCmd.Flags().StringP(flagAccount, "a", "", "Account to sign the confirmation signature with (required)")
 	signCmd.Flags().String(flagOwner, "", "Owner of the output (required)")
 	viper.BindPFlags(signCmd.Flags())
 }
@@ -41,17 +36,20 @@ var signCmd = &cobra.Command{
 			return err
 		}
 
-		// parse flags
-		fromStr := utils.RemoveHexPrefix(strings.TrimSpace(viper.GetString(flagSinger)))
-		if fromStr == "" || !common.IsHexAddress(fromStr) {
-			return errors.New("must provide the address to sign with using the --from flag in hex format")
+		name := viper.GetString(flagAccount)
+
+		// retrieve account
+		db, signer, err := keys.OpenAndGet(name)
+		if err != nil {
+			return err
 		}
+		defer db.Close()
+
 		ownerStr := utils.RemoveHexPrefix(strings.TrimSpace(viper.GetString(flagOwner)))
-		if ownerStr == "" || !common.IsHexAddress(ownerStr) {
+		if ownerStr == "" || !ethcmn.IsHexAddress(ownerStr) {
 			return fmt.Errorf("must provide the address that owns position %s using the --owner flag in hex format", position)
 		}
-		ownerAddr := common.HexToAddress(ownerStr)
-		signerAddr := common.HexToAddress(fromStr)
+		ownerAddr := ethcmn.HexToAddress(ownerStr)
 
 		// retrieve the new output
 		utxo := store.UTXO{}
@@ -66,11 +64,7 @@ var signCmd = &cobra.Command{
 
 		// create the signature
 		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
-		acct, err := keystore.Find(signerAddr)
-		if err != nil {
-			return err
-		}
-		sig, err := keystore.SignHashWithPassphrase(acct.Address, hash)
+		sig, err := keystore.SignHashWithPassphrase(signer, hash)
 		if err != nil {
 			return err
 		}

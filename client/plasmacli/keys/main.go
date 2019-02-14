@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	AccountDir = "accounts.ldb"
+	accountDir = "accounts.ldb"
 )
 
 var keysCmd = &cobra.Command{

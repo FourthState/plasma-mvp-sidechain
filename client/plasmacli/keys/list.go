@@ -17,11 +17,14 @@ var listCmd = &cobra.Command{
 	Short: "List all accounts",
 	Long:  "Return a list of all account addresses stored by the local keystore",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		dir := accountDir()
+		dir := AccountDir()
+
+		// retrieve account
 		db, err := leveldb.OpenFile(dir, nil)
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 
 		iter := db.NewIterator(nil, nil)
 		fmt.Printf("NAME:\t\tADDRESS:\n")

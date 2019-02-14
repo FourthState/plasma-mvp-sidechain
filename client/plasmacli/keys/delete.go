@@ -21,11 +21,13 @@ var deleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		dir := accountDir()
+		// retrieve account
+		dir := AccountDir()
 		db, err := leveldb.OpenFile(dir, nil)
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 
 		key, err := rlp.EncodeToBytes(name)
 		if err != nil {
