@@ -2,13 +2,19 @@ package keystore
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"github.com/bgentry/speakeasy"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	isatty "github.com/mattn/go-isatty"
+	"github.com/spf13/viper"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -18,19 +24,241 @@ const (
 	NewPassphrasePromptRepeat = "Repeat passphrase:"
 
 	PassphrasePrompt = "Enter passphrase:"
+
+	accountDir = "accounts.ldb"
+	keysDir    = "keys"
+
+	DirFlag = "directory"
 )
 
 var ks *keystore.KeyStore
 
 // initialize a keystore in the specified directory
-func InitKeystore(dir string) {
+func InitKeystore() {
+	dir := getDir(keysDir)
 	if ks == nil {
 		ks = keystore.NewKeyStore(dir, keystore.StandardScryptN, keystore.StandardScryptP)
 	}
 }
 
-func Accounts() []accounts.Account {
-	return ks.Accounts()
+// Return iterator over accounts
+// returns db so db.close can be called
+func AccountIterator() (iterator.Iterator, *leveldb.DB) {
+	dir := getDir(accountDir)
+	fmt.Println(dir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		fmt.Printf("FAILURE: %v", err)
+		return nil, nil
+	}
+
+	return db.NewIterator(nil, nil), db
+}
+
+// Add a new account to the keystore
+// Add account name and address to leveldb
+func Add(name string) (ethcmn.Address, error) {
+	dir := getDir(accountDir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+	defer db.Close()
+
+	key, err := rlp.EncodeToBytes(name)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	if _, err = db.Get(key, nil); err == nil {
+		return ethcmn.Address{}, errors.New("you are trying to override an existing private key name. Please delete it first")
+	}
+
+	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	acc, err := ks.NewAccount(password)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	if err = db.Put(key, acc.Address.Bytes(), nil); err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	return acc.Address, nil
+}
+
+// Retrieve the address of an account
+func Get(name string) (ethcmn.Address, error) {
+	dir := getDir(accountDir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+	defer db.Close()
+
+	key, err := rlp.EncodeToBytes(name)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	addr, err := db.Get(key, nil)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	return ethcmn.BytesToAddress(addr), nil
+}
+
+// Remove an account from the local keystore
+// and the leveldb
+func Delete(name string) error {
+	dir := getDir(accountDir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	key, err := rlp.EncodeToBytes(name)
+	if err != nil {
+		return err
+	}
+
+	addr, err := db.Get(key, nil)
+	if err != nil {
+		return err
+	}
+
+	password, err := promptPassword(PassphrasePrompt, "")
+	if err != nil {
+		return err
+	}
+
+	acc := accounts.Account{
+		Address: ethcmn.BytesToAddress(addr),
+	}
+
+	return ks.Delete(acc, password)
+}
+
+// Update either the name of an account
+// or the passphrase for an account
+func Update(name string, updatedName string) error {
+	dir := getDir(accountDir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	key, err := rlp.EncodeToBytes(name)
+	if err != nil {
+		return err
+	}
+
+	addr, err := db.Get(key, nil)
+	if err != nil {
+		return err
+	}
+
+	if updatedName != "" {
+		// Update key name
+		if err = db.Delete(key, nil); err != nil {
+			return err
+		}
+
+		key, err = rlp.EncodeToBytes(updatedName)
+		if err != nil {
+			return err
+		}
+
+		if err = db.Put(key, addr, nil); err != nil {
+			return err
+		}
+		fmt.Println("Account name has been updated.")
+	} else {
+		// Update passphrase
+		password, err := promptPassword(PassphrasePrompt, "")
+		updatedPassword, err := promptPassword(NewPassphrasePrompt, "")
+		if err != nil {
+			return err
+		}
+
+		acc := accounts.Account{
+			Address: ethcmn.BytesToAddress(addr),
+		}
+		err = ks.Update(acc, password, updatedPassword)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Account passphrase has been updated.")
+	}
+
+	return nil
+}
+
+// Import a private key with an account name
+func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
+	dir := getDir(accountDir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+	defer db.Close()
+
+	key, err := rlp.EncodeToBytes(name)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	acct, err := ks.ImportECDSA(pk, password)
+	if err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	if err = db.Put(key, acct.Address.Bytes(), nil); err != nil {
+		return ethcmn.Address{}, err
+	}
+
+	return acct.Address, nil
+
+}
+
+func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
+	addr, err := Get(signer)
+	if err != nil {
+		return nil, err
+	}
+
+	acc := accounts.Account{
+		Address: addr,
+	}
+
+	password, err := promptPassword(PassphrasePrompt, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return ks.SignHashWithPassphrase(acc, password, hash)
+}
+
+// Return the directory specified by the --directory flag
+// with the passed in string appended to the end
+func getDir(location string) string {
+	dir := viper.GetString(DirFlag)
+	if dir[len(dir)-1] != '/' {
+		dir = filepath.Join(dir, "/")
+	}
+	return os.ExpandEnv(filepath.Join(dir, location))
 }
 
 // Prompts for a password one-time
@@ -61,76 +289,4 @@ func promptPassword(prompt, repeatPrompt string) (string, error) {
 	}
 
 	return password0, nil
-}
-
-func NewAccount() (common.Address, error) {
-	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	acc, err := ks.NewAccount(password)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	return acc.Address, nil
-}
-
-func Find(addr common.Address) (accounts.Account, error) {
-	acc := accounts.Account{
-		Address: addr,
-	}
-
-	return ks.Find(acc)
-}
-
-func Delete(addr common.Address) error {
-	password, err := promptPassword(PassphrasePrompt, "")
-	if err != nil {
-		return err
-	}
-
-	acc := accounts.Account{
-		Address: addr,
-	}
-
-	return ks.Delete(acc, password)
-}
-
-func Update(addr common.Address) error {
-	password, err := promptPassword(PassphrasePrompt, "")
-	newPassword, err := promptPassword(NewPassphrasePrompt, "")
-	if err != nil {
-		return err
-	}
-
-	acc := accounts.Account{
-		Address: addr,
-	}
-
-	return ks.Update(acc, password, newPassword)
-}
-
-func ImportECDSA(key *ecdsa.PrivateKey) (accounts.Account, error) {
-	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
-	if err != nil {
-		return accounts.Account{}, err
-	}
-
-	return ks.ImportECDSA(key, password)
-}
-
-func SignHashWithPassphrase(signer common.Address, hash []byte) ([]byte, error) {
-	acc, err := Find(signer)
-	if err != nil {
-		return nil, err
-	}
-
-	password, err := promptPassword(PassphrasePrompt, "")
-	if err != nil {
-		return nil, err
-	}
-
-	return ks.SignHashWithPassphrase(acc, password, hash)
 }

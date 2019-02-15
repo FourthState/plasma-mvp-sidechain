@@ -2,87 +2,71 @@ package keys
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const (
-	flagPrivateKey = "privatekey"
-	flagFile       = "file"
+	flagFile = "file"
 )
 
 func init() {
 	keysCmd.AddCommand(importCmd)
-	importCmd.Flags().StringP(flagPrivateKey, "P", "", "read the the private key directly from the argument in hexadecimal format")
 	importCmd.Flags().String(flagFile, "", "read the private key from the specified keyfile (must be absolute path)")
 	viper.BindPFlags(importCmd.Flags())
 }
 
 var importCmd = &cobra.Command{
-	Use:   "import <name>",
+	Use:   "import <name> <privatekey>",
 	Short: "Import a private key",
-	Long: `
-plasmacli import <name> --file <keyfile>
-plasmacli import <name> -P <private key>
+	Long: `Imports an unencrypted private key read in hexadecimal format and creates a new account on the sidechain.
+Prints the address. 
 
-Imports an unencrypted private key from <keyfile> and creates a new account on the sidechain.
-Prints the address. If the privatekey flag is set, the private key will be read directly from the argument
-in hexadecimal format.
+Usage:
+	plasmacli import <name> <privatekey>
+	plasmacli import <name> --file <filepath>
 
+If the file flag is set:
 The keyfile is assumed to contain an unencrypted private key in hexadecimal format.
 The keyfile must also be an absolute path
 
 The account is saved in encrypted format, you are prompted for a passphrase.
 You must remember this passphrase to unlock your account in the future.
 `,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
 		var key *ecdsa.PrivateKey
 		var err error
-		privateKey := viper.GetString(flagPrivateKey)
-		if privateKey != "" {
-			key, err = crypto.HexToECDSA(privateKey)
-			if err != nil {
-				return fmt.Errorf("failed parsing private key: %s", err)
-			}
-		} else {
-			key, err = crypto.LoadECDSA(viper.GetString(flagFile))
+		file := viper.GetString(flagFile)
+		if file != "" {
+			key, err = crypto.LoadECDSA(file)
 			if err != nil {
 				return fmt.Errorf("failed loading the keyfile : %s", err)
 			}
+		} else {
+			if len(args) < 2 {
+				return errors.New("Please provide an unencrytped private if the --file flag is not set")
+			}
+			key, err = crypto.HexToECDSA(args[1])
+			if err != nil {
+				return fmt.Errorf("failed parsing private key: %s", err)
+			}
+
 		}
 
-		// retieve account
-		dir := AccountDir()
-		db, err := leveldb.OpenFile(dir, nil)
+		address, err := ks.ImportECDSA(name, key)
 		if err != nil {
-			return err
-		}
-		defer db.Close()
-
-		acct, err := keystore.ImportECDSA(key)
-		if err != nil {
-			return err
-		}
-
-		nameKey, err := rlp.EncodeToBytes(name)
-		if err != nil {
-			return err
-		}
-
-		if err = db.Put(nameKey, acct.Address.Bytes(), nil); err != nil {
 			return err
 		}
 
 		fmt.Println("Successfully imported.")
-		printAccount(name, acct.Address)
+		fmt.Printf("NAME: %s\t\tADDRESS: %v\n", name, address.Hex())
 		return nil
 	},
 }

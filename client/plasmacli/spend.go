@@ -3,8 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
-	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -20,14 +19,14 @@ import (
 
 func init() {
 	rootCmd.AddCommand(spendCmd)
-	spendCmd.Flags().String(flagTo, "", "Addresses sending to (separated by commas)")
 	spendCmd.Flags().String(flagPositions, "", "UTXO Positions to be spent, format: (blknum0.txindex0.oindex0.depositnonce0)::(blknum1.txindex1.oindex1.depositnonce1)")
 
 	spendCmd.Flags().String(flagConfirmSigs0, "", "Input Confirmation Signatures for first input to be spent (separated by commas)")
 	spendCmd.Flags().String(flagConfirmSigs1, "", "Input Confirmation Signatures for second input to be spent (separated by commas)")
 
-	spendCmd.Flags().String(flagAmounts, "", "Amounts to be spent, format: amount1, amount2, fee")
-	spendCmd.Flags().StringP(flagAccount, "a", "", "Account to sign with")
+	spendCmd.Flags().String(flagFee, "", "Fee to be spent")
+	spendCmd.Flags().StringP(flagAccount, "a", "", "Accounts to sign with if using different accounts")
+	spendCmd.Flags().StringP(flagInputs, "i", "", "Input amounts to be spent if using multiple accounts")
 
 	spendCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	spendCmd.Flags().BoolP(flagSync, "s", false, "wait for transaction commitment synchronously")
@@ -35,21 +34,35 @@ func init() {
 }
 
 var spendCmd = &cobra.Command{
-	Use:   "spend",
+	Use:   "spend <to> <amount> <account>",
 	Short: "Send a transaction spending utxos",
+	Long: `Example usage:
+plasmacli <to> <amount> <account>
+plasmacli <to,to> <amount,amount> <account> --fee <fee>
+plasmacli <to> <amount>  -a <account>,<account> -in <amount>,<amount>`,
+	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
-		name := viper.GetString(flagAccount)
 
-		db, signer, err := keys.OpenAndGet(name)
-		if err != nil {
-			return err
+		// parse accounts
+		var accs []string
+		names := viper.GetString(flagAccount)
+		if names != "" {
+			accTokens := strings.Split(strings.TrimSpace(names), ",")
+			if len(accTokens) == 0 || len(accTokens) > 2 {
+				return fmt.Errorf("1 or 2 accounts must be specified")
+			}
+
+			for _, token := range accTokens {
+				accs = append(accs, strings.TrimSpace(token))
+			}
+		} else {
+			accs = append(accs, args[2])
 		}
-		defer db.Close()
 
 		// validate addresses
 		var toAddrs []ethcmn.Address
-		toAddrTokens := strings.Split(strings.TrimSpace(viper.GetString(flagTo)), ",")
+		toAddrTokens := strings.Split(strings.TrimSpace(args[0]), ",")
 		if len(toAddrTokens) == 0 || len(toAddrTokens) > 2 {
 			return fmt.Errorf("1 or 2 outputs must be specified")
 		}
@@ -121,7 +134,7 @@ var spendCmd = &cobra.Command{
 
 		// validate amounts and fee
 		var amounts []*big.Int // [amount0, amount1, fee]
-		amountTokens := strings.Split(strings.TrimSpace(viper.GetString(flagAmounts)), ",")
+		amountTokens := strings.Split(strings.TrimSpace(args[1]), ",")
 		if len(amountTokens) != 2 && len(amountTokens) != 3 {
 			return fmt.Errorf("number of amounts must equal the number of outputs in addition to the fee")
 		}
@@ -155,16 +168,20 @@ var spendCmd = &cobra.Command{
 		}
 
 		// create and fill in the signatures
+		signer := accs[0]
 		txHash := utils.ToEthSignedMessageHash(tx.TxHash())
 		var signature [65]byte
-		sig, err := keystore.SignHashWithPassphrase(signer, txHash)
+		sig, err := ks.SignHashWithPassphrase(signer, txHash)
 		if err != nil {
 			return err
 		}
 		copy(signature[:], sig)
 		tx.Input0.Signature = signature
 		if len(inputs) > 1 {
-			sig, err := keystore.SignHashWithPassphrase(signer, txHash)
+			if len(accs) > 2 {
+				signer = accs[1]
+			}
+			sig, err := ks.SignHashWithPassphrase(signer, txHash)
 			if err != nil {
 				return err
 			}

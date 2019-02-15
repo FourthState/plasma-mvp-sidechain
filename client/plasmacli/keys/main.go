@@ -1,15 +1,8 @@
 package keys
 
 import (
-	cli "github.com/FourthState/plasma-mvp-sidechain/client"
-	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"path/filepath"
-)
-
-const (
-	accountDir = "accounts.ldb"
 )
 
 var keysCmd = &cobra.Command{
@@ -19,6 +12,6 @@ var keysCmd = &cobra.Command{
 }
 
 func KeysCmd() *cobra.Command {
-	keystore.InitKeystore(filepath.Join(viper.GetString(cli.DirFlag), "keys"))
+	ks.InitKeystore()
 	return keysCmd
 }

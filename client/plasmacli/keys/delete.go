@@ -2,11 +2,8 @@ package keys
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
-	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/spf13/cobra"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 func init() {
@@ -21,30 +18,7 @@ var deleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		// retrieve account
-		dir := AccountDir()
-		db, err := leveldb.OpenFile(dir, nil)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
-		key, err := rlp.EncodeToBytes(name)
-		if err != nil {
-			return err
-		}
-
-		addr, err := db.Get(key, nil)
-		if err != nil {
-			return err
-		}
-
-		// delete from the keystore
-		if err := keystore.Delete(ethcmn.BytesToAddress(addr)); err != nil {
-			return err
-		}
-
-		if err := db.Delete(key, nil); err != nil {
+		if err := ks.Delete(name); err != nil {
 			return err
 		}
 

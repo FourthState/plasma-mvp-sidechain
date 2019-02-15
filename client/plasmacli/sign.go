@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
-	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -38,13 +37,6 @@ var signCmd = &cobra.Command{
 
 		name := viper.GetString(flagAccount)
 
-		// retrieve account
-		db, signer, err := keys.OpenAndGet(name)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
 		ownerStr := utils.RemoveHexPrefix(strings.TrimSpace(viper.GetString(flagOwner)))
 		if ownerStr == "" || !ethcmn.IsHexAddress(ownerStr) {
 			return fmt.Errorf("must provide the address that owns position %s using the --owner flag in hex format", position)
@@ -64,7 +56,7 @@ var signCmd = &cobra.Command{
 
 		// create the signature
 		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
-		sig, err := keystore.SignHashWithPassphrase(signer, hash)
+		sig, err := ks.SignHashWithPassphrase(name, hash)
 		if err != nil {
 			return err
 		}
