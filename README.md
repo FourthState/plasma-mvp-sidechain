@@ -32,7 +32,7 @@ Learn more about plasma on [learnplasma.org](https://www.learnplasma.org/en/)!
 Pull the latest version of the develop branch.
 Run `dep ensure -vendor-only`
 
-Plasma Node:
+***Plasma Node:***
 
 - Navigate to `server/plasmad/` directory
 - Run `go install` via command line
@@ -45,7 +45,7 @@ Use the `--directory <dirpath>` to specify a location where you want your plasma
 Navigate to `<dirpath>/config/` (default is `$HOME/.plasmad/config`), set configuration parameters in config.toml and plasma.toml.
 Run `plasmad start` via command line to begin running the plasma node. 
 
-Plasma Light Client:
+***Plasma Client:***
 
 - Navigate to `client/plasmacli/` directory
 - Run `go install` via command line
