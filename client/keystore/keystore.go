@@ -64,11 +64,7 @@ func Add(name string) (ethcmn.Address, error) {
 	}
 	defer db.Close()
 
-	key, err := rlp.EncodeToBytes(name)
-	if err != nil {
-		return ethcmn.Address{}, err
-	}
-
+	key := []byte(name)
 	if _, err = db.Get(key, nil); err == nil {
 		return ethcmn.Address{}, errors.New("you are trying to override an existing private key name. Please delete it first")
 	}
@@ -99,12 +95,7 @@ func Get(name string) (ethcmn.Address, error) {
 	}
 	defer db.Close()
 
-	key, err := rlp.EncodeToBytes(name)
-	if err != nil {
-		return ethcmn.Address{}, err
-	}
-
-	addr, err := db.Get(key, nil)
+	addr, err := db.Get([]byte(name), nil)
 	if err != nil {
 		return ethcmn.Address{}, err
 	}
@@ -122,12 +113,7 @@ func Delete(name string) error {
 	}
 	defer db.Close()
 
-	key, err := rlp.EncodeToBytes(name)
-	if err != nil {
-		return err
-	}
-
-	addr, err := db.Get(key, nil)
+	addr, err := db.Get([]byte(name), nil)
 	if err != nil {
 		return err
 	}
@@ -154,11 +140,7 @@ func Update(name string, updatedName string) error {
 	}
 	defer db.Close()
 
-	key, err := rlp.EncodeToBytes(name)
-	if err != nil {
-		return err
-	}
-
+	key := []byte(name)
 	addr, err := db.Get(key, nil)
 	if err != nil {
 		return err
@@ -209,11 +191,6 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 	}
 	defer db.Close()
 
-	key, err := rlp.EncodeToBytes(name)
-	if err != nil {
-		return ethcmn.Address{}, err
-	}
-
 	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
 	if err != nil {
 		return ethcmn.Address{}, err
@@ -224,7 +201,7 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 		return ethcmn.Address{}, err
 	}
 
-	if err = db.Put(key, acct.Address.Bytes(), nil); err != nil {
+	if err = db.Put([]byte(name), acct.Address.Bytes(), nil); err != nil {
 		return ethcmn.Address{}, err
 	}
 

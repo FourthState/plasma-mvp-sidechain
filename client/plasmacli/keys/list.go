@@ -5,7 +5,6 @@ import (
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 )
 
@@ -26,11 +25,7 @@ var listCmd = &cobra.Command{
 		defer db.Close()
 		fmt.Printf("NAME:\t\tADDRESS:\n")
 		for iter.Next() {
-			var name string
-			if err := rlp.DecodeBytes(iter.Key(), &name); err != nil {
-				return err
-			}
-			fmt.Printf("%s\t\t0x%x\n", name, ethcmn.BytesToAddress(iter.Value()))
+			fmt.Printf("%s\t\t0x%x\n", string(iter.Key()), ethcmn.BytesToAddress(iter.Value()))
 		}
 		iter.Release()
 
