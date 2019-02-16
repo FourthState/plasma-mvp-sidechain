@@ -9,31 +9,41 @@ master	  | [![Build Status](https://travis-ci.org/FourthState/plasma-mvp-sidecha
 
 This is the latest [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) version.  
 
-**Note**: This sidechain is being constructed to be compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain/master)  
+**Note**: This sidechain is being constructed to be compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain)  
 
-## Overview
-As a layer 2 scaling solution, Plasma has two major components: verification and computation. Verification is handled by the rootchain contract which resolves any disputes and distributes funds accordingly. 
+## What is Plasma?
+Plasma has two major components: verification and computation. 
+Verification is handled by the rootchain smart contract, which resolves any disputes and distributes funds accordingly. 
 
-Computation is handled separately by a sidechain. This sidechain leverages the Cosmos SDK to create a scalable and flexible blockchain, that can maintain it's security through reporting merkle roots to the root chain. We will be using [Tendermint](https://github.com/tendermint/tendermint) for consensus on this blockchain. 
+Computation is handled separately by a sidechain, which leverages the Cosmos SDK to create a modular and flexible blockchain.
+This sidechain maintains its security through reporting proofs via merkle roots to the Ethereum mainchain. 
+We will be using [Tendermint](https://github.com/tendermint/tendermint) as a consensus algorithm.
 
-We are using a UTXO model for this blockchain. This allows us to do secure and compact proofs when interacting with the rootchain contract. 
+Plasma MVP utilizes a UTXO model, which allows for secure and compact proofs when interacting with the rootchain smart contract. 
 
-## Starting a sidechain
+Learn more about plasma on [learnplasma.org](https://www.learnplasma.org/en/)!
 
-In order to run a sidechain with tendermint consensus and a client to form transaction, a plasma node and light client will need to be initialized. 
+## Quick Start
 
-**Note**: The following assumes you have [golang](https://golang.org/) properly setup and all dependecies have already been installed. See [Contribution Guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md) for more information.
+**Requirements**: 
+- [golang](https://golang.org/)
+- [dep](https://github.com/golang/dep)
+
+Pull the latest version of the develop branch.
+Run `dep ensure -vendor-only`
 
 Plasma Node:
 
-- Navigate to `client/plasmad/` directory
+- Navigate to `server/plasmad/` directory
 - Run `go install` via command line
 
 The plasma node (plasmad) is now installed and can be called from any directory with `plasmad`
 
 Run `plasmad init` via command line to start an instance of a plasma node with a connection to a tendermint validator.
+Use the `--directory <dirpath>` to specify a location where you want your plasma node to exist.  
 
-Run `plasmad start` via command line to begin running the plasma node. You should see empty blocks being proposed and committed.
+Navigate to `<dirpath>/config/` (default is `$HOME/.plasmad/config`), set configuration parameters in config.toml and plasma.toml.
+Run `plasmad start` via command line to begin running the plasma node. 
 
 Plasma Light Client:
 
@@ -41,8 +51,6 @@ Plasma Light Client:
 - Run `go install` via command line
 
 Use `plasmacli` to run any of the commands for this light client
-
-The light client uses the Ethereum keystore to create and store passphrase encrypted keys in `$HOME/.plasmacli/keys/`
 
 ### dep ensure 
 When building the sidechain, go dep is used to manage dependencies. 
@@ -64,7 +72,7 @@ To fix this locally, add the following in Gopkg.lock under `crypto/secp256k1` an
 
 Run `dep ensure -vendor-only`
 
-Your vendor folder should now contain all the necessary dependencies, there is no need to run `dep ensure` again. 
+Your vendor folder should now contain all the necessary dependencies, there is no need to run `dep ensure`. 
   
 ### Plasma Architecture 
 See our [research repository](https://github.com/FourthState/plasma-research) for architectural explanations of our Plasma implementation. 
