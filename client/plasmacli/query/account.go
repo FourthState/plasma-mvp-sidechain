@@ -2,7 +2,7 @@ package query
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -24,11 +24,10 @@ var balanceCmd = &cobra.Command{
 		ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
 		name := args[0]
 
-		db, addr, err := keys.OpenAndGet(name)
+		addr, err := ks.Get(name)
 		if err != nil {
 			return err
 		}
-		defer db.Close()
 
 		res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
 		if err != nil {
