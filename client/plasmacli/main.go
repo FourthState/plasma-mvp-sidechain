@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
+	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -57,7 +58,7 @@ func init() {
 	viper.Set(client.FlagTrustNode, true)
 	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
 
-	rootCmd.AddCommand(keys.KeysCmd())
+	rootCmd.AddCommand(keys.KeysCmd(), query.QueryCmd())
 }
 
 // initConfig reads in config file and ENV variables if set
