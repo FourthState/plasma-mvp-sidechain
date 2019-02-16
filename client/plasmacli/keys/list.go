@@ -25,7 +25,7 @@ var listCmd = &cobra.Command{
 		defer db.Close()
 		fmt.Printf("NAME:\t\tADDRESS:\n")
 		for iter.Next() {
-			fmt.Printf("%s\t\t0x%x\n", string(iter.Key()), ethcmn.BytesToAddress(iter.Value()))
+			fmt.Printf("%s\t\t0x%x\n", iter.Key(), ethcmn.BytesToAddress(iter.Value()))
 		}
 		iter.Release()
 
