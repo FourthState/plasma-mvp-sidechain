@@ -39,8 +39,8 @@ Run `dep ensure -vendor-only`
 
 The plasma node (plasmad) is now installed and can be called from any directory with `plasmad`
 
-Run `plasmad init` via command line to start an instance of a plasma node with a connection to a tendermint validator.
-Use the `--directory <dirpath>` to specify a location where you want your plasma node to exist.  
+Run `plasmad init` to start an instance of a plasma node.
+Use the `--home <dirpath>` to specify a location where you want your plasma node to exist.
 
 Navigate to `<dirpath>/config/` (default is `$HOME/.plasmad/config`), set configuration parameters in config.toml and plasma.toml.
 Run `plasmad start` via command line to begin running the plasma node. 
@@ -53,7 +53,7 @@ Run `plasmad start` via command line to begin running the plasma node.
 Use `plasmacli` to run any of the commands for this light client
 
 ### dep ensure 
-When building the sidechain, go dep is used to manage dependencies. 
+When building the sidechain, dep is used to manage dependencies.
 Running `dep ensure` followed by `go build` will result in the following output:
 
 ```
