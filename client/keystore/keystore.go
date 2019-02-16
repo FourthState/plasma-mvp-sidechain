@@ -45,7 +45,6 @@ func InitKeystore() {
 // returns db so db.close can be called
 func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	dir := getDir(accountDir)
-	fmt.Println(dir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		fmt.Printf("FAILURE: %v", err)

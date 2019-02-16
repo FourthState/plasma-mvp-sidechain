@@ -30,7 +30,7 @@ var listCmd = &cobra.Command{
 			if err := rlp.DecodeBytes(iter.Key(), &name); err != nil {
 				return err
 			}
-			fmt.Printf("%s\t\t%v\n", name, ethcmn.BytesToAddress(iter.Value()).Hex())
+			fmt.Printf("%s\t\t0x%x\n", name, ethcmn.BytesToAddress(iter.Value()))
 		}
 		iter.Release()
 
