@@ -2,13 +2,16 @@ package main
 
 import (
 	"fmt"
+	config "github.com/FourthState/plasma-mvp-sidechain/client"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
+	"path/filepath"
 )
 
 // default directory
@@ -58,7 +61,17 @@ func init() {
 	viper.Set(client.FlagTrustNode, true)
 	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
 
-	rootCmd.AddCommand(keys.KeysCmd(), query.QueryCmd())
+	viper.AddConfigPath(homeDir)
+	plasmaDir := filepath.Join(homeDir, "plasma.toml")
+	if _, err := os.Stat(plasmaDir); os.IsNotExist(err) {
+		config.WritePlasmaConfigFile(plasmaDir, config.DefaultPlasmaConfig())
+	}
+
+	rootCmd.AddCommand(
+		keys.KeysCmd(),
+		query.QueryCmd(),
+		eth.EthCmd(),
+	)
 }
 
 // initConfig reads in config file and ENV variables if set

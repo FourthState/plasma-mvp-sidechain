@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -225,6 +226,45 @@ func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
 	}
 
 	return ks.SignHashWithPassphrase(acc, password, hash)
+}
+
+func GetKey(name string) (*ecdsa.PrivateKey, error) {
+	dir := getDir(accountDir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	addr, err := db.Get([]byte(name), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	acc, err := ks.Find(
+		accounts.Account{
+			Address: ethcmn.BytesToAddress(addr),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	bz, err := ioutil.ReadFile(acc.URL.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	pass, err := promptPassword(PassphrasePrompt, "")
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := keystore.DecryptKey(bz, pass)
+	if err != nil {
+		return nil, err
+	}
+	return key.PrivateKey, nil
 }
 
 // Return the directory specified by the --directory flag
