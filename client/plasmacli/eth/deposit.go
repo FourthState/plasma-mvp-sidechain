@@ -26,7 +26,7 @@ var depositCmd = &cobra.Command{
 
 		amt, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
-			return fmt.Errorf("Could not parse specified amount: %v", err)
+			return fmt.Errorf("could not parse specified amount: %v", err)
 		}
 
 		opts := rc.operatorSession.TransactOpts

@@ -18,6 +18,12 @@ import (
 	"path/filepath"
 )
 
+// Flags
+const (
+	allF   = "all"
+	limitF = "limit"
+)
+
 type Plasma struct {
 	ec *ethclient.Client
 
@@ -36,7 +42,6 @@ var ethCmd = &cobra.Command{
 }
 
 func EthCmd() *cobra.Command {
-
 	return ethCmd
 }
 
