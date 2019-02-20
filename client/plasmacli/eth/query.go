@@ -5,9 +5,10 @@ import (
 )
 
 func init() {
-	ethCmd.AddCommand(ethQueryCmd)
+	ethCmd.AddCommand(queryCmd)
 }
 
-var ethQueryCmd = &cobra.Command{
-	Use: "query",
+var queryCmd = &cobra.Command{
+	Use:   "query",
+	Short: "Query for rootchain related information",
 }

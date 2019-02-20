@@ -71,6 +71,7 @@ func init() {
 		keys.KeysCmd(),
 		query.QueryCmd(),
 		eth.EthCmd(),
+		eth.ProveCmd(),
 	)
 }
 

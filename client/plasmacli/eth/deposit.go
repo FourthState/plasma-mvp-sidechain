@@ -2,12 +2,13 @@ package eth
 
 import (
 	"fmt"
+	"math/big"
+	"strconv"
+
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
-	"math/big"
-	"strconv"
 )
 
 func init() {
@@ -17,6 +18,7 @@ func init() {
 var depositCmd = &cobra.Command{
 	Use:   "deposit <amount> <account>",
 	Short: "Deposit to rootchain contract",
+	Long:  `Deposit to the rootchain contract as specified in plasma.toml.`,
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key, err := ks.GetKey(args[1])
@@ -26,26 +28,26 @@ var depositCmd = &cobra.Command{
 
 		amt, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
-			return fmt.Errorf("could not parse specified amount: %v", err)
+			return fmt.Errorf("failed to parse amount - %v", err)
 		}
 
-		opts := rc.operatorSession.TransactOpts
 		auth := bind.NewKeyedTransactor(key)
 		defer func() {
-			rc.operatorSession.TransactOpts = opts
+			rc.session.TransactOpts = bind.TransactOpts{}
 		}()
-		rc.operatorSession.TransactOpts = bind.TransactOpts{
+		rc.session.TransactOpts = bind.TransactOpts{
 			From:     auth.From,
 			Signer:   auth.Signer,
 			GasLimit: 3141592, // aribitrary
 			Value:    big.NewInt(amt),
 		}
 
-		if _, err := rc.operatorSession.Deposit(crypto.PubkeyToAddress(key.PublicKey)); err != nil {
+		tx, err := rc.session.Deposit(crypto.PubkeyToAddress(key.PublicKey))
+		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Successfully deposited\n")
+		fmt.Printf("Successfully deposited\n%x\n", tx)
 		return nil
 	},
 }
