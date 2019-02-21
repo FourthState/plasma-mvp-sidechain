@@ -24,7 +24,7 @@ func init() {
 
 var exitsCmd = &cobra.Command{
 	Use:   "exits",
-	Short: "Display pending rootchain exits",
+	Short: "Display pending exits",
 	Long: `Display pending rootchain exits. Queries the rootchain exit queue.
 Use the deposit flag to display deposit exits.
 
@@ -36,6 +36,7 @@ Usage:
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var curr int64
+		curr = 1
 		var addr ethcmn.Address
 		acc := viper.GetString(accountF)
 
@@ -64,49 +65,59 @@ Usage:
 			}
 		}
 
-		displayExits(curr, lim, addr, viper.GetBool(depositsF))
+		if viper.GetBool(depositsF) {
+			displayDepositExits(curr, lim, addr)
+		} else {
+			displayTxExits(curr, lim, addr)
+		}
+
 		return nil
 	},
 }
 
-func displayExits(curr, lim int64, addr ethcmn.Address, deposits bool) {
-	for lim > 0 {
-		if deposits { // search deposit exits
-
-			key, err := rc.session.DepositExitQueue(big.NewInt(curr))
-			if err != nil {
-				return
-			}
-			exit, err := rc.session.DepositExits(key)
-			if err != nil {
-				return
-			}
-
-			lim--
-			state := parseState(exit.State)
-			fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
-				exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
-		} else { // search tx exits
-
-			key, err := rc.session.TxExitQueue(big.NewInt(curr))
-			if err != nil {
-				return
-			}
-			exit, err := rc.session.TxExits(key)
-			if err != nil {
-				return
-			}
-
-			if !utils.IsZeroAddress(addr) && exit.Owner != addr {
-				fmt.Println(addr) // BUG CATCHER
-				continue
-			}
-
-			lim--
-			state := parseState(exit.State)
-			fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
-				exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
+func displayDepositExits(curr, lim int64, addr ethcmn.Address) {
+	for lim != 0 {
+		key, err := rc.session.DepositExitQueue(big.NewInt(curr))
+		if err != nil {
+			fmt.Printf("failed after key %v", err) // BUG CATCHER
+			return
 		}
+		exit, err := rc.session.DepositExits(key)
+		if err != nil || utils.IsZeroAddress(exit.Owner) {
+			return
+		}
+		if !utils.IsZeroAddress(addr) && exit.Owner != addr {
+			fmt.Println(addr) // BUG CATCHER
+			continue
+		}
+
+		lim--
+		state := parseState(exit.State)
+		fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
+			exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
+	}
+}
+
+func displayTxExits(curr, lim int64, addr ethcmn.Address) {
+	for lim != 0 {
+		key, err := rc.session.TxExitQueue(big.NewInt(curr))
+		if err != nil {
+			return
+		}
+		exit, err := rc.session.TxExits(key)
+		if err != nil || utils.IsZeroAddress(exit.Owner) {
+			return
+		}
+
+		if !utils.IsZeroAddress(addr) && exit.Owner != addr {
+			fmt.Println(addr) // BUG CATCHER
+			continue
+		}
+
+		lim--
+		state := parseState(exit.State)
+		fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
+			exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
 	}
 }
 

@@ -28,6 +28,7 @@ const (
 	depositsF   = "deposits"
 	indexF      = "index"
 	accountF    = "account"
+	addrF       = "address"
 	minExitBond = 200000
 )
 

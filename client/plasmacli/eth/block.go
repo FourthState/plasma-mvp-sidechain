@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -12,6 +13,7 @@ import (
 func init() {
 	queryCmd.AddCommand(blockCmd)
 	blockCmd.Flags().String(limitF, "1", "number of plasma blocks to be displayed")
+	viper.BindPFlags(blockCmd.Flags())
 }
 
 var blockCmd = &cobra.Command{
@@ -43,7 +45,7 @@ Usage:
 			}
 			curr++
 			fmt.Printf("Header: 0x%x\nTxs: %d\nFee: %d\nCreated: %v\n",
-				block.Header, block.NumTxns, block.FeeAmount, block.CreatedAt)
+				block.Header, block.NumTxns, block.FeeAmount, time.Unix(block.CreatedAt.Int64(), 0))
 		}
 		return nil
 	},

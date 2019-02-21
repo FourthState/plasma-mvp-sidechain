@@ -42,12 +42,11 @@ var depositCmd = &cobra.Command{
 			Value:    big.NewInt(amt),
 		}
 
-		tx, err := rc.session.Deposit(crypto.PubkeyToAddress(key.PublicKey))
-		if err != nil {
-			return err
+		if _, err := rc.session.Deposit(crypto.PubkeyToAddress(key.PublicKey)); err != nil {
+			return fmt.Errorf("failed to deposit - %v", err)
 		}
 
-		fmt.Printf("Successfully deposited\n%x\n", tx)
+		fmt.Printf("Successfully deposited\n")
 		return nil
 	},
 }

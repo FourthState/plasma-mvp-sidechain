@@ -13,9 +13,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TODO: Add support for exiting fees
+
 func init() {
 	ethCmd.AddCommand(exitCmd)
-	exitCmd.Flags().String(feeF, "0", "fee committed in an unfinalized spend of the input")
+	exitCmd.Flags().String(feeF, "", "fee committed in an unfinalized spend of the input")
 	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
@@ -36,12 +38,6 @@ Usage:
 	plasmacli exit <account> <position> -b <tx-bytes> --proof <merkle-proof> -S <confirmation-signatures> --fee <amount>`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		key, err := ks.GetKey(args[0])
-		if err != nil {
-			return err
-		}
-		addr := crypto.PubkeyToAddress(key.PublicKey)
-
 		// parse position
 		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
@@ -50,41 +46,16 @@ Usage:
 
 		fee, err := strconv.ParseInt(viper.GetString(feeF), 10, 64)
 		if err != nil {
-			//return fmt.Errorf("failed to parse fee - %v", err)
-			fee = 0
+			return fmt.Errorf("failed to parse fee - %v", err)
 		}
 
-		var txBytes, proof, confirmSignatures []byte
-		if viper.GetBool(trustNodeF) { // query full node
-			txBytes, proof, confirmSignatures, err = proveExit(addr, position)
-			if err != nil {
-				return err
-			}
-		} else { // use inputted flags
-			txBytesStr := viper.GetString(txBytesF)
-			proofStr := viper.GetString(proofF)
-			sigsStr := viper.GetString(sigsF)
-
-			if txBytesStr != "" {
-				txBytes = []byte(txBytesStr)
-			} else {
-				return fmt.Errorf("please provide transaction bytes for the given position")
-			}
-
-			if proofStr != "" {
-				proof = []byte(proofStr)
-			} else {
-				return fmt.Errorf("please provide a merkle proof for the given position")
-			}
-
-			if sigsStr != "" {
-				confirmSignatures = []byte(sigsStr)
-			} else {
-				return fmt.Errorf("please provide confirmation signatures for the given position")
-			}
+		key, err := ks.GetKey(args[0])
+		if err != nil {
+			return err
 		}
+		addr := crypto.PubkeyToAddress(key.PublicKey)
 
-		// Send exit transaction
+		// bind key
 		auth := bind.NewKeyedTransactor(key)
 		defer func() {
 			rc.session.TransactOpts = bind.TransactOpts{}
@@ -96,20 +67,50 @@ Usage:
 			Value:    big.NewInt(minExitBond),
 		}
 
-		// TODO: Add start fee exit via pos.IsFee()
+		// send deposit exit
 		if position.IsDeposit() {
 			if _, err := rc.session.StartDepositExit(position.DepositNonce, big.NewInt(fee)); err != nil {
 				return err
 			}
 			fmt.Println("Started deposit exit")
-		} else {
-			txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
-			if _, err := rc.session.StartTransactionExit(txPos, txBytes, proof, confirmSignatures, big.NewInt(fee)); err != nil {
-				return err
-			}
-			fmt.Println("Started transaction exit")
+			return nil
 		}
 
+		// retrieve information necessary for transaction exit
+		var txBytes, proof, confirmSignatures []byte
+		if viper.GetBool(trustNodeF) { // query full node
+			txBytes, proof, confirmSignatures, err = proveExit(addr, position)
+			if err != nil {
+				return fmt.Errorf("failed to retrieve exit information - %v", err)
+			}
+		} else { // use command line flags
+			txBytesStr := viper.GetString(txBytesF)
+			proofStr := viper.GetString(proofF)
+			sigs := viper.GetString(sigsF)
+
+			if txBytesStr == "" {
+				return fmt.Errorf("please provide transaction bytes for the given position")
+			}
+
+			if proofStr == "" {
+				return fmt.Errorf("please provide a merkle proof for the given position")
+			}
+
+			if sigs == "" {
+				return fmt.Errorf("please provide confirmation signatures for the given position")
+			}
+
+			txBytes = []byte(txBytesStr)
+			proof = []byte(proofStr)
+			confirmSignatures = []byte(sigs)
+		}
+
+		// TODO: Add support for querying for confirm sigs in local storage
+		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
+		if _, err := rc.session.StartTransactionExit(txPos, txBytes, proof, confirmSignatures, big.NewInt(fee)); err != nil {
+			return err
+		}
+		fmt.Println("Started transaction exit")
 		return nil
 	},
 }

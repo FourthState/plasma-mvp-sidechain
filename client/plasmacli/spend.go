@@ -24,7 +24,7 @@ func init() {
 	spendCmd.Flags().String(flagConfirmSigs0, "", "Input Confirmation Signatures for first input to be spent (separated by commas)")
 	spendCmd.Flags().String(flagConfirmSigs1, "", "Input Confirmation Signatures for second input to be spent (separated by commas)")
 
-	spendCmd.Flags().String(flagFee, "", "Fee to be spent")
+	spendCmd.Flags().String(flagFee, "0", "Fee to be spent")
 	spendCmd.Flags().StringP(flagAccount, "a", "", "Accounts to sign with if using different accounts")
 	spendCmd.Flags().StringP(flagInputs, "i", "", "Input amounts to be spent if using multiple accounts")
 

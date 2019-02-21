@@ -33,7 +33,7 @@ var proveCmd = &cobra.Command{
 			return err
 		}
 
-		result, confirmSignatures, err := proof(addr, position)
+		result, confirmSignatures, err := getProof(addr, position)
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
-func proof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, [][65]byte, error) {
+func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, [][65]byte, error) {
 	ctx := context.NewCLIContext().WithTrustNode(true)
 
 	// query for the output
@@ -93,10 +93,12 @@ func proof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, [][65]b
 	var confirmSignatures [][65]byte
 	key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
 	res, err = ctx.QueryStore(key, "plasma")
+
 	if err == nil { // confirm signatures exist
 		var signature [65]byte
 		copy(signature[:], res)
 		confirmSignatures = append(confirmSignatures, signature)
+
 		if len(res) > 65 {
 			copy(signature[:], res[65:])
 			confirmSignatures = append(confirmSignatures, signature)
@@ -111,7 +113,7 @@ func proof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, [][65]b
 // Trust connected full node
 // TODO: Add nodeURL flag
 func proveExit(addr ethcmn.Address, position plasma.Position) ([]byte, []byte, []byte, error) {
-	result, confirmSignatures, err := proof(addr, position)
+	result, confirmSignatures, err := getProof(addr, position)
 	if err != nil {
 		return nil, nil, nil, err
 	}
