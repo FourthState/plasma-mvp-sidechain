@@ -29,19 +29,19 @@ Usage:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		curr, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse block number - %v", err)
+			return fmt.Errorf("failed to parse block number: { %s }", err)
 		}
 
 		lim, err := strconv.ParseInt(viper.GetString(limitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse limit - %v", err)
+			return fmt.Errorf("failed to parse limit: { %s }", err)
 		}
 
 		end := curr + lim
 		for curr < end {
 			block, err := rc.session.PlasmaChain(big.NewInt(curr))
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to retrieve block: { %s }", err)
 			}
 			curr++
 			fmt.Printf("Header: 0x%x\nTxs: %d\nFee: %d\nCreated: %v\n",

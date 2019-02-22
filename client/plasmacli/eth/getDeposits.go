@@ -30,19 +30,19 @@ Usage:
 		var curr, lim, end int64
 
 		if lim, err = strconv.ParseInt(viper.GetString(limitF), 10, 64); err != nil {
-			return fmt.Errorf("failed to parse limit - %v", err)
+			return fmt.Errorf("failed to parse limit - %s", err)
 		}
 
 		if viper.GetBool(allF) { // Print all deposits
 			curr = 1
 			lastNonce, err := rc.session.DepositNonce()
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
 			}
 			end = lastNonce.Int64()
 		} else if len(args) > 0 { // Use command line arg as starting nonce
 			if curr, err = strconv.ParseInt(args[0], 10, 64); err != nil {
-				return fmt.Errorf("failed to parse nonce - %v", err)
+				return fmt.Errorf("failed to parse nonce - %s", err)
 			}
 
 			end = curr + lim
@@ -51,7 +51,7 @@ Usage:
 		}
 
 		if err = displayDeposits(curr, lim, end); err != nil {
-			return fmt.Errorf("failed while displaying deposits - %v", err)
+			return fmt.Errorf("failed while displaying deposits - %s", err)
 		}
 
 		return err

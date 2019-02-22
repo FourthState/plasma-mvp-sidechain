@@ -24,15 +24,17 @@ var balanceCmd = &cobra.Command{
 
 		if viper.GetString(addrF) != "" {
 			addr = ethcmn.HexToAddress(viper.GetString(addrF))
-		} else {
+		} else if len(args) > 0 {
 			if addr, err = ks.Get(args[0]); err != nil {
-				return fmt.Errorf("failed to retrieve account - %v", err)
+				return fmt.Errorf("failed to retrieve account: { %s }", err)
 			}
+		} else {
+			return fmt.Errorf("please provide an account or use the address flag")
 		}
 
-		balance, err := rc.session.BalanceOf(addr)
+		balance, err := rc.contract.BalanceOf(nil, addr)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to retrieve balance: { %s }", err)
 		}
 
 		fmt.Printf("Rootchain Balance: %d\n", balance)

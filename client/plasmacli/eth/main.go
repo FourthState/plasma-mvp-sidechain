@@ -16,20 +16,23 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Flags
 const (
-	allF        = "all"
-	limitF      = "limit"
-	feeF        = "fee"
-	txBytesF    = "tx-bytes"
-	proofF      = "proof"
-	sigsF       = "signatures"
-	trustNodeF  = "trust-node"
-	depositsF   = "deposits"
-	indexF      = "index"
-	accountF    = "account"
-	addrF       = "address"
-	minExitBond = 200000
+	// Flags
+	accountF   = "account"
+	addrF      = "address"
+	allF       = "all"
+	depositsF  = "deposits"
+	feeF       = "fee"
+	gasLimitF  = "gas-limit"
+	indexF     = "index"
+	limitF     = "limit"
+	positionF  = "position"
+	proofF     = "proof"
+	sigsF      = "signatures"
+	trustNodeF = "trust-node"
+	txBytesF   = "tx-bytes"
+
+	minExitBond = 200000 // specified by rootchain contract
 )
 
 type Plasma struct {
@@ -56,6 +59,7 @@ func EthCmd() *cobra.Command {
 }
 
 // Parse plasma.toml before every call to the eth command
+// Update ethereum client connection if params have changed
 func persistentPreRunEFn() func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		plasmaConfigFilePath := filepath.Join(viper.GetString(ks.DirFlag), "plasma.toml")
@@ -76,12 +80,12 @@ func persistentPreRunEFn() func(*cobra.Command, []string) error {
 		}
 
 		// Check to see if the eth connection params have changed
-		if rc.nodeURL != conf.EthNodeURL {
+		if conf.EthNodeURL == "" {
+			return fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", viper.GetString(ks.DirFlag))
+		} else if rc.nodeURL != conf.EthNodeURL {
 			if err := initEthConn(conf); err != nil {
 				return err
 			}
-		} else if conf.EthNodeURL == "" {
-			return fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", viper.GetString(ks.DirFlag))
 		}
 
 		return nil
@@ -93,14 +97,14 @@ func persistentPreRunEFn() func(*cobra.Command, []string) error {
 func initEthConn(conf config.PlasmaConfig) error {
 	c, err := rpc.Dial(conf.EthNodeURL)
 	if err != nil {
-		return err
+		return fmt.Errof("failed to dial node url: { %s }", err)
 	}
 	ec := ethclient.NewClient(c)
 
 	// Create a session with the contract and operator account
 	plasmaContract, err := contracts.NewPlasmaMVP(ethcmn.HexToAddress(conf.EthPlasmaContractAddr), ec)
 	if err != nil {
-		return err
+		return fmt.Errof("failed to bind to contract: { %s }", err)
 	}
 
 	session := &contracts.PlasmaMVPSession{

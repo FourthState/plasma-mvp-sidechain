@@ -9,10 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
 	ethCmd.AddCommand(depositCmd)
+	depositCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
+	viper.BindPFlags(depositCmd.Flags())
 }
 
 var depositCmd = &cobra.Command{
@@ -23,14 +26,21 @@ var depositCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key, err := ks.GetKey(args[1])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to retrieve account: { %s }", err)
 		}
 
 		amt, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse amount - %v", err)
+			return fmt.Errorf("failed to parse amount: { %s }", err)
 		}
 
+		gasLimit, err := strconv.ParseUint(viper.GetString(gasLimitF), 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse gas limit: { %s }", err)
+		}
+
+		// bind key to session
+		// revert after use
 		auth := bind.NewKeyedTransactor(key)
 		defer func() {
 			rc.session.TransactOpts = bind.TransactOpts{}
@@ -38,12 +48,12 @@ var depositCmd = &cobra.Command{
 		rc.session.TransactOpts = bind.TransactOpts{
 			From:     auth.From,
 			Signer:   auth.Signer,
-			GasLimit: 3141592, // aribitrary
+			GasLimit: gasLimit,
 			Value:    big.NewInt(amt),
 		}
 
 		if _, err := rc.session.Deposit(crypto.PubkeyToAddress(key.PublicKey)); err != nil {
-			return fmt.Errorf("failed to deposit - %v", err)
+			return fmt.Errorf("failed to deposit: { %s }", err)
 		}
 
 		fmt.Printf("Successfully deposited\n")

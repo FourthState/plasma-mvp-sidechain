@@ -42,13 +42,13 @@ Usage:
 		if acc != "" {
 			addr, err = ks.Get(acc)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to retrieve account: { %s }", err)
 			}
 		}
 
 		lim, err := strconv.ParseInt(viper.GetString(limitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse limit - %v", err)
+			return fmt.Errorf("failed to parse limit: { %s }", err)
 		}
 
 		if viper.GetBool(allF) { // print all exits
@@ -60,7 +60,7 @@ Usage:
 			}
 			curr, err = strconv.ParseInt(viper.GetString(indexF), 10, 64)
 			if err != nil {
-				return fmt.Errorf("failed to parse index - %v\n", err)
+				return fmt.Errorf("failed to parse index: { %s }", err)
 			}
 		}
 

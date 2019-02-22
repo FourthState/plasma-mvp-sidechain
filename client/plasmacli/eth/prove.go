@@ -24,7 +24,7 @@ var proveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		addr, err := ks.Get(args[0])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to retrieve account: { %s }", err)
 		}
 
 		// parse position
@@ -37,6 +37,7 @@ var proveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		// print meta data
 		fmt.Printf("Roothash: 0x%x\n", result.Proof.RootHash)
 		fmt.Printf("Total: %d\n", result.Proof.Proof.Total)
@@ -109,7 +110,7 @@ func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, [][6
 }
 
 // Returns all information necessary to start an exit
-// return (position, txbytes, proof, confirmation signatures, error)
+// return (txbytes, proof, confirmation signatures, error)
 // Trust connected full node
 // TODO: Add nodeURL flag
 func proveExit(addr ethcmn.Address, position plasma.Position) ([]byte, []byte, []byte, error) {

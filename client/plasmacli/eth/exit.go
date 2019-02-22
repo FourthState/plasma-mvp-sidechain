@@ -20,6 +20,7 @@ func init() {
 	exitCmd.Flags().String(feeF, "", "fee committed in an unfinalized spend of the input")
 	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
+	exitCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the utxo")
 	viper.BindPFlags(exitCmd.Flags())
@@ -46,16 +47,23 @@ Usage:
 
 		fee, err := strconv.ParseInt(viper.GetString(feeF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse fee - %v", err)
+			return fmt.Errorf("failed to parse fee: { %s }", err)
 		}
 
+		gasLimit, err := strconv.ParseUint(viper.GetString(gasLimitF), 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse gas limit: { %s }", err)
+		}
+
+		// retrieve account key
 		key, err := ks.GetKey(args[0])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
 		addr := crypto.PubkeyToAddress(key.PublicKey)
 
 		// bind key
+		// revert after use
 		auth := bind.NewKeyedTransactor(key)
 		defer func() {
 			rc.session.TransactOpts = bind.TransactOpts{}
@@ -63,14 +71,14 @@ Usage:
 		rc.session.TransactOpts = bind.TransactOpts{
 			From:     auth.From,
 			Signer:   auth.Signer,
-			GasLimit: 3141592,
+			GasLimit: gasLimit,
 			Value:    big.NewInt(minExitBond),
 		}
 
 		// send deposit exit
 		if position.IsDeposit() {
 			if _, err := rc.session.StartDepositExit(position.DepositNonce, big.NewInt(fee)); err != nil {
-				return err
+				return fmt.Errorf("failed to start deposit exit: { %s }", err)
 			}
 			fmt.Println("Started deposit exit")
 			return nil
@@ -81,7 +89,7 @@ Usage:
 		if viper.GetBool(trustNodeF) { // query full node
 			txBytes, proof, confirmSignatures, err = proveExit(addr, position)
 			if err != nil {
-				return fmt.Errorf("failed to retrieve exit information - %v", err)
+				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}
 		} else { // use command line flags
 			txBytesStr := viper.GetString(txBytesF)
@@ -108,7 +116,7 @@ Usage:
 		// TODO: Add support for querying for confirm sigs in local storage
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
 		if _, err := rc.session.StartTransactionExit(txPos, txBytes, proof, confirmSignatures, big.NewInt(fee)); err != nil {
-			return err
+			return fmt.Errorf("failed to start transaction exit: { %s }", err)
 		}
 		fmt.Println("Started transaction exit")
 		return nil
