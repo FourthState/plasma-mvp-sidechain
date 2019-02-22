@@ -97,14 +97,14 @@ func persistentPreRunEFn() func(*cobra.Command, []string) error {
 func initEthConn(conf config.PlasmaConfig) error {
 	c, err := rpc.Dial(conf.EthNodeURL)
 	if err != nil {
-		return fmt.Errof("failed to dial node url: { %s }", err)
+		return fmt.Errorf("failed to dial node url: { %s }", err)
 	}
 	ec := ethclient.NewClient(c)
 
 	// Create a session with the contract and operator account
 	plasmaContract, err := contracts.NewPlasmaMVP(ethcmn.HexToAddress(conf.EthPlasmaContractAddr), ec)
 	if err != nil {
-		return fmt.Errof("failed to bind to contract: { %s }", err)
+		return fmt.Errorf("failed to bind to contract: { %s }", err)
 	}
 
 	session := &contracts.PlasmaMVPSession{
