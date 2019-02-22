@@ -36,7 +36,6 @@ Usage:
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var curr int64
-		curr = 1
 		var addr ethcmn.Address
 		acc := viper.GetString(accountF)
 
@@ -77,20 +76,23 @@ Usage:
 
 func displayDepositExits(curr, lim int64, addr ethcmn.Address) {
 	for lim != 0 {
-		key, err := rc.session.DepositExitQueue(big.NewInt(curr))
+		key, err := rc.contract.DepositExitQueue(nil, big.NewInt(curr))
 		if err != nil {
-			fmt.Printf("failed after key %v", err) // BUG CATCHER
 			return
 		}
-		exit, err := rc.session.DepositExits(key)
+
+		// Get right 128 bits for position mapping
+		key = new(big.Int).SetBytes(key.Bytes()[16:])
+
+		exit, err := rc.contract.DepositExits(nil, key)
 		if err != nil || utils.IsZeroAddress(exit.Owner) {
 			return
 		}
 		if !utils.IsZeroAddress(addr) && exit.Owner != addr {
-			fmt.Println(addr) // BUG CATCHER
 			continue
 		}
 
+		curr++
 		lim--
 		state := parseState(exit.State)
 		fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
@@ -100,20 +102,24 @@ func displayDepositExits(curr, lim int64, addr ethcmn.Address) {
 
 func displayTxExits(curr, lim int64, addr ethcmn.Address) {
 	for lim != 0 {
-		key, err := rc.session.TxExitQueue(big.NewInt(curr))
+		key, err := rc.contract.TxExitQueue(nil, big.NewInt(curr))
 		if err != nil {
 			return
 		}
-		exit, err := rc.session.TxExits(key)
+
+		// Get right 128 bits for position mapping
+		key = new(big.Int).SetBytes(key.Bytes()[16:])
+
+		exit, err := rc.contract.TxExits(nil, key)
 		if err != nil || utils.IsZeroAddress(exit.Owner) {
 			return
 		}
 
 		if !utils.IsZeroAddress(addr) && exit.Owner != addr {
-			fmt.Println(addr) // BUG CATCHER
 			continue
 		}
 
+		curr++
 		lim--
 		state := parseState(exit.State)
 		fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",

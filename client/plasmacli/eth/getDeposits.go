@@ -60,7 +60,7 @@ Usage:
 
 func displayDeposits(curr, lim, end int64) error {
 	for curr < end && lim > 0 {
-		deposit, err := rc.session.Deposits(big.NewInt(curr))
+		deposit, err := rc.contract.Deposits(nil, big.NewInt(curr))
 		if err != nil {
 			return err
 		}
