@@ -47,7 +47,7 @@ func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		fmt.Printf("FAILURE: %v", err)
+		fmt.Printf("FAILURE: %s", err)
 		return nil, nil
 	}
 

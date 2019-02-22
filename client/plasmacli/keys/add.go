@@ -26,7 +26,7 @@ var addCmd = &cobra.Command{
 		fmt.Println("\n**Important** do not lose your passphrase.")
 		fmt.Println("It is the only way to recover your account")
 		fmt.Println("You should export this account and store it in a secure location")
-		fmt.Printf("NAME: %v\tADDRESS: %v\n", name, address.Hex())
+		fmt.Printf("NAME: %s\tADDRESS: 0x%x\n", name, address)
 		return nil
 	},
 }

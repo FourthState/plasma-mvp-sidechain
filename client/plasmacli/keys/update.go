@@ -6,13 +6,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Flags
 const (
-	flagName = "name"
+	nameF = "name"
 )
 
 func init() {
 	keysCmd.AddCommand(updateCmd)
-	updateCmd.Flags().String(flagName, "", "updated key name.")
+	updateCmd.Flags().String(nameF, "", "updated key name.")
 	viper.BindPFlags(updateCmd.Flags())
 }
 
@@ -29,7 +30,7 @@ Usage:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		updatedName := viper.GetString(flagName)
+		updatedName := viper.GetString(nameF)
 		if err := ks.Update(name, updatedName); err != nil {
 			return err
 		}

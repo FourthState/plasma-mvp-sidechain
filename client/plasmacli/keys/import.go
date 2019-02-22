@@ -10,13 +10,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Flags
 const (
-	flagFile = "file"
+	fileF = "file"
 )
 
 func init() {
 	keysCmd.AddCommand(importCmd)
-	importCmd.Flags().String(flagFile, "", "read the private key from the specified keyfile (must be absolute path)")
+	importCmd.Flags().String(fileF, "", "read the private key from the specified keyfile (must be absolute path)")
 	viper.BindPFlags(importCmd.Flags())
 }
 
@@ -43,19 +44,19 @@ You must remember this passphrase to unlock your account in the future.
 
 		var key *ecdsa.PrivateKey
 		var err error
-		file := viper.GetString(flagFile)
+		file := viper.GetString(fileF)
 		if file != "" {
 			key, err = crypto.LoadECDSA(file)
 			if err != nil {
-				return fmt.Errorf("failed loading the keyfile : %s", err)
+				return fmt.Errorf("failed loading the keyfile: { %s }", err)
 			}
 		} else {
 			if len(args) < 2 {
-				return errors.New("Please provide an unencrytped private if the --file flag is not set")
+				return errors.New("please provide an unencrytped private if the --file flag is not set")
 			}
 			key, err = crypto.HexToECDSA(args[1])
 			if err != nil {
-				return fmt.Errorf("failed parsing private key: %s", err)
+				return fmt.Errorf("failed parsing private key: { %s }", err)
 			}
 
 		}
@@ -66,7 +67,7 @@ You must remember this passphrase to unlock your account in the future.
 		}
 
 		fmt.Println("Successfully imported.")
-		fmt.Printf("NAME: %s\t\tADDRESS: %v\n", name, address.Hex())
+		fmt.Printf("NAME: %s\t\tADDRESS: 0x%x\n", name, address)
 		return nil
 	},
 }
