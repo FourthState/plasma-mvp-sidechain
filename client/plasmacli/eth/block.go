@@ -39,7 +39,7 @@ Usage:
 
 		end := curr + lim
 		for curr < end {
-			block, err := rc.session.PlasmaChain(big.NewInt(curr))
+			block, err := rc.contract.PlasmaChain(nil, big.NewInt(curr))
 			if err != nil {
 				return fmt.Errorf("failed to retrieve block: { %s }", err)
 			}

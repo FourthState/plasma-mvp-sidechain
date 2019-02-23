@@ -35,7 +35,7 @@ Usage:
 
 		if viper.GetBool(allF) { // Print all deposits
 			curr = 1
-			lastNonce, err := rc.session.DepositNonce()
+			lastNonce, err := rc.contract.DepositNonce(nil)
 			if err != nil {
 				return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
 			}

@@ -8,7 +8,6 @@ import (
 	config "github.com/FourthState/plasma-mvp-sidechain/client"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -38,7 +37,6 @@ const (
 type Plasma struct {
 	ec *ethclient.Client
 
-	session  *contracts.PlasmaMVPSession
 	contract *contracts.PlasmaMVP
 
 	nodeURL string // current url set for the eth client
@@ -101,22 +99,14 @@ func initEthConn(conf config.PlasmaConfig) error {
 	}
 	ec := ethclient.NewClient(c)
 
-	// Create a session with the contract and operator account
+	// Bind rootchain contract and operator account
 	plasmaContract, err := contracts.NewPlasmaMVP(ethcmn.HexToAddress(conf.EthPlasmaContractAddr), ec)
 	if err != nil {
 		return fmt.Errorf("failed to bind to contract: { %s }", err)
 	}
 
-	session := &contracts.PlasmaMVPSession{
-		Contract: plasmaContract,
-		CallOpts: bind.CallOpts{
-			Pending: true,
-		},
-	}
-
 	rc = Plasma{
 		ec:       ec,
-		session:  session,
 		contract: plasmaContract,
 		nodeURL:  conf.EthNodeURL,
 	}

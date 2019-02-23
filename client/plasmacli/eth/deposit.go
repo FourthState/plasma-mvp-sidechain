@@ -39,24 +39,20 @@ var depositCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse gas limit: { %s }", err)
 		}
 
-		// bind key to session
-		// revert after use
+		// bind key, generate transact opts
 		auth := bind.NewKeyedTransactor(key)
-		defer func() {
-			rc.session.TransactOpts = bind.TransactOpts{}
-		}()
-		rc.session.TransactOpts = bind.TransactOpts{
+		transactOpts := &bind.TransactOpts{
 			From:     auth.From,
 			Signer:   auth.Signer,
 			GasLimit: gasLimit,
 			Value:    big.NewInt(amt),
 		}
 
-		if _, err := rc.session.Deposit(crypto.PubkeyToAddress(key.PublicKey)); err != nil {
+		if _, err := rc.contract.Deposit(transactOpts, crypto.PubkeyToAddress(key.PublicKey)); err != nil {
 			return fmt.Errorf("failed to deposit: { %s }", err)
 		}
 
-		fmt.Printf("Successfully deposited\n")
+		fmt.Printf("Successfully sent deposit transaction\n")
 		return nil
 	},
 }
