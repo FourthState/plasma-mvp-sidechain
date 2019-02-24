@@ -45,7 +45,7 @@ var withdrawCmd = &cobra.Command{
 			return fmt.Errorf("failed to withdraw: {%s }", err)
 		}
 
-		fmt.Printf("Successfully sent withdraw transaction\nTransaction Hash: 0x%x", tx.Hash)
+		fmt.Printf("Successfully sent withdraw transaction\nTransaction Hash: 0x%x", tx.Hash())
 		return nil
 	},
 }

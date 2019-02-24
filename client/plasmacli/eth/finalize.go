@@ -51,7 +51,7 @@ var finalizeCmd = &cobra.Command{
 			return fmt.Errorf("failed to finalize exits: { %s }", err)
 		}
 
-		fmt.Printf("Successfully sent finalize exits transaction\nTransaction Hash: 0x%x\n", tx.Hash)
+		fmt.Printf("Successfully sent finalize exits transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 		return nil
 	},
 }
