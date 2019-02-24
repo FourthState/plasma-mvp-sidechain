@@ -8,6 +8,7 @@ import (
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -41,6 +42,8 @@ Usage:
 	plasmacli exit <account> <position> -b <tx-bytes> --proof <merkle-proof> -S <confirmation-signatures> --fee <amount>`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		var tx *eth.Transaction
+
 		// parse position
 		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
@@ -73,12 +76,23 @@ Usage:
 			Value:    big.NewInt(minExitBond),
 		}
 
+		// send fee exit
+		if position.IsFee() {
+			tx, err = rc.contract.StartFeeExit(transactOpts, position.BlockNum, big.NewInt(fee))
+			if err != nil {
+				return fmt.Errorf("failed to start fee exit: { %s }", err)
+			}
+			fmt.Printf("Sent fee exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
+			return nil
+		}
+
 		// send deposit exit
 		if position.IsDeposit() {
-			if _, err := rc.contract.StartDepositExit(transactOpts, position.DepositNonce, big.NewInt(fee)); err != nil {
+			tx, err := rc.contract.StartDepositExit(transactOpts, position.DepositNonce, big.NewInt(fee))
+			if err != nil {
 				return fmt.Errorf("failed to start deposit exit: { %s }", err)
 			}
-			fmt.Println("Started deposit exit")
+			fmt.Println("Sent deposit exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 			return nil
 		}
 
@@ -103,10 +117,11 @@ Usage:
 
 		// TODO: Add support for querying for confirm sigs in local storage
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
-		if _, err := rc.contract.StartTransactionExit(transactOpts, txPos, txBytes, proof, confirmSignatures, big.NewInt(fee)); err != nil {
+		tx, err = rc.contract.StartTransactionExit(transactOpts, txPos, txBytes, proof, confirmSignatures, big.NewInt(fee))
+		if err != nil {
 			return fmt.Errorf("failed to start transaction exit: { %s }", err)
 		}
-		fmt.Println("Successfully started transaction exit")
+		fmt.Println("Sent exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 		return nil
 	},
 }

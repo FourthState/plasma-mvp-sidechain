@@ -14,6 +14,7 @@ import (
 func init() {
 	ethCmd.AddCommand(finalizeCmd)
 	finalizeCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
+	finalizeCmd.Flags().BoolP(depositsF, "D", false, "indicate that deposit exits should be finalized")
 	viper.BindPFlags(finalizeCmd.Flags())
 }
 
