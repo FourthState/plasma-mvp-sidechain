@@ -48,11 +48,12 @@ var depositCmd = &cobra.Command{
 			Value:    big.NewInt(amt),
 		}
 
-		if _, err := rc.contract.Deposit(transactOpts, crypto.PubkeyToAddress(key.PublicKey)); err != nil {
+		tx, err := rc.contract.Deposit(transactOpts, crypto.PubkeyToAddress(key.PublicKey))
+		if err != nil {
 			return fmt.Errorf("failed to deposit: { %s }", err)
 		}
 
-		fmt.Printf("Successfully sent deposit transaction\n")
+		fmt.Printf("Successfully sent deposit transaction\nTransaction Hash: 0x%x\n", tx.Hash)
 		return nil
 	},
 }
