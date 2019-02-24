@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	clistore "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
@@ -23,7 +23,7 @@ var proveCmd = &cobra.Command{
 		ctx := context.NewCLIContext().WithTrustNode(true)
 		name := args[0]
 
-		addr, err := ks.Get(name)
+		addr, err := clistore.GetAccount(name)
 		if err != nil {
 			return err
 		}

@@ -1,9 +1,12 @@
-package keystore
+package store
 
 import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/bgentry/speakeasy"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -13,8 +16,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
-	"os"
-	"path/filepath"
 )
 
 const (
@@ -25,7 +26,7 @@ const (
 
 	PassphrasePrompt = "Enter passphrase:"
 
-	accountDir = "accounts.ldb"
+	accountDir = "data/accounts.ldb"
 	keysDir    = "keys"
 
 	DirFlag = "directory"
@@ -56,7 +57,7 @@ func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 
 // Add a new account to the keystore
 // Add account name and address to leveldb
-func Add(name string) (ethcmn.Address, error) {
+func AddAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -87,7 +88,7 @@ func Add(name string) (ethcmn.Address, error) {
 }
 
 // Retrieve the address of an account
-func Get(name string) (ethcmn.Address, error) {
+func GetAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -105,7 +106,7 @@ func Get(name string) (ethcmn.Address, error) {
 
 // Remove an account from the local keystore
 // and the leveldb
-func Delete(name string) error {
+func DeleteAccount(name string) error {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -132,7 +133,7 @@ func Delete(name string) error {
 
 // Update either the name of an account
 // or the passphrase for an account
-func Update(name string, updatedName string) error {
+func UpdateAccount(name string, updatedName string) error {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -210,7 +211,7 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 }
 
 func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
-	addr, err := Get(signer)
+	addr, err := GetAccount(signer)
 	if err != nil {
 		return nil, err
 	}

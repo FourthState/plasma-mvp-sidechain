@@ -1,7 +1,7 @@
 package keys
 
 import (
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -31,7 +31,7 @@ Usage:
 		name := args[0]
 
 		updatedName := viper.GetString(nameF)
-		if err := ks.Update(name, updatedName); err != nil {
+		if err := store.UpdateAccount(name, updatedName); err != nil {
 			return err
 		}
 

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	clistore "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -56,8 +56,12 @@ var signCmd = &cobra.Command{
 
 		// create the signature
 		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
-		sig, err := ks.SignHashWithPassphrase(name, hash)
+		sig, err := clistore.SignHashWithPassphrase(name, hash)
 		if err != nil {
+			return err
+		}
+
+		if err := clistore.SaveSig(position, sig); err != nil {
 			return err
 		}
 

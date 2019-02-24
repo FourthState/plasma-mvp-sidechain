@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -46,7 +46,7 @@ func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
 	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
-	rootCmd.PersistentFlags().StringP(ks.DirFlag, "d", homeDir, "directory for plasmacli")
+	rootCmd.PersistentFlags().StringP(store.DirFlag, "d", homeDir, "directory for plasmacli")
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
 	}
