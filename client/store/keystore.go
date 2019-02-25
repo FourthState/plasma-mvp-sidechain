@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/viper"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -134,42 +133,37 @@ func DeleteAccount(name string) error {
 
 // Update either the name of an account
 // or the passphrase for an account
-func UpdateAccount(name string, updatedName string) error {
+func UpdateAccount(name string, updatedName string) (msg string, err error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return err
+		return msg, err
 	}
 	defer db.Close()
 
 	key := []byte(name)
 	addr, err := db.Get(key, nil)
 	if err != nil {
-		return err
+		return msg, err
 	}
 
 	if updatedName != "" {
 		// Update key name
 		if err = db.Delete(key, nil); err != nil {
-			return err
+			return msg, err
 		}
 
-		key, err = rlp.EncodeToBytes(updatedName)
-		if err != nil {
-			return err
+		if err = db.Put([]byte(updatedName), addr, nil); err != nil {
+			return msg, err
 		}
-
-		if err = db.Put(key, addr, nil); err != nil {
-			return err
-		}
-		fmt.Println("Account name has been updated.")
+		msg = "Account name has been updated."
 	} else {
 		// Update passphrase
 		buf := cosmoscli.BufferStdin()
 		password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
 		updatedPassword, err := cosmoscli.GetPassword(NewPassphrasePrompt, buf)
 		if err != nil {
-			return err
+			return msg, err
 		}
 
 		acc := accounts.Account{
@@ -177,12 +171,12 @@ func UpdateAccount(name string, updatedName string) error {
 		}
 		err = ks.Update(acc, password, updatedPassword)
 		if err != nil {
-			return err
+			return msg, err
 		}
-		fmt.Println("Account passphrase has been updated.")
+		msg = "Account passphrase has been updated."
 	}
 
-	return nil
+	return msg, nil
 }
 
 // Import a private key with an account name

@@ -31,10 +31,12 @@ Usage:
 		name := args[0]
 
 		updatedName := viper.GetString(nameF)
-		if err := store.UpdateAccount(name, updatedName); err != nil {
+		msg, err := store.UpdateAccount(name, updatedName)
+		if err != nil {
 			return err
 		}
 
+		fmt.Println(msg)
 		return nil
 	},
 }
