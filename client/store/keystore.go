@@ -7,12 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bgentry/speakeasy"
+	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	isatty "github.com/mattn/go-isatty"
 	"github.com/spf13/viper"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -70,7 +69,8 @@ func AddAccount(name string) (ethcmn.Address, error) {
 		return ethcmn.Address{}, errors.New("you are trying to override an existing private key name. Please delete it first")
 	}
 
-	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetCheckPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat, buf)
 	if err != nil {
 		return ethcmn.Address{}, err
 	}
@@ -119,7 +119,8 @@ func DeleteAccount(name string) error {
 		return err
 	}
 
-	password, err := promptPassword(PassphrasePrompt, "")
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
 	if err != nil {
 		return err
 	}
@@ -164,8 +165,9 @@ func UpdateAccount(name string, updatedName string) error {
 		fmt.Println("Account name has been updated.")
 	} else {
 		// Update passphrase
-		password, err := promptPassword(PassphrasePrompt, "")
-		updatedPassword, err := promptPassword(NewPassphrasePrompt, "")
+		buf := cosmoscli.BufferStdin()
+		password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
+		updatedPassword, err := cosmoscli.GetPassword(NewPassphrasePrompt, buf)
 		if err != nil {
 			return err
 		}
@@ -192,7 +194,8 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 	}
 	defer db.Close()
 
-	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetCheckPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat, buf)
 	if err != nil {
 		return ethcmn.Address{}, err
 	}
@@ -220,7 +223,8 @@ func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
 		Address: addr,
 	}
 
-	password, err := promptPassword(PassphrasePrompt, "")
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -236,34 +240,4 @@ func getDir(location string) string {
 		dir = filepath.Join(dir, "/")
 	}
 	return os.ExpandEnv(filepath.Join(dir, location))
-}
-
-// Prompts for a password one-time
-// Enforces minimum password length
-func promptPassword(prompt, repeatPrompt string) (string, error) {
-	if !isatty.IsTerminal(os.Stdin.Fd()) && !isatty.IsCygwinTerminal(os.Stdin.Fd()) {
-		return "", fmt.Errorf("Only interactive terminals are supported")
-	}
-
-	password0, err := speakeasy.Ask(prompt)
-	if err != nil {
-		return "", err
-	}
-
-	if repeatPrompt != "" {
-		password1, err := speakeasy.Ask(repeatPrompt)
-		if err != nil {
-			return "", err
-		}
-
-		if password0 != password1 {
-			return "", fmt.Errorf("Passphrases do not match")
-		}
-	}
-
-	if len(password0) < MinPasswordLength {
-		return "", fmt.Errorf("Password must be at least %d characters", MinPasswordLength)
-	}
-
-	return password0, nil
 }
