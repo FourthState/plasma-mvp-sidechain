@@ -92,7 +92,7 @@ Usage:
 			if err != nil {
 				return fmt.Errorf("failed to start deposit exit: { %s }", err)
 			}
-			fmt.Println("Sent deposit exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
+			fmt.Printf("Sent deposit exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 			return nil
 		}
 
@@ -121,7 +121,7 @@ Usage:
 		if err != nil {
 			return fmt.Errorf("failed to start transaction exit: { %s }", err)
 		}
-		fmt.Println("Sent exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
+		fmt.Printf("Sent exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 		return nil
 	},
 }
