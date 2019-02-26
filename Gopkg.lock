@@ -147,7 +147,7 @@
   version = "v1.7.1"
 
 [[projects]]
-  digest = "1:81cdea2cb729a674dc6e3f9e85ca1169b6a13157676b5ff6e15f1561371a729d"
+  digest = "1:1530d06761f464b62ab3dfc2fa5b16303901d87ff219100a1447ba216d2e52be"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -162,12 +162,11 @@
     "common/prque",
     "core/types",
     "crypto",
-    "crypto/secp256k1",
     "crypto/secp256k1/libsecp256k1",
     "crypto/secp256k1/libsecp256k1/include",
     "crypto/secp256k1/libsecp256k1/src",
     "crypto/secp256k1/libsecp256k1/src/modules/recovery",
-    "crypto/sha3",
+    "crypto/secp256k1",
     "ethclient",
     "ethdb",
     "event",
@@ -179,9 +178,9 @@
     "rpc",
     "trie",
   ]
-  pruneopts = "UT"
-  revision = "24d727b6d6e2c0cde222fa12155c4a6db5caaf2e"
-  version = "v1.8.20"
+  pruneopts = "T"
+  revision = "c942700427557e3ff6de3aaf6b916e2f056c1ec2"
+  version = "v1.8.23"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -566,19 +565,20 @@
   version = "v0.14.1"
 
 [[projects]]
-  digest = "1:e1cc8dd891e64aab63b0c09f2f12456cbe2cd9cbd9d96dfae3281245f05c2428"
+  digest = "1:1bb088f6291e5426e3874a60bca0e481a91a5633395d7e0c427ec3e49b626e7b"
   name = "github.com/tendermint/iavl"
   packages = ["."]
   pruneopts = "UT"
-  revision = "de0740903a67b624d887f9055d4c60175dcfa758"
-  version = "v0.12.0"
+  revision = "ac7c35c12e8633a1e9fd0b52a00b900b40f32cd3"
+  version = "v0.12.1"
 
 [[projects]]
-  digest = "1:fbf8a69c035430a7f06fe0b725ef9ef1ea02366a35d35a0f4c2c2c77b5d1d9cb"
+  digest = "1:4a372b718ee1433fa421e1c9e450a8b14bc24f2b5d7b5f9329d4d49e360f5f9e"
   name = "github.com/tendermint/tendermint"
   packages = [
     "abci/client",
     "abci/example/code",
+    "abci/example/counter",
     "abci/example/kvstore",
     "abci/server",
     "abci/types",
@@ -639,8 +639,8 @@
     "version",
   ]
   pruneopts = "UT"
-  revision = "1e1ca15bccedc16c2452c73745c3c2b5df91ae96"
-  version = "v0.27.4"
+  revision = "e0f8936455029a40287a69d5b0e7baa4d5864da1"
+  version = "v0.30.1"
 
 [[projects]]
   digest = "1:5a736f4722932d9a45d28852e85b83f68292d9af2ef0be29d4e5fe6fd89d5d96"
@@ -667,7 +667,7 @@
   version = "v0.8.0"
 
 [[projects]]
-  digest = "1:9ee7b5b1fdcf6dcb0d609912076bb8da0c1c953a55141c7d83fa21dee29ad4f2"
+  digest = "1:a454511f589cc0cf4e4027920a2924cc70b45a51ae07d6dee38c5bdb0fdc1d86"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -688,6 +688,7 @@
     "ripemd160",
     "salsa20/salsa",
     "scrypt",
+    "sha3",
   ]
   pruneopts = "UT"
   revision = "3764759f34a542a3aef74d6b02e35be7ab893bba"
