@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

@@ -208,7 +208,7 @@ plasmacli <to> <amount>  -a <account>,<account> -in <amount>,<amount>`,
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Committed at block %d. Hash %s\n", res.Height, res.Hash.String())
+			fmt.Printf("Committed at block %d. Hash 0x%x\n", res.Height, res.TxHash)
 		} else {
 			if _, err := ctx.BroadcastTxAsync(txBytes); err != nil {
 				return err
