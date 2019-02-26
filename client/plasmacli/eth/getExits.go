@@ -46,13 +46,31 @@ Usage:
 			}
 		}
 
+		// parse queue length
+		var len *big.Int
+		if viper.GetBool(depositsF) {
+			len, err = rc.contract.DepositQueueLength(nil)
+		} else {
+			len, err = rc.contract.TxQueueLength(nil)
+		}
+
+		if err != nil {
+			return err
+		}
+
 		lim, err := strconv.ParseInt(viper.GetString(limitF), 10, 64)
 		if err != nil {
 			return fmt.Errorf("failed to parse limit: { %s }", err)
 		}
 
+		// adjust passed in limit to avoid error
+		// when interacting with rootchain
+		if lim > len.Int64() {
+			lim = len.Int64()
+		}
+
 		if viper.GetBool(allF) { // print all exits
-			lim = -1
+			lim = len.Int64()
 		} else { // use index/limit
 			index := viper.GetString(indexF)
 			if index == "" {
@@ -75,7 +93,7 @@ Usage:
 }
 
 func displayDepositExits(curr, lim int64, addr ethcmn.Address) {
-	for lim != 0 {
+	for lim > 0 {
 		key, err := rc.contract.DepositExitQueue(nil, big.NewInt(curr))
 		if err != nil {
 			return
@@ -85,7 +103,7 @@ func displayDepositExits(curr, lim int64, addr ethcmn.Address) {
 		key = new(big.Int).SetBytes(key.Bytes()[16:])
 
 		exit, err := rc.contract.DepositExits(nil, key)
-		if err != nil || utils.IsZeroAddress(exit.Owner) {
+		if err != nil {
 			return
 		}
 		if !utils.IsZeroAddress(addr) && exit.Owner != addr {
@@ -101,7 +119,7 @@ func displayDepositExits(curr, lim int64, addr ethcmn.Address) {
 }
 
 func displayTxExits(curr, lim int64, addr ethcmn.Address) {
-	for lim != 0 {
+	for lim > 0 {
 		key, err := rc.contract.TxExitQueue(nil, big.NewInt(curr))
 		if err != nil {
 			return
@@ -111,7 +129,7 @@ func displayTxExits(curr, lim int64, addr ethcmn.Address) {
 		key = new(big.Int).SetBytes(key.Bytes()[16:])
 
 		exit, err := rc.contract.TxExits(nil, key)
-		if err != nil || utils.IsZeroAddress(exit.Owner) {
+		if err != nil {
 			return
 		}
 

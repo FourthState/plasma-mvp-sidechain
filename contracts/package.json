@@ -14,6 +14,7 @@
     "rlp": "^2.2.2"
   },
   "dependencies": {
+    "shelljs": "^0.8.3",
     "solidity-rlp": "^2.0.0"
   }
 }
