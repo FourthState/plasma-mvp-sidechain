@@ -57,14 +57,14 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 
-	tx.Input0 = NewInput(NewPosition(new(big.Int).SetBytes(t.Tx.BlkNum0[:]), uint16(new(big.Int).SetBytes(t.Tx.TxIndex0[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex0[:]).Int64()), new(big.Int).SetBytes(t.Tx.DepositNonce0[:])),
+	tx.Input0 = NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum0[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex0[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex0[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce0[:]).Int64())),
 		t.Sigs[0], t.Tx.Input0ConfirmSigs[:])
-	tx.Input1 = NewInput(NewPosition(new(big.Int).SetBytes(t.Tx.BlkNum1[:]), uint16(new(big.Int).SetBytes(t.Tx.TxIndex1[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex1[:]).Int64()), new(big.Int).SetBytes(t.Tx.DepositNonce1[:])),
+	tx.Input1 = NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum1[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex1[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex1[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce1[:]).Int64())),
 		t.Sigs[1], t.Tx.Input1ConfirmSigs[:])
 	// set signatures if applicable
-	tx.Output0 = NewOutput(t.Tx.NewOwner0, new(big.Int).SetBytes(t.Tx.Amount0[:]))
-	tx.Output1 = NewOutput(t.Tx.NewOwner1, new(big.Int).SetBytes(t.Tx.Amount1[:]))
-	tx.Fee = new(big.Int).SetBytes(t.Tx.Fee[:])
+	tx.Output0 = NewOutput(t.Tx.NewOwner0, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount0[:]).Int64()))
+	tx.Output1 = NewOutput(t.Tx.NewOwner1, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount1[:]).Int64()))
+	tx.Fee = big.NewInt(new(big.Int).SetBytes(t.Tx.Fee[:]).Int64())
 
 	return nil
 }
