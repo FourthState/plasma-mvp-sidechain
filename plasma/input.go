@@ -18,6 +18,12 @@ func NewInput(position Position, sig [65]byte, confirmSigs [][65]byte) Input {
 		confirmSigs = [][65]byte{}
 	}
 
+	if len(confirmSigs) > 0 && bytes.Equal(confirmSigs[0][:], make([]byte, 65)) {
+		confirmSigs = [][65]byte{}
+	} else if len(confirmSigs) > 1 && bytes.Equal(confirmSigs[1][:], make([]byte, 65)) {
+		confirmSigs = [][65]byte{confirmSigs[0]}
+	}
+
 	return Input{
 		Position:          position,
 		Signature:         sig,

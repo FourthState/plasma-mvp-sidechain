@@ -1,7 +1,6 @@
 package plasma
 
 import (
-	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -18,7 +17,7 @@ func TestTransactionSerialization(t *testing.T) {
 
 	// contstruct a transaction
 	tx := &Transaction{}
-	pos, _ := FromPositionString("(1.1.1.0)")
+	pos, _ := FromPositionString("(1.10000.1.0)")
 	tx.Input0 = NewInput(pos, [65]byte{}, nil)
 	tx.Input0.Signature[1] = byte(1)
 	pos, _ = FromPositionString("(0.0.0.1)")
@@ -35,6 +34,7 @@ func TestTransactionSerialization(t *testing.T) {
 	err = rlp.DecodeBytes(bytes, recoveredTx)
 	require.NoError(t, err, "error deserializing transaction")
 
+	require.EqualValues(t, tx, recoveredTx, "serialized and deserialized transaction not deeply equal")
 	require.True(t, reflect.DeepEqual(tx, recoveredTx), "serialized and deserialized transactions not deeply equal")
 }
 
