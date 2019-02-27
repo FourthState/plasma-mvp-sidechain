@@ -1,6 +1,7 @@
 package plasma
 
 import (
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -17,10 +18,10 @@ func TestTransactionSerialization(t *testing.T) {
 
 	// contstruct a transaction
 	tx := &Transaction{}
-	pos, _ := FromPositionString("(1.1.1.1)")
+	pos, _ := FromPositionString("(1.1.1.0)")
 	tx.Input0 = NewInput(pos, [65]byte{}, nil)
 	tx.Input0.Signature[1] = byte(1)
-	pos, _ = FromPositionString("(0.0.0.0)")
+	pos, _ = FromPositionString("(0.0.0.1)")
 	tx.Input1 = NewInput(pos, [65]byte{}, nil)
 	tx.Output0 = NewOutput(common.HexToAddress("1"), one)
 	tx.Output1 = NewOutput(common.HexToAddress("0"), zero)
@@ -28,6 +29,7 @@ func TestTransactionSerialization(t *testing.T) {
 
 	bytes, err := rlp.EncodeToBytes(tx)
 	require.NoError(t, err, "error serializing transaction")
+	require.Equal(t, 811, len(bytes), "encoded bytes should sum to 811")
 
 	recoveredTx := &Transaction{}
 	err = rlp.DecodeBytes(bytes, recoveredTx)
