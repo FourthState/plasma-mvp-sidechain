@@ -1,6 +1,7 @@
 package plasma
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -25,12 +26,12 @@ type txList struct {
 	TxIndex0          [32]byte
 	OIndex0           [32]byte
 	DepositNonce0     [32]byte
-	Input0ConfirmSigs [2][65]byte
+	Input0ConfirmSigs [130]byte
 	BlkNum1           [32]byte
 	TxIndex1          [32]byte
 	OIndex1           [32]byte
 	DepositNonce1     [32]byte
-	Input1ConfirmSigs [2][65]byte
+	Input1ConfirmSigs [130]byte
 	NewOwner0         common.Address
 	Amount0           [32]byte
 	NewOwner1         common.Address
@@ -57,10 +58,13 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 		return err
 	}
 
+	confirmSigs0 := parseSig(t.Tx.Input0ConfirmSigs)
+	confirmSigs1 := parseSig(t.Tx.Input1ConfirmSigs)
+
 	tx.Input0 = NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum0[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex0[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex0[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce0[:]).Int64())),
-		t.Sigs[0], t.Tx.Input0ConfirmSigs[:])
+		t.Sigs[0], confirmSigs0)
 	tx.Input1 = NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum1[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex1[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex1[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce1[:]).Int64())),
-		t.Sigs[1], t.Tx.Input1ConfirmSigs[:])
+		t.Sigs[1], confirmSigs1)
 	// set signatures if applicable
 	tx.Output0 = NewOutput(t.Tx.NewOwner0, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount0[:]).Int64()))
 	tx.Output1 = NewOutput(t.Tx.NewOwner1, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount1[:]).Int64()))
@@ -189,8 +193,12 @@ func (tx Transaction) toTxList() txList {
 	if len(tx.Input0.DepositNonce.Bytes()) > 0 {
 		copy(txList.DepositNonce0[32-len(tx.Input0.DepositNonce.Bytes()):], tx.Input0.DepositNonce.Bytes())
 	}
-	if len(tx.Input0.ConfirmSignatures) > 0 {
-		copy(txList.Input0ConfirmSigs[130-len(tx.Input0.ConfirmSignatures):], tx.Input0.ConfirmSignatures)
+	switch len(tx.Input0.ConfirmSignatures) {
+	case 1:
+		copy(txList.Input0ConfirmSigs[:65], tx.Input0.ConfirmSignatures[0][:])
+	case 2:
+		copy(txList.Input0ConfirmSigs[:65], tx.Input0.ConfirmSignatures[0][:])
+		copy(txList.Input0ConfirmSigs[65:], tx.Input0.ConfirmSignatures[1][:])
 	}
 
 	// Input 1
@@ -203,8 +211,13 @@ func (tx Transaction) toTxList() txList {
 	if len(tx.Input1.DepositNonce.Bytes()) > 0 {
 		copy(txList.DepositNonce1[32-len(tx.Input1.DepositNonce.Bytes()):], tx.Input1.DepositNonce.Bytes())
 	}
-	if len(tx.Input1.ConfirmSignatures) > 0 {
-		copy(txList.Input1ConfirmSigs[130-len(tx.Input1.ConfirmSignatures):], tx.Input1.ConfirmSignatures)
+
+	switch len(tx.Input1.ConfirmSignatures) {
+	case 1:
+		copy(txList.Input1ConfirmSigs[:65], tx.Input1.ConfirmSignatures[0][:])
+	case 2:
+		copy(txList.Input1ConfirmSigs[:65], tx.Input1.ConfirmSignatures[0][:])
+		copy(txList.Input1ConfirmSigs[65:], tx.Input1.ConfirmSignatures[1][:])
 	}
 
 	// Outputs and Fee
@@ -220,4 +233,21 @@ func (tx Transaction) toTxList() txList {
 		copy(txList.Fee[32-len(tx.Fee.Bytes()):], tx.Fee.Bytes())
 	}
 	return txList
+}
+
+// Helpers
+// Convert 130 byte input confirm sigs to 65 byte slices
+func parseSig(sig [130]byte) [][65]byte {
+	if bytes.Equal(sig[:65], make([]byte, 65)) {
+		return [][65]byte{}
+	} else if bytes.Equal(sig[65:], make([]byte, 65)) {
+		newSig := make([][65]byte, 1)
+		copy(newSig[0][:], sig[:65])
+		return newSig
+	} else {
+		newSig := make([][65]byte, 2)
+		copy(newSig[0][:], sig[:65])
+		copy(newSig[1][:], sig[65:])
+		return newSig
+	}
 }
