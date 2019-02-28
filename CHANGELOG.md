@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Query sidechain state
 - Plasma configuration file
 ### Changed
+- Fixed Length TxBytes (811), compatible with rootchain v1.0.0
 - Made UTXO model modular
 - Transaction verification to be compatible with rootchain
 - Decrease dependency on amino encoding
