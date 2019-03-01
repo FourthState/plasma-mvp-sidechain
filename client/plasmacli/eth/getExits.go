@@ -3,6 +3,7 @@ package eth
 import (
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
@@ -18,6 +19,7 @@ func init() {
 	exitsCmd.Flags().String(indexF, "", "index to begin displaying exits from")
 	exitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account")
 	exitsCmd.Flags().BoolP(depositsF, "D", false, "display deposit exits")
+	exitsCmd.Flags().StringP(positionF, "p", "", "display exit status for specified position")
 	viper.BindPFlags(exitsCmd.Flags())
 }
 
@@ -36,6 +38,16 @@ Usage:
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var curr int64
 		var addr ethcmn.Address
+
+		// check if position specified
+		if viper.GetString(positionF) != "" {
+			pos, err := plasma.FromPositionString(viper.GetString(positionF))
+			if err != nil {
+				return fmt.Errorf("failed to parse position: { %s }", err)
+			}
+			return displayExit(pos.Priority(), addr, pos.IsDeposit())
+		}
+
 		acc := viper.GetString(accountF)
 
 		if acc != "" {
@@ -81,67 +93,68 @@ Usage:
 			}
 		}
 
-		if viper.GetBool(depositsF) {
-			displayDepositExits(curr, lim, addr)
-		} else {
-			displayTxExits(curr, lim, addr)
+		if err := displayExits(curr, lim, addr, viper.GetBool(depositsF)); err != nil {
+			return fmt.Errorf("failure occured while querying exits: { %s }", err)
 		}
 
 		return nil
 	},
 }
 
-func displayDepositExits(curr, lim int64, addr ethcmn.Address) {
+func displayExits(curr, lim int64, addr ethcmn.Address, deposits bool) (err error) {
 	for lim > 0 {
-		key, err := rc.contract.DepositExitQueue(nil, big.NewInt(curr))
+		var key *big.Int
+
+		if deposits {
+			key, err = rc.contract.DepositExitQueue(nil, big.NewInt(curr))
+		} else {
+			key, err = rc.contract.TxExitQueue(nil, big.NewInt(curr))
+		}
 		if err != nil {
-			return
+			return err
 		}
 
 		// Get right 128 bits for position mapping
 		key = new(big.Int).SetBytes(key.Bytes()[16:])
 
-		exit, err := rc.contract.DepositExits(nil, key)
-		if err != nil {
-			return
-		}
-		if !utils.IsZeroAddress(addr) && exit.Owner != addr {
-			continue
+		if err := displayExit(key, addr, deposits); err != nil {
+			return err
 		}
 
 		curr++
 		lim--
-		state := parseState(exit.State)
-		fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
-			exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
 	}
+	return nil
 }
 
-func displayTxExits(curr, lim int64, addr ethcmn.Address) {
-	for lim > 0 {
-		key, err := rc.contract.TxExitQueue(nil, big.NewInt(curr))
-		if err != nil {
-			return
-		}
-
-		// Get right 128 bits for position mapping
-		key = new(big.Int).SetBytes(key.Bytes()[16:])
-
-		exit, err := rc.contract.TxExits(nil, key)
-		if err != nil {
-			return
-		}
-
-		if !utils.IsZeroAddress(addr) && exit.Owner != addr {
-			continue
-		}
-
-		curr++
-		lim--
-		state := parseState(exit.State)
-		fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
-			exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
+// display a single exit given the position key in big.Int format
+func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
+	var exit struct {
+		Amount       *big.Int
+		CommittedFee *big.Int
+		CreatedAt    *big.Int
+		Owner        ethcmn.Address
+		State        uint8
 	}
+
+	if deposits {
+		exit, err = rc.contract.DepositExits(nil, key)
+	} else {
+		exit, err = rc.contract.TxExits(nil, key)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if !utils.IsZeroAddress(addr) && exit.Owner != addr {
+		return nil
+	}
+
+	state := parseState(exit.State)
+	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
+		exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
+	return nil
 }
 
 func parseState(exit uint8) (state string) {
