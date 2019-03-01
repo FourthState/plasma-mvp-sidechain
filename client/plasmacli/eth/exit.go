@@ -2,9 +2,6 @@ package eth
 
 import (
 	"fmt"
-	"math/big"
-	"strconv"
-
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -13,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
+	"math/big"
+	"strconv"
 )
 
 // TODO: Add support for exiting fees
@@ -24,7 +23,7 @@ func init() {
 	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
 	exitCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
-	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the utxo")
+	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the exiting utxo")
 	viper.BindPFlags(exitCmd.Flags())
 }
 
@@ -113,7 +112,7 @@ Usage:
 			}
 		}
 
-		txBytes, proof, confirmSignatures, err = parseExitFlags(txBytes, proof, confirmSignatures)
+		txBytes, proof, confirmSignatures, err = parseProof(txBytes, proof, confirmSignatures)
 
 		// TODO: Add support for querying for confirm sigs in local storage
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
@@ -126,9 +125,10 @@ Usage:
 	},
 }
 
+// Parses flags related to proving exit/challenge
 // Flags override full node information
-// All necessary exit information is returned, or error is thrown
-func parseExitFlags(txBytes, proof, confirmSignatures []byte) ([]byte, []byte, []byte, error) {
+// All necessary exit/challenge information is returned, or error is thrown
+func parseProof(txBytes, proof, confirmSignatures []byte) ([]byte, []byte, []byte, error) {
 	if viper.GetString(txBytesF) != "" {
 		txBytes = []byte(viper.GetString(txBytesF))
 	}

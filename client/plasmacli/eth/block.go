@@ -2,12 +2,11 @@ package eth
 
 import (
 	"fmt"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"math/big"
 	"strconv"
 	"time"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func init() {

@@ -2,14 +2,13 @@ package eth
 
 import (
 	"fmt"
-	"math/big"
-	"strconv"
-
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"math/big"
+	"strconv"
 )
 
 func init() {

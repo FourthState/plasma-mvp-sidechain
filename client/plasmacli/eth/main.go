@@ -2,9 +2,6 @@ package eth
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-
 	config "github.com/FourthState/plasma-mvp-sidechain/client"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
 	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
@@ -13,6 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
+	"path/filepath"
 )
 
 const (
@@ -25,6 +24,7 @@ const (
 	gasLimitF  = "gas-limit"
 	indexF     = "index"
 	limitF     = "limit"
+	ownerF     = "owner"
 	positionF  = "position"
 	proofF     = "proof"
 	sigsF      = "signatures"
