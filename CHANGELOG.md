@@ -12,6 +12,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Query sidechain state
 - Plasma configuration file
 ### Changed
+- [plasmacli] Added keys subcommand with account mapping
+- [plasmacli] home flag renamed to directory, flags have suffic "F" for local flags, and "Flag" for persistent flags
 - Made UTXO model modular
 - Transaction verification to be compatible with rootchain
 - Decrease dependency on amino encoding
