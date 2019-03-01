@@ -13,17 +13,17 @@ import (
 )
 
 func init() {
-	queryCmd.AddCommand(exitsCmd)
-	exitsCmd.Flags().Bool(allF, false, "all pending exits will be displayed")
-	exitsCmd.Flags().String(limitF, "1", "amount of exits to display")
-	exitsCmd.Flags().String(indexF, "", "index to begin displaying exits from")
-	exitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account")
-	exitsCmd.Flags().BoolP(depositsF, "D", false, "display deposit exits")
-	exitsCmd.Flags().StringP(positionF, "p", "", "display exit status for specified position")
-	viper.BindPFlags(exitsCmd.Flags())
+	queryCmd.AddCommand(getExitsCmd)
+	getExitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account")
+	getExitsCmd.Flags().Bool(allF, false, "all pending exits will be displayed")
+	getExitsCmd.Flags().BoolP(depositsF, "D", false, "display deposit exits")
+	getExitsCmd.Flags().String(indexF, "", "index to begin displaying exits from")
+	getExitsCmd.Flags().String(limitF, "1", "amount of exits to display")
+	getExitsCmd.Flags().StringP(positionF, "p", "", "display exit status for specified position")
+	viper.BindPFlags(getExitsCmd.Flags())
 }
 
-var exitsCmd = &cobra.Command{
+var getExitsCmd = &cobra.Command{
 	Use:   "exits",
 	Short: "Display pending exits",
 	Long: `Display pending rootchain exits. Queries the rootchain exit queue.
@@ -33,7 +33,8 @@ Usage:
 	plasmacli eth query exits -a <account>
 	plasmacli eth query exits --deposits
 	plasmacli eth query exits --all
-	plasmacli eth query exits --index <number> --limit <number>`,
+	plasmacli eth query exits --index <number> --limit <number>
+	plasmacli eth query exits --position <position>`,
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var curr int64

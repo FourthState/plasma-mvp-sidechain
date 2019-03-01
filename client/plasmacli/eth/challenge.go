@@ -16,11 +16,11 @@ import (
 
 func init() {
 	ethCmd.AddCommand(challengeCmd)
-	challengeCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	challengeCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
 	challengeCmd.Flags().String(ownerF, "", "owner of the challenging transaction, required if different from the specified account")
 	challengeCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	challengeCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the challenging transaction")
+	challengeCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	challengeCmd.Flags().StringP(txBytesF, "b", "", "bytes of the challenging transaction")
 	viper.BindPFlags(challengeCmd.Flags())
 }
@@ -28,8 +28,15 @@ func init() {
 var challengeCmd = &cobra.Command{
 	Use:   "challenge <exiting position> <challenging position> <account>",
 	Short: "Challenge an existing exit",
-	Long:  ``,
-	Args:  cobra.ExactArgs(3),
+	Long: `Challenge a pending exit. If the trust-node flag is set, 
+the necessary information will be retrieved from the connected full node. 
+Otherwise, the transaction bytes, merkle proof, and confirmation signatures must be given. 
+Usage of flags override information retrieved from full node. 
+
+Usage:
+	plasmacli eth challenge <exiting position> <challenging position> <account> --trust-node --gas-limit 30000
+	plasmacli eth cahllenge <exiting position> <challenging position> <account> --proof <proof> --signatures <confirm signatures> --txBytes <challenge transaction bytes>`,
+	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// parse positions
 		exitingPos, err := plasma.FromPositionString(args[0])

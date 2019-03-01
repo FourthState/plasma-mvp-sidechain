@@ -17,7 +17,12 @@ func init() {
 var balanceCmd = &cobra.Command{
 	Use:   "balance <account>",
 	Short: "Query for balance avaliable for withdraw from rootchain",
-	Args:  cobra.MaximumNArgs(1),
+	Long: `Query for balance avaliable for withdrawal from rootchain.
+	
+Usage: 
+	plasmacli eth query balance <account>
+	plasmacli eth query balance --address <address>`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var addr ethcmn.Address
 

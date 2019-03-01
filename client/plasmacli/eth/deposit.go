@@ -20,8 +20,11 @@ func init() {
 var depositCmd = &cobra.Command{
 	Use:   "deposit <amount> <account>",
 	Short: "Deposit to rootchain contract",
-	Long:  `Deposit to the rootchain contract as specified in plasma.toml.`,
-	Args:  cobra.ExactArgs(2),
+	Long: `Deposit to the rootchain contract as specified in plasma.toml.
+
+Usage:
+	plasmacli eth deposit <amount> <account> --gas-limit 30000`,
+	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key, err := ks.GetKey(args[1])
 		if err != nil {

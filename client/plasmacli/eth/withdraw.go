@@ -18,8 +18,11 @@ func init() {
 var withdrawCmd = &cobra.Command{
 	Use:   "withdraw <account>",
 	Short: "Withdraw all avaliable funds from rootchain contract",
-	Long:  ``,
-	Args:  cobra.ExactArgs(1),
+	Long: `Withdraw all avaliable funds from the rootchain contract
+
+Usage:
+	plasmacli eth withdraw <account> --gas-limit 30000`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key, err := ks.GetKey(args[0])
 		if err != nil {

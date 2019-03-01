@@ -9,13 +9,13 @@ import (
 )
 
 func init() {
-	queryCmd.AddCommand(depositsCmd)
-	depositsCmd.Flags().Bool(allF, false, "all deposits will be displayed")
-	depositsCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")
-	viper.BindPFlags(depositsCmd.Flags())
+	queryCmd.AddCommand(getDepositsCmd)
+	getDepositsCmd.Flags().Bool(allF, false, "all deposits will be displayed")
+	getDepositsCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")
+	viper.BindPFlags(getDepositsCmd.Flags())
 }
 
-var depositsCmd = &cobra.Command{
+var getDepositsCmd = &cobra.Command{
 	Use:   "deposit <nonce>",
 	Short: "Query for a deposit that occured on the rootchain",
 	Long: `Queries for deposits that occured on the rootchain.

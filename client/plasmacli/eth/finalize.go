@@ -12,16 +12,20 @@ import (
 
 func init() {
 	ethCmd.AddCommand(finalizeCmd)
-	finalizeCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
 	finalizeCmd.Flags().BoolP(depositsF, "D", false, "indicate that deposit exits should be finalized")
+	finalizeCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
 	viper.BindPFlags(finalizeCmd.Flags())
 }
 
 var finalizeCmd = &cobra.Command{
 	Use:   "finalize <account>",
 	Short: "Finalize exit queue on rootchain",
-	Long:  `Defaults to finalizing transaction exits. Use deposit flag to finalize deposit exit queue`,
-	Args:  cobra.ExactArgs(1),
+	Long: `Defaults to finalizing transaction exits. Use deposit flag to finalize deposit exit queue
+
+Usage:
+	plasmacli eth finalize <account> --gas-limit 30000
+	plasmacli eth finalize <account> --deposits`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		key, err := ks.GetKey(args[1])
 		if err != nil {

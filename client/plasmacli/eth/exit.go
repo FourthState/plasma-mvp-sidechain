@@ -19,11 +19,11 @@ import (
 func init() {
 	ethCmd.AddCommand(exitCmd)
 	exitCmd.Flags().String(feeF, "", "fee committed in an unfinalized spend of the input")
-	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
-	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
 	exitCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
-	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the exiting utxo")
+	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for exiting utxo")
+	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
+	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
 	viper.BindPFlags(exitCmd.Flags())
 }
 
@@ -36,7 +36,7 @@ Otherwise, the transaction bytes, merkle proof, and confirmation signatures must
 Usage of flags override information retrieved from full node. 
 
 Usage:
-	plasmacli exit <account> <position> -t
+	plasmacli exit <account> <position> --trust-node --gas-limit 30000
 	plasmacli exit <account> <position> -t --fee <amount>
 	plasmacli exit <account> <position> -b <tx-bytes> --proof <merkle-proof> -S <confirmation-signatures> --fee <amount>`,
 	Args: cobra.ExactArgs(2),
