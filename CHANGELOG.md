@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 ### Added
+- [plasmacli] Added keys subcommand with account mapping
+- [plasmacli] Added local confirmation signature storage
 - Ethereum connection to smart contract
 - Implemented Fees
 - Unit tests
@@ -12,13 +14,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Query sidechain state
 - Plasma configuration file
 ### Changed
-- [plasmacli] Added keys subcommand with account mapping
 - [plasmacli] home flag renamed to directory, flags have suffic "F" for local flags, and "Flag" for persistent flags
+- [plasmacli] client keystore/ renamed to store/
 - Made UTXO model modular
 - Transaction verification to be compatible with rootchain
 - Decrease dependency on amino encoding
 - Updated client
 - Updated documentation
+- Upgrade to v0.32.0 of Cosmos SDK
 
 ## PreHistory
 
