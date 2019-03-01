@@ -17,7 +17,7 @@ Add this repository into your $GOPATH/src/github.com/FourthState directory:
 
 To get dependencies:
 
-`dep ensure`
+`dep ensure -vendor-only`
 
 ### Forking
 

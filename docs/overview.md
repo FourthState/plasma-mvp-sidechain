@@ -2,7 +2,7 @@
 
 This sidechain is built on top of the Cosmos SDK and uses Tendermint for consensus. Therefore it is important to note the flow of a transaction as it would occur on any chain built off the SDK and not specifically on this one. 
 
-The cosmos sdk docs can be found [here](https://cosmos.network/docs/sdk/overview.html)
+[cosmos sdk documentation](https://cosmos.network/docs/)
 
 ## Tx and Msg
 There are two main types in the SDK, a Tx and a Msg. A message (Msg) can be thought of in the traditional distributed systems sense of being data passed around between nodes. A transaction (Tx) contains a message as well as any other authentication data necessary to validate a message. Both Tx and Msg are interfaces such that there can be many different types of messages and transactions. 
