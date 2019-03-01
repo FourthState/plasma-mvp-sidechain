@@ -2,14 +2,13 @@ package store
 
 import (
 	"bufio"
-	"os"
-	"strings"
-	"testing"
-
 	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"os"
+	"strings"
+	"testing"
 )
 
 // Add, Delete, Update and iterate through accounts

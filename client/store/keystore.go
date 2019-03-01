@@ -4,9 +4,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -14,6 +11,8 @@ import (
 	"github.com/spf13/viper"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
+	"os"
+	"path/filepath"
 )
 
 const (

@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/syndtr/goleveldb/leveldb"
 )

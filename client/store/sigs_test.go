@@ -1,14 +1,13 @@
 package store
 
 import (
-	"math/big"
-	"os"
-	"testing"
-
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"math/big"
+	"os"
+	"testing"
 )
 
 func TestSavSig(t *testing.T) {
