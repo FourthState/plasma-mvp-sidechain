@@ -1,21 +1,24 @@
-package cmd
+package keys
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.AddCommand(addKeyCmd)
+	keysCmd.AddCommand(addCmd)
 }
 
-var addKeyCmd = &cobra.Command{
-	Use:   "add",
+var addCmd = &cobra.Command{
+	Use:   "add <name>",
 	Short: "Create a new account",
-	Long:  `Add an encrypted account to the keystore.`,
+	Long:  `Add an encrypted account to your local keystore.`,
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		address, err := keystore.NewAccount()
+		name := args[0]
+
+		address, err := store.AddAccount(name)
 		if err != nil {
 			return err
 		}
@@ -23,7 +26,7 @@ var addKeyCmd = &cobra.Command{
 		fmt.Println("\n**Important** do not lose your passphrase.")
 		fmt.Println("It is the only way to recover your account")
 		fmt.Println("You should export this account and store it in a secure location")
-		fmt.Printf("Your new account address is: %s\n", address.Hex())
+		fmt.Printf("NAME: %s\tADDRESS: 0x%x\n", name, address)
 		return nil
 	},
 }

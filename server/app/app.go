@@ -36,9 +36,8 @@ type PlasmaMVPChain struct {
 	feeAmount *big.Int
 
 	// persistent stores
-	utxoStore      store.UTXOStore
-	plasmaStore    store.PlasmaStore
-	fauxMerkleMode bool // when set to false, StoreIAVL is used
+	utxoStore   store.UTXOStore
+	plasmaStore store.PlasmaStore
 
 	// smart contract connection
 	ethConnection *eth.Plasma

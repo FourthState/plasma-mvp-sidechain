@@ -1,14 +1,13 @@
-package cmd
+package main
 
 import (
 	"fmt"
+	clistore "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func init() {
@@ -17,24 +16,26 @@ func init() {
 
 var proveCmd = &cobra.Command{
 	Use:   "prove",
-	Short: "Prove transaction inclusion: prove <address> <position>",
+	Short: "Prove transaction inclusion: prove <name> <position>",
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext().WithTrustNode(true)
+		name := args[0]
 
-		// validate arguments
-		addrStr := strings.TrimSpace(args[0])
-		if !common.IsHexAddress(addrStr) {
-			return fmt.Errorf("Invalid address provided. Please use hex format")
+		addr, err := clistore.GetAccount(name)
+		if err != nil {
+			return err
 		}
+
+		// parse position
 		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
 			return err
 		}
 
 		// query for the output
-		key := append(common.HexToAddress(addrStr).Bytes(), position.Bytes()...)
+		key := append(addr.Bytes(), position.Bytes()...)
 		res, err := ctx.QueryStore(key, "utxo")
 		if err != nil {
 			return err

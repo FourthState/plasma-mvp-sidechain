@@ -1,9 +1,8 @@
-package cmd
+package query
 
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
@@ -12,12 +11,8 @@ import (
 	"strings"
 )
 
-func init() {
-	rootCmd.AddCommand(infoCmd)
-	infoCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
-
-}
-
+// TODO: Change this from being a command to a flag for the account command
+// If --all then print all info for account
 var infoCmd = &cobra.Command{
 	Use:   "info <address>",
 	Args:  cobra.ExactArgs(1),
