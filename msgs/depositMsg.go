@@ -1,10 +1,10 @@
 package msgs
 
 import (
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
 )
 
 const (
@@ -17,8 +17,8 @@ var _ sdk.Tx = IncludeDepositMsg{}
 // since no authentication is happening
 type IncludeDepositMsg struct {
 	DepositNonce *big.Int
-	Owner       common.Address
-	ReplayNonce uint64 // to get around tx cache issues when resubmitting
+	Owner        common.Address
+	ReplayNonce  uint64 // to get around tx cache issues when resubmitting
 }
 
 func (msg IncludeDepositMsg) Type() string { return "include_deposit" }
@@ -38,7 +38,7 @@ func (msg IncludeDepositMsg) ValidateBasic() sdk.Error {
 	if msg.DepositNonce.Sign() != 1 {
 		return ErrInvalidTransaction(DefaultCodespace, "DepositNonce must be greater than 0")
 	}
-	if (utils.IsZeroAddress(msg.Owner)) {
+	if utils.IsZeroAddress(msg.Owner) {
 		return ErrInvalidTransaction(DefaultCodespace, "Owner must have non-zero address")
 	}
 	return nil

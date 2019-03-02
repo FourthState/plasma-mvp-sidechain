@@ -25,7 +25,7 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 		spendMsg, ok := tx.(msgs.SpendMsg)
 		if !ok {
 			depositMsg, depositOK := tx.(msgs.IncludeDepositMsg)
-			if !depositOK { 
+			if !depositOK {
 				return ctx, sdk.ErrInternal("tx must in the form of a spendMsg or IncludeDepositMsg").Result(), true
 			}
 			return IncludeDepositAnteHandler(ctx, utxoStore, depositMsg, client)
@@ -109,7 +109,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	}
 
 	// validate confirm signatures if not a fee utxo or deposit utxo
-	if input.TxIndex < 1<<16-1  && input.DepositNonce.Sign() == 0 {
+	if input.TxIndex < 1<<16-1 && input.DepositNonce.Sign() == 0 {
 		res := validateConfirmSignatures(ctx, input, inputUTXO)
 		if !res.IsOK() {
 			return nil, res
@@ -154,12 +154,12 @@ func IncludeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, msg m
 	if utxoStore.HasUTXO(ctx, msg.Owner, depositPosition) {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
 	}
-	_, interval, ok := client.GetDeposit(msg.DepositNonce)
-	if !ok && interval == nil {
+	_, threshold, ok := client.GetDeposit(msg.DepositNonce)
+	if !ok && threshold == nil {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist.", msg.DepositNonce.String()).Result(), true
 	}
 	if !ok {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), interval.Int64()).Result(), true
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), threshold.Int64()).Result(), true
 	}
 	exitted := client.HasTxBeenExited(depositPosition)
 	if exitted {

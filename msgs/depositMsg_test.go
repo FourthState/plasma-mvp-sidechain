@@ -6,9 +6,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
+	"math/big"
 	"reflect"
 	"testing"
-	"math/big"
 )
 
 var (
@@ -18,8 +18,8 @@ var (
 
 func TestDepositMsgValidate(t *testing.T) {
 	type depositCase struct {
-		Nonce *big.Int
-		Address      ethcmn.Address
+		Nonce   *big.Int
+		Address ethcmn.Address
 	}
 
 	invalidCases := []depositCase{
@@ -31,7 +31,7 @@ func TestDepositMsgValidate(t *testing.T) {
 	for i, c := range invalidCases {
 		depositMsg := IncludeDepositMsg{
 			DepositNonce: c.Nonce,
-			Owner: c.Address,
+			Owner:        c.Address,
 		}
 		require.NotNil(t, depositMsg.ValidateBasic(), fmt.Sprintf("Testcase %d failed", i))
 	}
@@ -40,15 +40,15 @@ func TestDepositMsgValidate(t *testing.T) {
 func TestDepositMsgSerialization(t *testing.T) {
 	msg := IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
-		Owner: addr,
-		ReplayNonce: 2,
+		Owner:        addr,
+		ReplayNonce:  2,
 	}
 
 	bytes, err := rlp.EncodeToBytes(&msg)
 	require.NoError(t, err, "serialization error")
 
 	tx, err := TxDecoder(bytes)
-	
+
 	require.NoError(t, err, "deserialization error")
 
 	require.True(t, reflect.DeepEqual(msg, tx), "serialized and deserialized msgs not equal")

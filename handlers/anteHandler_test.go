@@ -4,11 +4,11 @@ import (
 	"crypto/sha256"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
@@ -21,13 +21,13 @@ var (
 	badPrivKey, _ = crypto.GenerateKey()
 )
 
-type inputUTXO struct{
-	BlockNum *big.Int
-	TxIndex uint16
-	OIndex uint8
+type inputUTXO struct {
+	BlockNum     *big.Int
+	TxIndex      uint16
+	OIndex       uint8
 	DepositNonce *big.Int
-	Address common.Address
-	Spent bool
+	Address      common.Address
+	Spent        bool
 }
 
 // cook the plasma connection
@@ -50,12 +50,10 @@ func (p exitConn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
 }
 func (p exitConn) HasTxBeenExited(pos plasma.Position) bool { return true }
 
-
 func TestAnteChecks(t *testing.T) {
 	// setup
 	ctx, utxoStore, plasmaStore := setup()
 	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
-
 
 	// cook up some input UTXOs to start in UTXO store
 	inputs := []inputUTXO{
@@ -206,12 +204,12 @@ func TestAnteExitedInput(t *testing.T) {
 
 	// place input in store
 	input := inputUTXO{
-		BlockNum: utils.Big1,
-		TxIndex: 0,
-		OIndex: 0,
+		BlockNum:     utils.Big1,
+		TxIndex:      0,
+		OIndex:       0,
 		DepositNonce: nil,
-		Spent: false,
-		Address: addr,
+		Spent:        false,
+		Address:      addr,
 	}
 	setupInputs(ctx, utxoStore, input)
 
@@ -269,10 +267,10 @@ func TestAnteInvalidConfirmSig(t *testing.T) {
 	confHash := utils.ToEthSignedMessageHash(confBytes[:])
 	badConfSig, _ := crypto.Sign(confHash, badPrivKey)
 	inputUTXO := store.UTXO{
-		InputKeys: [][]byte{inputKey},
+		InputKeys:        [][]byte{inputKey},
 		ConfirmationHash: confBytes[:],
 		Output: plasma.Output{
-			Owner: addr,
+			Owner:  addr,
 			Amount: big.NewInt(10),
 		},
 		Position: plasma.NewPosition(utils.Big1, 0, 0, nil),
@@ -337,10 +335,10 @@ func TestAnteValidTx(t *testing.T) {
 	confHash := utils.ToEthSignedMessageHash(confBytes[:])
 	confSig, _ := crypto.Sign(confHash, privKey)
 	inputUTXO := store.UTXO{
-		InputKeys: [][]byte{inputKey},
+		InputKeys:        [][]byte{inputKey},
 		ConfirmationHash: confBytes[:],
 		Output: plasma.Output{
-			Owner: addr,
+			Owner:  addr,
 			Amount: big.NewInt(10),
 		},
 		Position: plasma.NewPosition(utils.Big1, 0, 0, nil),
@@ -391,7 +389,7 @@ func TestAnteDeposit(t *testing.T) {
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
-		Owner: addr,
+		Owner:        addr,
 	}
 
 	_, res, abort := handler(ctx, msg, false)
@@ -412,8 +410,8 @@ type unfinalConn struct{}
 
 func (u unfinalConn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
 	dep := plasma.Deposit{
-		Owner: addr,
-		Amount: big.NewInt(10),
+		Owner:       addr,
+		Amount:      big.NewInt(10),
 		EthBlockNum: big.NewInt(50),
 	}
 	return dep, big.NewInt(10), false
@@ -429,7 +427,6 @@ func (d dneConn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
 
 func (d dneConn) HasTxBeenExited(pos plasma.Position) bool { return false }
 
-
 func TestAnteDepositUnfinal(t *testing.T) {
 	// setup
 	ctx, utxoStore, plasmaStore := setup()
@@ -438,7 +435,7 @@ func TestAnteDepositUnfinal(t *testing.T) {
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
-		Owner: addr,
+		Owner:        addr,
 	}
 
 	_, res, abort := handler(ctx, msg, false)
@@ -456,7 +453,7 @@ func TestAnteDepositExitted(t *testing.T) {
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
-		Owner: addr,
+		Owner:        addr,
 	}
 
 	_, res, abort := handler(ctx, msg, false)
@@ -474,7 +471,7 @@ func TestAnteDepositDNE(t *testing.T) {
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
-		Owner: addr,
+		Owner:        addr,
 	}
 
 	_, res, abort := handler(ctx, msg, false)
@@ -488,10 +485,10 @@ func setupInputs(ctx sdk.Context, utxoStore store.UTXOStore, inputs ...inputUTXO
 	for _, i := range inputs {
 		utxo := store.UTXO{
 			Output: plasma.Output{
-				Owner: i.Address,
+				Owner:  i.Address,
 				Amount: big.NewInt(10),
 			},
-			Spent: i.Spent,
+			Spent:    i.Spent,
 			Position: plasma.NewPosition(i.BlockNum, i.TxIndex, i.OIndex, i.DepositNonce),
 		}
 		utxoStore.StoreUTXO(ctx, utxo)

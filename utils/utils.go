@@ -9,7 +9,7 @@ import (
 var (
 	Big0        = big.NewInt(0)
 	Big1        = big.NewInt(1)
-	Big2 = big.NewInt(2)
+	Big2        = big.NewInt(2)
 	ZeroAddress = common.Address{}
 )
 

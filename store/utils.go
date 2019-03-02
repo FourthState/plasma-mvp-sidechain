@@ -2,8 +2,8 @@ package store
 
 import (
 	"bytes"
-	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 )
 
 const (

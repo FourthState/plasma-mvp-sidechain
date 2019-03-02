@@ -18,14 +18,14 @@ func TestIncludeDeposit(t *testing.T) {
 	// create a msg that spends the first input and creates two outputs
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(5),
-		Owner: addr,
+		Owner:        addr,
 	}
 
 	depositHandler(ctx, msg)
 
 	plasmaPosition := plasma.NewPosition(nil, 0, 0, big.NewInt(5))
 	utxo, ok := utxoStore.GetUTXO(ctx, addr, plasmaPosition)
-	
+
 	require.True(t, ok, "UTXO does not exist in store")
 	require.Equal(t, addr, utxo.Output.Owner, "UTXO has wrong owner")
 	require.Equal(t, big.NewInt(10), utxo.Output.Amount, "UTXO has wrong amount")

@@ -24,7 +24,7 @@ func NewDepositHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex, clien
 		utxo := store.UTXO{
 			Output:   plasma.NewOutput(deposit.Owner, deposit.Amount),
 			Position: depositPosition,
-			Spent: false,
+			Spent:    false,
 		}
 		utxoStore.StoreUTXO(ctx, utxo)
 		return sdk.Result{}

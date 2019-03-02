@@ -158,15 +158,16 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, *big.Int,
 	}
 
 	interval := new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum)
-	if interval.Uint64() < plasma.finalityBound {
-		return plasmaTypes.Deposit{}, interval, false
+	threshold := new(big.Int).Sub(interval, big.NewInt(int64(plasma.finalityBound)))
+	if threshold.Sign() < 0 {
+		return plasmaTypes.Deposit{}, threshold, false
 	}
 
 	return plasmaTypes.Deposit{
 		Owner:       deposit.Owner,
 		Amount:      deposit.Amount,
 		EthBlockNum: deposit.EthBlockNum,
-	}, interval, true
+	}, threshold, true
 }
 
 // HasTXBeenExited indicates if the position has ever been exited
