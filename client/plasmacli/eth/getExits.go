@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"math/big"
 	"strconv"
+	"time"
 )
 
 func init() {
@@ -154,7 +155,7 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 
 	state := parseState(exit.State)
 	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
-		exit.Owner, exit.Amount, state, exit.CommittedFee, exit.CreatedAt)
+		exit.Owner, exit.Amount, state, exit.CommittedFee, time.Unix(exit.CreatedAt.Int64(), 0))
 	return nil
 }
 
