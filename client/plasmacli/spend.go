@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -171,7 +171,7 @@ plasmacli <to> <amount>  -a <account>,<account> -in <amount>,<amount>`,
 		signer := accs[0]
 		txHash := utils.ToEthSignedMessageHash(tx.TxHash())
 		var signature [65]byte
-		sig, err := ks.SignHashWithPassphrase(signer, txHash)
+		sig, err := store.SignHashWithPassphrase(signer, txHash)
 		if err != nil {
 			return err
 		}
@@ -181,7 +181,7 @@ plasmacli <to> <amount>  -a <account>,<account> -in <amount>,<amount>`,
 			if len(accs) > 2 {
 				signer = accs[1]
 			}
-			sig, err := ks.SignHashWithPassphrase(signer, txHash)
+			sig, err := store.SignHashWithPassphrase(signer, txHash)
 			if err != nil {
 				return err
 			}
@@ -208,7 +208,7 @@ plasmacli <to> <amount>  -a <account>,<account> -in <amount>,<amount>`,
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Committed at block %d. Hash %s\n", res.Height, res.Hash.String())
+			fmt.Printf("Committed at block %d. Hash 0x%x\n", res.Height, res.TxHash)
 		} else {
 			if _, err := ctx.BroadcastTxAsync(txBytes); err != nil {
 				return err

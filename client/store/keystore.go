@@ -1,15 +1,13 @@
-package keystore
+package store
 
 import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/bgentry/speakeasy"
+	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
-	isatty "github.com/mattn/go-isatty"
 	"github.com/spf13/viper"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -25,7 +23,7 @@ const (
 
 	PassphrasePrompt = "Enter passphrase:"
 
-	accountDir = "accounts.ldb"
+	accountDir = "data/accounts.ldb"
 	keysDir    = "keys"
 
 	DirFlag = "directory"
@@ -56,7 +54,7 @@ func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 
 // Add a new account to the keystore
 // Add account name and address to leveldb
-func Add(name string) (ethcmn.Address, error) {
+func AddAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -69,7 +67,8 @@ func Add(name string) (ethcmn.Address, error) {
 		return ethcmn.Address{}, errors.New("you are trying to override an existing private key name. Please delete it first")
 	}
 
-	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetCheckPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat, buf)
 	if err != nil {
 		return ethcmn.Address{}, err
 	}
@@ -87,7 +86,7 @@ func Add(name string) (ethcmn.Address, error) {
 }
 
 // Retrieve the address of an account
-func Get(name string) (ethcmn.Address, error) {
+func GetAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -105,7 +104,7 @@ func Get(name string) (ethcmn.Address, error) {
 
 // Remove an account from the local keystore
 // and the leveldb
-func Delete(name string) error {
+func DeleteAccount(name string) error {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -118,7 +117,8 @@ func Delete(name string) error {
 		return err
 	}
 
-	password, err := promptPassword(PassphrasePrompt, "")
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
 	if err != nil {
 		return err
 	}
@@ -132,41 +132,37 @@ func Delete(name string) error {
 
 // Update either the name of an account
 // or the passphrase for an account
-func Update(name string, updatedName string) error {
+func UpdateAccount(name string, updatedName string) (msg string, err error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return err
+		return msg, err
 	}
 	defer db.Close()
 
 	key := []byte(name)
 	addr, err := db.Get(key, nil)
 	if err != nil {
-		return err
+		return msg, err
 	}
 
 	if updatedName != "" {
 		// Update key name
 		if err = db.Delete(key, nil); err != nil {
-			return err
+			return msg, err
 		}
 
-		key, err = rlp.EncodeToBytes(updatedName)
-		if err != nil {
-			return err
+		if err = db.Put([]byte(updatedName), addr, nil); err != nil {
+			return msg, err
 		}
-
-		if err = db.Put(key, addr, nil); err != nil {
-			return err
-		}
-		fmt.Println("Account name has been updated.")
+		msg = "Account name has been updated."
 	} else {
 		// Update passphrase
-		password, err := promptPassword(PassphrasePrompt, "")
-		updatedPassword, err := promptPassword(NewPassphrasePrompt, "")
+		buf := cosmoscli.BufferStdin()
+		password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
+		updatedPassword, err := cosmoscli.GetPassword(NewPassphrasePrompt, buf)
 		if err != nil {
-			return err
+			return msg, err
 		}
 
 		acc := accounts.Account{
@@ -174,12 +170,12 @@ func Update(name string, updatedName string) error {
 		}
 		err = ks.Update(acc, password, updatedPassword)
 		if err != nil {
-			return err
+			return msg, err
 		}
-		fmt.Println("Account passphrase has been updated.")
+		msg = "Account passphrase has been updated."
 	}
 
-	return nil
+	return msg, nil
 }
 
 // Import a private key with an account name
@@ -191,7 +187,8 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 	}
 	defer db.Close()
 
-	password, err := promptPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat)
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetCheckPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat, buf)
 	if err != nil {
 		return ethcmn.Address{}, err
 	}
@@ -210,7 +207,7 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 }
 
 func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
-	addr, err := Get(signer)
+	addr, err := GetAccount(signer)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +216,8 @@ func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
 		Address: addr,
 	}
 
-	password, err := promptPassword(PassphrasePrompt, "")
+	buf := cosmoscli.BufferStdin()
+	password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -235,34 +233,4 @@ func getDir(location string) string {
 		dir = filepath.Join(dir, "/")
 	}
 	return os.ExpandEnv(filepath.Join(dir, location))
-}
-
-// Prompts for a password one-time
-// Enforces minimum password length
-func promptPassword(prompt, repeatPrompt string) (string, error) {
-	if !isatty.IsTerminal(os.Stdin.Fd()) && !isatty.IsCygwinTerminal(os.Stdin.Fd()) {
-		return "", fmt.Errorf("Only interactive terminals are supported")
-	}
-
-	password0, err := speakeasy.Ask(prompt)
-	if err != nil {
-		return "", err
-	}
-
-	if repeatPrompt != "" {
-		password1, err := speakeasy.Ask(repeatPrompt)
-		if err != nil {
-			return "", err
-		}
-
-		if password0 != password1 {
-			return "", fmt.Errorf("Passphrases do not match")
-		}
-	}
-
-	if len(password0) < MinPasswordLength {
-		return "", fmt.Errorf("Password must be at least %d characters", MinPasswordLength)
-	}
-
-	return password0, nil
 }

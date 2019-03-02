@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/FourthState/plasma-mvp-sidechain/server/app"
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/cmd"
 	"github.com/FourthState/plasma-mvp-sidechain/server/plasmad/config"
@@ -12,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/libs/cli"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,7 +27,7 @@ func main() {
 		PersistentPreRunE: persistentPreRunEFn(ctx),
 	}
 	rootCmd.AddCommand(cmd.InitCmd(ctx, cdc))
-	server.AddCommands(ctx, cdc, rootCmd, newApp, exportAppState)
+	server.AddCommands(ctx, cdc, rootCmd, newApp, nil)
 
 	// HomeFlag in tendermint cli will be set to `~/.plasmad`
 	rootDir := os.ExpandEnv("$HOME/.plasmad")
@@ -74,10 +72,4 @@ func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application
 	return app.NewPlasmaMVPChain(logger, db, traceStore,
 		app.SetPlasmaOptionsFromConfig(plasmaConfig),
 	)
-}
-
-// non-functional
-func exportAppState(logger log.Logger, db dbm.DB, traceStore io.Writer, _ int64, _ bool) (json.RawMessage, []tmtypes.GenesisValidator, error) {
-	papp := app.NewPlasmaMVPChain(logger, db, traceStore)
-	return papp.ExportAppStateJSON()
 }

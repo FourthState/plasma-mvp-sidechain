@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -61,7 +61,7 @@ You must remember this passphrase to unlock your account in the future.
 
 		}
 
-		address, err := ks.ImportECDSA(name, key)
+		address, err := store.ImportECDSA(name, key)
 		if err != nil {
 			return err
 		}

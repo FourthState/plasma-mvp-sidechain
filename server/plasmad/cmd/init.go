@@ -13,6 +13,7 @@ import (
 	tmConfig "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	tmCommon "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/privval"
 	"os"
 	"path/filepath"
 )
@@ -64,7 +65,18 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 			if viper.GetBool(flagOverwrite) && tmCommon.FileExists(genFile) {
 				fmt.Printf("overwriting genesis.json...\n")
 			}
-			valPubKey := gaiaInit.ReadOrCreatePrivValidator(config.PrivValidatorFile())
+			// read of create the private key file for this config
+			var privValidator *privval.FilePV
+			privValFile := config.PrivValidatorKeyFile()
+
+			if tmCommon.FileExists(privValFile) {
+				privValidator = privval.LoadFilePV(privValFile, config.PrivValidatorStateFile())
+			} else {
+				privValidator = privval.GenFilePV(privValFile, config.PrivValidatorStateFile())
+				privValidator.Save()
+			}
+
+			valPubKey := privValidator.GetPubKey()
 
 			// create genesis and write to disk
 			appState, err = codec.MarshalJSONIndent(cdc, app.NewDefaultGenesisState(valPubKey))

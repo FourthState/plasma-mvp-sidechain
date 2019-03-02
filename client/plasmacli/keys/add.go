@@ -2,7 +2,7 @@ package keys
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var addCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		address, err := ks.Add(name)
+		address, err := store.AddAccount(name)
 		if err != nil {
 			return err
 		}
