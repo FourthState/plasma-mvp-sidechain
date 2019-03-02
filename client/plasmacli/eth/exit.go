@@ -14,8 +14,6 @@ import (
 	"strconv"
 )
 
-// TODO: Add support for exiting fees
-
 func init() {
 	ethCmd.AddCommand(exitCmd)
 	exitCmd.Flags().String(feeF, "", "fee committed in an unfinalized spend of the input")
