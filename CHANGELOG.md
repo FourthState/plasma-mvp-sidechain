@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 ### Added
 - **plasmacli:** [\#108](https://github.com/FourthState/plasma-mvp-sidechain/pull/108) Added keys subcommand with account mapping
-- **plasmacli:** [\#116](https://github.com/FourthState/plasma-mvp-sidechain/pull/116)Added local confirmation signature storage
+- **plasmacli:** [\#116](https://github.com/FourthState/plasma-mvp-sidechain/pull/116) Added local confirmation signature storage
 - Ethereum connection to smart contract
 - Implemented Fees
 - Unit tests
