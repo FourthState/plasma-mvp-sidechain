@@ -5,8 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 ### Added
-- [plasmacli] Added keys subcommand with account mapping
-- [plasmacli] Added local confirmation signature storage
+- **plasmacli:** [\#108](https://github.com/FourthState/plasma-mvp-sidechain/pull/108) Added keys subcommand with account mapping
+- **plasmacli:** [\#116](https://github.com/FourthState/plasma-mvp-sidechain/pull/116) Added local confirmation signature storage
 - Ethereum connection to smart contract
 - Implemented Fees
 - Unit tests
@@ -14,8 +14,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Query sidechain state
 - Plasma configuration file
 ### Changed
-- [plasmacli] home flag renamed to directory, flags have suffic "F" for local flags, and "Flag" for persistent flags
-- [plasmacli] client keystore/ renamed to store/
+- [\#120](https://github.com/FourthState/plasma-mvp-sidechain/pull/118) Fixed Length TxBytes (811), compatible with rootchain v1.0.0
+- **plasmacli:** [\#108](https://github.com/FourthState/plasma-mvp-sidechain/pull/108) home flag renamed to directory, flags have suffix "F" for local flags, and "Flag" for persistent flags
+- **plasmacli:** [\#116](https://github.com/FourthState/plasma-mvp-sidechain/pull/116) client keystore/ renamed to store/
 - Made UTXO model modular
 - Transaction verification to be compatible with rootchain
 - Decrease dependency on amino encoding
