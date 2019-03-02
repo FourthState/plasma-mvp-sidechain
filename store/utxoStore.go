@@ -142,17 +142,17 @@ func (store UTXOStore) GetUTXOWithKey(ctx sdk.Context, key []byte) (UTXO, bool) 
 }
 
 func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) (UTXO, bool) {
-	key := append(addr.Bytes(), pos.Bytes()...)
+	key := GetUTXOStoreKey(addr, pos)
 	return store.GetUTXOWithKey(ctx, key)
 }
 
 func (store UTXOStore) HasUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) bool {
-	key := append(addr.Bytes(), pos.Bytes()...)
+	key := GetUTXOStoreKey(addr, pos)
 	return store.Has(ctx, key)
 }
 
 func (store UTXOStore) StoreUTXO(ctx sdk.Context, utxo UTXO) {
-	key := append(utxo.Output.Owner.Bytes(), utxo.Position.Bytes()...)
+	key := GetStoreKey(utxo)
 	data, err := rlp.EncodeToBytes(&utxo)
 	if err != nil {
 		panic(fmt.Sprintf("Error marshaling utxo: %s", err))

@@ -16,7 +16,7 @@ import (
 // the reason for an interface is to allow the connection object
 // to be cooked when testing the ante handler
 type plasmaConn interface {
-	GetDeposit(*big.Int) (plasma.Deposit, bool)
+	GetDeposit(*big.Int) (plasma.Deposit, *big.Int, bool)
 	HasTxBeenExited(plasma.Position) bool
 }
 
@@ -24,7 +24,11 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
 		spendMsg, ok := tx.(msgs.SpendMsg)
 		if !ok {
-			return ctx, sdk.ErrInternal("tx must in the form of a spendMsg").Result(), true
+			depositMsg, depositOK := tx.(msgs.IncludeDepositMsg)
+			if !depositOK { 
+				return ctx, sdk.ErrInternal("tx must in the form of a spendMsg or IncludeDepositMsg").Result(), true
+			}
+			return IncludeDepositAnteHandler(ctx, utxoStore, depositMsg, client)
 		}
 
 		var totalInputAmt, totalOutputAmt *big.Int
@@ -40,9 +44,7 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 		if !res.IsOK() {
 			return ctx, res, true
 		}
-		if client.HasTxBeenExited(spendMsg.Input0.Position) {
-			return ctx, ErrExitedInput(DefaultCodespace, "first input utxo has exited").Result(), true
-		}
+
 		// must cover the fee
 		if amt.Cmp(spendMsg.Fee) < 0 {
 			return ctx, ErrInsufficientFee(DefaultCodespace, "first input has an insufficient amount to pay the fee").Result(), true
@@ -63,9 +65,6 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 			amt, res = validateInput(ctx, spendMsg.Input1, common.BytesToAddress(signers[1]), utxoStore, client)
 			if !res.IsOK() {
 				return ctx, res, true
-			}
-			if client.HasTxBeenExited(spendMsg.Input1.Position) {
-				return ctx, ErrExitedInput(DefaultCodespace, "second input utxo has exited").Result(), true
 			}
 
 			// store confirm signature
@@ -96,60 +95,36 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, utxoStore store.UTXOStore, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
 
-	if input.IsDeposit() {
-		deposit, ok := client.GetDeposit(input.DepositNonce)
-		if !ok {
-			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist", input.DepositNonce.String()).Result()
-		}
-
-		// add deposit to app state if non existent
-		if !utxoStore.HasUTXO(ctx, deposit.Owner, input.Position) {
-			utxo := store.UTXO{
-				Output:   plasma.NewOutput(deposit.Owner, deposit.Amount),
-				Position: input.Position,
-				Spent:    false,
-			}
-
-			utxoStore.StoreUTXO(ctx, utxo)
-		}
-
-		// the owner of the deposit might not equal the signer so we must explicity
-		// check for a match
-
-		if !bytes.Equal(deposit.Owner[:], signer[:]) {
-			return nil, sdk.ErrUnauthorized(fmt.Sprintf("signer does not own the deposit: Signer: %x, Owner: %x", signer, deposit.Owner)).Result()
-		}
-
-		amt = deposit.Amount
-	} else {
-		// inputUTXO must be owned by the signer due to the prefix so we do not need to
-		// check the owner of the position
-		inputUTXO, ok := utxoStore.GetUTXO(ctx, signer, input.Position)
-		if !ok {
-			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", inputUTXO.Position, signer).Result()
-		}
-		if inputUTXO.Spent {
-			return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", inputUTXO.Position).Result()
-		}
-
-		// validate confirm signatures if not a fee utxo
-		if input.TxIndex < 1<<16-1 {
-			res := validateConfirmSignatures(ctx, input, inputUTXO)
-			if !res.IsOK() {
-				return nil, res
-			}
-		}
-
-		// check if the parent utxo has exited
-		for _, key := range inputUTXO.InputKeys {
-			utxo, _ := utxoStore.GetUTXOWithKey(ctx, key)
-			if client.HasTxBeenExited(utxo.Position) {
-				return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %s", utxo.Output.Owner, utxo.Position)).Result()
-			}
-		}
-
-		amt = inputUTXO.Output.Amount
+	// inputUTXO must be owned by the signer due to the prefix so we do not need to
+	// check the owner of the position
+	inputUTXO, ok := utxoStore.GetUTXO(ctx, signer, input.Position)
+	if !ok {
+		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", inputUTXO.Position, signer).Result()
 	}
+	if inputUTXO.Spent {
+		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", inputUTXO.Position).Result()
+	}
+	if client.HasTxBeenExited(input.Position) {
+		return nil, ErrExitedInput(DefaultCodespace, "input, %s, utxo has exitted", inputUTXO.Position).Result()
+	}
+
+	// validate confirm signatures if not a fee utxo or deposit utxo
+	if input.TxIndex < 1<<16-1  && input.DepositNonce.Sign() == 0 {
+		res := validateConfirmSignatures(ctx, input, inputUTXO)
+		if !res.IsOK() {
+			return nil, res
+		}
+	}
+
+	// check if the parent utxo has exited
+	for _, key := range inputUTXO.InputKeys {
+		utxo, _ := utxoStore.GetUTXOWithKey(ctx, key)
+		if client.HasTxBeenExited(utxo.Position) {
+			return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %s", utxo.Output.Owner, utxo.Position)).Result()
+		}
+	}
+
+	amt = inputUTXO.Output.Amount
 
 	return amt, sdk.Result{}
 }
@@ -172,4 +147,23 @@ func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputUTXO st
 	}
 
 	return sdk.Result{}
+}
+
+func IncludeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+	depositPosition := plasma.NewPosition(big.NewInt(0), 0, 0, msg.DepositNonce)
+	if utxoStore.HasUTXO(ctx, msg.Owner, depositPosition) {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
+	}
+	_, interval, ok := client.GetDeposit(msg.DepositNonce)
+	if !ok && interval == nil {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist.", msg.DepositNonce.String()).Result(), true
+	}
+	if !ok {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), interval.Int64()).Result(), true
+	}
+	exitted := client.HasTxBeenExited(depositPosition)
+	if exitted {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
+	}
+	return ctx, sdk.Result{}, false
 }

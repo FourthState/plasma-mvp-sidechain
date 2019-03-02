@@ -8,7 +8,11 @@ import (
 func TxDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	var spendMsg SpendMsg
 	if err := rlp.DecodeBytes(txBytes, &spendMsg); err != nil {
-		return SpendMsg{}, sdk.ErrTxDecode(err.Error())
+		var depositMsg IncludeDepositMsg
+		if err2 := rlp.DecodeBytes(txBytes, &depositMsg); err2 != nil {
+			return SpendMsg{}, sdk.ErrTxDecode(err.Error())
+		}
+		return depositMsg, nil
 	}
 
 	return spendMsg, nil
