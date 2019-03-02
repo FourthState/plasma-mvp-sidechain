@@ -157,9 +157,12 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, *big.Int,
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
+	// how many blocks have occurred since deposit
 	interval := new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum)
-	threshold := new(big.Int).Sub(interval, big.NewInt(int64(plasma.finalityBound)))
-	if threshold.Sign() < 0 {
+	// how many more blocks need to get added for deposit to be considered final
+	// Note: If deposit is finalized, threshold can be 0 or negative
+	threshold := new(big.Int).Sub(big.NewInt(int64(plasma.finalityBound)), interval)
+	if threshold.Sign() > 0 {
 		return plasmaTypes.Deposit{}, threshold, false
 	}
 

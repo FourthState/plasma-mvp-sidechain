@@ -107,7 +107,7 @@ func TestDepositFinalityBound(t *testing.T) {
 
 	_, threshold, ok := plasma.GetDeposit(nonce)
 	require.False(t, ok, "retrieved a deposit that was inside the finality bound")
-	require.Equal(t, big.NewInt(0), threshold, "Finality threshold calculated incorrectly")
+	require.Equal(t, big.NewInt(1), threshold, "Finality threshold calculated incorrectly. Should still need to wait one more block")
 
 	// mine another block so that the deposit falls outside the finality bound
 	err = client.rpc.Call(nil, "evm_mine")
@@ -119,5 +119,5 @@ func TestDepositFinalityBound(t *testing.T) {
 
 	require.Equal(t, uint64(10), deposit.Amount.Uint64(), "deposit amount mismatch")
 	require.True(t, bytes.Equal(operatorAddress[:], deposit.Owner[:]), "deposit owner mismatch")
-	require.True(t, threshold.Sign() == 0, "Finality threshold not calculated correctly")
+	require.True(t, threshold.Sign() == 0, "Finality threshold not calculated correctly. Deposit should be final with threshold = 0")
 }
