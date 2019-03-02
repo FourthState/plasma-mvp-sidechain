@@ -1,7 +1,7 @@
 package keys
 
 import (
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/spf13/cobra"
 )
 
@@ -12,6 +12,6 @@ var keysCmd = &cobra.Command{
 }
 
 func KeysCmd() *cobra.Command {
-	ks.InitKeystore()
+	store.InitKeystore()
 	return keysCmd
 }

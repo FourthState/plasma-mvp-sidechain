@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -54,7 +54,7 @@ Usage:
 			return fmt.Errorf("failed to parse gas limit: { %s }", err)
 		}
 
-		key, err := ks.GetKey(args[2])
+		key, err := store.GetKey(args[2])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}

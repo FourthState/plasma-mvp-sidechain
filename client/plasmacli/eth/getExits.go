@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -52,7 +52,7 @@ Usage:
 		acc := viper.GetString(accountF)
 
 		if acc != "" {
-			addr, err = ks.Get(acc)
+			addr, err = store.GetAccount(acc)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve account: { %s }", err)
 			}

@@ -3,7 +3,7 @@ package eth
 import (
 	"fmt"
 	config "github.com/FourthState/plasma-mvp-sidechain/client"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -60,7 +60,7 @@ func EthCmd() *cobra.Command {
 // Update ethereum client connection if params have changed
 func persistentPreRunEFn() func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		plasmaConfigFilePath := filepath.Join(viper.GetString(ks.DirFlag), "plasma.toml")
+		plasmaConfigFilePath := filepath.Join(viper.GetString(store.DirFlag), "plasma.toml")
 
 		if _, err := os.Stat(plasmaConfigFilePath); os.IsNotExist(err) {
 			plasmaConfig := config.DefaultPlasmaConfig()
@@ -79,7 +79,7 @@ func persistentPreRunEFn() func(*cobra.Command, []string) error {
 
 		// Check to see if the eth connection params have changed
 		if conf.EthNodeURL == "" {
-			return fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", viper.GetString(ks.DirFlag))
+			return fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", viper.GetString(store.DirFlag))
 		} else if rc.nodeURL != conf.EthNodeURL {
 			if err := initEthConn(conf); err != nil {
 				return err

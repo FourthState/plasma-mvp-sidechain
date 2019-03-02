@@ -52,27 +52,7 @@ Run `plasmad start` via command line to begin running the plasma node.
 
 Use `plasmacli` to run any of the commands for this light client
 
-### dep ensure 
-When building the sidechain, dep is used to manage dependencies.
-Running `dep ensure` followed by `go build` will result in the following output:
-
-```
-# github.com/FourthState/plasma-mvp-sidechain/vendor/github.com/ethereum/go-ethereum/crypto/secp256k1
-../vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/curve.go:42:44: fatal error: libsecp256k1/include/secp256k1.h: No such file or directory
-```
-This is caused by a go dep issue outlined [here](https://github.com/tools/godep/issues/422).
-To fix this locally, add the following in Gopkg.lock under `crypto/secp256k1` and above `crypto/sha3`:
-
-```
-"crypto/secp256k1/libsecp256k1",
-"crypto/secp256k1/libsecp256k1/include",
-"crypto/secp256k1/libsecp256k1/src",
-"crypto/secp256k1/libsecp256k1/src/modules/recovery",
-```
-
-Run `dep ensure -vendor-only`
-
-Your vendor folder should now contain all the necessary dependencies, there is no need to run `dep ensure`. 
+The light client uses the Ethereum keystore to create and store passphrase encrypted keys in `$HOME/.plasmacli/keys/`
   
 ### Plasma Architecture 
 See our [research repository](https://github.com/FourthState/plasma-research) for architectural explanations of our Plasma implementation. 
@@ -81,4 +61,4 @@ See our [research repository](https://github.com/FourthState/plasma-research) fo
 See our [documentation](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/docs/overview.md)
 
 ### Contributing
-See our [contributing guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md). Join our [Discord Server](https://discord.gg/YTB5A4P).
+See our [contributing guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/.github/CONTRIBUTING.md). Join our [Discord Server](https://discord.gg/YTB5A4P).

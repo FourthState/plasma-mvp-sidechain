@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -24,7 +24,7 @@ Usage:
 	plasmacli eth withdraw <account> --gas-limit 30000`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		key, err := ks.GetKey(args[0])
+		key, err := store.GetKey(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)
 		}

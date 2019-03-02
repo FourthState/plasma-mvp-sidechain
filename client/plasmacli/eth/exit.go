@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -58,7 +58,7 @@ Usage:
 		}
 
 		// retrieve account key
-		key, err := ks.GetKey(args[0])
+		key, err := store.GetKey(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}

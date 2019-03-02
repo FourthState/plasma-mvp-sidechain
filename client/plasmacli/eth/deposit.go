@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
@@ -26,7 +26,7 @@ Usage:
 	plasmacli eth deposit <amount> <account> --gas-limit 30000`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		key, err := ks.GetKey(args[1])
+		key, err := store.GetKey(args[1])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)
 		}

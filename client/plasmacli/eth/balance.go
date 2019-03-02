@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -29,7 +29,7 @@ Usage:
 		if viper.GetString(addrF) != "" {
 			addr = ethcmn.HexToAddress(viper.GetString(addrF))
 		} else if len(args) > 0 {
-			if addr, err = ks.Get(args[0]); err != nil {
+			if addr, err = store.GetAccount(args[0]); err != nil {
 				return fmt.Errorf("failed to retrieve account: { %s }", err)
 			}
 		} else {

@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
@@ -22,7 +22,7 @@ var proveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		addr, err := ks.Get(args[0])
+		addr, err := ks.GetAccount(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)
 		}
