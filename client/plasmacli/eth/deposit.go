@@ -13,7 +13,7 @@ import (
 
 func init() {
 	ethCmd.AddCommand(depositCmd)
-	depositCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
+	depositCmd.Flags().StringP(gasLimitF, "g", "150000", "gas limit for ethereum transaction")
 }
 
 var depositCmd = &cobra.Command{

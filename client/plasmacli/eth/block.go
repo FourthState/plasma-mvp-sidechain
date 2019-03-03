@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/viper"
 	"math/big"
 	"strconv"
-	"time"
 )
 
 func init() {
@@ -42,10 +41,15 @@ Usage:
 			if err != nil {
 				return fmt.Errorf("failed to retrieve block: { %s }", err)
 			}
+			if block.CreatedAt.Int64() == 0 {
+				break
+			}
+
+			fmt.Printf("Block: %d\nHeader: 0x%x\nTxs: %d\nFee: %d\nCreated: %v\n\n",
+				curr, block.Header, block.NumTxns, block.FeeAmount, time.Unix(block.CreatedAt.Int64(), 0))
 			curr++
-			fmt.Printf("Header: 0x%x\nTxs: %d\nFee: %d\nCreated: %v\n",
-				block.Header, block.NumTxns, block.FeeAmount, time.Unix(block.CreatedAt.Int64(), 0))
 		}
+
 		return nil
 	},
 }

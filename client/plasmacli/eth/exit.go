@@ -112,6 +112,9 @@ Usage:
 		}
 
 		txBytes, proof, confirmSignatures, err = parseProof(txBytes, proof, confirmSignatures)
+		if err != nil {
+			return err
+		}
 
 		// TODO: Add support for querying for confirm sigs in local storage
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
