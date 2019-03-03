@@ -18,23 +18,23 @@ func init() {
 	getExitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account")
 	getExitsCmd.Flags().Bool(allF, false, "all pending exits will be displayed")
 	getExitsCmd.Flags().BoolP(depositsF, "D", false, "display deposit exits")
-	getExitsCmd.Flags().String(indexF, "", "index to begin displaying exits from")
+	getExitsCmd.Flags().String(indexF, "0", "index to begin displaying exits from")
 	getExitsCmd.Flags().String(limitF, "1", "amount of exits to display")
 	getExitsCmd.Flags().StringP(positionF, "p", "", "display exit status for specified position")
 }
 
 var getExitsCmd = &cobra.Command{
-	Use:   "exits",
+	Use:   "exit",
 	Short: "Display pending exits",
 	Long: `Display pending rootchain exits. Queries the rootchain exit queue.
 Use the deposit flag to display deposit exits.
 
 Usage:
-	plasmacli eth query exits -a <account>
-	plasmacli eth query exits --deposits
-	plasmacli eth query exits --all
-	plasmacli eth query exits --index <number> --limit <number>
-	plasmacli eth query exits --position <position>`,
+	plasmacli eth query exit -a <account>
+	plasmacli eth query exit --deposits
+	plasmacli eth query exit --all
+	plasmacli eth query exit --index <number> --limit <number>
+	plasmacli eth query exit --position <position>`,
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		viper.BindPFlags(cmd.Flags())
@@ -61,15 +61,15 @@ Usage:
 		}
 
 		// parse queue length
-		var len *big.Int
+		var queueLength *big.Int
 		if viper.GetBool(depositsF) {
-			len, err = rc.contract.DepositQueueLength(nil)
+			queueLength, err = rc.contract.DepositQueueLength(nil)
 		} else {
-			len, err = rc.contract.TxQueueLength(nil)
+			queueLength, err = rc.contract.TxQueueLength(nil)
 		}
 
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to retrieve exit queue length: { %s }", err)
 		}
 
 		lim, err := strconv.ParseInt(viper.GetString(limitF), 10, 64)
@@ -79,12 +79,12 @@ Usage:
 
 		// adjust passed in limit to avoid error
 		// when interacting with rootchain
-		if lim > len.Int64() {
-			lim = len.Int64()
+		if lim > queueLength.Int64() {
+			lim = queueLength.Int64()
 		}
 
 		if viper.GetBool(allF) { // print all exits
-			lim = len.Int64()
+			lim = queueLength.Int64()
 		} else { // use index/limit
 			index := viper.GetString(indexF)
 			if index == "" {
@@ -158,7 +158,12 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
 		exit.Owner, exit.Amount, state, exit.CommittedFee, time.Unix(exit.CreatedAt.Int64(), 0))
 	if state == "Pending" {
-		fmt.Printf("Exit will be finalized in about: %v\n", time.Until(time.Unix(exit.CreatedAt.Int64(), 0).Add(time.Hour*oneWeek)))
+		timeLeft := time.Until(time.Unix(exit.CreatedAt.Int64(), 0).Add(time.Hour * oneWeek))
+		if timeLeft > 0 {
+			fmt.Printf("Exit will be finalized in about: %v hours\n", timeLeft.Hours())
+		} else {
+			fmt.Println("Exit is ready to be finalized!")
+		}
 	}
 
 	return nil

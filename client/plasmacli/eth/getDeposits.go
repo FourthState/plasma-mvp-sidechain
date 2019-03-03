@@ -26,27 +26,30 @@ Usage:
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		viper.BindPFlags(cmd.Flags())
-
 		var curr, lim int64
 
 		if lim, err = strconv.ParseInt(viper.GetString(limitF), 10, 64); err != nil {
 			return fmt.Errorf("failed to parse limit - %s", err)
 		}
 
+		lastNonce, err := rc.contract.DepositNonce(nil)
+		if err != nil {
+			return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
+		}
+
 		if viper.GetBool(allF) { // Print all deposits
 			curr = 1
-			lastNonce, err := rc.contract.DepositNonce(nil)
-			if err != nil {
-				return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
-			}
 			lim = lastNonce.Int64() - 1
 		} else if len(args) > 0 { // Use command line arg as starting nonce
 			if curr, err = strconv.ParseInt(args[0], 10, 64); err != nil {
 				return fmt.Errorf("failed to parse nonce - %s", err)
 			}
-
 		} else {
 			return fmt.Errorf("please provide a nonce")
+		}
+
+		if curr >= lastNonce.Int64() {
+			return fmt.Errorf("deposit nonce provided does not exist")
 		}
 
 		if err = displayDeposits(curr, lim); err != nil {

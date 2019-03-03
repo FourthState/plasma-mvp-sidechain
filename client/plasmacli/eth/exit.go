@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
@@ -16,8 +18,8 @@ import (
 
 func init() {
 	ethCmd.AddCommand(exitCmd)
-	exitCmd.Flags().String(feeF, "", "fee committed in an unfinalized spend of the input")
-	exitCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
+	exitCmd.Flags().String(feeF, "0", "fee committed in an unfinalized spend of the input")
+	exitCmd.Flags().StringP(gasLimitF, "g", "200000", "gas limit for ethereum transaction")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for exiting utxo")
 	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
@@ -32,14 +34,16 @@ the necessary information will be retrieved from the connected full node.
 Otherwise, the transaction bytes, merkle proof, and confirmation signatures must be given. 
 Usage of flags override information retrieved from full node. 
 
-Usage:
+Deposit/Fee Exit Usage:
+	plasmacli exit <account> <position>
+	
+Transaction Exit Usage:
 	plasmacli exit <account> <position> --trust-node --gas-limit 30000
 	plasmacli exit <account> <position> -t --fee <amount>
 	plasmacli exit <account> <position> -b <tx-bytes> --proof <merkle-proof> -S <confirmation-signatures> --fee <amount>`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		viper.BindPFlags(cmd.Flags())
-
 		var tx *eth.Transaction
 
 		// parse position
@@ -105,6 +109,10 @@ Usage:
 
 			txBytes = result.Tx
 
+			if len(result.Proof.Proof.Aunts) == 0 {
+				proof = utils.ToEthSignedMessageHash(txBytes)
+			}
+
 			// flatten proof
 			for _, aunt := range result.Proof.Proof.Aunts {
 				proof = append(proof, aunt...)
@@ -132,15 +140,15 @@ Usage:
 // All necessary exit/challenge information is returned, or error is thrown
 func parseProof(txBytes, proof, confirmSignatures []byte) ([]byte, []byte, []byte, error) {
 	if viper.GetString(txBytesF) != "" {
-		txBytes = []byte(viper.GetString(txBytesF))
+		txBytes = ethcmn.FromHex(viper.GetString(txBytesF))
 	}
 
 	if viper.GetString(proofF) != "" {
-		proof = []byte(viper.GetString(proofF))
+		proof = ethcmn.FromHex(viper.GetString(proofF))
 	}
 
 	if viper.GetString(sigsF) != "" {
-		confirmSignatures = []byte(viper.GetString(sigsF))
+		confirmSignatures = ethcmn.FromHex(viper.GetString(sigsF))
 	}
 
 	// return error if information is missing
