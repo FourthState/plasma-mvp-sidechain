@@ -11,8 +11,7 @@ import (
 
 func init() {
 	ethCmd.AddCommand(withdrawCmd)
-	withdrawCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
-	viper.BindPFlags(withdrawCmd.Flags())
+	withdrawCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
 }
 
 var withdrawCmd = &cobra.Command{
@@ -24,6 +23,8 @@ Usage:
 	plasmacli eth withdraw <account> --gas-limit 30000`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
+
 		key, err := store.GetKey(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)

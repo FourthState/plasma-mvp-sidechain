@@ -12,7 +12,6 @@ func init() {
 	queryCmd.AddCommand(getDepositsCmd)
 	getDepositsCmd.Flags().Bool(allF, false, "all deposits will be displayed")
 	getDepositsCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")
-	viper.BindPFlags(getDepositsCmd.Flags())
 }
 
 var getDepositsCmd = &cobra.Command{
@@ -26,6 +25,8 @@ Usage:
 	plasmacli eth query deposit --all`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		viper.BindPFlags(cmd.Flags())
+
 		var curr, lim, end int64
 
 		if lim, err = strconv.ParseInt(viper.GetString(limitF), 10, 64); err != nil {

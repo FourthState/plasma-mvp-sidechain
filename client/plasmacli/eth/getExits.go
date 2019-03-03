@@ -21,7 +21,6 @@ func init() {
 	getExitsCmd.Flags().String(indexF, "", "index to begin displaying exits from")
 	getExitsCmd.Flags().String(limitF, "1", "amount of exits to display")
 	getExitsCmd.Flags().StringP(positionF, "p", "", "display exit status for specified position")
-	viper.BindPFlags(getExitsCmd.Flags())
 }
 
 var getExitsCmd = &cobra.Command{
@@ -38,6 +37,8 @@ Usage:
 	plasmacli eth query exits --position <position>`,
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		viper.BindPFlags(cmd.Flags())
+
 		var curr int64
 		var addr ethcmn.Address
 
@@ -156,6 +157,10 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 	state := parseState(exit.State)
 	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n",
 		exit.Owner, exit.Amount, state, exit.CommittedFee, time.Unix(exit.CreatedAt.Int64(), 0))
+	if state == "Pending" {
+		fmt.Printf("Exit will be finalized in about: %v\n", time.Until(time.Unix(exit.CreatedAt.Int64(), 0).Add(time.Hour*oneWeek)))
+	}
+
 	return nil
 }
 

@@ -13,8 +13,7 @@ import (
 
 func init() {
 	ethCmd.AddCommand(depositCmd)
-	depositCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
-	viper.BindPFlags(depositCmd.Flags())
+	depositCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
 }
 
 var depositCmd = &cobra.Command{
@@ -26,6 +25,8 @@ Usage:
 	plasmacli eth deposit <amount> <account> --gas-limit 30000`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
+
 		key, err := store.GetKey(args[1])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)

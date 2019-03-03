@@ -12,7 +12,6 @@ import (
 func init() {
 	queryCmd.AddCommand(blockCmd)
 	blockCmd.Flags().String(limitF, "1", "number of plasma blocks to be displayed")
-	viper.BindPFlags(blockCmd.Flags())
 }
 
 var blockCmd = &cobra.Command{
@@ -26,6 +25,7 @@ Usage:
 	plasmacli eth query block <number> --limit <number>`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
 		curr, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
 			return fmt.Errorf("failed to parse block number: { %s }", err)

@@ -16,13 +16,12 @@ import (
 
 func init() {
 	ethCmd.AddCommand(challengeCmd)
-	challengeCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
+	challengeCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
 	challengeCmd.Flags().String(ownerF, "", "owner of the challenging transaction, required if different from the specified account")
 	challengeCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	challengeCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the challenging transaction")
 	challengeCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	challengeCmd.Flags().StringP(txBytesF, "b", "", "bytes of the challenging transaction")
-	viper.BindPFlags(challengeCmd.Flags())
 }
 
 var challengeCmd = &cobra.Command{
@@ -38,6 +37,7 @@ Usage:
 	plasmacli eth cahllenge <exiting position> <challenging position> <account> --proof <proof> --signatures <confirm signatures> --txBytes <challenge transaction bytes>`,
 	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
 		// parse positions
 		exitingPos, err := plasma.FromPositionString(args[0])
 		if err != nil {

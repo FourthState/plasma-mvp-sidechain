@@ -13,8 +13,7 @@ import (
 func init() {
 	ethCmd.AddCommand(finalizeCmd)
 	finalizeCmd.Flags().BoolP(depositsF, "D", false, "indicate that deposit exits should be finalized")
-	finalizeCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
-	viper.BindPFlags(finalizeCmd.Flags())
+	finalizeCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
 }
 
 var finalizeCmd = &cobra.Command{
@@ -27,6 +26,8 @@ Usage:
 	plasmacli eth finalize <account> --deposits`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		viper.BindPFlags(cmd.Flags())
+
 		key, err := store.GetKey(args[1])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)

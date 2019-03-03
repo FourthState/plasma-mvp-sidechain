@@ -11,7 +11,6 @@ import (
 func init() {
 	queryCmd.AddCommand(balanceCmd)
 	balanceCmd.Flags().StringP(addrF, "A", "", "query based on address")
-	viper.BindPFlags(balanceCmd.Flags())
 }
 
 var balanceCmd = &cobra.Command{
@@ -24,6 +23,7 @@ Usage:
 	plasmacli eth query balance --address <address>`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		viper.BindPFlags(cmd.Flags())
 		var addr ethcmn.Address
 
 		if viper.GetString(addrF) != "" {

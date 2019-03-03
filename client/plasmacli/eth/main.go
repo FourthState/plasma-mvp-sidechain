@@ -32,6 +32,7 @@ const (
 	txBytesF   = "tx-bytes"
 
 	minExitBond = 200000 // specified by rootchain contract
+	oneWeek     = 168    // 168 hours in a week
 )
 
 type Plasma struct {
