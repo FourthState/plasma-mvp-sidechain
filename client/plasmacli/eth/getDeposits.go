@@ -45,7 +45,6 @@ Usage:
 				return fmt.Errorf("failed to parse nonce - %s", err)
 			}
 
-			end = curr + lim
 		} else {
 			return fmt.Errorf("please provide a nonce")
 		}
