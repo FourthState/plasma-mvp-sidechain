@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -109,10 +108,6 @@ Transaction Exit Usage:
 
 			txBytes = result.Tx
 
-			if len(result.Proof.Proof.Aunts) == 0 {
-				proof = utils.ToEthSignedMessageHash(txBytes)
-			}
-
 			// flatten proof
 			for _, aunt := range result.Proof.Proof.Aunts {
 				proof = append(proof, aunt...)
@@ -158,17 +153,20 @@ func parseProof(txBytes, proof, confirmSignatures []byte) ([]byte, []byte, []byt
 	}
 
 	// return error if information is missing
-	if len(txBytes) == 0 {
-		return txBytes, proof, confirmSignatures, fmt.Errorf("please provide txBytes for the given position")
+	if len(txBytes) != 811 {
+		return txBytes, proof, confirmSignatures, fmt.Errorf("please provide txBytes with a length of 811 bytes. Current length: %d", len(txBytes))
+	}
+
+	if len(proof)%32 != 0 {
+		return txBytes, proof, confirmSignatures, fmt.Errorf("please provide a merkle proof of inclusion for the given position. Proof must consist of 32 byte hashes")
+	}
+
+	if len(confirmSignatures)%65 != 0 {
+		return txBytes, proof, confirmSignatures, fmt.Errorf("please provde confirmation signatures for the given position. Signatures must be 65 bytes in length")
 	}
 
 	if len(proof) == 0 {
-		return txBytes, proof, confirmSignatures, fmt.Errorf("please provide a merkle proof of inclusion for the given position")
+		fmt.Println("Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.")
 	}
-
-	if len(confirmSignatures) == 0 {
-		return txBytes, proof, confirmSignatures, fmt.Errorf("please provde confirmation signatures for the given position")
-	}
-
 	return txBytes, proof, confirmSignatures, nil
 }

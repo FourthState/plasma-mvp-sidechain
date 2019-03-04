@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -84,10 +83,6 @@ Usage:
 			}
 
 			txBytes = result.Tx
-
-			if len(result.Proof.Proof.Aunts) == 0 {
-				proof = utils.ToEthSignedMessageHash(txBytes)
-			}
 
 			// flatten proof
 			for _, aunt := range result.Proof.Proof.Aunts {
