@@ -27,6 +27,7 @@ const (
 	flagInputs       = "inputValues"
 	flagSync         = "sync"
 	flagFee          = "fee"
+	flagReplay       = "replay"
 )
 
 var rootCmd = &cobra.Command{
