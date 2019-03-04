@@ -11,7 +11,7 @@ import (
 
 func init() {
 	ethCmd.AddCommand(withdrawCmd)
-	withdrawCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
+	withdrawCmd.Flags().StringP(gasLimitF, "g", "150000", "gas limit for ethereum transaction")
 }
 
 var withdrawCmd = &cobra.Command{
@@ -45,7 +45,7 @@ Usage:
 
 		tx, err := rc.contract.Withdraw(transactOpts)
 		if err != nil {
-			return fmt.Errorf("failed to withdraw: {%s }", err)
+			return fmt.Errorf("failed to withdraw: { %s }", err)
 		}
 
 		fmt.Printf("Successfully sent withdraw transaction\nTransaction Hash: 0x%x", tx.Hash())

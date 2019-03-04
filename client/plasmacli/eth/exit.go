@@ -19,7 +19,7 @@ import (
 func init() {
 	ethCmd.AddCommand(exitCmd)
 	exitCmd.Flags().String(feeF, "0", "fee committed in an unfinalized spend of the input")
-	exitCmd.Flags().StringP(gasLimitF, "g", "200000", "gas limit for ethereum transaction")
+	exitCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for exiting utxo")
 	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
@@ -119,12 +119,18 @@ Transaction Exit Usage:
 			}
 		}
 
+		if len(confirmSignatures) == 0 {
+			sigs, err := store.GetSig(position)
+			if err == nil {
+				confirmSignatures = sigs
+			}
+		}
+
 		txBytes, proof, confirmSignatures, err = parseProof(txBytes, proof, confirmSignatures)
 		if err != nil {
 			return err
 		}
 
-		// TODO: Add support for querying for confirm sigs in local storage
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
 		tx, err = rc.contract.StartTransactionExit(transactOpts, txPos, txBytes, proof, confirmSignatures, big.NewInt(fee))
 		if err != nil {

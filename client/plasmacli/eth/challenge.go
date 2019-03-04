@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -84,13 +85,27 @@ Usage:
 
 			txBytes = result.Tx
 
+			if len(result.Proof.Proof.Aunts) == 0 {
+				proof = utils.ToEthSignedMessageHash(txBytes)
+			}
+
 			// flatten proof
 			for _, aunt := range result.Proof.Proof.Aunts {
 				proof = append(proof, aunt...)
 			}
 		}
 
+		if len(confirmSignatures) == 0 {
+			sigs, err := store.GetSig(challengingPos)
+			if err == nil {
+				confirmSignatures = sigs
+			}
+		}
+
 		txBytes, proof, confirmSignatures, err = parseProof(txBytes, proof, confirmSignatures)
+		if err != nil {
+			return err
+		}
 
 		exitPos := [4]*big.Int{exitingPos.BlockNum, big.NewInt(int64(exitingPos.TxIndex)), big.NewInt(int64(exitingPos.OutputIndex)), exitingPos.DepositNonce}
 		challengePos := [2]*big.Int{challengingPos.BlockNum, big.NewInt(int64(challengingPos.TxIndex))}

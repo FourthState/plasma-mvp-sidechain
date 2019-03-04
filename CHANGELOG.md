@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 ### Added
+- **plasmacli:** [\#110](https://github.com/FourthState/plasma-mvp-sidechain/pull/110) Added eth subcommand for rootchain interaction
+- **plasmacli:** [\#110](https://github.com/FourthState/plasma-mvp-sidechain/pull/110) Added plasma.toml in .plasmacli/ for rootchain connection configuration
 - **plasmacli:** [\#108](https://github.com/FourthState/plasma-mvp-sidechain/pull/108) Added keys subcommand with account mapping
 - **plasmacli:** [\#116](https://github.com/FourthState/plasma-mvp-sidechain/pull/116) Added local confirmation signature storage
 - Ethereum connection to smart contract
@@ -22,7 +24,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Decrease dependency on amino encoding
 - Updated client
 - Updated documentation
-- Upgrade to v0.32.0 of Cosmos SDK
+- Upgrade to v0.32.0 of Cosmos SDK, v0.28.0 of TM
 
 ## PreHistory
 
