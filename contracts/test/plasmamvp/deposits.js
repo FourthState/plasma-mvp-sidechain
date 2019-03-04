@@ -3,7 +3,7 @@ let assert = require('chai').assert;
 
 let PlasmaMVP = artifacts.require("PlasmaMVP");
 
-let { fastForward, proof, zeroHashes, sha256String, generateMerkleRootAndProof } = require('./plasmamvp_helpers.js');
+let { fastForward, proof, zeroHashes, sha256String, generateMerkleRootAndProof, fillTxList } = require('./plasmamvp_helpers.js');
 let { catchError, toHex } = require('../utilities.js');
 
 contract('[PlasmaMVP] Deposits', async (accounts) => {
@@ -159,8 +159,9 @@ contract('[PlasmaMVP] Deposits', async (accounts) => {
         // construct transcation with first input as the deposit
         let txList = Array(15).fill(0);
         txList[3] = nonce; txList[10] = accounts[1]; txList[11] = 100;
+        txList = fillTxList(txList);
         let txHash = web3.utils.soliditySha3(toHex(RLP.encode(txList).toString('hex')));
-        let sigs = [await web3.eth.sign(txHash, accounts[2]), 0];
+        let sigs = [await web3.eth.sign(txHash, accounts[2]), toHex(Buffer.alloc(65).toString('hex'))];
         let txBytes = [txList, sigs];
         txBytes = RLP.encode(txBytes).toString('hex');
 
@@ -218,6 +219,7 @@ contract('[PlasmaMVP] Deposits', async (accounts) => {
         txList[3] = nonce; txList[14] = 5; // fee
         txList[8] = nonce2; // second input
         txList[10] = accounts[1]; txList[11] = 100;
+        txList = fillTxList(txList);
         let txHash = web3.utils.soliditySha3(toHex(RLP.encode(txList).toString('hex')));
         let sigs = [toHex(await web3.eth.sign(txHash, accounts[2])), toHex(Buffer.alloc(65).toString('hex'))];
         let txBytes = [txList, sigs];

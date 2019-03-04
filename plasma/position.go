@@ -104,6 +104,10 @@ func (p Position) IsDeposit() bool {
 	return p.DepositNonce.Sign() != 0
 }
 
+func (p Position) IsFee() bool {
+	return p.TxIndex == 1<<16-1
+}
+
 func (p Position) IsNilPosition() bool {
 	return p.BlockNum.Sign() == 0 && p.DepositNonce.Sign() == 0
 }

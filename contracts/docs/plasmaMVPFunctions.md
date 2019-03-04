@@ -123,3 +123,17 @@ Getter for the withdrawable balance of `_address`
 function plasmaChainBalance() returns (uint256 funds)
 ```
 Query the total funds of the plasma chain
+
+<br />
+
+```solidity
+function txQueueLength() returns (uint256 length)
+```
+Getter for the length of the transaction exit queue
+
+<br />
+
+```solidity
+function depositQueueLength() returns (uint256 length)
+```
+Getter for the length of the deposit exit queue

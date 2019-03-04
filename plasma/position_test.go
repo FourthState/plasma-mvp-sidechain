@@ -28,6 +28,14 @@ func TestPositionDepositIndication(t *testing.T) {
 	require.True(t, position.IsDeposit(), "position [0,0,0,1] not marked as a deposit")
 }
 
+func TestPositionFeeIndication(t *testing.T) {
+	position := NewPosition(big.NewInt(2), 0, 0, big.NewInt(0))
+	require.False(t, position.IsFee(), "position [2, 0, 0, 0] marked as a fee")
+
+	position = NewPosition(big.NewInt(1), 65535, 0, big.NewInt(0))
+	require.True(t, position.IsFee(), "position [1, 65535, 0, 0] not marked as a fee")
+}
+
 func TestPositionFromString(t *testing.T) {
 	posStr := "(1.0.0.0)"
 	pos, err := FromPositionString(posStr)

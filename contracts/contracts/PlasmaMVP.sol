@@ -81,6 +81,7 @@ contract PlasmaMVP {
     // constants
     uint256 constant txIndexFactor = 10;
     uint256 constant blockIndexFactor = 1000000;
+    uint256 constant lastBlockNum = 2**109;
     uint256 constant feeIndex = 2**16-1;
 
     /** Modifiers **/
@@ -130,11 +131,11 @@ contract PlasmaMVP {
         public
         onlyOperator
     {
-        require(blockNum == lastCommittedBlock + 1);
-        require(headers.length == txnsPerBlock.length);
+        require(blockNum == lastCommittedBlock.add(1));
+        require(headers.length == txnsPerBlock.length && txnsPerBlock.length == feePerBlock.length);
 
-        for (uint i = 0; i < headers.length; i++) {
-            require(txnsPerBlock[i] > 0 && txnsPerBlock[i] < feeIndex);
+        for (uint i = 0; i < headers.length && lastCommittedBlock <= lastBlockNum; i++) {
+            require(headers[i] != bytes32(0) && txnsPerBlock[i] > 0 && txnsPerBlock[i] < feeIndex);
 
             lastCommittedBlock = lastCommittedBlock.add(1);
             plasmaChain[lastCommittedBlock] = plasmaBlock({
@@ -191,6 +192,9 @@ contract PlasmaMVP {
     //   NewOwner, Denom1, NewOwner, Denom2, Fee],
     //  [Signature1, Signature2]]
     //
+    // All integers are padded to 32 bytes. Input's confirm signatures are 130 bytes for each input.
+    // Zero bytes if unapplicable (deposit/fee inputs) Signatures are 65 bytes in length
+    //
     // @param txBytes rlp encoded transaction
     // @notice this function will revert if the txBytes are malformed
     function decodeTransaction(bytes memory txBytes)
@@ -198,6 +202,9 @@ contract PlasmaMVP {
         pure
         returns (RLPReader.RLPItem[] memory txList, RLPReader.RLPItem[] memory sigList, bytes32 txHash)
     {
+        // entire byte length of the rlp encoded transaction.
+        require(txBytes.length == 811);
+
         RLPReader.RLPItem[] memory spendMsg = txBytes.toRlpItem().toList();
         require(spendMsg.length == 2);
 
@@ -211,8 +218,9 @@ contract PlasmaMVP {
         txHash = keccak256(spendMsg[0].toRlpBytes());
     }
 
+
     // @param txPos             location of the transaction [blkNum, txIndex, outputIndex]
-    // @param txBytes           raw transaction bytes
+    // @param txBytes           transaction bytes containing the exiting output
     // @param proof             merkle proof of inclusion in the plasma chain
     // @param confSig0          confirm signatures sent by the owners of the first input acknowledging the spend.
     // @param confSig1          confirm signatures sent by the owners of the second input acknowledging the spend (if applicable).
@@ -224,6 +232,7 @@ contract PlasmaMVP {
         payable
         isBonded
     {
+        require(txPos[1] < feeIndex);
         uint256 position = calcPosition(txPos);
         require(txExits[position].state == ExitState.NonExistent);
 
@@ -233,7 +242,7 @@ contract PlasmaMVP {
         // calculate the priority of the transaction taking into account the withdrawal delay attack
         // withdrawal delay attack: https://github.com/FourthState/plasma-mvp-rootchain/issues/42
         uint256 createdAt = plasmaChain[txPos[0]].createdAt;
-        txExitQueue.insert(SafeMath.max(createdAt + 1 weeks, block.timestamp) << 128 | position);
+        txExitQueue.insert(SafeMath.max(createdAt.add(1 weeks), block.timestamp) << 128 | position);
 
         // write exit to storage
         txExits[position] = exit({
@@ -260,7 +269,8 @@ contract PlasmaMVP {
         RLPReader.RLPItem[] memory sigList;
         (txList, sigList, txHash) = decodeTransaction(txBytes);
 
-        require(msg.sender == txList[10 + 2*txPos[2]].toAddress());
+        uint base = txPos[2].mul(2);
+        require(msg.sender == txList[base.add(10)].toAddress());
 
         plasmaBlock memory blk = plasmaChain[txPos[0]];
 
@@ -269,20 +279,24 @@ contract PlasmaMVP {
         bytes32 merkleHash = sha256(txBytes);
         require(merkleHash.checkMembership(txPos[1], blk.header, proof, blk.numTxns));
 
+        address recoveredAddress;
         bytes32 confirmationHash = sha256(abi.encodePacked(merkleHash, blk.header));
+
         bytes memory sig = sigList[0].toBytes();
-        require(sig.length == 65 && confirmSignatures.length % 65 == 0 && confirmSignatures.length > 0);
-        require(txHash.recover(sig) == confirmationHash.recover(confirmSignatures.slice(0, 65)));
-        if (txList[5].toUint() > 0 || txList[8].toUint() > 0) { // existence of a second input
+        require(sig.length == 65 && confirmSignatures.length % 65 == 0 && confirmSignatures.length > 0 && confirmSignatures.length <= 130);
+        recoveredAddress = confirmationHash.recover(confirmSignatures.slice(0, 65));
+        require(recoveredAddress != address(0) && recoveredAddress == txHash.recover(sig));
+        if (txList[5].toUintStrict() > 0 || txList[8].toUintStrict() > 0) { // existence of a second input
             sig = sigList[1].toBytes();
             require(sig.length == 65 && confirmSignatures.length == 130);
-            require(txHash.recover(sig) == confirmationHash.recover(confirmSignatures.slice(65, 65)));
+            recoveredAddress = confirmationHash.recover(confirmSignatures.slice(65, 65));
+            require(recoveredAddress != address(0) && recoveredAddress == txHash.recover(sig));
         }
 
         // check that the UTXO's two direct inputs have not been previously exited
         require(validateTransactionExitInputs(txList));
 
-        return txList[11 + 2*txPos[2]].toUint();
+        return txList[base.add(11)].toUintStrict();
     }
 
     // For any attempted exit of an UTXO, validate that the UTXO's two inputs have not
@@ -294,11 +308,12 @@ contract PlasmaMVP {
     {
         for (uint256 i = 0; i < 2; i++) {
             ExitState state;
-            uint depositNonce_ = txList[5*i + 3].toUint();
+            uint256 base = uint256(5).mul(i);
+            uint depositNonce_ = txList[base.add(3)].toUintStrict();
             if (depositNonce_ == 0) {
-                uint256 blkNum = txList[5*i + 0].toUint();
-                uint256 txIndex = txList[5*i + 1].toUint();
-                uint256 outputIndex = txList[5*i + 2].toUint();
+                uint256 blkNum = txList[base].toUintStrict();
+                uint256 txIndex = txList[base.add(1)].toUintStrict();
+                uint256 outputIndex = txList[base.add(2)].toUintStrict();
                 uint256 position = calcPosition([blkNum, txIndex, outputIndex]);
                 state = txExits[position].state;
             } else
@@ -323,6 +338,8 @@ contract PlasmaMVP {
         isBonded
     {
         plasmaBlock memory blk = plasmaChain[blockNumber];
+        require(blk.header != bytes32(0));
+
         uint256 feeAmount = blk.feeAmount;
 
         // nonzero fee and prevent and greater than the committed fee if spent.
@@ -332,9 +349,9 @@ contract PlasmaMVP {
 
         // a fee UTXO has explicitly defined position [blockNumber, 2**16 - 1, 0]
         uint256 position = calcPosition([blockNumber, feeIndex, 0]);
-        require(txExits[position].state == ExitState.NonExistent, "this exit has already been started, challenged, or finalized");
+        require(txExits[position].state == ExitState.NonExistent);
 
-        txExitQueue.insert(SafeMath.max(blk.createdAt + 1 weeks, block.timestamp) << 128 | position);
+        txExitQueue.insert(SafeMath.max(blk.createdAt.add(1 weeks), block.timestamp) << 128 | position);
 
         txExits[position] = exit({
             owner: msg.sender,
@@ -364,9 +381,12 @@ contract PlasmaMVP {
         RLPReader.RLPItem[] memory sigList;
         (txList, sigList, txHash) = decodeTransaction(txBytes);
 
+        // `challengingTxPos` is sequentially after `exitingTxPos`
+        require(exitingTxPos[0] < challengingTxPos[0] || (exitingTxPos[0] == challengingTxPos[0] && exitingTxPos[1] < challengingTxPos[1]));
+
         // must be a direct spend
-        bool firstInput = exitingTxPos[0] == txList[0].toUint() && exitingTxPos[1] == txList[1].toUint() && exitingTxPos[2] == txList[2].toUint() && exitingTxPos[3] == txList[3].toUint();
-        require(firstInput || exitingTxPos[0] == txList[5].toUint() && exitingTxPos[1] == txList[6].toUint() && exitingTxPos[2] == txList[7].toUint() && exitingTxPos[3] == txList[8].toUint());
+        bool firstInput = exitingTxPos[0] == txList[0].toUintStrict() && exitingTxPos[1] == txList[1].toUintStrict() && exitingTxPos[2] == txList[2].toUintStrict() && exitingTxPos[3] == txList[3].toUintStrict();
+        require(firstInput || exitingTxPos[0] == txList[5].toUintStrict() && exitingTxPos[1] == txList[6].toUintStrict() && exitingTxPos[2] == txList[7].toUintStrict() && exitingTxPos[3] == txList[8].toUintStrict());
 
         // transaction to be challenged should have a pending exit
         exit storage exit_ = exitingTxPos[3] == 0 ? 
@@ -376,29 +396,31 @@ contract PlasmaMVP {
         plasmaBlock memory blk = plasmaChain[challengingTxPos[0]];
 
         bytes32 merkleHash = sha256(txBytes);
-        require(merkleHash.checkMembership(challengingTxPos[1], blk.header, proof, blk.numTxns));
+        require(blk.header != bytes32(0) && merkleHash.checkMembership(challengingTxPos[1], blk.header, proof, blk.numTxns));
 
+        address recoveredAddress;
         // we check for confirm signatures if:
-        // The exiting tx is the second input in the challenging transaction
-        // OR
         // The exiting tx is a first input and commits the correct fee
+        // OR
+        // The exiting tx is the second input in the challenging transaction
         //
         // If this challenge was a fee mismatch, then we check the first transaction signature
         // to prevent the operator from forging invalid inclusions
         //
         // For a fee mismatch, the state becomes `NonExistent` so that the exit can be reopened.
         // Otherwise, `Challenged` so that the exit can never be opened.
-        if (!firstInput || exit_.committedFee == txList[14].toUint()) {
-            bytes32 confirmationHash = sha256(abi.encodePacked(merkleHash, blk.header));
-            require(confirmSignature.length == 65 && exit_.owner == confirmationHash.recover(confirmSignature));
-
-            exit_.state = ExitState.Challenged;
-        } else {
-            // fee mismatch challenge and the first transaction signature need to be checked
+        if (firstInput && exit_.committedFee != txList[14].toUintStrict()) {
             bytes memory sig = sigList[0].toBytes();
-            require(sig.length == 65 && exit_.owner == txHash.recover(sig));
+            recoveredAddress = txHash.recover(sig);
+            require(sig.length == 65 && recoveredAddress != address(0) && exit_.owner == recoveredAddress);
 
             exit_.state = ExitState.NonExistent;
+        } else {
+            bytes32 confirmationHash = sha256(abi.encodePacked(merkleHash, blk.header));
+            recoveredAddress = confirmationHash.recover(confirmSignature);
+            require(confirmSignature.length == 65 && recoveredAddress != address(0) && exit_.owner == recoveredAddress);
+
+            exit_.state = ExitState.Challenged;
         }
 
         // exit successfully challenged. Award the sender with the bond
@@ -451,13 +473,6 @@ contract PlasmaMVP {
                 // reimburse the bond but remove fee allocated for the operator
                 amountToAdd = currentExit.amount.add(minExitBond).sub(currentExit.committedFee);
                 
-                // if malicious activity has occured and the contract funds are not sufficient, spend the rest
-                // this will be the last exit to be finalized
-                uint256 plasmaBalance = plasmaChainBalance();
-                if (amountToAdd > plasmaBalance) {
-                    amountToAdd = plasmaBalance;
-                }
-
                 balances[currentExit.owner] = balances[currentExit.owner].add(amountToAdd);
                 totalWithdrawBalance = totalWithdrawBalance.add(amountToAdd);
 
@@ -492,12 +507,51 @@ contract PlasmaMVP {
     // @notice will revert if the output index is out of bounds
     function calcPosition(uint256[3] memory txPos)
         private
-        pure
+        view
         returns (uint256)
     {
-        require(txPos[2] < 2);
+        require(validatePostion([txPos[0], txPos[1], txPos[2], 0]));
 
-        return txPos[0].mul(blockIndexFactor).add(txPos[1].mul(txIndexFactor)).add(txPos[2]);
+        uint256 position = txPos[0].mul(blockIndexFactor).add(txPos[1].mul(txIndexFactor)).add(txPos[2]);
+        require(position <= 2**128-1); // check for an overflow
+
+        return position;
+    }
+
+    function validatePostion(uint256[4] memory position)
+        private
+        view
+        returns (bool)
+    {
+        uint256 blkNum = position[0];
+        uint256 txIndex = position[1];
+        uint256 oIndex = position[2];
+        uint256 depNonce = position[3];
+
+        if (blkNum > 0) { // utxo input
+            // uncommitted block
+            if (blkNum > lastCommittedBlock)
+                return false;
+            // txIndex out of bounds for the block
+            if (txIndex >= plasmaChain[blkNum].numTxns && txIndex != feeIndex)
+                return false;
+            // fee input must have a zero output index
+            if (txIndex == feeIndex && oIndex > 0)
+                return false;
+            // deposit nonce must be zero
+            if (depNonce > 0)
+                return false;
+            // only two outputs
+            if (oIndex > 1)
+                return false;
+        } else { // deposit or fee input
+            // deposit input must be zero'd output position
+            // `blkNum` is not checked as it will fail above
+            if (depNonce > 0 && (txIndex > 0 || oIndex > 0))
+                return false;
+        }
+
+        return true;
     }
 
     function withdraw()
@@ -536,5 +590,21 @@ contract PlasmaMVP {
         returns (uint256)
     {
         return balances[_address];
+    }
+
+    function txQueueLength()
+        public
+        view
+        returns (uint)
+    {
+        return txExitQueue.length;
+    }
+
+    function depositQueueLength()
+        public 
+        view
+        returns (uint)
+    {   
+        return depositExitQueue.length;
     }
 }
