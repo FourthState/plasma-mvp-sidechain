@@ -16,7 +16,7 @@ import (
 
 func init() {
 	ethCmd.AddCommand(challengeCmd)
-	challengeCmd.Flags().StringP(gasLimitF, "g", "30000", "gas limit for ethereum transaction")
+	challengeCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
 	challengeCmd.Flags().String(ownerF, "", "owner of the challenging transaction, required if different from the specified account")
 	challengeCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	challengeCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the challenging transaction")
@@ -109,7 +109,7 @@ Usage:
 			return fmt.Errorf("failed to send challenge transaction: { %s }", err)
 		}
 
-		fmt.Printf("Sent challenge transaction\nTransaction Hash: 0x%s\n", tx.Hash())
+		fmt.Printf("Sent challenge transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 		return nil
 	},
 }
