@@ -2,28 +2,27 @@ package eth
 
 import (
 	"fmt"
-	"math/big"
-	"strconv"
-
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	tm "github.com/tendermint/tendermint/rpc/core/types"
+	"math/big"
+	"strconv"
 )
-
-// TODO: Add support for exiting fees
 
 func init() {
 	ethCmd.AddCommand(exitCmd)
-	exitCmd.Flags().String(feeF, "", "fee committed in an unfinalized spend of the input")
+	exitCmd.Flags().String(feeF, "0", "fee committed in an unfinalized spend of the input")
+	exitCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
+	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
+	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for exiting utxo")
 	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
-	exitCmd.Flags().StringP(gasLimitF, "g", "21000", "gas limit for ethereum transaction")
-	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
-	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the utxo")
-	viper.BindPFlags(exitCmd.Flags())
 }
 
 var exitCmd = &cobra.Command{
@@ -31,14 +30,21 @@ var exitCmd = &cobra.Command{
 	Short: "Start an exit for the given position",
 	Long: `Starts an exit for the given position. If the trust-node flag is set, 
 the necessary information will be retrieved from the connected full node. 
-Otherwise, the transaction bytes, merkle proof, and confirmation signatures must be given
+Otherwise, the transaction bytes, merkle proof, and confirmation signatures must be given. 
+Usage of flags override information retrieved from full node. 
 
-Usage:
-	plasmacli exit <account> <position> -t
+Deposit/Fee Exit Usage:
+	plasmacli exit <account> <position>
+	
+Transaction Exit Usage:
+	plasmacli exit <account> <position> --trust-node --gas-limit 30000
 	plasmacli exit <account> <position> -t --fee <amount>
 	plasmacli exit <account> <position> -b <tx-bytes> --proof <merkle-proof> -S <confirmation-signatures> --fee <amount>`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		viper.BindPFlags(cmd.Flags())
+		var tx *eth.Transaction
+
 		// parse position
 		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
@@ -56,69 +62,111 @@ Usage:
 		}
 
 		// retrieve account key
-		key, err := ks.GetKey(args[0])
+		key, err := store.GetKey(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
 		addr := crypto.PubkeyToAddress(key.PublicKey)
 
-		// bind key
-		// revert after use
+		// bind key, generate transact opts
 		auth := bind.NewKeyedTransactor(key)
-		defer func() {
-			rc.session.TransactOpts = bind.TransactOpts{}
-		}()
-		rc.session.TransactOpts = bind.TransactOpts{
+		transactOpts := &bind.TransactOpts{
 			From:     auth.From,
 			Signer:   auth.Signer,
 			GasLimit: gasLimit,
 			Value:    big.NewInt(minExitBond),
 		}
 
+		// send fee exit
+		if position.IsFee() {
+			tx, err = rc.contract.StartFeeExit(transactOpts, position.BlockNum, big.NewInt(fee))
+			if err != nil {
+				return fmt.Errorf("failed to start fee exit: { %s }", err)
+			}
+			fmt.Printf("Sent fee exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
+			return nil
+		}
+
 		// send deposit exit
 		if position.IsDeposit() {
-			if _, err := rc.session.StartDepositExit(position.DepositNonce, big.NewInt(fee)); err != nil {
+			tx, err := rc.contract.StartDepositExit(transactOpts, position.DepositNonce, big.NewInt(fee))
+			if err != nil {
 				return fmt.Errorf("failed to start deposit exit: { %s }", err)
 			}
-			fmt.Println("Started deposit exit")
+			fmt.Printf("Sent deposit exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 			return nil
 		}
 
 		// retrieve information necessary for transaction exit
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(trustNodeF) { // query full node
-			txBytes, proof, confirmSignatures, err = proveExit(addr, position)
+			var result *tm.ResultTx
+			result, confirmSignatures, err = getProof(addr, position)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}
-		} else { // use command line flags
-			txBytesStr := viper.GetString(txBytesF)
-			proofStr := viper.GetString(proofF)
-			sigs := viper.GetString(sigsF)
 
-			if txBytesStr == "" {
-				return fmt.Errorf("please provide transaction bytes for the given position")
+			txBytes = result.Tx
+
+			// flatten proof
+			for _, aunt := range result.Proof.Proof.Aunts {
+				proof = append(proof, aunt...)
 			}
-
-			if proofStr == "" {
-				return fmt.Errorf("please provide a merkle proof for the given position")
-			}
-
-			if sigs == "" {
-				return fmt.Errorf("please provide confirmation signatures for the given position")
-			}
-
-			txBytes = []byte(txBytesStr)
-			proof = []byte(proofStr)
-			confirmSignatures = []byte(sigs)
 		}
 
-		// TODO: Add support for querying for confirm sigs in local storage
+		if len(confirmSignatures) == 0 {
+			sigs, err := store.GetSig(position)
+			if err == nil {
+				confirmSignatures = sigs
+			}
+		}
+
+		txBytes, proof, confirmSignatures, err = parseProof(txBytes, proof, confirmSignatures)
+		if err != nil {
+			return err
+		}
+
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
-		if _, err := rc.session.StartTransactionExit(txPos, txBytes, proof, confirmSignatures, big.NewInt(fee)); err != nil {
+		tx, err = rc.contract.StartTransactionExit(transactOpts, txPos, txBytes, proof, confirmSignatures, big.NewInt(fee))
+		if err != nil {
 			return fmt.Errorf("failed to start transaction exit: { %s }", err)
 		}
-		fmt.Println("Started transaction exit")
+		fmt.Printf("Sent exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 		return nil
 	},
+}
+
+// Parses flags related to proving exit/challenge
+// Flags override full node information
+// All necessary exit/challenge information is returned, or error is thrown
+func parseProof(txBytes, proof, confirmSignatures []byte) ([]byte, []byte, []byte, error) {
+	if viper.GetString(txBytesF) != "" {
+		txBytes = ethcmn.FromHex(viper.GetString(txBytesF))
+	}
+
+	if viper.GetString(proofF) != "" {
+		proof = ethcmn.FromHex(viper.GetString(proofF))
+	}
+
+	if viper.GetString(sigsF) != "" {
+		confirmSignatures = ethcmn.FromHex(viper.GetString(sigsF))
+	}
+
+	// return error if information is missing
+	if len(txBytes) != 811 {
+		return txBytes, proof, confirmSignatures, fmt.Errorf("please provide txBytes with a length of 811 bytes. Current length: %d", len(txBytes))
+	}
+
+	if len(proof)%32 != 0 {
+		return txBytes, proof, confirmSignatures, fmt.Errorf("please provide a merkle proof of inclusion for the given position. Proof must consist of 32 byte hashes")
+	}
+
+	if len(confirmSignatures)%65 != 0 {
+		return txBytes, proof, confirmSignatures, fmt.Errorf("please provde confirmation signatures for the given position. Signatures must be 65 bytes in length")
+	}
+
+	if len(proof) == 0 {
+		fmt.Println("Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.")
+	}
+	return txBytes, proof, confirmSignatures, nil
 }

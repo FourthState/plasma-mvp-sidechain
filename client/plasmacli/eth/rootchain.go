@@ -16,27 +16,27 @@ var rootchainCmd = &cobra.Command{
 Total contract balance does not include total withdraw balance. The total withdraw balance are exits that have been finalized, but not transfered yet.`,
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, agrs []string) error {
-		lastCommittedBlock, err := rc.session.LastCommittedBlock()
+		lastCommittedBlock, err := rc.contract.LastCommittedBlock(nil)
 		if err != nil {
 			return err
 		}
 
-		totalBalance, err := rc.session.PlasmaChainBalance()
+		totalBalance, err := rc.contract.PlasmaChainBalance(nil)
 		if err != nil {
 			return err
 		}
 
-		withdrawBalance, err := rc.session.TotalWithdrawBalance()
+		withdrawBalance, err := rc.contract.TotalWithdrawBalance(nil)
 		if err != nil {
 			return err
 		}
 
-		minExitBond, err := rc.session.MinExitBond()
+		minExitBond, err := rc.contract.MinExitBond(nil)
 		if err != nil {
 			return err
 		}
 
-		operator, err := rc.session.Operator()
+		operator, err := rc.contract.Operator(nil)
 		if err != nil {
 			return err
 		}

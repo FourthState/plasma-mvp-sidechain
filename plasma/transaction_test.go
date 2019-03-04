@@ -17,22 +17,29 @@ func TestTransactionSerialization(t *testing.T) {
 
 	// contstruct a transaction
 	tx := &Transaction{}
-	pos, _ := FromPositionString("(1.1.1.1)")
-	tx.Input0 = NewInput(pos, [65]byte{}, nil)
+	pos, _ := FromPositionString("(1.10000.1.0)")
+	confirmSig0 := make([][65]byte, 1)
+	copy(confirmSig0[0][65-len([]byte("confirm sig")):], []byte("confirm sig"))
+	tx.Input0 = NewInput(pos, [65]byte{}, confirmSig0)
 	tx.Input0.Signature[1] = byte(1)
-	pos, _ = FromPositionString("(0.0.0.0)")
-	tx.Input1 = NewInput(pos, [65]byte{}, nil)
+	pos, _ = FromPositionString("(0.0.0.1)")
+	confirmSig1 := make([][65]byte, 2)
+	copy(confirmSig1[0][65-len([]byte("the second confirm sig")):], []byte("the second confirm sig"))
+	copy(confirmSig1[1][65-len([]byte("a very long string turned into bytes")):], []byte("a very long string turned into bytes"))
+	tx.Input1 = NewInput(pos, [65]byte{}, confirmSig1)
 	tx.Output0 = NewOutput(common.HexToAddress("1"), one)
 	tx.Output1 = NewOutput(common.HexToAddress("0"), zero)
 	tx.Fee = big.NewInt(1)
 
 	bytes, err := rlp.EncodeToBytes(tx)
 	require.NoError(t, err, "error serializing transaction")
+	require.Equal(t, 811, len(bytes), "encoded bytes should sum to 811")
 
 	recoveredTx := &Transaction{}
 	err = rlp.DecodeBytes(bytes, recoveredTx)
 	require.NoError(t, err, "error deserializing transaction")
 
+	require.EqualValues(t, tx, recoveredTx, "serialized and deserialized transaction not deeply equal")
 	require.True(t, reflect.DeepEqual(tx, recoveredTx), "serialized and deserialized transactions not deeply equal")
 }
 

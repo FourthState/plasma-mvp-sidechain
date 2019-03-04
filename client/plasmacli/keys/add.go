@@ -2,7 +2,7 @@ package keys
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var addCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		address, err := ks.Add(name)
+		address, err := store.AddAccount(name)
 		if err != nil {
 			return err
 		}
@@ -26,7 +26,7 @@ var addCmd = &cobra.Command{
 		fmt.Println("\n**Important** do not lose your passphrase.")
 		fmt.Println("It is the only way to recover your account")
 		fmt.Println("You should export this account and store it in a secure location")
-		fmt.Printf("NAME: %v\tADDRESS: %v\n", name, address.Hex())
+		fmt.Printf("NAME: %s\tADDRESS: 0x%x\n", name, address)
 		return nil
 	},
 }

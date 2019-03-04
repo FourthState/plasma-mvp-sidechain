@@ -3,7 +3,7 @@ let assert = require('chai').assert;
 let MinMinPriorityQueue_Test = artifacts.require("MinPriorityQueue_Test");
 let { catchError } = require('../utilities.js');
 
-contract('MinMinPriorityQueue', async (accounts) => {
+contract('MinPriorityQueue', async (accounts) => {
     let instance;
     beforeEach(async () => {
         instance = await MinMinPriorityQueue_Test.new();

@@ -2,7 +2,7 @@ package keys
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var deleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		if err := ks.Delete(name); err != nil {
+		if err := store.DeleteAccount(name); err != nil {
 			return err
 		}
 

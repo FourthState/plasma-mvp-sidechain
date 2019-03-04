@@ -90,10 +90,66 @@ let generateMerkleRootAndProof = function(leaves, index) {
     }
 };
 
+let fillTxList = function(txList) {
+    // check inputs
+    for (let i = 0; i < 2; i++) {
+        // check inputs
+        let base = 5*i;
+        for (let j = base; j < base+4; j++) {
+            if (txList[j] == 0) {
+                txList[j] = toHex(Buffer.alloc(32).toString('hex'));
+            }
+            else {
+                // pad to 32 bytes
+                num = txList[j].toString(16);
+                num = Array(64-num.length).fill(0).join('') + num;
+                txList[j] = toHex(num);
+            }
+        }
+
+        // confirm signature 
+        if (txList[base+4] == 0) {
+            txList[base+4] = toHex(Buffer.alloc(130).toString('hex'));
+        }
+    }
+
+    // check outputs
+    let outputAddresses = [10, 12];
+    for (let i = 0; i < outputAddresses.length; i++) {
+        if (txList[outputAddresses[i]] == 0) {
+            txList[outputAddresses[i]] = toHex(Buffer.alloc(20).toString('hex'));
+        }
+    }
+
+    let outputAmounts = [11, 13];
+    for (let i = 0; i < outputAmounts.length; i++) {
+        if (txList[outputAmounts[i]] == 0) {
+            txList[outputAmounts[i]] = toHex(Buffer.alloc(32).toString('hex'));
+        } else {
+            // pad to 32 bytes
+            num = txList[outputAmounts[i]].toString(16);
+            num = Array(64-num.length).fill(0).join('') + num;
+            txList[outputAmounts[i]] = toHex(num);
+        }
+    }
+
+    // check fee
+    if (txList[14] == 0) {
+        txList[14] = toHex(Buffer.alloc(32).toString('hex'));
+    } else {
+            num = txList[14].toString(16);
+            num = Array(64-num.length).fill(0).join('') + num;
+            txList[14] = toHex(num);
+    }
+
+    return txList;
+}
+
 
 module.exports = {
     fastForward,
     sha256String,
     sendRPC,
-    generateMerkleRootAndProof
+    generateMerkleRootAndProof,
+    fillTxList
 };

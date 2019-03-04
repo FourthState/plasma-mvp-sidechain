@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	clistore "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -19,7 +19,6 @@ func init() {
 	rootCmd.AddCommand(signCmd)
 	signCmd.Flags().StringP(flagAccount, "a", "", "Account to sign the confirmation signature with (required)")
 	signCmd.Flags().String(flagOwner, "", "Owner of the output (required)")
-	viper.BindPFlags(signCmd.Flags())
 }
 
 var signCmd = &cobra.Command{
@@ -27,6 +26,7 @@ var signCmd = &cobra.Command{
 	Short: "Sign confirmation signatures for position provided (blockNum.txIndex.oIndex.depositNonce), if it exists.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
 		ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
 
 		position, err := plasma.FromPositionString(strings.TrimSpace(args[0]))
@@ -56,8 +56,12 @@ var signCmd = &cobra.Command{
 
 		// create the signature
 		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
-		sig, err := ks.SignHashWithPassphrase(name, hash)
+		sig, err := clistore.SignHashWithPassphrase(name, hash)
 		if err != nil {
+			return err
+		}
+
+		if err := clistore.SaveSig(position, sig); err != nil {
 			return err
 		}
 

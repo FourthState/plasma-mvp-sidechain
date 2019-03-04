@@ -2,7 +2,7 @@ package eth
 
 import (
 	"fmt"
-	ks "github.com/FourthState/plasma-mvp-sidechain/client/keystore"
+	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
@@ -22,7 +22,7 @@ var proveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		addr, err := ks.Get(args[0])
+		addr, err := ks.GetAccount(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)
 		}
@@ -33,7 +33,7 @@ var proveCmd = &cobra.Command{
 			return err
 		}
 
-		result, confirmSignatures, err := getProof(addr, position)
+		result, sigs, err := getProof(addr, position)
 		if err != nil {
 			return err
 		}
@@ -44,11 +44,11 @@ var proveCmd = &cobra.Command{
 		fmt.Printf("LeafHash: 0x%x\n", result.Proof.Proof.LeafHash)
 		fmt.Printf("TxBytes: 0x%x\n", result.Tx)
 
-		switch len(confirmSignatures) {
-		case 1:
-			fmt.Printf("Confirmation Signatures: 0x%x\n", confirmSignatures[0])
-		case 2:
-			fmt.Printf("Confirmation Signatures: 0x%x, 0x%x\n", confirmSignatures[0], confirmSignatures[1])
+		switch len(sigs) {
+		case 65:
+			fmt.Printf("Confirmation Signatures: 0x%x\n", sigs[:])
+		case 130:
+			fmt.Printf("Confirmation Signatures: 0x%x, 0x%x\n", sigs[:65], sigs[65:])
 		}
 
 		// flatten aunts
@@ -69,7 +69,7 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
-func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, [][65]byte, error) {
+func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, []byte, error) {
 	ctx := context.NewCLIContext().WithTrustNode(true)
 
 	// query for the output
@@ -91,43 +91,8 @@ func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, [][6
 	}
 
 	// Look for confirmation signatures
-	var confirmSignatures [][65]byte
 	key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
-	res, err = ctx.QueryStore(key, "plasma")
+	sigs, err := ctx.QueryStore(key, "plasma")
 
-	if err == nil { // confirm signatures exist
-		var signature [65]byte
-		copy(signature[:], res)
-		confirmSignatures = append(confirmSignatures, signature)
-
-		if len(res) > 65 {
-			copy(signature[:], res[65:])
-			confirmSignatures = append(confirmSignatures, signature)
-		}
-	}
-
-	return result, confirmSignatures, nil
-}
-
-// Returns all information necessary to start an exit
-// return (txbytes, proof, confirmation signatures, error)
-// Trust connected full node
-// TODO: Add nodeURL flag
-func proveExit(addr ethcmn.Address, position plasma.Position) ([]byte, []byte, []byte, error) {
-	result, confirmSignatures, err := getProof(addr, position)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	var sigs []byte
-	for i, sig := range confirmSignatures {
-		sigs = append(sigs, sig[i])
-	}
-
-	// flatten aunts
-	var proof []byte
-	for _, aunt := range result.Proof.Proof.Aunts {
-		proof = append(proof, aunt...)
-	}
-
-	return result.Tx, proof, sigs, nil
+	return result, sigs, nil
 }

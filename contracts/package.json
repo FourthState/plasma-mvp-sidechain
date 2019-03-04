@@ -10,12 +10,11 @@
   },
   "devDependencies": {
     "chai": "^4.2.0",
-    "ethereumjs-util": "^6.0.0",
-    "rlp": "^2.2.1"
+    "ethereumjs-util": "^6.1.0",
+    "rlp": "^2.2.2"
   },
   "dependencies": {
-    "ethereumjs-util": "^6.0.0",
     "shelljs": "^0.8.3",
-    "solidity-rlp": "^1.2.1"
+    "solidity-rlp": "^2.0.0"
   }
 }

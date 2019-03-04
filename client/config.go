@@ -11,11 +11,6 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 ##### ethereum config options #####
-# Hex encoded private key
-# Used to sign eth transactions interacting with the contract
-# Default key to be used
-ethereum_privatekey = "{{ .EthPrivateKey }}"
-
 # Ethereum plasma contract address
 ethereum_plasma_contract_address = "{{ .EthPlasmaContractAddr }}"
 
@@ -27,7 +22,6 @@ ethereum_finality = "{{ .EthBlockFinality }}"`
 
 // Must match the above defaultConfigTemplate
 type PlasmaConfig struct {
-	EthPrivateKey         string `mapstructure:"ethereum_privatekey"`
 	EthPlasmaContractAddr string `mapstructure:"ethereum_plasma_contract_address"`
 	EthNodeURL            string `mapstructure:"ethereum_nodeurl"`
 	EthBlockFinality      string `mapstructure:"ethereum_finality"`
@@ -44,7 +38,7 @@ func init() {
 }
 
 func DefaultPlasmaConfig() PlasmaConfig {
-	return PlasmaConfig{"", "", "", "0"}
+	return PlasmaConfig{"", "http://localhost:8545", "0"}
 }
 
 // parses the plasma.toml file and unmarshals it into a Config struct

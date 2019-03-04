@@ -2,21 +2,19 @@ package eth
 
 import (
 	"fmt"
-	"math/big"
-	"strconv"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"math/big"
+	"strconv"
 )
 
 func init() {
-	queryCmd.AddCommand(depositsCmd)
-	depositsCmd.Flags().Bool(allF, false, "all deposits will be displayed")
-	depositsCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")
-	viper.BindPFlags(depositsCmd.Flags())
+	queryCmd.AddCommand(getDepositsCmd)
+	getDepositsCmd.Flags().Bool(allF, false, "all deposits will be displayed")
+	getDepositsCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")
 }
 
-var depositsCmd = &cobra.Command{
+var getDepositsCmd = &cobra.Command{
 	Use:   "deposit <nonce>",
 	Short: "Query for a deposit that occured on the rootchain",
 	Long: `Queries for deposits that occured on the rootchain.
@@ -27,30 +25,34 @@ Usage:
 	plasmacli eth query deposit --all`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		var curr, lim, end int64
+		viper.BindPFlags(cmd.Flags())
+		var curr, lim int64
 
 		if lim, err = strconv.ParseInt(viper.GetString(limitF), 10, 64); err != nil {
 			return fmt.Errorf("failed to parse limit - %s", err)
 		}
 
+		lastNonce, err := rc.contract.DepositNonce(nil)
+		if err != nil {
+			return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
+		}
+
 		if viper.GetBool(allF) { // Print all deposits
 			curr = 1
-			lastNonce, err := rc.session.DepositNonce()
-			if err != nil {
-				return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
-			}
-			end = lastNonce.Int64()
+			lim = lastNonce.Int64() - 1
 		} else if len(args) > 0 { // Use command line arg as starting nonce
 			if curr, err = strconv.ParseInt(args[0], 10, 64); err != nil {
 				return fmt.Errorf("failed to parse nonce - %s", err)
 			}
-
-			end = curr + lim
 		} else {
 			return fmt.Errorf("please provide a nonce")
 		}
 
-		if err = displayDeposits(curr, lim, end); err != nil {
+		if curr >= lastNonce.Int64() {
+			return fmt.Errorf("deposit nonce provided does not exist")
+		}
+
+		if err = displayDeposits(curr, lim); err != nil {
 			return fmt.Errorf("failed while displaying deposits - %s", err)
 		}
 
@@ -58,13 +60,18 @@ Usage:
 	},
 }
 
-func displayDeposits(curr, lim, end int64) error {
-	for curr < end && lim > 0 {
+func displayDeposits(curr, lim int64) error {
+	for lim > 0 {
 		deposit, err := rc.contract.Deposits(nil, big.NewInt(curr))
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Owner: 0x%x\nAmount: %d\nNonce: %d\n\n", deposit.Owner, deposit.Amount, curr)
+
+		if deposit.EthBlockNum.Int64() == 0 {
+			break
+		}
+
+		fmt.Printf("Owner: 0x%x\nAmount: %d\nNonce: %d\nRootchain Block: %d\n\n", deposit.Owner, deposit.Amount, curr, deposit.EthBlockNum)
 		curr++
 		lim--
 	}
