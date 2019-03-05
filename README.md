@@ -27,8 +27,10 @@ Run `dep ensure -vendor-only`
 
 ***Plasma Node:***
 
-- Navigate to `server/plasmad/` directory
-- Run `go install` via command line
+```
+cd server/plasmad
+go install
+```
 
 The plasma node (plasmad) is now installed and can be called from any directory with `plasmad`
 
@@ -40,8 +42,10 @@ Run `plasmad start` via command line to begin running the plasma node.
 
 ***Plasma Client:***
 
-- Navigate to `client/plasmacli/` directory
-- Run `go install` via command line
+```
+cd client/plasmacli/ 
+go install
+```
 
 Navigate to `<dirpath>` (default is `$HOME/.plasmacli`), set ethereum client configuration parameters in plasma.toml.
 Use `plasmacli` to run any of the commands for this light client
