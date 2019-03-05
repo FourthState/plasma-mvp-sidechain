@@ -13,6 +13,7 @@ sudo snap install --classic go
 sudo mkdir -p ~/go/bin/
 
 # Export GO path and append to .profile file
+echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.profile
 echo "export GOPATH=$HOME/go" >> ~/.profile
 echo "export PATH=\$PATH:\$GOPATH/bin" >> ~/.profile
 
