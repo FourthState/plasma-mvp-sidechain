@@ -32,13 +32,11 @@ cd server/plasmad
 go install
 ```
 
-The plasma node (plasmad) is now installed and can be called from any directory with `plasmad`
-
 Run `plasmad init` to start an instance of a plasma node.
 Use the `--home <dirpath>` to specify a location where you want your plasma node to exist.
 
 Navigate to `<dirpath>/config/` (default is `$HOME/.plasmad/config`), set configuration parameters in config.toml and plasma.toml.
-Run `plasmad start` via command line to begin running the plasma node. 
+Run `plasmad start` to begin running the plasma node. 
 
 ***Plasma Client:***
 
@@ -49,8 +47,6 @@ go install
 
 Navigate to `<dirpath>` (default is `$HOME/.plasmacli`), set ethereum client configuration parameters in plasma.toml.
 Use `plasmacli` to run any of the commands for this light client
-
-The light client uses the Ethereum keystore to create and store passphrase encrypted keys in `$HOME/.plasmacli/keys/`
   
 ### Plasma Architecture 
 See our [research repository](https://github.com/FourthState/plasma-research) for architectural explanations of our Plasma implementation. 
