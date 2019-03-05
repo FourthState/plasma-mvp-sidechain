@@ -45,7 +45,7 @@ cd client/plasmacli/
 go install
 ```
 
-Navigate to `<dirpath>` (default is `$HOME/.plasmacli`), set ethereum client configuration parameters in plasma.toml.
+Navigate to `$HOME/.plasmacli`, set ethereum client configuration parameters in plasma.toml.
 Use `plasmacli` to run any of the commands for this light client
   
 ### Plasma Architecture 
