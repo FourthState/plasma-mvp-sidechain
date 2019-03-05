@@ -13,8 +13,9 @@ sudo snap install --classic go
 sudo mkdir -p ~/go/bin/
 
 # Export GO path and append to .bashrc file
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$PATH
 sed -i -e "\$aexport GOPATH=\$HOME/go\nexport PATH=\$GOPATH/bin:\$PATH" ~/.bashrc
-. ~/.bashrc
 
 # Install dep
 curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
