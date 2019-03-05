@@ -28,7 +28,7 @@ Run `dep ensure -vendor-only`
 ***Plasma Node:***
 
 ```
-cd server/plasmad
+cd server/plasmad/
 go install
 ```
 
