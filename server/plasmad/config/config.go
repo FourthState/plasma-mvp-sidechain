@@ -51,7 +51,7 @@ func init() {
 }
 
 func DefaultPlasmaConfig() PlasmaConfig {
-	return PlasmaConfig{false, "", "", "", "", "0"}
+	return PlasmaConfig{false, "", "", "30s", "http://localhost:8545", "16"}
 }
 
 // parses the plasma.toml file and unmarshals it into a Config struct
