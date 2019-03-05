@@ -12,10 +12,11 @@ sudo apt install gcc make ethereum -y
 sudo snap install --classic go
 sudo mkdir -p ~/go/bin/
 
-# Export GO path and append to .bashrc file
-export GOPATH=$HOME/go
-export PATH=$GOPATH/bin:$PATH
-sed -i -e "\$aexport GOPATH=\$HOME/go\nexport PATH=\$GOPATH/bin:\$PATH" ~/.bashrc
+# Export GO path and append to .profile file
+echo "export GOPATH=$HOME/go" >> ~/.profile
+echo "export PATH=\$PATH:\$GOPATH/bin" >> ~/.profile
+
+source ~/.profile
 
 # Install dep
 curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
