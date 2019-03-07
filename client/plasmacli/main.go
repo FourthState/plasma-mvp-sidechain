@@ -19,9 +19,9 @@ var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 
 // Flags
 const (
-	flagAccount      = "accounts"
-	flagOwner        = "owner"
-	flagPositions    = "position"
+	accountF         = "accounts"
+	ownerF           = "owner"
+	positionF        = "position"
 	flagConfirmSigs0 = "Input0ConfirmSigs"
 	flagConfirmSigs1 = "Input1ConfirmSigs"
 	flagInputs       = "inputValues"
@@ -35,19 +35,8 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	Execute()
-}
+	cobra.EnableCommandSorting = false
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
-func init() {
-	// initConfig to be ran when Execute is called
-	cobra.OnInitialize(initConfig)
 	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	rootCmd.PersistentFlags().StringP(store.DirFlag, "d", homeDir, "directory for plasmacli")
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
@@ -68,11 +57,31 @@ func init() {
 	}
 
 	rootCmd.AddCommand(
-		keys.KeysCmd(),
-		query.QueryCmd(),
 		eth.EthCmd(),
+		query.QueryCmd(),
 		eth.ProveCmd(),
+		client.LineBreak,
+		signCmd,
+		spendCmd,
+		client.LineBreak,
+		keys.KeysCmd(),
+		client.LineBreak,
+		versionCmd,
 	)
+
+	Execute()
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	// initConfig to be ran when Execute is called
+	cobra.OnInitialize(initConfig)
 }
 
 // initConfig reads in config file and ENV variables if set
