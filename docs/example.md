@@ -6,13 +6,15 @@ cd into client/plasmacli
 
 run `go install`
 
-cd into client/plasmad
+cd into server/plasmad
 
 run `go install`
 
-run `plasmad init` to initalize a validator. cd into `~/.plasmad/config`. Open genesis.json and add a `fee_address` and genesis utxos. See our example [genesis.json](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/testnet-setup/example_genesis.json)
+run `plasmad init` to initalize a validator. cd into `~/.plasmad/config`. Open genesis.json and add an ethereum address to `fee_address`. See our example [genesis.json](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/testnet-setup/example_genesis.json)
 
 Open config.toml and add any configurations you would like to add for your validator, such as a moniker.
+
+Open plasma.toml, set `is_operator` to true if you are running a validator. Set `ethereum_operator_privatekey` to be the unencrypted private key that will be used to submit blocks to the rootchain. It must contain sufficient eth to pay gas costs for every submitted plasma block. Set `ethereum_plasma_contract_address` to be the contract address of the deployed rootchain. Set `plasma_block_commitment_rate` to be the rate at which you want plasma blocks to be submitted to the rootchain. Set `ethereum_nodeurl` to be the url which contains your ethereum full node. Set `ethereum_finality` to be the number of ethereum blocks until a submitted header has presumed finality.
 
 run `plasmad unsafe-reset-all` followed by `plasmad start`
 
@@ -21,7 +23,7 @@ You should be successfully producing empty blocks
 Things to keep in mind: 
 - You can change `timeout_commit` in config.toml to slow down block time. 
 - go install `plasmacli` and `plasmad` when updating to newer versions
-- Use `plasmad unsafe-reset-all` if you encounter an unexpected error. If the error persists open an issue
+- Use `plasmad unsafe-reset-all` if you encounter an unexpected error. If the error persists open an issue.
 
 ## Generating Keys ##
 
