@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 ### Added
+- [\#126](https://github.com/FourthState/plasma-mvp-sidechain/pull/126) Added installation script
 - **plasmacli:** [\#110](https://github.com/FourthState/plasma-mvp-sidechain/pull/110) Added eth subcommand for rootchain interaction
 - **plasmacli:** [\#110](https://github.com/FourthState/plasma-mvp-sidechain/pull/110) Added plasma.toml in .plasmacli/ for rootchain connection configuration
 - **plasmacli:** [\#108](https://github.com/FourthState/plasma-mvp-sidechain/pull/108) Added keys subcommand with account mapping
