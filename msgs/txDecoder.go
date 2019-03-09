@@ -12,7 +12,7 @@ func TxDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 		var depositMsg IncludeDepositMsg
 		if err2 := rlp.DecodeBytes(txBytes, &depositMsg); err2 != nil {
 			return nil, sdk.ErrTxDecode(fmt.Sprintf("Decode to SpendMsg error: { %s } Decode to DepositMsg error: { %s }",
-			 err.Error(), err2.Error()))
+				err.Error(), err2.Error()))
 		}
 		return depositMsg, nil
 	}

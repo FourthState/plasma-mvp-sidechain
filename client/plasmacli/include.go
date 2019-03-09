@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
+	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -27,7 +27,7 @@ var includeCmd = &cobra.Command{
 	plasmacli include-deposit <nonce> <account_name>
 	plasmacli include-deposit <nonce> --address <address>
 	plasmacli include-deposit <nonce> --address <address> -r 3`,
-	Args:  cobra.MinimumNArgs(1),
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 		ctx := context.NewCLIContext()
