@@ -22,73 +22,78 @@ type plasmaConn interface {
 
 func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) sdk.AnteHandler {
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
-		spendMsg, ok := tx.(msgs.SpendMsg)
-		if !ok {
-			depositMsg, depositOK := tx.(msgs.IncludeDepositMsg)
-			if !depositOK {
-				return ctx, sdk.ErrInternal("tx must in the form of a spendMsg or IncludeDepositMsg").Result(), true
-			}
-			return IncludeDepositAnteHandler(ctx, utxoStore, depositMsg, client)
+		msg := tx.GetMsgs()[0] // tx should only have one msg
+		switch mtype := msg.Type(); mtype {
+		case "include_deposit":
+			depositMsg := msg.(msgs.IncludeDepositMsg)
+			return includeDepositAnteHandler(ctx, utxoStore, depositMsg, client)
+		case "spend_utxo":
+			spendMsg := msg.(msgs.SpendMsg)
+			return spendMsgAnteHandler(ctx, spendMsg, utxoStore, plasmaStore, client)
+		default:
+			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
+	}
+}
 
-		var totalInputAmt, totalOutputAmt *big.Int
+func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+	var totalInputAmt, totalOutputAmt *big.Int
 
-		// attempt to recover signers
-		signers := spendMsg.GetSigners()
-		if len(signers) == 0 {
-			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true
+	// attempt to recover signers
+	signers := spendMsg.GetSigners()
+	if len(signers) == 0 {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true
+	}
+
+	/* validate the first input */
+	amt, res := validateInput(ctx, spendMsg.Input0, common.BytesToAddress(signers[0]), utxoStore, client)
+	if !res.IsOK() {
+		return ctx, res, true
+	}
+
+	// must cover the fee
+	if amt.Cmp(spendMsg.Fee) < 0 {
+		return ctx, ErrInsufficientFee(DefaultCodespace, "first input has an insufficient amount to pay the fee").Result(), true
+	}
+
+	totalInputAmt = amt
+
+	// store confirm signatures
+	if !spendMsg.Input0.Position.IsDeposit() && spendMsg.Input0.TxIndex < 1<<16-1 {
+		plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input0.Position, spendMsg.Input0.ConfirmSignatures)
+	}
+
+	/* validate second input if applicable */
+	if spendMsg.HasSecondInput() {
+		if len(signers) != 2 {
+			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "second signature not present").Result(), true
 		}
-
-		/* validate the first input */
-		amt, res := validateInput(ctx, spendMsg.Input0, common.BytesToAddress(signers[0]), utxoStore, client)
+		amt, res = validateInput(ctx, spendMsg.Input1, common.BytesToAddress(signers[1]), utxoStore, client)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
 
-		// must cover the fee
-		if amt.Cmp(spendMsg.Fee) < 0 {
-			return ctx, ErrInsufficientFee(DefaultCodespace, "first input has an insufficient amount to pay the fee").Result(), true
+		// store confirm signature
+		if !spendMsg.Input1.Position.IsDeposit() && spendMsg.Input1.TxIndex < 1<<16-1 {
+			plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input1.Position, spendMsg.Input1.ConfirmSignatures)
 		}
 
-		totalInputAmt = amt
-
-		// store confirm signatures
-		if !spendMsg.Input0.Position.IsDeposit() && spendMsg.Input0.TxIndex < 1<<16-1 {
-			plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input0.Position, spendMsg.Input0.ConfirmSignatures)
-		}
-
-		/* validate second input if applicable */
-		if spendMsg.HasSecondInput() {
-			if len(signers) != 2 {
-				return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "second signature not present").Result(), true
-			}
-			amt, res = validateInput(ctx, spendMsg.Input1, common.BytesToAddress(signers[1]), utxoStore, client)
-			if !res.IsOK() {
-				return ctx, res, true
-			}
-
-			// store confirm signature
-			if !spendMsg.Input1.Position.IsDeposit() && spendMsg.Input1.TxIndex < 1<<16-1 {
-				plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input1.Position, spendMsg.Input1.ConfirmSignatures)
-			}
-
-			totalInputAmt = totalInputAmt.Add(totalInputAmt, amt)
-		}
-
-		// input0 + input1 (totalInputAmt) == output0 + output1 + Fee (totalOutputAmt)
-		totalOutputAmt = spendMsg.Output0.Amount
-		if spendMsg.HasSecondOutput() {
-			totalOutputAmt = totalOutputAmt.Add(totalOutputAmt.Add(totalOutputAmt, spendMsg.Output1.Amount), spendMsg.Fee)
-		} else {
-			totalOutputAmt = totalOutputAmt.Add(totalOutputAmt, spendMsg.Fee)
-		}
-
-		if totalInputAmt.Cmp(totalOutputAmt) != 0 {
-			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "inputs do not equal Outputs (+ fee)").Result(), true
-		}
-
-		return ctx, sdk.Result{}, false
+		totalInputAmt = totalInputAmt.Add(totalInputAmt, amt)
 	}
+
+	// input0 + input1 (totalInputAmt) == output0 + output1 + Fee (totalOutputAmt)
+	totalOutputAmt = spendMsg.Output0.Amount
+	if spendMsg.HasSecondOutput() {
+		totalOutputAmt = totalOutputAmt.Add(totalOutputAmt.Add(totalOutputAmt, spendMsg.Output1.Amount), spendMsg.Fee)
+	} else {
+		totalOutputAmt = totalOutputAmt.Add(totalOutputAmt, spendMsg.Fee)
+	}
+
+	if totalInputAmt.Cmp(totalOutputAmt) != 0 {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "inputs do not equal Outputs (+ fee)").Result(), true
+	}
+
+	return ctx, sdk.Result{}, false
 }
 
 // validates the inputs against the utxo store and returns the amount of the respective input
@@ -99,13 +104,13 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	// check the owner of the position
 	inputUTXO, ok := utxoStore.GetUTXO(ctx, signer, input.Position)
 	if !ok {
-		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", inputUTXO.Position, signer).Result()
+		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", input.Position, signer).Result()
 	}
 	if inputUTXO.Spent {
-		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", inputUTXO.Position).Result()
+		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", input.Position).Result()
 	}
 	if client.HasTxBeenExited(input.Position) {
-		return nil, ErrExitedInput(DefaultCodespace, "input, %s, utxo has exitted", inputUTXO.Position).Result()
+		return nil, ErrExitedInput(DefaultCodespace, "input, %s, utxo has exitted", input.Position).Result()
 	}
 
 	// validate confirm signatures if not a fee utxo or deposit utxo
@@ -149,7 +154,7 @@ func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputUTXO st
 	return sdk.Result{}
 }
 
-func IncludeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	depositPosition := plasma.NewPosition(big.NewInt(0), 0, 0, msg.DepositNonce)
 	if utxoStore.HasUTXO(ctx, msg.Owner, depositPosition) {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true

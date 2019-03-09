@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
+	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -19,21 +20,35 @@ func init() {
 }
 
 var includeCmd = &cobra.Command{
-	Use:   "include-deposit <nonce> <account>",
-	Short: "Include a deposit from <account> with given nonce",
-	Args:  cobra.MinimumNArgs(2),
+	Use:   "include-deposit <nonce> <account_name>",
+	Short: "Include a deposit from <account_name> with given nonce",
+	Long: `Example usage:
+	plasmacli include-deposit <nonce> <account_name>
+	plasmacli include-deposit <nonce> --account <account>
+	plasmacli include-deposit <nonce> --account <account> -r 3`,
+	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
 		ctx := context.NewCLIContext()
 
 		// validate addresses
-		addrToken := strings.TrimSpace(args[1])
-
-		if !ethcmn.IsHexAddress(addrToken) {
-			return fmt.Errorf("invalid address provided. please use hex format")
-		}
-		addr := ethcmn.HexToAddress(addrToken)
-		if utils.IsZeroAddress(addr) {
-			return fmt.Errorf("cannot include deposit from the zero address")
+		var account ethcmn.Address
+		var err error
+		if len(args) == 2 {
+			account, err = store.GetAccount(args[1])
+			if err != nil {
+				return fmt.Errorf("Could not retrieve account: %s", args[1])
+			}
+		} else {
+			addrToken := viper.GetString(flagAccount)
+			addrToken = strings.TrimSpace(addrToken)
+			if !ethcmn.IsHexAddress(addrToken) {
+				return fmt.Errorf("invalid address provided. please use hex format")
+			}
+			account := ethcmn.HexToAddress(addrToken)
+			if utils.IsZeroAddress(account) {
+				return fmt.Errorf("cannot include deposit from the zero address")
+			}
 		}
 
 		nonce, ok := new(big.Int).SetString(strings.TrimSpace(args[0]), 10)
@@ -45,7 +60,7 @@ var includeCmd = &cobra.Command{
 
 		msg := msgs.IncludeDepositMsg{
 			DepositNonce: nonce,
-			Owner:        addr,
+			Owner:        account,
 			ReplayNonce:  uint64(replay),
 		}
 
