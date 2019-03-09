@@ -20,6 +20,7 @@ var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 // Flags
 const (
 	flagAccount      = "accounts"
+	flagAddress      = "address"
 	flagOwner        = "owner"
 	flagPositions    = "position"
 	flagConfirmSigs0 = "Input0ConfirmSigs"

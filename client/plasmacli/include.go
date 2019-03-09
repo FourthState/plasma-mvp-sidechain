@@ -17,6 +17,7 @@ import (
 func init() {
 	rootCmd.AddCommand(includeCmd)
 	includeCmd.Flags().Int64P(flagReplay, "r", 0, "Replay Nonce that can be incremented to allow for resubmissions of include deposit messages")
+	includeCmd.Flags().String(flagAddress, "", "address represented as hex string")
 }
 
 var includeCmd = &cobra.Command{
@@ -24,18 +25,18 @@ var includeCmd = &cobra.Command{
 	Short: "Include a deposit from <account_name> with given nonce",
 	Long: `Example usage:
 	plasmacli include-deposit <nonce> <account_name>
-	plasmacli include-deposit <nonce> --account <account>
-	plasmacli include-deposit <nonce> --account <account> -r 3`,
+	plasmacli include-deposit <nonce> --address <address>
+	plasmacli include-deposit <nonce> --address <address> -r 3`,
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 		ctx := context.NewCLIContext()
 
 		// validate addresses
-		var account ethcmn.Address
+		var address ethcmn.Address
 		var err error
 		if len(args) == 2 {
-			account, err = store.GetAccount(args[1])
+			address, err = store.GetAccount(args[1])
 			if err != nil {
 				return fmt.Errorf("Could not retrieve account: %s", args[1])
 			}
@@ -45,8 +46,8 @@ var includeCmd = &cobra.Command{
 			if !ethcmn.IsHexAddress(addrToken) {
 				return fmt.Errorf("invalid address provided. please use hex format")
 			}
-			account := ethcmn.HexToAddress(addrToken)
-			if utils.IsZeroAddress(account) {
+			address := ethcmn.HexToAddress(addrToken)
+			if utils.IsZeroAddress(address) {
 				return fmt.Errorf("cannot include deposit from the zero address")
 			}
 		}
@@ -60,7 +61,7 @@ var includeCmd = &cobra.Command{
 
 		msg := msgs.IncludeDepositMsg{
 			DepositNonce: nonce,
-			Owner:        account,
+			Owner:        address,
 			ReplayNonce:  uint64(replay),
 		}
 
