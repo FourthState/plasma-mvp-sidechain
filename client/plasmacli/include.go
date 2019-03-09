@@ -41,7 +41,7 @@ var includeCmd = &cobra.Command{
 				return fmt.Errorf("Could not retrieve account: %s", args[1])
 			}
 		} else {
-			addrToken := viper.GetString(flagAccount)
+			addrToken := viper.GetString(flagAddress)
 			addrToken = strings.TrimSpace(addrToken)
 			if !ethcmn.IsHexAddress(addrToken) {
 				return fmt.Errorf("invalid address provided. please use hex format")
