@@ -18,6 +18,7 @@ func init() {
 	rootCmd.AddCommand(includeCmd)
 	includeCmd.Flags().Int64P(flagReplay, "r", 0, "Replay Nonce that can be incremented to allow for resubmissions of include deposit messages")
 	includeCmd.Flags().String(flagAddress, "", "address represented as hex string")
+	includeCmd.Flags().BoolP(flagSync, "s", false, "wait for transaction commitment synchronously")
 }
 
 var includeCmd = &cobra.Command{

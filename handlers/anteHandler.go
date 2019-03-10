@@ -104,13 +104,13 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	// check the owner of the position
 	inputUTXO, ok := utxoStore.GetUTXO(ctx, signer, input.Position)
 	if !ok {
-		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, does not exist by owner %x", input.Position, signer).Result()
+		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, does not exist by owner %x", input.Position, signer).Result()
 	}
 	if inputUTXO.Spent {
-		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %s, already spent", input.Position).Result()
+		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, already spent", input.Position).Result()
 	}
 	if client.HasTxBeenExited(input.Position) {
-		return nil, ErrExitedInput(DefaultCodespace, "input, %s, utxo has exitted", input.Position).Result()
+		return nil, ErrExitedInput(DefaultCodespace, "input, %v, utxo has exitted", input.Position).Result()
 	}
 
 	// validate confirm signatures if not a fee utxo or deposit utxo
@@ -125,7 +125,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	for _, key := range inputUTXO.InputKeys {
 		utxo, _ := utxoStore.GetUTXOWithKey(ctx, key)
 		if client.HasTxBeenExited(utxo.Position) {
-			return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %s", utxo.Output.Owner, utxo.Position)).Result()
+			return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %v", utxo.Output.Owner, utxo.Position)).Result()
 		}
 	}
 

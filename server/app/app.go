@@ -106,6 +106,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		return nil
 	}
 	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, app.plasmaStore, nextTxIndex, feeUpdater))
+	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.utxoStore, nextTxIndex, plasmaClient))
 
 	// Set the AnteHandler
 	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, plasmaClient))
