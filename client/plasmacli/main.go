@@ -20,6 +20,7 @@ var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 // Flags
 const (
 	flagAccount      = "accounts"
+	flagAddress      = "address"
 	flagOwner        = "owner"
 	flagPositions    = "position"
 	flagConfirmSigs0 = "Input0ConfirmSigs"
@@ -27,6 +28,7 @@ const (
 	flagInputs       = "inputValues"
 	flagSync         = "sync"
 	flagFee          = "fee"
+	flagReplay       = "replay"
 )
 
 var rootCmd = &cobra.Command{
