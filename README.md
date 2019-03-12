@@ -19,7 +19,7 @@ This sidechain currently supports a single validator, but will be updated in the
 
 ## Quick Start
 
-#### Install using a script
+### Install using a script
 
 This script can be used on a fresh server that has no dependencies installed.
 
@@ -29,7 +29,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-#### Manual Install
+### Manual Install
 
 **Requirements**: 
 - [golang](https://golang.org/)
