@@ -10,13 +10,26 @@ Implementation of [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-
 ## What is Plasma?
 Plasma has two major components: verification and computation. 
 Verification is handled by the rootchain contract, which resolves any disputes and distributes funds accordingly.
- Computation is handled separately by a sidechain, which maintains its security through reporting proofs via merkle roots to the rootchain contract. 
+Computation is handled separately by a sidechain, which maintains its security through reporting proofs via merkle roots to the rootchain contract. 
 
 Plasma MVP utilizes a UTXO model, which allows for secure and compact proofs. Learn more about plasma on [learnplasma.org](https://www.learnplasma.org/en/)!
 
 We are using [Tendermint](https://github.com/tendermint/tendermint) for our consensus protocol.
+This sidechain currently supports a single validator, but will be updated in the future to support multiple validators.
 
 ## Quick Start
+
+#### Install using a script
+
+This script can be used on a fresh server that has no dependencies installed.
+
+```
+curl https://raw.githubusercontent.com/FourthState/plasma-mvp-sidechain/develop/scripts/plasma_install.sh > install.sh
+chmod +x install.sh
+./install.sh
+```
+
+#### Manual Install
 
 **Requirements**: 
 - [golang](https://golang.org/)
