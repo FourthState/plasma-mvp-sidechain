@@ -12,5 +12,5 @@ const (
 )
 
 func ErrInvalidTransaction(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
-	return sdk.NewError(codespace, CodeInvalidTransaction, msg, args)
+	return sdk.NewError(codespace, CodeInvalidTransaction, msg, args...)
 }

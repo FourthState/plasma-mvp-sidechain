@@ -134,38 +134,43 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.Pla
 }
 
 // GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, bool) {
+func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
 	deposit, err := plasma.contract.Deposits(nil, nonce)
 	if err != nil {
 		// TODO: log the error
-		return plasmaTypes.Deposit{}, false
+		return plasmaTypes.Deposit{}, nil, false
 	}
 
 	if deposit.CreatedAt.Sign() == 0 {
-		return plasmaTypes.Deposit{}, false
+		return plasmaTypes.Deposit{}, nil, false
 	}
 
 	// check the finality bound
 	ethBlockNum, err := plasma.client.LatestBlockNum()
 	if err != nil {
 		plasma.logger.Error(fmt.Sprintf("failed to retrieve the latest ethereum block number { %s }", err))
-		return plasmaTypes.Deposit{}, false
+		return plasmaTypes.Deposit{}, nil, false
 	}
 
 	if ethBlockNum.Sign() < 0 {
 		plasma.logger.Error(fmt.Sprintf("failed to retrieve information about deposit %s", nonce))
-		return plasmaTypes.Deposit{}, false
+		return plasmaTypes.Deposit{}, nil, false
 	}
 
-	if new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum).Uint64() < plasma.finalityBound {
-		return plasmaTypes.Deposit{}, false
+	// how many blocks have occurred since deposit
+	interval := new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum)
+	// how many more blocks need to get added for deposit to be considered final
+	// Note: If deposit is finalized, threshold can be 0 or negative
+	threshold := new(big.Int).Sub(big.NewInt(int64(plasma.finalityBound)), interval)
+	if threshold.Sign() > 0 {
+		return plasmaTypes.Deposit{}, threshold, false
 	}
 
 	return plasmaTypes.Deposit{
 		Owner:       deposit.Owner,
 		Amount:      deposit.Amount,
 		EthBlockNum: deposit.EthBlockNum,
-	}, true
+	}, threshold, true
 }
 
 // HasTXBeenExited indicates if the position has ever been exited

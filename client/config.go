@@ -2,8 +2,10 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/spf13/viper"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"path/filepath"
 	"text/template"
 )
 
@@ -54,6 +56,10 @@ func WritePlasmaConfigFile(configFilePath string, config PlasmaConfig) {
 
 	if err := configTemplate.Execute(&buffer, &config); err != nil {
 		panic(err)
+	}
+
+	if err := cmn.EnsureDir(filepath.Dir(configFilePath), 0600); err != nil {
+		fmt.Printf("ERROR: failed to create directory: %s, recieved error: { %s }", filepath.Dir(configFilePath), err)
 	}
 
 	// 0600 for owner only read+write permissions

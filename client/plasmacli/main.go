@@ -20,13 +20,15 @@ var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 // Flags
 const (
 	accountF      = "accounts"
-	ownerF        = "owner"
-	positionF     = "position"
+	addressF      = "address"
+	asyncF        = "async"
 	confirmSigs0F = "Input0ConfirmSigs"
 	confirmSigs1F = "Input1ConfirmSigs"
-	flagInputs    = "inputValues"
-	asyncF        = "async"
 	feeF          = "fee"
+	inputsF       = "inputValues"
+	ownerF        = "owner"
+	positionF     = "position"
+	replayF       = "replay"
 )
 
 var rootCmd = &cobra.Command{
@@ -53,6 +55,7 @@ func main() {
 	viper.AddConfigPath(homeDir)
 	plasmaDir := filepath.Join(homeDir, "plasma.toml")
 	if _, err := os.Stat(plasmaDir); os.IsNotExist(err) {
+
 		config.WritePlasmaConfigFile(plasmaDir, config.DefaultPlasmaConfig())
 	}
 
