@@ -59,85 +59,31 @@ Usage:
 			accs = append(accs, strings.TrimSpace(token))
 		}
 
-		// parse to addresses
-		var toAddrs []ethcmn.Address
-		toAddrTokens := strings.Split(strings.TrimSpace(args[0]), ",")
-		if len(toAddrTokens) == 0 || len(toAddrTokens) > 2 {
-			return fmt.Errorf("1 or 2 outputs must be specified")
+		toAddrs, err := parseToAddresses(args[0])
+		if err != nil {
+			return err
 		}
 
-		for _, token := range toAddrTokens {
-			token := strings.TrimSpace(token)
-			if !ethcmn.IsHexAddress(token) {
-				return fmt.Errorf("invalid address provided. please use hex format")
-			}
-			addr := ethcmn.HexToAddress(token)
-			if utils.IsZeroAddress(addr) {
-				return fmt.Errorf("cannot spend to the zero address")
-			}
-			toAddrs = append(toAddrs, addr)
+		amounts, fee, total, err := parseAmounts(args[1], toAddrs)
+		if err != nil {
+			return err
 		}
 
-		// parse amounts
-		var amounts []*big.Int // [amount0, amount1]
-		var total *big.Int
-		amountTokens := strings.Split(strings.TrimSpace(args[1]), ",")
-		if len(amountTokens) != 1 && len(amountTokens) != 2 {
-			return fmt.Errorf("1 or 2 output amounts must be specified")
-		}
-		if len(amountTokens) != len(toAddrs) {
-			return fmt.Errorf("provided amounts to not match the number of outputs")
-		}
-		for _, token := range amountTokens {
-			token = strings.TrimSpace(token)
-			num, ok := new(big.Int).SetString(token, 10)
-			if !ok {
-				return fmt.Errorf("failed to parsing amount: %s", token)
-			}
-			total.Add(total, num)
-			amounts = append(amounts, num)
-		}
-
-		// parse fee
-		fee, ok := new(big.Int).SetString(strings.TrimSpace(viper.GetString(feeF)), 10)
-		if !ok {
-			return fmt.Errorf("failed to parse fee: %s", fee)
-		}
-
-		total.Add(total, fee)
-		inputs, change, err := getInputs(accs, total)
+		inputs, change, err := retrieveInputs(accs, total)
 		if err != nil {
 			return err
 		}
 
 		// get confirmation signatures from local storage
-		var confirmSignatures [2][][65]byte
-		for i, input := range inputs {
-			sig, _ := clistore.GetSig(input)
-			if sig != nil {
-				var sigs [][65]byte
-				switch len(sig) {
-				case 65:
-					var s [65]byte
-					copy(s[:], sig[:])
-					sigs = append(sigs, s)
-				case 130:
-					var s [65]byte
-					copy(s[:], sig[:65])
-					sigs = append(sigs, s)
-					copy(s[:], sig[65:])
-					sigs = append(sigs, s)
-				}
-				confirmSignatures[i] = sigs
-			}
-		}
+		confirmSignatures := getConfirmSignatures(inputs)
 
 		confirmSignatures, inputs, overriden, err := parseSpend(confirmSignatures, inputs)
 		if err != nil {
 			return err
 		}
 
-		// create the transaction without signatures
+		// build transaction
+		// create the inputs without signatures
 		tx := plasma.Transaction{}
 		tx.Input0 = plasma.NewInput(inputs[0], [65]byte{}, confirmSignatures[0])
 		if len(inputs) > 1 {
@@ -146,6 +92,8 @@ Usage:
 			tx.Input1 = plasma.NewInput(plasma.NewPosition(nil, 0, 0, nil), [65]byte{}, nil)
 		}
 
+		// generate outputs
+		// use overriden and change to determine outcome of second output
 		tx.Output0 = plasma.NewOutput(toAddrs[0], amounts[0])
 		if len(toAddrs) > 1 {
 			if change.Sign() == 0 || overriden {
@@ -191,7 +139,7 @@ Usage:
 			Transaction: tx,
 		}
 		if err := msg.ValidateBasic(); err != nil {
-			return err
+			return fmt.Errorf("failed on validating transaction. If you didn't provide the inputs please open an issue on github. Error: { %s }", err)
 		}
 
 		txBytes, err := rlp.EncodeToBytes(&msg)
@@ -216,84 +164,90 @@ Usage:
 	},
 }
 
-// attempt to retrieve to generate a valid spend transaction
-// returns sum(inputs) - total
-func getInputs(accs []string, total *big.Int) (inputs []plasma.Position, change *big.Int, err error) {
-	ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
-	change = total
-	// must specifiy inputs if using two accounts
-	if len(accs) > 1 {
-		return inputs, change, nil
-	}
-
-	addr, err := clistore.GetAccount(accs[0])
-	if err != nil {
-		return inputs, change, err
-	}
-
-	res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
-	if err != nil {
-		return inputs, change, err
-	}
-
-	var optimalChange = total
-	var position0, position1 plasma.Position
-	// iterate through utxo's looking for optimal input pairing
-	// return input pairing if input + input == total
-	utxo0 := store.UTXO{}
-	utxo1 := store.UTXO{}
-	for i, outer := range res {
-		if err := rlp.DecodeBytes(outer.Value, &utxo0); err != nil {
-			return nil, nil, err
-		}
-		// check if first utxo satisfies transfer amount
-		if utxo0.Output.Amount.Cmp(total) == 0 {
-			inputs = append(inputs, utxo0.Position)
-			return inputs, big.NewInt(0), nil
-		}
-		for k, inner := range res {
-			// do not pair an input with itself
-			if i == k {
-				continue
+// Retrieve confirmation signatures from local storage if they exist
+func getConfirmSignatures(inputs []plasma.Position) (confirmSignatures [2][][65]byte) {
+	for i, input := range inputs {
+		sig, _ := clistore.GetSig(input)
+		if sig != nil {
+			var sigs [][65]byte
+			switch len(sig) {
+			case 65:
+				var s [65]byte
+				copy(s[:], sig[:])
+				sigs = append(sigs, s)
+			case 130:
+				var s [65]byte
+				copy(s[:], sig[:65])
+				sigs = append(sigs, s)
+				copy(s[:], sig[65:])
+				sigs = append(sigs, s)
 			}
-
-			if err := rlp.DecodeBytes(inner.Value, &utxo1); err != nil {
-				return nil, nil, err
-			}
-
-			// check if only utxo1 satisfies transfer amount
-			if utxo0.Output.Amount.Cmp(total) == 0 {
-				inputs = append(inputs, utxo0.Position)
-				return inputs, big.NewInt(0), nil
-			}
-			// check for exact match
-			sum := new(big.Int).Add(utxo0.Output.Amount, utxo1.Output.Amount)
-			if sum.Cmp(total) == 0 {
-				inputs = append(inputs, utxo0.Position)
-				inputs = append(inputs, utxo1.Position)
-				return inputs, big.NewInt(0), nil
-			}
-
-			diff := new(big.Int).Sub(sum, total)
-			if diff.Int64() > 0 && diff.Cmp(optimalChange) == -1 {
-				optimalChange = diff
-				position0 = utxo0.Position
-				position1 = utxo1.Position
-			}
-
+			confirmSignatures[i] = sigs
 		}
 	}
+	return confirmSignatures
+}
 
-	inputs = append(inputs, position0)
-	inputs = append(inputs, position1)
-	return inputs, optimalChange, nil
+// parses input amounts and fee
+// amounts - [amount0, amount1]
+func parseAmounts(amtArgs string, toAddrs []ethcmn.Address) (amounts []*big.Int, fee, total *big.Int, err error) {
+	amountTokens := strings.Split(strings.TrimSpace(amtArgs), ",")
+	if len(amountTokens) != 1 && len(amountTokens) != 2 {
+		return amounts, fee, total, fmt.Errorf("1 or 2 output amounts must be specified")
+	}
+
+	if len(amountTokens) != len(toAddrs) {
+		return amounts, fee, total, fmt.Errorf("provided amounts to not match the number of outputs")
+	}
+
+	for _, token := range amountTokens {
+		token = strings.TrimSpace(token)
+		num, ok := new(big.Int).SetString(token, 10)
+		if !ok {
+			return amounts, fee, total, fmt.Errorf("failed to parsing amount: %s", token)
+		}
+		total.Add(total, num)
+		amounts = append(amounts, num)
+	}
+
+	var ok bool
+	fee, ok = new(big.Int).SetString(strings.TrimSpace(viper.GetString(feeF)), 10)
+	if !ok {
+		return amounts, fee, total, fmt.Errorf("failed to parse fee: %s", fee)
+	}
+	total.Add(total, fee)
+
+	return amounts, fee, total, nil
+}
+
+// parse the passed in addresses that will be sent to
+func parseToAddresses(addresses string) (toAddrs []ethcmn.Address, err error) {
+	toAddrTokens := strings.Split(strings.TrimSpace(addresses), ",")
+	if len(toAddrTokens) == 0 || len(toAddrTokens) > 2 {
+		return toAddrs, fmt.Errorf("1 or 2 outputs must be specified")
+	}
+
+	for _, token := range toAddrTokens {
+		token := strings.TrimSpace(token)
+		if !ethcmn.IsHexAddress(token) {
+			return toAddrs, fmt.Errorf("invalid address provided. please use hex format")
+		}
+
+		addr := ethcmn.HexToAddress(token)
+		if utils.IsZeroAddress(addr) {
+			return toAddrs, fmt.Errorf("cannot spend to the zero address")
+		}
+		toAddrs = append(toAddrs, addr)
+	}
+
+	return toAddrs, nil
 }
 
 // Parse flags related to spending
 // Flags override locally retrieved information
 // bool returned specifies if inputs found were overriden
 func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][][65]byte, []plasma.Position, bool, error) {
-	// validate confirm signatures
+	// parse confirm signature flags
 	for i := 0; i < 2; i++ {
 		var flag string
 		if i == 0 {
@@ -351,4 +305,82 @@ func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][
 	}
 
 	return confirmSignatures, inputs, true, nil
+}
+
+// attempt to retrieve inputs to generate a valid spend transaction
+// returns inputs and sum(inputs) - total
+func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, change *big.Int, err error) {
+	ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
+	change = total
+	// must specifiy inputs if using two accounts
+	if len(accs) > 1 {
+		return inputs, change, nil
+	}
+
+	addr, err := clistore.GetAccount(accs[0])
+	if err != nil {
+		return inputs, change, err
+	}
+
+	res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
+	if err != nil {
+		return inputs, change, err
+	}
+
+	var optimalChange = total
+	var position0, position1 plasma.Position
+	// iterate through utxo's looking for optimal input pairing
+	// return input pairing if input + input == total
+	utxo0 := store.UTXO{}
+	utxo1 := store.UTXO{}
+	for i, outer := range res {
+		if err := rlp.DecodeBytes(outer.Value, &utxo0); err != nil {
+			return nil, nil, err
+		}
+		// check if first utxo satisfies transfer amount
+		if utxo0.Output.Amount.Cmp(total) == 0 {
+			inputs = append(inputs, utxo0.Position)
+			return inputs, big.NewInt(0), nil
+		}
+		for k, inner := range res {
+			// do not pair an input with itself
+			if i == k {
+				continue
+			}
+
+			if err := rlp.DecodeBytes(inner.Value, &utxo1); err != nil {
+				return nil, nil, err
+			}
+
+			// check if only utxo1 satisfies transfer amount
+			if utxo0.Output.Amount.Cmp(total) == 0 {
+				inputs = append(inputs, utxo0.Position)
+				return inputs, big.NewInt(0), nil
+			}
+			// check for exact match
+			sum := new(big.Int).Add(utxo0.Output.Amount, utxo1.Output.Amount)
+			if sum.Cmp(total) == 0 {
+				inputs = append(inputs, utxo0.Position)
+				inputs = append(inputs, utxo1.Position)
+				return inputs, big.NewInt(0), nil
+			}
+
+			diff := new(big.Int).Sub(sum, total)
+			if diff.Sign() == 1 && diff.Cmp(optimalChange) == -1 {
+				optimalChange = diff
+				position0 = utxo0.Position
+				position1 = utxo1.Position
+			}
+
+		}
+	}
+
+	// check if a pairing was found
+	if optimalChange.Cmp(total) == 0 {
+		return inputs, optimalChange, nil
+	}
+
+	inputs = append(inputs, position0)
+	inputs = append(inputs, position1)
+	return inputs, optimalChange, nil
 }

@@ -36,6 +36,11 @@ var rootCmd = &cobra.Command{
 	Short: "Plasma Client",
 }
 
+func init() {
+	// initConfig to be ran when Execute is called
+	cobra.OnInitialize(initConfig)
+}
+
 func main() {
 	cobra.EnableCommandSorting = false
 
@@ -63,6 +68,7 @@ func main() {
 		eth.EthCmd(),
 		query.QueryCmd(),
 		eth.ProveCmd(),
+		includeCmd,
 		client.LineBreak,
 		signCmd,
 		spendCmd,
@@ -80,11 +86,6 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func init() {
-	// initConfig to be ran when Execute is called
-	cobra.OnInitialize(initConfig)
 }
 
 // initConfig reads in config file and ENV variables if set

@@ -43,7 +43,7 @@ func TestSavSig(t *testing.T) {
 		_, err = GetSig(pos)
 		require.Errorf(t, err, "case %d: did not error when getting non existent signature for position %s", i, pos)
 
-		err = SaveSig(pos, expected)
+		err = SaveSig(pos, expected, true)
 		require.NoError(t, err, "case %d: failed to save signature for position %s", i, pos)
 
 		actual, err := GetSig(pos)
