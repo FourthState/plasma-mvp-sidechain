@@ -3,12 +3,14 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/client/store"
+	clistore "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/codec"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
@@ -78,7 +80,7 @@ Usage:
 
 		// parse amounts
 		var amounts []*big.Int // [amount0, amount1]
-		var total int64
+		var total *big.Int
 		amountTokens := strings.Split(strings.TrimSpace(args[1]), ",")
 		if len(amountTokens) != 1 && len(amountTokens) != 2 {
 			return fmt.Errorf("1 or 2 output amounts must be specified")
@@ -92,18 +94,18 @@ Usage:
 			if !ok {
 				return fmt.Errorf("failed to parsing amount: %s", token)
 			}
-			total += num.Int64()
+			total.Add(total, num)
 			amounts = append(amounts, num)
 		}
 
 		// parse fee
 		fee, ok := new(big.Int).SetString(strings.TrimSpace(viper.GetString(feeF)), 10)
 		if !ok {
-			return fmt.Errof("failed to parse fee: %s", fee)
+			return fmt.Errorf("failed to parse fee: %s", fee)
 		}
 
-		total += fee.Int64()
-		inputs, change, err := getInputs(total)
+		total.Add(total, fee)
+		inputs, change, err := getInputs(accs, total)
 		if err != nil {
 			return err
 		}
@@ -111,9 +113,22 @@ Usage:
 		// get confirmation signatures from local storage
 		var confirmSignatures [2][][65]byte
 		for i, input := range inputs {
-			sig, err := store.GetSig(input)
+			sig, _ := clistore.GetSig(input)
 			if sig != nil {
-				confirmSignatures[i] = sig
+				var sigs [][65]byte
+				switch len(sig) {
+				case 65:
+					var s [65]byte
+					copy(s[:], sig[:])
+					sigs = append(sigs, s)
+				case 130:
+					var s [65]byte
+					copy(s[:], sig[:65])
+					sigs = append(sigs, s)
+					copy(s[:], sig[65:])
+					sigs = append(sigs, s)
+				}
+				confirmSignatures[i] = sigs
 			}
 		}
 
@@ -133,17 +148,17 @@ Usage:
 
 		tx.Output0 = plasma.NewOutput(toAddrs[0], amounts[0])
 		if len(toAddrs) > 1 {
-			if change == 0 || overriden {
+			if change.Sign() == 0 || overriden {
 				tx.Output1 = plasma.NewOutput(toAddrs[1], amounts[1])
 			} else {
 				return fmt.Errorf("cannot spend to two addresses since exact utxo inputs could not be found")
 			}
-		} else if change > 0 && !overriden {
-			addr, err := store.GetAccount(accs[0])
+		} else if change.Sign() == 1 && !overriden {
+			addr, err := clistore.GetAccount(accs[0])
 			if err != nil {
 				return err
 			}
-			tx.Output1 = plasma.NewOutput(addr, big.NewInt(change))
+			tx.Output1 = plasma.NewOutput(addr, change)
 		} else {
 			tx.Output1 = plasma.NewOutput(ethcmn.Address{}, nil)
 		}
@@ -153,7 +168,7 @@ Usage:
 		signer := accs[0]
 		txHash := utils.ToEthSignedMessageHash(tx.TxHash())
 		var signature [65]byte
-		sig, err := store.SignHashWithPassphrase(signer, txHash)
+		sig, err := clistore.SignHashWithPassphrase(signer, txHash)
 		if err != nil {
 			return err
 		}
@@ -163,7 +178,7 @@ Usage:
 			if len(accs) > 2 {
 				signer = accs[1]
 			}
-			sig, err := store.SignHashWithPassphrase(signer, txHash)
+			sig, err := clistore.SignHashWithPassphrase(signer, txHash)
 			if err != nil {
 				return err
 			}
@@ -205,13 +220,13 @@ Usage:
 // returns sum(inputs) - total
 func getInputs(accs []string, total *big.Int) (inputs []plasma.Position, change *big.Int, err error) {
 	ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
-	change = 0 - total
+	change = total
 	// must specifiy inputs if using two accounts
 	if len(accs) > 1 {
 		return inputs, change, nil
 	}
 
-	addr, err := store.GetAccount(accs[0])
+	addr, err := clistore.GetAccount(accs[0])
 	if err != nil {
 		return inputs, change, err
 	}
@@ -229,9 +244,13 @@ func getInputs(accs []string, total *big.Int) (inputs []plasma.Position, change 
 	utxo1 := store.UTXO{}
 	for i, outer := range res {
 		if err := rlp.DecodeBytes(outer.Value, &utxo0); err != nil {
-			return err
+			return nil, nil, err
 		}
-
+		// check if first utxo satisfies transfer amount
+		if utxo0.Output.Amount.Cmp(total) == 0 {
+			inputs = append(inputs, utxo0.Position)
+			return inputs, big.NewInt(0), nil
+		}
 		for k, inner := range res {
 			// do not pair an input with itself
 			if i == k {
@@ -239,13 +258,19 @@ func getInputs(accs []string, total *big.Int) (inputs []plasma.Position, change 
 			}
 
 			if err := rlp.DecodeBytes(inner.Value, &utxo1); err != nil {
-				return err
+				return nil, nil, err
 			}
 
+			// check if only utxo1 satisfies transfer amount
+			if utxo0.Output.Amount.Cmp(total) == 0 {
+				inputs = append(inputs, utxo0.Position)
+				return inputs, big.NewInt(0), nil
+			}
 			// check for exact match
 			sum := new(big.Int).Add(utxo0.Output.Amount, utxo1.Output.Amount)
 			if sum.Cmp(total) == 0 {
-				inputs = append(utxo0.Position, utxo1.Position)
+				inputs = append(inputs, utxo0.Position)
+				inputs = append(inputs, utxo1.Position)
 				return inputs, big.NewInt(0), nil
 			}
 
@@ -259,14 +284,15 @@ func getInputs(accs []string, total *big.Int) (inputs []plasma.Position, change 
 		}
 	}
 
-	inputs = append(position0, position1)
+	inputs = append(inputs, position0)
+	inputs = append(inputs, position1)
 	return inputs, optimalChange, nil
 }
 
 // Parse flags related to spending
 // Flags override locally retrieved information
 // bool returned specifies if inputs found were overriden
-func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][][65]byte, []plasma.Position, bool.error) {
+func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][][65]byte, []plasma.Position, bool, error) {
 	// validate confirm signatures
 	for i := 0; i < 2; i++ {
 		var flag string
@@ -281,7 +307,7 @@ func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][
 		if len(confirmSigTokens) == 1 && confirmSigTokens[0] == "" {
 			continue
 		} else if len(confirmSigTokens) > 2 {
-			return fmt.Errorf("only pass in 0, 1 or 2, confirm signatures")
+			return confirmSignatures, nil, false, fmt.Errorf("only pass in 0, 1 or 2, confirm signatures")
 		}
 
 		var confirmSignature [][65]byte
@@ -289,10 +315,10 @@ func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][
 			token := strings.TrimSpace(token)
 			sig, err := hex.DecodeString(token)
 			if err != nil {
-				return err
+				return confirmSignatures, nil, false, err
 			}
 			if len(sig) != 65 {
-				return fmt.Errorf("signatures must be of length 65 bytes")
+				return confirmSignatures, nil, false, fmt.Errorf("signatures must be of length 65 bytes")
 			}
 
 			var signature [65]byte
@@ -309,17 +335,17 @@ func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][
 		if len(inputs) != 0 {
 			return confirmSignatures, inputs, false, nil
 		} else {
-			return nil, nil, fmt.Errorf("must specifiy inputs to be used if two accounts are used")
+			return confirmSignatures, nil, false, fmt.Errorf("must specifiy inputs to be used if two accounts are used")
 		}
 	}
 	if len(positions) > 2 {
-		return fmt.Errorf("only pass in 1 or 2 positions")
+		return confirmSignatures, nil, false, fmt.Errorf("only pass in 1 or 2 positions")
 	}
 	for _, token := range positions {
 		token = strings.TrimSpace(token)
 		position, err := plasma.FromPositionString(token)
 		if err != nil {
-			return err
+			return confirmSignatures, nil, false, err
 		}
 		inputs = append(inputs, position)
 	}

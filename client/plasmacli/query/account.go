@@ -15,7 +15,6 @@ func init() {
 	queryCmd.AddCommand(balanceCmd)
 }
 
-// TODO: Change to querying account, add flag for getting all info
 var balanceCmd = &cobra.Command{
 	Use:   "balance <name>",
 	Short: "Query account balance",

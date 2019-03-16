@@ -41,15 +41,15 @@ Usage:
 
 		name := args[0]
 
-		ownerS := viper.GetString(ownerF)
-		positionS := viper.GetString(positionF)
-		if ownerS != "" || positionS != "" {
-			err := signSingleConfirmSig(ctx, ownerS, positionS, name)
+		addr, err := clistore.GetAccount(name)
+		if err != nil {
 			return err
 		}
 
-		addr, err := clistore.GetAccount(name)
-		if err != nil {
+		ownerS := viper.GetString(ownerF)
+		positionS := viper.GetString(positionF)
+		if ownerS != "" || positionS != "" {
+			err := signSingleConfirmSig(ctx, addr, ownerS, positionS, name)
 			return err
 		}
 
@@ -65,51 +65,19 @@ Usage:
 			}
 
 			if utxo.Spent {
-				// check if confirmation signature already stored
-				if _, err := clistore.GetSig(utxo.Position); err != nil {
-					// get confirmation to generate signature
-					fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", utxo.Position, utxo.Output.Owner, utxo.Output.Amount)
-					buf := cosmoscli.BufferStdin()
-					auth, err := cosmoscli.GetString(signPrompt, buf)
-					if err != nil {
-						continue
-					}
-					if auth != "Y" {
-						continue
-					}
-
-					err = sign(utxo, name)
-					if err != nil {
-						fmt.Println(err)
-					}
+				err = verifyAndSign(utxo, addr, name)
+				if err != nil {
+					fmt.Println(err)
 				}
 			}
-
 		}
+
 		return nil
 	},
 }
 
-// generate confirmation signature for given utxo
-func sign(utxo store.UTXO, name string) error {
-	hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
-	sig, err := clistore.SignHashWithPassphrase(name, hash)
-	if err != nil {
-		return fmt.Errorf("failed to generate confirmation signature: { %s }", err)
-	}
-
-	if err := clistore.SaveSig(utxo.Position, sig); err != nil {
-		return err
-	}
-
-	// print the results
-	fmt.Printf("Confirmation Signature for output with position: %s\n", utxo.Position)
-	fmt.Printf("0x%x\n", sig)
-	return nil
-}
-
 // generate confirmation signature for specified owner and position
-func signSingleConfirmSig(ctx context.CLIContext, ownerS, positionS, name string) error {
+func signSingleConfirmSig(ctx context.CLIContext, addr ethcmn.Address, ownerS, positionS, name string) error {
 	position, err := plasma.FromPositionString(strings.TrimSpace(viper.GetString(positionF)))
 	if err != nil {
 		return err
@@ -133,8 +101,51 @@ func signSingleConfirmSig(ctx context.CLIContext, ownerS, positionS, name string
 		return err
 	}
 
-	if err := sign(utxo, name); err != nil {
+	if err := verifyAndSign(utxo, addr, name); err != nil {
 		return err
+	}
+	return nil
+}
+
+// verify that the inputs provided are correct
+// signing address should match one of the input addresses
+// generate confirmation signature for given utxo
+func verifyAndSign(utxo store.UTXO, addr ethcmn.Address, name string) error {
+	sig, _ := clistore.GetSig(utxo.Position)
+	if len(sig) == 130 {
+		return nil
+	}
+
+	inputAddrs := utxo.InputAddresses()
+	for i, input := range inputAddrs {
+		if input != addr {
+			continue
+		}
+
+		// get confirmation to generate signature
+		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", utxo.Position, utxo.Output.Owner, utxo.Output.Amount)
+		buf := cosmoscli.BufferStdin()
+		auth, err := cosmoscli.GetString(signPrompt, buf)
+		if err != nil {
+			return err
+		}
+		if auth != "Y" {
+			return nil
+		}
+
+		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
+		sig, err := clistore.SignHashWithPassphrase(name, hash)
+		if err != nil {
+			return fmt.Errorf("failed to generate confirmation signature: { %s }", err)
+		}
+
+		if err := clistore.SaveSig(utxo.Position, sig, i == 0); err != nil {
+			return err
+		}
+
+		// print the results
+		fmt.Printf("Confirmation Signature for output with position: %s\n", utxo.Position)
+		fmt.Printf("0x%x\n", sig)
 	}
 	return nil
 }
