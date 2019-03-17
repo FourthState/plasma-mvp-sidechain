@@ -69,15 +69,24 @@ Usage:
 			return err
 		}
 
-		inputs, change, err := retrieveInputs(accs, total)
+		inputs, err := parseInputs()
 		if err != nil {
 			return err
+		}
+
+		change := new(big.Int)
+		if len(inputs) == 0 {
+			inputs, change, err = retrieveInputs(accs, total)
+			if err != nil {
+				return err
+			}
 		}
 
 		// get confirmation signatures from local storage
 		confirmSignatures := getConfirmSignatures(inputs)
 
-		confirmSignatures, inputs, overriden, err := parseSpend(confirmSignatures, inputs)
+		// override retireved signatures if provided through flags
+		confirmSignatures, err = parseConfirmSignatures(confirmSignatures)
 		if err != nil {
 			return err
 		}
@@ -93,15 +102,15 @@ Usage:
 		}
 
 		// generate outputs
-		// use overriden and change to determine outcome of second output
+		// use change to determine outcome of second output
 		tx.Output0 = plasma.NewOutput(toAddrs[0], amounts[0])
 		if len(toAddrs) > 1 {
-			if change.Sign() == 0 || overriden {
+			if change.Sign() == 0 {
 				tx.Output1 = plasma.NewOutput(toAddrs[1], amounts[1])
 			} else {
 				return fmt.Errorf("cannot spend to two addresses since exact utxo inputs could not be found")
 			}
-		} else if change.Sign() == 1 && !overriden {
+		} else if change.Sign() == 1 {
 			addr, err := clistore.GetAccount(accs[0])
 			if err != nil {
 				return err
@@ -191,6 +200,7 @@ func getConfirmSignatures(inputs []plasma.Position) (confirmSignatures [2][][65]
 // parses input amounts and fee
 // amounts - [amount0, amount1]
 func parseAmounts(amtArgs string, toAddrs []ethcmn.Address) (amounts []*big.Int, fee, total *big.Int, err error) {
+	total = new(big.Int)
 	amountTokens := strings.Split(strings.TrimSpace(amtArgs), ",")
 	if len(amountTokens) != 1 && len(amountTokens) != 2 {
 		return amounts, fee, total, fmt.Errorf("1 or 2 output amounts must be specified")
@@ -220,6 +230,69 @@ func parseAmounts(amtArgs string, toAddrs []ethcmn.Address) (amounts []*big.Int,
 	return amounts, fee, total, nil
 }
 
+// parse confirmation signatures passed in through flags
+func parseConfirmSignatures(confirmSignatures [2][][65]byte) ([2][][65]byte, error) {
+	for i := 0; i < 2; i++ {
+		var flag string
+		if i == 0 {
+			flag = confirmSigs0F
+		} else {
+			flag = confirmSigs1F
+
+		}
+		confirmSigTokens := strings.Split(strings.TrimSpace(viper.GetString(flag)), ",")
+		// empty confirmsig
+		if len(confirmSigTokens) == 1 && confirmSigTokens[0] == "" {
+			continue
+		} else if len(confirmSigTokens) > 2 {
+			return confirmSignatures, fmt.Errorf("only pass in 0, 1 or 2, confirm signatures")
+		}
+
+		var confirmSignature [][65]byte
+		for _, token := range confirmSigTokens {
+			token := strings.TrimSpace(token)
+			sig, err := hex.DecodeString(token)
+			if err != nil {
+				return confirmSignatures, err
+			}
+			if len(sig) != 65 {
+				return confirmSignatures, fmt.Errorf("signatures must be of length 65 bytes")
+			}
+
+			var signature [65]byte
+			copy(signature[:], sig)
+			confirmSignature = append(confirmSignature, signature)
+		}
+
+		confirmSignatures[i] = confirmSignature
+	}
+	return confirmSignatures, nil
+}
+
+// parse inputs passed in through flags
+// Split will return a slice of at least length 1
+func parseInputs() (inputs []plasma.Position, err error) {
+	positions := strings.Split(strings.TrimSpace(viper.GetString(positionF)), "::")
+	if len(positions) == 1 && len(positions[0]) == 0 {
+		return inputs, err
+	}
+
+	if len(positions) > 2 {
+		return inputs, fmt.Errorf("only pass in 1 or 2 positions")
+	}
+
+	for _, token := range positions {
+		token = strings.TrimSpace(token)
+		position, err := plasma.FromPositionString(token)
+		if err != nil {
+			return inputs, err
+		}
+		inputs = append(inputs, position)
+	}
+
+	return inputs, nil
+}
+
 // parse the passed in addresses that will be sent to
 func parseToAddresses(addresses string) (toAddrs []ethcmn.Address, err error) {
 	toAddrTokens := strings.Split(strings.TrimSpace(addresses), ",")
@@ -241,70 +314,6 @@ func parseToAddresses(addresses string) (toAddrs []ethcmn.Address, err error) {
 	}
 
 	return toAddrs, nil
-}
-
-// Parse flags related to spending
-// Flags override locally retrieved information
-// bool returned specifies if inputs found were overriden
-func parseSpend(confirmSignatures [2][][65]byte, inputs []plasma.Position) ([2][][65]byte, []plasma.Position, bool, error) {
-	// parse confirm signature flags
-	for i := 0; i < 2; i++ {
-		var flag string
-		if i == 0 {
-			flag = confirmSigs0F
-		} else {
-			flag = confirmSigs1F
-
-		}
-		confirmSigTokens := strings.Split(strings.TrimSpace(viper.GetString(flag)), ",")
-		// empty confirmsig
-		if len(confirmSigTokens) == 1 && confirmSigTokens[0] == "" {
-			continue
-		} else if len(confirmSigTokens) > 2 {
-			return confirmSignatures, nil, false, fmt.Errorf("only pass in 0, 1 or 2, confirm signatures")
-		}
-
-		var confirmSignature [][65]byte
-		for _, token := range confirmSigTokens {
-			token := strings.TrimSpace(token)
-			sig, err := hex.DecodeString(token)
-			if err != nil {
-				return confirmSignatures, nil, false, err
-			}
-			if len(sig) != 65 {
-				return confirmSignatures, nil, false, fmt.Errorf("signatures must be of length 65 bytes")
-			}
-
-			var signature [65]byte
-			copy(signature[:], sig)
-			confirmSignature = append(confirmSignature, signature)
-		}
-
-		confirmSignatures[i] = confirmSignature
-	}
-
-	// parse inputs
-	positions := strings.Split(strings.TrimSpace(viper.GetString(positionF)), "::")
-	if len(positions) == 0 {
-		if len(inputs) != 0 {
-			return confirmSignatures, inputs, false, nil
-		} else {
-			return confirmSignatures, nil, false, fmt.Errorf("must specifiy inputs to be used if two accounts are used")
-		}
-	}
-	if len(positions) > 2 {
-		return confirmSignatures, nil, false, fmt.Errorf("only pass in 1 or 2 positions")
-	}
-	for _, token := range positions {
-		token = strings.TrimSpace(token)
-		position, err := plasma.FromPositionString(token)
-		if err != nil {
-			return confirmSignatures, nil, false, err
-		}
-		inputs = append(inputs, position)
-	}
-
-	return confirmSignatures, inputs, true, nil
 }
 
 // attempt to retrieve inputs to generate a valid spend transaction

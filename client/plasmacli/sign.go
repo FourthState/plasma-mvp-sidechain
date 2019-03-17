@@ -64,7 +64,7 @@ Usage:
 				return err
 			}
 
-			if utxo.Spent {
+			if !utxo.Spent {
 				err = verifyAndSign(utxo, addr, name)
 				if err != nil {
 					fmt.Println(err)
@@ -112,11 +112,12 @@ func signSingleConfirmSig(ctx context.CLIContext, addr ethcmn.Address, ownerS, p
 // generate confirmation signature for given utxo
 func verifyAndSign(utxo store.UTXO, addr ethcmn.Address, name string) error {
 	sig, _ := clistore.GetSig(utxo.Position)
-	if len(sig) == 130 {
+	inputAddrs := utxo.InputAddresses()
+
+	if len(sig) == 130 || (len(sig) == 65 && len(inputAddrs) == 1) {
 		return nil
 	}
 
-	inputAddrs := utxo.InputAddresses()
 	for i, input := range inputAddrs {
 		if input != addr {
 			continue
