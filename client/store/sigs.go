@@ -57,7 +57,7 @@ func GetSig(position plasma.Position) ([]byte, error) {
 
 	k := getSigKey(position)
 	if sig, err := db.Get(k, nil); err != nil {
-		return nil, fmt.Errorf("failed to get signature: { %s }", err)
+		return []byte{}, fmt.Errorf("failed to get signature: { %s }", err)
 	} else {
 		return sig, nil
 	}
