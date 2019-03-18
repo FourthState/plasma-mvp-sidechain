@@ -54,6 +54,20 @@ func DefaultPlasmaConfig() PlasmaConfig {
 	return PlasmaConfig{false, "", "", "30s", "http://localhost:8545", "16"}
 }
 
+// TestPlasmaConfig writes the plasma.toml file used for testing
+// NodeURL powered by ganache locally
+// Contract address and private key generated deterministically using the "plasma" moniker with ganache
+func TestPlasmaConfig() PlasmaConfig {
+	return PlasmaConfig{
+		IsOperator:            true,
+		EthOperatorPrivateKey: "9cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c171819cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c17181",
+		EthPlasmaContractAddr: "5caE340fB2c2bB0A2F194A95cDa8a1ffdC9D2f85",
+		PlasmaCommitmentRate:  "1m",
+		EthNodeURL:            "http://localhost:8545",
+		EthBlockFinality:      "0",
+	}
+}
+
 // parses the plasma.toml file and unmarshals it into a Config struct
 func ParsePlasmaConfigFromViper() (PlasmaConfig, error) {
 	config := DefaultPlasmaConfig()

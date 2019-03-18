@@ -22,6 +22,7 @@ const (
 	flagOverwrite = "overwrite"
 	flagMoniker   = "moniker"
 	flagChainID   = "chainId"
+	flagTest      = "test"
 )
 
 type chainInfo struct {
@@ -43,6 +44,8 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 			config := ctx.Config
 			config.SetRoot(viper.GetString(cli.HomeFlag))
 
+			overwrite := viper.GetBool(flagOverwrite)
+
 			/* Tendermint configuration */
 
 			chainID := viper.GetString(flagChainID)
@@ -59,11 +62,12 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 			}
 			var appState json.RawMessage
 			genFile := config.GenesisFile()
-			if !viper.GetBool(flagOverwrite) && tmCommon.FileExists(genFile) {
-				return fmt.Errorf("genesis.json file already exists: %v", genFile)
-			}
-			if viper.GetBool(flagOverwrite) && tmCommon.FileExists(genFile) {
-				fmt.Printf("overwriting genesis.json...\n")
+			if tmCommon.FileExists(genFile) {
+				if !overwrite {
+					return fmt.Errorf("genesis.json file already exists: %v", genFile)
+				} else {
+					fmt.Printf("overwriting genesis.json...\n")
+				}
 			}
 			// read of create the private key file for this config
 			var privValidator *privval.FilePV
@@ -90,7 +94,22 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 
 			// write tendermint and plasma config files to disk
 			tmConfig.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
-			pConfig.WritePlasmaConfigFile(filepath.Join(config.RootDir, "config", "plasma.toml"), pConfig.DefaultPlasmaConfig())
+			var plasmaConfig pConfig.PlasmaConfig
+			plasmaPath := filepath.Join(config.RootDir, "config", "plasma.toml")
+
+			if viper.GetBool(flagTest) {
+				plasmaConfig = pConfig.TestPlasmaConfig()
+			} else {
+				plasmaConfig = pConfig.DefaultPlasmaConfig()
+			}
+			if tmCommon.FileExists(plasmaPath) {
+				if !overwrite {
+					return fmt.Errorf("plasma.toml already exists at '%s'. Use -o flag to overwrite", plasmaPath)
+				} else {
+					fmt.Println("overwriting plasma.toml...")
+				}
+			}
+			pConfig.WritePlasmaConfigFile(plasmaPath, plasmaConfig)
 
 			// display chain info
 			info, err := json.MarshalIndent(chainInfo{
@@ -110,6 +129,7 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 
 	cmd.Flags().String(cli.HomeFlag, os.ExpandEnv("$HOME/.plasmad"), "node's home directory")
 	cmd.Flags().BoolP(flagOverwrite, "o", false, "overwrite the genesis.json file")
+	cmd.Flags().BoolP(flagTest, "t", false, "write default testing configuration")
 	cmd.Flags().String(flagChainID, "", "genesis file chain-id, if left blank will be randomly created")
 	cmd.Flags().String(flagMoniker, "m", "set the validator's moniker")
 	return cmd
