@@ -1,0 +1,7 @@
+.DS_Store
+.gitignore
+vendor/
+contracts/abi
+contracts/node_modules
+server/plasmad/plasmad
+client/plasmacli/plasmacli
