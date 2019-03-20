@@ -12,13 +12,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"math/big"
-	"sync"
 	"time"
 )
 
 // Plasma holds related unexported members
 type Plasma struct {
-	*sync.Mutex
 	operatorSession *contracts.PlasmaMVPSession
 	contract        *contracts.PlasmaMVP
 
@@ -71,8 +69,6 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 		lastBlockSubmission: time.Now(),
 
 		finalityBound: finalityBound,
-
-		Mutex: &sync.Mutex{},
 	}
 
 	return plasma, nil
