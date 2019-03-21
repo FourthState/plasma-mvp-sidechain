@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"os"
 	"path/filepath"
 	"text/template"
 )
@@ -58,10 +59,10 @@ func WritePlasmaConfigFile(configFilePath string, config PlasmaConfig) {
 		panic(err)
 	}
 
-	if err := cmn.EnsureDir(filepath.Dir(configFilePath), 0600); err != nil {
+	if err := cmn.EnsureDir(filepath.Dir(configFilePath), os.ModePerm); err != nil {
 		fmt.Printf("ERROR: failed to create directory: %s, recieved error: { %s }", filepath.Dir(configFilePath), err)
 	}
 
-	// 0600 for owner only read+write permissions
-	cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0600)
+	// 0666 allows for read and write for any user
+	cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0666)
 }
