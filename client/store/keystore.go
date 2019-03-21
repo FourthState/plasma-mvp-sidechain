@@ -97,7 +97,7 @@ func GetAccount(name string) (ethcmn.Address, error) {
 
 	addr, err := db.Get([]byte(name), nil)
 	if err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("failed to find account: %s", name)
 	}
 
 	return ethcmn.BytesToAddress(addr), nil

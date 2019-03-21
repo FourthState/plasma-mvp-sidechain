@@ -58,7 +58,11 @@ var proveCmd = &cobra.Command{
 		}
 
 		if len(proof) == 0 {
-			fmt.Printf("Proof: nil\n")
+			if result.Proof.Proof.Total == 1 {
+				fmt.Println("No proof required since this was the only transaction in the block")
+			} else {
+				fmt.Printf("Proof: nil\n")
+			}
 		} else {
 			fmt.Printf("Proof: 0x%x\n", proof)
 		}
