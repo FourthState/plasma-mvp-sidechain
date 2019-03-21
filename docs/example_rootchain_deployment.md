@@ -43,7 +43,7 @@ rinkeby: {
 
 ```
 
-See our [example_truffle.js]()
+See our [example_truffle.js](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/testnet-setup/example_truffle.js)
 
 Run `truffle migrate --network rinkeby`
 

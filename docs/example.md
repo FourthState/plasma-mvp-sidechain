@@ -1,7 +1,7 @@
 # Using the Sidechain Example #
 
 The following assumes you have already deployed the rootchain contract to either ganache or a testnet.
-See our rootchain deployment [example]()
+See our rootchain deployment [example](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/example_rootchain_deployment.md)
 
 Plasmacli: the command-line interface for interacting with the sidechain and rootchain. 
 
@@ -64,12 +64,12 @@ Things to keep in mind:
 
 See [keys documentation](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/keys.md) for examples on how to use the keys subcommand.
 
-See [eth documentation]() for examples on how to use the eth subcommand.
+See [eth documentation](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/eth.md) for examples on how to use the eth subcommand.
 
 ## Spending Deposits ## 
 
 In order to spend a deposit on the sidechain, first a user must deposit on the rootchain and then send an include-deposit transaction (after presumed finality).
-A user can deposit using the eth subcommand. See this [example]()
+A user can deposit using the eth subcommand. See this [example](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/eth.md#depositing)
 
 Sending an include-deposit transaction: 
 ```
@@ -111,6 +111,33 @@ Total: 1000
 
 Deposits and Fees do not need a confirmation signature to be spent. 
 
-
 ## Spending UTXOS ##
+
+In order to spend a utxo, a user must have the confirmation signatures for it. 
+Confirmation signatures can be generated using the sign command:
+
+```
+plasmacli sign acc1 --owner 0x5475b99e01ac3bb08b24fd754e2868dbb829bc3a --position "(4.0.0.0)"
+
+UTXO
+Position: (4.0.0.0)
+Owner: 0x5475b99e01ac3bb08b24fd754e2868dbb829bc3a
+Value: 1000
+> Would you like to finalize this transaction? [Y/n]
+Y
+Enter passphrase:
+Confirmation Signature for output with position: (4.0.0.0)
+0x1ff4bc8fe08e14a480ff4744e802c8ff05a9ca5e17f1d72be7a718dc8869feaa58e07359cae70aa210a77a065d14495c79ca369cfcb23d94af921eaf16ec103701
+```
+
+Spending the utxo:
+
+```
+plasmacli spend 0xec36ead9c897b609a4ffa5820e1b2b137d454343 1000 acc2 --position "(4.0.0.0)"
+Enter passphrase:
+Committed at block 2891. Hash 0x33434538413842383733393530443230314242324539303539324235343646364544323535333943304236423838353943413335363733454533363245463534
+```
+
+If you cannot use the sign command to generate the confirmation signature because another user sent the transaction, use the "Input0ConfirmSigs" flag or "-0" for confirmation signatures for the first input and "Input1ConfirmSigs" flag or "-1" for confirmation signatures for the second input.
+
 

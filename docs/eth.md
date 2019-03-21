@@ -1,6 +1,6 @@
 The eth subcommand acts an interface enabling interaction with the rootchain contract. 
 It requires a connection to a full eth node which can be specified in `~/.plasmacli/plasma.toml`
-See [example_plasmacli_plasma.toml]() for an example setup.
+See [example_plasmacli_plasma.toml](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/example_rootchain_deployment.md) for an example setup.
 
 You must have eth in your account to use any non querying commands.
 
@@ -38,15 +38,157 @@ Rootchain Block: 4071013
 
 ## Checking Submitted headers ##
 
+```
+plasmacli eth query block 1
+Block: 1
+Header: 0x5a4f97a64e82a4aa090b0946ed299c2d75f4c8353be0a4b97df8607120713183
+Txs: 1
+Fee: 0
+Created: 2019-03-21 19:03:55 +0000 UTC
+```
 
 ## Exiting ##
 
+UTXO's and unspent deposits can be exitted. 
+When exiting, the user can use the "trust-node" flag if they trust the full node specified by the "node" flag.
+When "trust-node" flag is used, information necessary for exiting will be retireved from the connected full node. 
+Exiting a deposit, only requires its position and committed fee so no flags are necessary. 
+A proof is not required for transactions included in a block of size 1.
+
+Exiting an unspent deposit:
+
+```
+plasmacli eth exit acc1 "(0.0.0.3)"
+Enter passphrase:
+Sent deposit exit transaction
+Transaction Hash: 0xa16f3909e1dd749f5093199e7b597974f5f643d9b833b3a9546ff674dac0af28
+```
+
+Exiting a utxo with trust-node:
+```
+plasmacli eth exit acc1 "(10.0.0.0)" -t
+Enter passphrase:
+Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.
+Sent exit transaction
+Transaction Hash: 0x4df9c79d17036b7468b69f83a313a1fb87ccc987e9e28be1e78f81d2d19afab8
+```
+
+Exiting a utxo without trust-node:
+
+```
+
+```
+
+Querying for deposit exits:
+
+```
+plasmacli eth query exit --deposits --all
+Owner: 0xec36ead9c897b609a4ffa5820e1b2b137d454343
+Amount: 1000
+State: Pending
+Committed Fee: 0
+Created: 2019-03-21 22:05:40 +0000 UTC
+
+Exit will be finalized in about: 167.40055942302556 hours
+
+Owner: 0x5475b99e01ac3bb08b24fd754e2868dbb829bc3a
+Amount: 10000
+State: Challenged
+Committed Fee: 0
+Created: 2019-03-21 22:21:40 +0000 UTC
+```
+
+Querying for transaction exits:
+
+```
+plasmacli eth query exit --all
+Owner: 0xec36ead9c897b609a4ffa5820e1b2b137d454343
+Amount: 10000
+State: Pending
+Committed Fee: 0
+Created: 2019-03-21 22:40:10 +0000 UTC
+
+Exit will be finalized in about: 167.96671164467028 hours
+```
+
+Querying for a specific exit:
+
+```
+plasmacli eth query exit --position "(10.0.0.0)"
+Owner: 0xec36ead9c897b609a4ffa5820e1b2b137d454343
+Amount: 10000
+State: Pending
+Committed Fee: 0
+Created: 2019-03-21 22:40:10 +0000 UTC
+
+Exit will be finalized in about: 167.9601120748311 hours
+```
 
 ## Challenging ##
 
+An submitted exit may be challenged if the pending exit committed to an incorrect fee amount or the utxo was spent on the sidechain with finalized with a confirmation signature.
+Every exit commits to the fee of an unfinalized spend of that deposit/utxo. 
+If the deposit/utxo was never spent, the committed fee is 0. 
+If the deposit/utxo was involved in an unfinalized spend which included a non zero fee, then the exit must commit to that non zero fee or risk being challenged. 
+A deposit/utxo may also be challenged with a finalized spend, if it exists.  
+
+Challenging a deposit with an incorrect committed fee:
+
+
+```
+
+```
+
+Challenging a deposit with a finalized spend:
+
+Deposit '(0.0.0.4)' was exitted and spent on the sidechain.
+
+```
+plasmacli eth challenge "(0.0.0.4)" "(10.0.0.0)" acc1 -t --signatures 0x19984e40ce233d31db3a5bbf724f079e306644046c0d30bdbd93027bd3e3c04f314c41f14a8b3c771e1faad6c41a07ed84d418123a8c2a0e82237eb8a22ca62501
+Enter passphrase:
+Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.
+Sent challenge transaction
+Transaction Hash: 0x6347965d4cb1af2160ff56f53cce18fdd50e0be8bbbc7f03ff475139f8422d8b
+```
+
+**Note:** 
+
+If your local signature storage contains the confirmation signature, then the "signature" flag is unnecessary. 
+If "trust-node" is not used, "proof" and "tx-bytes" flags are required. 
+
+Challenging a transaction exit with an incorrect committed fee:
+
+```
+```
+
+Challenging a transaction exit with a finalized spend:
+
+```
+
+```
+
+## Finalize ##
+
+Exits may be finalized, after the challenge period has ended. 
+The default challenge period is 5 days for deposits and 7 days for transaction exits
 
 ## Withdraw ##
 
+Checking the balance on the rootchain that can be withdrawn:
+
+```
+plasmacli eth query balance acc1
+Rootchain Balance: 200000
+```
+
+Withdrawing an entire balance from the rootchain:
+
+```
+plasmacli eth withdraw acc1
+Enter passphrase:
+Successfully sent withdraw transaction
+Transaction Hash: 0xd790a512f15051ee866bf8751b9913de3d2fedae0e2228b5c0ff97ed6451f2e7
+```
 
 ## Query Rootchain ##
 
