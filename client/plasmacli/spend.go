@@ -81,6 +81,9 @@ Usage:
 			if err != nil {
 				return err
 			}
+			if len(inputs) == 0 {
+				return fmt.Errorf("failed to generate a valid transaction. Please provide the inputs")
+			}
 		}
 
 		// get confirmation signatures from local storage
