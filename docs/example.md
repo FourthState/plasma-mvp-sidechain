@@ -111,6 +111,13 @@ Total: 1000
 
 Deposits and Fees do not need a confirmation signature to be spent. 
 
+## Spending Fees ##
+
+Fees can be spent in the same manner as deposits
+
+```
+
+```
 ## Spending UTXOS ##
 
 In order to spend a utxo, a user must have the confirmation signatures for it. 
@@ -140,4 +147,38 @@ Committed at block 2891. Hash 0x334345384138423837333935304432303142423245393035
 
 If you cannot use the sign command to generate the confirmation signature because another user sent the transaction, use the "Input0ConfirmSigs" flag or "-0" for confirmation signatures for the first input and "Input1ConfirmSigs" flag or "-1" for confirmation signatures for the second input.
 
+A user can also make spends using generated inputs by not specifying the positions to use.
+
+```
+plasmacli query balance acc2
+Position: (2.0.0.0) , Amount: 1000
+Position: (22.0.0.0) , Amount: 9000
+Position: (0.0.0.7) , Amount: 10000
+
+plasmacli spend 0xec36ead9c897b609a4ffa5820e1b2b137d454343 15000 acc2 --fee 1000
+Enter passphrase:
+Enter passphrase:
+```
+
+The above transaction was committed in plasma block 24.
+
+The following transaction generated would spend positions (22.0.0.0) and (0.0.0.7), send 15000 to the specified address, use 1000 for a fee and send the remaining 3000 to acc2.
+
+```
+plasmacli query balance acc2
+Position: (2.0.0.0) , Amount: 1000
+Position: (24.0.1.0) , Amount: 3000
+Total: 4000
+```
+
+```
+plasmacli query balance acc1
+Position: (10.0.0.0) , Amount: 10000
+Position: (22.0.1.0) , Amount: 2000
+Position: (24.0.0.0) , Amount: 15000
+Position: (0.0.0.3) , Amount: 1000
+Position: (0.0.0.6) , Amount: 10000
+Position: (24.65535.0.0) , Amount: 1000
+Total: 39000
+```
 

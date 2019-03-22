@@ -94,6 +94,7 @@ Update the password:
 plasmacli keys update imported_key
 Enter passphrase:
 Enter new passphrase for your key:
+Repeat passphrase:
 Account passphrase has been updated.
 ```
 

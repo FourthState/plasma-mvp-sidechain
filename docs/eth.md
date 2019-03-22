@@ -1,8 +1,8 @@
 The eth subcommand acts an interface enabling interaction with the rootchain contract. 
 It requires a connection to a full eth node which can be specified in `~/.plasmacli/plasma.toml`
-See [example_plasmacli_plasma.toml](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/example_rootchain_deployment.md) for an example setup.
+See an example [plasma.toml](https://github.com/FourthState/plasma-mvp-sidechain/blob/develop/docs/testnet-setup/example_plasmacli_plasma.toml) for an example setup.
 
-You must have eth in your account to use any non querying commands.
+You must have eth in your account to use the commands deposit, exit, challenge, withdraw, and finalize.
 
 ## Depositing ##
 Example usage: 
@@ -126,7 +126,7 @@ Exit will be finalized in about: 167.9601120748311 hours
 
 ## Challenging ##
 
-An submitted exit may be challenged if the pending exit committed to an incorrect fee amount or the utxo was spent on the sidechain with finalized with a confirmation signature.
+A pending exit may be challenged if the exit committed to an incorrect fee amount or if the utxo was spent on the sidechain in a finalized transaction.
 Every exit commits to the fee of an unfinalized spend of that deposit/utxo. 
 If the deposit/utxo was never spent, the committed fee is 0. 
 If the deposit/utxo was involved in an unfinalized spend which included a non zero fee, then the exit must commit to that non zero fee or risk being challenged. 
@@ -158,12 +158,64 @@ If "trust-node" is not used, "proof" and "tx-bytes" flags are required.
 
 Challenging a transaction exit with an incorrect committed fee:
 
+The following exiting utxo was involved in a spend that committed a fee of 1000, but exitted with a committed fee of 0.
+
 ```
+plasmacli eth challenge "(22.0.0.0)" "(24.0.0.0)" acc1 -t 
+Enter passphrase:
+Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.
+Sent challenge transaction
+Transaction Hash: 0xdcf512c38b12670e36914fc7f2129e246e0ba61aa0abd1c284077e364c36ae1b
+
+plasmacli eth query exit --position "(22.0.0.0)"
+Owner: 0x5475b99e01ac3bb08b24fd754e2868dbb829bc3a
+Amount: 9000
+State: Nonexistent
+Committed Fee: 0
+Created: 2019-03-22 20:09:55 +0000 UTC
 ```
+
+Since the exiting utxo can still be exitted with the correct fee amount, its state is set to Nonexistent.
 
 Challenging a transaction exit with a finalized spend:
 
+Now the utxo exits with the correct fee amount, but the spend in block 24 is finalized so we can challenge it again. 
+
 ```
+plasmacli eth exit acc2 "(22.0.0.0)" --fee 1000
+Enter passphrase:
+Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.
+Sent exit transaction
+Transaction Hash: 0xef7a0798bcafc4b575d4005e0dedacc69c4bfe3c37e13fbbb71397e32c99bc05
+
+plasmacli sign acc2
+
+UTXO
+Position: (24.0.0.0)
+Owner: 0xec36ead9c897b609a4ffa5820e1b2b137d454343
+Value: 15000
+> Would you like to finalize this transaction? [Y/n]
+Y
+Enter passphrase:
+Confirmation Signature for output with position: (24.0.0.0)
+0x151367f8b7ab02d4a616e175f3a6d5955306933fe54dce6d5247f45a543db071798fbd61acb254cfb02cc53d72c19d7ce0903c5fe3bd0570f98a11ed26dc83e701
+
+UTXO
+Position: (24.0.0.0)
+Owner: 0xec36ead9c897b609a4ffa5820e1b2b137d454343
+Value: 15000
+> Would you like to finalize this transaction? [Y/n]
+Y 
+Enter passphrase:
+Confirmation Signature for output with position: (24.0.0.0)
+0x151367f8b7ab02d4a616e175f3a6d5955306933fe54dce6d5247f45a543db071798fbd61acb254cfb02cc53d72c19d7ce0903c5fe3bd0570f98a11ed26dc83e701
+
+plasmacli eth challenge "(22.0.0.0)" "(24.0.0.0)" acc1
+Enter passphrase:
+Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.
+Sent challenge transaction
+Transaction Hash: 0x5a4633533895bcd65514975b755509d452cc283bf5f299cbe1224999a66b00e7
+
 
 ```
 
