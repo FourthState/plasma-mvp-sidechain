@@ -161,7 +161,7 @@ func UpdateAccount(name string, updatedName string) (msg string, err error) {
 		// Update passphrase
 		buf := cosmoscli.BufferStdin()
 		password, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
-		updatedPassword, err := cosmoscli.GetPassword(NewPassphrasePrompt, buf)
+		updatedPassword, err := cosmoscli.GetCheckPassword(NewPassphrasePrompt, NewPassphrasePromptRepeat, buf)
 		if err != nil {
 			return msg, err
 		}
