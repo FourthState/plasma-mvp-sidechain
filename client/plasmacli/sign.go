@@ -41,7 +41,7 @@ Usage:
 
 		name := args[0]
 
-		addr, err := clistore.GetAccount(name)
+		signerAddr, err := clistore.GetAccount(name)
 		if err != nil {
 			return err
 		}
@@ -49,11 +49,22 @@ Usage:
 		ownerS := viper.GetString(ownerF)
 		positionS := viper.GetString(positionF)
 		if ownerS != "" || positionS != "" {
-			err := signSingleConfirmSig(ctx, addr, ownerS, positionS, name)
+			position, err := plasma.FromPositionString(strings.TrimSpace(viper.GetString(positionF)))
+			if err != nil {
+				return err
+			}
+
+			ownerStr := utils.RemoveHexPrefix(strings.TrimSpace(viper.GetString(ownerF)))
+			if ownerStr == "" || !ethcmn.IsHexAddress(ownerStr) {
+				return fmt.Errorf("must provide the address that owns position %s using the --owner flag in hex format", position)
+			}
+			ownerAddr := ethcmn.HexToAddress(ownerStr)
+
+			err = signSingleConfirmSig(ctx, position, signerAddr, ownerAddr, name)
 			return err
 		}
 
-		res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
+		res, err := ctx.QuerySubspace(signerAddr.Bytes(), "utxo")
 		if err != nil {
 			return err
 		}
@@ -64,10 +75,14 @@ Usage:
 				return err
 			}
 
-			if !utxo.Spent {
-				err = verifyAndSign(utxo, addr, name)
-				if err != nil {
-					fmt.Println(err)
+			if utxo.Spent {
+				spenderPositions := utxo.SpenderPositions()
+				spenderAddresses := utxo.SpenderAddresses()
+				for i, pos := range spenderPositions {
+					err = signSingleConfirmSig(ctx, pos, signerAddr, spenderAddresses[i], name)
+					if err != nil {
+						fmt.Println(err)
+					}
 				}
 			}
 		}
@@ -77,21 +92,10 @@ Usage:
 }
 
 // generate confirmation signature for specified owner and position
-func signSingleConfirmSig(ctx context.CLIContext, addr ethcmn.Address, ownerS, positionS, name string) error {
-	position, err := plasma.FromPositionString(strings.TrimSpace(viper.GetString(positionF)))
-	if err != nil {
-		return err
-	}
-
-	ownerStr := utils.RemoveHexPrefix(strings.TrimSpace(viper.GetString(ownerF)))
-	if ownerStr == "" || !ethcmn.IsHexAddress(ownerStr) {
-		return fmt.Errorf("must provide the address that owns position %s using the --owner flag in hex format", position)
-	}
-	ownerAddr := ethcmn.HexToAddress(ownerStr)
-
+func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr, owner ethcmn.Address, name string) error {
 	// retrieve the new output
 	utxo := store.UTXO{}
-	key := append(ownerAddr.Bytes(), position.Bytes()...)
+	key := append(owner.Bytes(), position.Bytes()...)
 	res, err := ctx.QueryStore(key, "utxo")
 	if err != nil {
 		return err
@@ -101,7 +105,7 @@ func signSingleConfirmSig(ctx context.CLIContext, addr ethcmn.Address, ownerS, p
 		return err
 	}
 
-	if err := verifyAndSign(utxo, addr, name); err != nil {
+	if err := verifyAndSign(utxo, signerAddr, name); err != nil {
 		return err
 	}
 	return nil
@@ -110,7 +114,7 @@ func signSingleConfirmSig(ctx context.CLIContext, addr ethcmn.Address, ownerS, p
 // verify that the inputs provided are correct
 // signing address should match one of the input addresses
 // generate confirmation signature for given utxo
-func verifyAndSign(utxo store.UTXO, addr ethcmn.Address, name string) error {
+func verifyAndSign(utxo store.UTXO, signerAddr ethcmn.Address, name string) error {
 	sig, _ := clistore.GetSig(utxo.Position)
 	inputAddrs := utxo.InputAddresses()
 
@@ -119,7 +123,7 @@ func verifyAndSign(utxo store.UTXO, addr ethcmn.Address, name string) error {
 	}
 
 	for i, input := range inputAddrs {
-		if input != addr {
+		if input != signerAddr {
 			continue
 		}
 
