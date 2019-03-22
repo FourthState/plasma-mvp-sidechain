@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/eth"
 	clistore "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
@@ -346,6 +347,14 @@ func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, ch
 		if err := rlp.DecodeBytes(outer.Value, &utxo0); err != nil {
 			return nil, nil, err
 		}
+
+		exitted, err := eth.HasTxExitted(utxo0.Position)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
+		}
+		if exitted {
+			continue
+		}
 		// check if first utxo satisfies transfer amount
 		if utxo0.Output.Amount.Cmp(total) == 0 {
 			inputs = append(inputs, utxo0.Position)
@@ -354,6 +363,14 @@ func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, ch
 		for k, inner := range res {
 			// do not pair an input with itself
 			if i == k {
+				continue
+			}
+
+			exitted, err := eth.HasTxExitted(utxo0.Position)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
+			}
+			if exitted {
 				continue
 			}
 
