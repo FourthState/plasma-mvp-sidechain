@@ -352,7 +352,7 @@ func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, ch
 		if err != nil {
 			return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
 		}
-		if exitted {
+		if exitted || utxo0.Spent {
 			continue
 		}
 		// check if first utxo satisfies transfer amount
@@ -366,16 +366,16 @@ func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, ch
 				continue
 			}
 
-			exitted, err := eth.HasTxExitted(utxo0.Position)
+			if err := rlp.DecodeBytes(inner.Value, &utxo1); err != nil {
+				return nil, nil, err
+			}
+
+			exitted, err := eth.HasTxExitted(utxo1.Position)
 			if err != nil {
 				return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
 			}
-			if exitted {
+			if exitted || utxo1.Spent {
 				continue
-			}
-
-			if err := rlp.DecodeBytes(inner.Value, &utxo1); err != nil {
-				return nil, nil, err
 			}
 
 			// check if only utxo1 satisfies transfer amount
