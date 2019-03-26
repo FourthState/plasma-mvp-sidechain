@@ -17,8 +17,8 @@ func ProveCmd() *cobra.Command {
 }
 
 var proveCmd = &cobra.Command{
-	Use:   "prove",
-	Short: "Prove transaction inclusion: prove <name> <position>",
+	Use:   "prove <account> <position>",
+	Short: "Prove transaction inclusion: prove <account> <position>",
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -42,7 +42,7 @@ var proveCmd = &cobra.Command{
 		fmt.Printf("Roothash: 0x%x\n", result.Proof.RootHash)
 		fmt.Printf("Total: %d\n", result.Proof.Proof.Total)
 		fmt.Printf("LeafHash: 0x%x\n", result.Proof.Proof.LeafHash)
-		fmt.Printf("TxBytes: 0x%x\n", result.Tx)
+		fmt.Printf("TxBytes: 0x%x\n", []byte(result.Tx))
 
 		switch len(sigs) {
 		case 65:
