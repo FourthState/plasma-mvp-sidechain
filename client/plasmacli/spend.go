@@ -32,7 +32,7 @@ func init() {
 }
 
 var spendCmd = &cobra.Command{
-	Use:   "spend <to> <amount> <account>",
+	Use:   "spend <from> <amount> <to>",
 	Short: "Send a transaction spending utxos",
 	Long: `Send a transaction spending from the specified account. If sending to multiple addresses, the account specified must contain exact utxo values.
 If a single spending account is specified, leftover value from spending the utxo will be sent back to the account. 
@@ -40,9 +40,9 @@ In the case that the spending account does not have a large enough single utxo, 
 <to> in the following usage is the address being sent the utxo amounts.
 
 Usage:
-	plasmacli <to> <amount> <account>
-	plasmacli <to,to> <amount,amount> <account,account> --fee <fee>
-	plasmacli <to> <amount> <account> --confirmSigs0 <signature> --confirmSig1 <signature>`,
+	plasmacli <from> <amount> <to>
+	plasmacli <from,from> <amount,amount> <to,to> --fee <fee>
+	plasmacli <from> <amount> <to> --confirmSigs0 <signature> --confirmSig1 <signature>`,
 	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
@@ -50,7 +50,7 @@ Usage:
 
 		// parse accounts
 		var accs []string
-		names := args[2]
+		names := args[0]
 
 		accTokens := strings.Split(strings.TrimSpace(names), ",")
 		if len(accTokens) == 0 || len(accTokens) > 2 {
@@ -60,7 +60,7 @@ Usage:
 			accs = append(accs, strings.TrimSpace(token))
 		}
 
-		toAddrs, err := parseToAddresses(args[0])
+		toAddrs, err := parseToAddresses(args[2])
 		if err != nil {
 			return err
 		}
