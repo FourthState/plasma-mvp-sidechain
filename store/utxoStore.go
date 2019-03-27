@@ -10,14 +10,14 @@ import (
 )
 
 type UTXO struct {
-	InputKeys        [][]byte // keys to retrieve the inputs of this output
-	SpenderKeys      [][]byte // keys to retrieve the spenders of this output
-	ConfirmationHash []byte   // confirmation hash of the input transaction
-	MerkleHash       []byte   // merkle hash of the input transaction
+	InputKeys        [][]byte `json:"inputKeys"`        // keys to retrieve the inputs of this output
+	SpenderKeys      [][]byte `json:"spenderKeys"`      // keys to retrieve the spenders of this output
+	ConfirmationHash []byte   `json:"confirmationHash"` // confirmation hash of the input transaction
+	MerkleHash       []byte   `json:"merkleHash`        // merkle hash of the input transaction
 
-	Output   plasma.Output
-	Spent    bool
-	Position plasma.Position
+	Output   plasma.Output   `json:"ouput"`
+	Spent    bool            `json:"spent"`
+	Position plasma.Position `json:"position"`
 }
 
 type utxo struct {

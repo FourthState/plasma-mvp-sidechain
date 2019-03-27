@@ -6,8 +6,11 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
+	plasmarest "github.com/FourthState/plasma-mvp-sidechain/client/rest"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/lcd"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -47,6 +50,12 @@ func Execute() {
 	}
 }
 
+var cdc = codec.New()
+
+func registerRoutes(rs *lcd.RestServer) {
+	plasmarest.RegisterRoutes(rs.CliCtx, rs.Mux, rs.Cdc)
+}
+
 func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
@@ -74,6 +83,7 @@ func init() {
 		query.QueryCmd(),
 		eth.EthCmd(),
 		eth.ProveCmd(),
+		lcd.ServeCommand(cdc, registerRoutes),
 	)
 }
 

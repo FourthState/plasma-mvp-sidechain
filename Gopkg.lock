@@ -59,13 +59,18 @@
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
 [[projects]]
-  digest = "1:a90fdbbff9e7bbfad76666c35534b7534dd73ebecb9c7daa82fe2de68afbaa4b"
+  digest = "1:b5d77508ca426c02428442515822f5d605d4b4688800283c86737dc7c6deaeca"
   name = "github.com/cosmos/cosmos-sdk"
   packages = [
     "baseapp",
     "client",
     "client/context",
     "client/keys",
+    "client/lcd",
+    "client/lcd/statik",
+    "client/rest",
+    "client/rpc",
+    "client/tx",
     "client/utils",
     "cmd/gaia/app",
     "cmd/gaia/init",
@@ -94,15 +99,21 @@
     "types/rest",
     "version",
     "x/auth",
+    "x/auth/client/rest",
     "x/auth/client/txbuilder",
     "x/bank",
+    "x/bank/client/rest",
     "x/bank/simulation",
     "x/distribution",
+    "x/distribution/client/common",
+    "x/distribution/client/rest",
     "x/distribution/keeper",
     "x/distribution/simulation",
     "x/distribution/tags",
     "x/distribution/types",
     "x/gov",
+    "x/gov/client/rest",
+    "x/gov/client/utils",
     "x/gov/tags",
     "x/mint",
     "x/mock",
@@ -110,9 +121,11 @@
     "x/params",
     "x/params/subspace",
     "x/slashing",
+    "x/slashing/client/rest",
     "x/slashing/tags",
     "x/staking",
     "x/staking/client/cli",
+    "x/staking/client/rest",
     "x/staking/keeper",
     "x/staking/querier",
     "x/staking/simulation",
@@ -129,6 +142,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "52158e4697b87de16ed390e1bdaf813e581008fa"
+
+[[projects]]
+  branch = "master"
+  digest = "1:52deb28c05665d9a538f8f7c8ab455b29f9cd9f2d251b58b090e9c9f0bec1f07"
+  name = "github.com/cosmos/sdk-application-tutorial"
+  packages = ["x/nameservice"]
+  pruneopts = "UT"
+  revision = "3616d9384466d2277aa5e230c8ab76a92dd1a2a9"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -432,6 +453,14 @@
   ]
   pruneopts = "UT"
   revision = "bbced9601137e764853b2fad7ec3e2dc4c504e02"
+
+[[projects]]
+  digest = "1:ea0700160aca4ef099f4e06686a665a87691f4248dddd40796925eda2e46bd64"
+  name = "github.com/rakyll/statik"
+  packages = ["fs"]
+  pruneopts = "UT"
+  revision = "aa8a7b1baecd0f31a436bf7956fcdcc609a83035"
+  version = "v0.1.4"
 
 [[projects]]
   digest = "1:c4556a44e350b50a490544d9b06e9fba9c286c21d6c0e47f54f3a9214597298c"
@@ -806,11 +835,15 @@
     "github.com/cosmos/cosmos-sdk/baseapp",
     "github.com/cosmos/cosmos-sdk/client",
     "github.com/cosmos/cosmos-sdk/client/context",
+    "github.com/cosmos/cosmos-sdk/client/lcd",
+    "github.com/cosmos/cosmos-sdk/client/rest",
     "github.com/cosmos/cosmos-sdk/cmd/gaia/init",
     "github.com/cosmos/cosmos-sdk/codec",
     "github.com/cosmos/cosmos-sdk/server",
     "github.com/cosmos/cosmos-sdk/store",
     "github.com/cosmos/cosmos-sdk/types",
+    "github.com/cosmos/cosmos-sdk/types/rest",
+    "github.com/cosmos/sdk-application-tutorial/x/nameservice",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
@@ -823,6 +856,7 @@
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rlp",
     "github.com/ethereum/go-ethereum/rpc",
+    "github.com/gorilla/mux",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/require",
