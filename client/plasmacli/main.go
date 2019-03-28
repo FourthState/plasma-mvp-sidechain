@@ -50,7 +50,12 @@ func Execute() {
 	}
 }
 
-var cdc = codec.New()
+func MkCodec() *codec.Codec {
+	var cdc = codec.New()
+	codec.RegisterCrypto(cdc)
+	plasmarest.RegisterCodec(cdc)
+	return cdc
+}
 
 func registerRoutes(rs *lcd.RestServer) {
 	plasmarest.RegisterRoutes(rs.CliCtx, rs.Mux, rs.Cdc)
@@ -77,6 +82,8 @@ func init() {
 	if _, err := os.Stat(plasmaDir); os.IsNotExist(err) {
 		config.WritePlasmaConfigFile(plasmaDir, config.DefaultPlasmaConfig())
 	}
+
+	cdc := MkCodec()
 
 	rootCmd.AddCommand(
 		keys.KeysCmd(),
