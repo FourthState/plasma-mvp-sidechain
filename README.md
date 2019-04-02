@@ -5,8 +5,6 @@
 [![Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/YTB5A4P)
 [![license](https://img.shields.io/github/license/FourthState/plasma-mvp-rootchain.svg)](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/LICENSE)
 
-Implementation of [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain)  
-
 ## What is Plasma?
 Plasma has two major components: verification and computation. 
 Verification is handled by the rootchain contract, which resolves any disputes and distributes funds accordingly.
