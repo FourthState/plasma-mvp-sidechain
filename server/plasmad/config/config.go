@@ -61,7 +61,7 @@ func TestPlasmaConfig() PlasmaConfig {
 	return PlasmaConfig{
 		IsOperator:            true,
 		EthOperatorPrivateKey: "9cd69f009ac86203e54ec50e3686de95ff6126d3b30a19f926a0fe9323c17182",
-		EthPlasmaContractAddr: "5caE340fB2c2bB0A2F194A95cDa8a1ffdC9D2f85",
+		EthPlasmaContractAddr: "31E491FC70cDb231774c61B7F46d94699dacE664",
 		PlasmaCommitmentRate:  "1m",
 		EthNodeURL:            "http://localhost:8545",
 		EthBlockFinality:      "0",

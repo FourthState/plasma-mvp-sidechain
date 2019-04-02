@@ -50,7 +50,7 @@ func Execute() {
 func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
-	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
+	rootCmd.PersistentFlags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	rootCmd.PersistentFlags().StringP(store.DirFlag, "d", homeDir, "directory for plasmacli")
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
