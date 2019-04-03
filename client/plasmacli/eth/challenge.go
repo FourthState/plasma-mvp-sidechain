@@ -77,7 +77,7 @@ Usage:
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(trustNodeF) {
 			var result *tm.ResultTx
-			result, confirmSignatures, err = getProof(owner, challengingPos)
+			result, confirmSignatures, err = GetProof(owner, challengingPos)
 			if err != nil {
 				fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}
