@@ -101,7 +101,7 @@ Transaction Exit Usage:
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(trustNodeF) { // query full node
 			var result *tm.ResultTx
-			result, confirmSignatures, err = getProof(addr, position)
+			result, confirmSignatures, err = GetProof(addr, position)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}

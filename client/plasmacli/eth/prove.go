@@ -33,16 +33,10 @@ var proveCmd = &cobra.Command{
 			return err
 		}
 
-		result, sigs, err := getProof(addr, position)
+		result, sigs, err := GetProof(addr, position)
 		if err != nil {
 			return err
 		}
-
-		// print meta data
-		fmt.Printf("Roothash: 0x%x\n", result.Proof.RootHash)
-		fmt.Printf("Total: %d\n", result.Proof.Proof.Total)
-		fmt.Printf("LeafHash: 0x%x\n", result.Proof.Proof.LeafHash)
-		fmt.Printf("TxBytes: 0x%x\n", result.Tx)
 
 		switch len(sigs) {
 		case 65:
@@ -69,7 +63,7 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
-func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, []byte, error) {
+func GetProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, []byte, error) {
 	ctx := context.NewCLIContext().WithTrustNode(true)
 
 	// query for the output

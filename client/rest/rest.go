@@ -1,27 +1,35 @@
 package rest
 
 import (
-	//"encoding/json"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"net/http"
+	url "net/url"
 	//clientrest "github.com/cosmos/cosmos-sdk/client/rest"
 	"github.com/cosmos/cosmos-sdk/codec"
 	//sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/rest"
 	//"github.com/cosmos/sdk-application-tutorial/x/nameservice"
 	//       "github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
+	ethcli "github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	ethcmn "github.com/ethereum/go-ethereum/common"
+	hex "github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/gorilla/mux"
+	tm "github.com/tendermint/tendermint/rpc/core/types"
+
+	plasma "github.com/FourthState/plasma-mvp-sidechain/plasma"
+
 	//"io/ioutil"
 	"math/big"
 )
 
 const (
-	restName = "name"
+	ownerAddress = "ownerAddress"
+	position     = "position"
+	signature    = "signature"
 )
 
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) {
@@ -29,7 +37,8 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), setNameHandler(cdc, cliCtx)).Methods("PUT")
 	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), setNameHandler(cdc, cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprint("/deposit/include"), postDepositHandler(cdc, cliCtx)).Methods("POST")
-	r.HandleFunc(fmt.Sprintf("/balance/{%s}", restName), queryBalanceHandler(cdc, cliCtx)).Methods("GET")
+	r.HandleFunc(fmt.Sprintf("/balance/{%s}", ownerAddress), queryBalanceHandler(cdc, cliCtx)).Methods("GET")
+	r.HandleFunc(fmt.Sprint("/proof"), queryProofHandler(cdc, cliCtx)).Methods("GET")
 	r.HandleFunc(fmt.Sprint("/health"), healthHandler(cdc, cliCtx)).Methods("GET")
 }
 
@@ -39,10 +48,58 @@ func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc
 	}
 }
 
+type ProofResp struct {
+	ResultTx   tm.ResultTx `json:"transaction"`
+	ProofAunts string      `json:"proofAunts"`
+}
+
+func queryProofHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vals, err := url.ParseQuery(r.URL.RawQuery)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		ownerStr := vals[ownerAddress][0]
+		posStr := vals[position][0]
+
+		owner := ethcmn.HexToAddress(ownerStr)
+		pos, err := plasma.FromPositionString(posStr)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var proofAunts []byte
+
+		tx, _, err := ethcli.GetProof(owner, pos)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		// flatten proof
+		for _, aunt := range tx.Proof.Proof.Aunts {
+			proofAunts = append(proofAunts, aunt...)
+		}
+
+		proofAuntsHex := hex.Encode(proofAunts)
+		proofResp := ProofResp{*tx, proofAuntsHex}
+
+		rest.PostProcessResponse(w, cdc, proofResp, ctx.Indent)
+	}
+
+}
+
 func queryBalanceHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		paramType := vars[restName]
+		paramType := vars[ownerAddress]
 
 		addr := ethcmn.HexToAddress(paramType)
 		res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
