@@ -1,11 +1,10 @@
 package rest
 
 import (
-	//"encoding/json"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"net/http"
-	//	url "net/url"
+	url "net/url"
 	//clientrest "github.com/cosmos/cosmos-sdk/client/rest"
 	"github.com/cosmos/cosmos-sdk/codec"
 	//sdk "github.com/cosmos/cosmos-sdk/types"
@@ -50,15 +49,22 @@ func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc
 }
 
 type ProofResp struct {
-	resultTx tm.ResultTx `json:"transaction"`
-	proof    string      `json:"proof"`
+	ResultTx   tm.ResultTx `json:"transaction"`
+	ProofAunts string      `json:"proofAunts"`
 }
 
 func queryProofHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		ownerStr := vars[ownerAddress]
-		posStr := vars[position]
+
+		vals, err := url.ParseQuery(r.URL.RawQuery)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		ownerStr := vals[ownerAddress][0]
+		posStr := vals[position][0]
 
 		owner := ethcmn.HexToAddress(ownerStr)
 		pos, err := plasma.FromPositionString(posStr)
@@ -68,7 +74,7 @@ func queryProofHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFun
 			return
 		}
 
-		var proof []byte
+		var proofAunts []byte
 
 		tx, _, err := ethcli.GetProof(owner, pos)
 
@@ -79,10 +85,11 @@ func queryProofHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFun
 
 		// flatten proof
 		for _, aunt := range tx.Proof.Proof.Aunts {
-			proof = append(proof, aunt...)
+			proofAunts = append(proofAunts, aunt...)
 		}
 
-		proofResp := ProofResp{*tx, hex.Encode(proof)}
+		proofAuntsHex := hex.Encode(proofAunts)
+		proofResp := ProofResp{*tx, proofAuntsHex}
 
 		rest.PostProcessResponse(w, cdc, proofResp, ctx.Indent)
 	}
