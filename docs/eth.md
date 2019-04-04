@@ -244,6 +244,26 @@ Transaction Hash: 0x5a4633533895bcd65514975b755509d452cc283bf5f299cbe1224999a66b
 Exits may be finalized, after the challenge period has ended. 
 The default challenge period is 5 days for deposits and 7 days for transaction exits
 
+Balance before finalizing:
+```
+plasmacli eth query balance acc1
+Rootchain Balance: 200000
+```
+
+Finalize exits:
+```
+plasmacli eth finalize acc1
+Enter passphrase:
+Successfully sent finalize exits transaction
+Transaction Hash: 0x95d028a4ae3e90833ab222880b366e32818353195acbb7e9c7516972d224c1f6
+```
+
+Balance after finalizing:
+```
+plasmacli eth query balance acc1
+Rootchain Balance: 618000
+```
+
 ## Withdraw ##
 
 Checking the balance on the rootchain that can be withdrawn:
