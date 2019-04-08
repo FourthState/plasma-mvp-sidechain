@@ -75,7 +75,7 @@ func init() {
 	}
 
 	viper.Set(client.FlagTrustNode, true)
-	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
+	viper.Set(client.FlagListenAddr, "tcp://0.0.0.0:1317")
 
 	viper.AddConfigPath(homeDir)
 	plasmaDir := filepath.Join(homeDir, "plasma.toml")
