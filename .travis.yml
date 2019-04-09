@@ -14,6 +14,9 @@ before_install:
 
 install:
   - dep ensure -vendor-only
+  # replace with this repo
+  - cp -r $GOPATH/src/github.com/f-o-a-m/plasma-mvp-sidechain $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
+  - cd $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
 
 before_script:
   - npm install -g truffle@5.0.2 ganache-cli@6.2.5
