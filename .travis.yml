@@ -19,11 +19,12 @@ install:
   - cp -r $GOPATH/src/github.com/f-o-a-m/plasma-mvp-sidechain $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
   - cd $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
 
-
 before_script:
   - npm install -g truffle@5.0.2 ganache-cli@6.2.5
 
 script:
+  - pwd
+  - git remote get-url --all origin
   - ganache-cli -m=plasma > /dev/null &
   - sleep 5
   - cd contracts/
