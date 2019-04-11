@@ -24,6 +24,7 @@ before_script:
 
 script:
   - pwd
+  - ls -a
   - git remote get-url --all origin
   - ganache-cli -m=plasma > /dev/null &
   - sleep 5
@@ -33,5 +34,14 @@ script:
   - cd ../
   - go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...
 
+services:
+  - docker
+
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - docker build -t foamspace/plasma-mvp-demo .
+
+deploy:
+  provider: script
+  script: bash docker-push.sh
+  on:
+    branch: http-server
