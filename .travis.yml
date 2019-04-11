@@ -16,7 +16,7 @@ install:
   - dep ensure -vendor-only
   # replace with this repo
   - mkdir -p $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
-  - cp -r $GOPATH/src/github.com/f-o-a-m/plasma-mvp-sidechain $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
+  - cp -r $GOPATH/src/github.com/f-o-a-m/plasma-mvp-sidechain $GOPATH/src/github.com/FourthState/
   - cd $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
 
 before_script:
