@@ -4,3 +4,4 @@ contracts/abi
 contracts/node_modules
 server/plasmad/plasmad
 client/plasmacli/plasmacli
+coverage.txt
