@@ -1,6 +1,6 @@
 # Plasma MVP Sidechain
 [![Go Report](https://goreportcard.com/badge/github.com/FourthState/plasma-mvp-sidechain)](https://goreportcard.com/report/github.com/FourthState/plasma-mvp-sidechain)
-[![Build Status](https://travis-ci.org/f-o-a-m/plasma-mvp-sidechain.svg?branch=develop)](https://travis-ci.org/f-o-a-m/plasma-mvp-sidechain)
+[![Build Status](https://travis-ci.com/f-o-a-m/plasma-mvp-sidechain.svg?branch=http-server)](https://travis-ci.org/f-o-a-m/plasma-mvp-sidechain)
 [![codecov](https://codecov.io/gh/FourthState/plasma-mvp-sidechain/branch/develop/graph/badge.svg)](https://codecov.io/gh/FourthState/plasma-mvp-sidechain)
 [![Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/YTB5A4P)
 [![license](https://img.shields.io/github/license/FourthState/plasma-mvp-rootchain.svg)](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/LICENSE)
