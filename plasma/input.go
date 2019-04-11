@@ -7,9 +7,9 @@ import (
 
 // Input represents the input to a spend
 type Input struct {
-	Position
-	Signature         [65]byte
-	ConfirmSignatures [][65]byte
+	Position          `json:"position"`
+	Signature         [65]byte   `json:"signature"`
+	ConfirmSignatures [][65]byte `json:"confirmSignatures"`
 }
 
 func NewInput(position Position, sig [65]byte, confirmSigs [][65]byte) Input {

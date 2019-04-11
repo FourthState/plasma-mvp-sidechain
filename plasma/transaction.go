@@ -4,21 +4,22 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"io"
+	"math/big"
+
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"io"
-	"math/big"
 )
 
 // Transaction represents a spend of inputs. Fields should not be accessed directly
 type Transaction struct {
-	Input0  Input
-	Input1  Input
-	Output0 Output
-	Output1 Output
-	Fee     *big.Int
+	Input0  Input    `json:"input0"`
+	Input1  Input    `json:"input1"`
+	Output0 Output   `json:"output0"`
+	Output1 Output   `json:"output1"`
+	Fee     *big.Int `json:"fee"`
 }
 
 type txList struct {

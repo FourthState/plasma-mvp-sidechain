@@ -15,7 +15,7 @@ type UTXO struct {
 	ConfirmationHash []byte   `json:"confirmationHash"` // confirmation hash of the input transaction
 	MerkleHash       []byte   `json:"merkleHash`        // merkle hash of the input transaction
 
-	Output   plasma.Output   `json:"ouput"`
+	Output   plasma.Output   `json:"output"`
 	Spent    bool            `json:"spent"`
 	Position plasma.Position `json:"position"`
 }

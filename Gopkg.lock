@@ -144,14 +144,6 @@
   revision = "52158e4697b87de16ed390e1bdaf813e581008fa"
 
 [[projects]]
-  branch = "master"
-  digest = "1:52deb28c05665d9a538f8f7c8ab455b29f9cd9f2d251b58b090e9c9f0bec1f07"
-  name = "github.com/cosmos/sdk-application-tutorial"
-  packages = ["x/nameservice"]
-  pruneopts = "UT"
-  revision = "3616d9384466d2277aa5e230c8ab76a92dd1a2a9"
-
-[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -836,14 +828,12 @@
     "github.com/cosmos/cosmos-sdk/client",
     "github.com/cosmos/cosmos-sdk/client/context",
     "github.com/cosmos/cosmos-sdk/client/lcd",
-    "github.com/cosmos/cosmos-sdk/client/rest",
     "github.com/cosmos/cosmos-sdk/cmd/gaia/init",
     "github.com/cosmos/cosmos-sdk/codec",
     "github.com/cosmos/cosmos-sdk/server",
     "github.com/cosmos/cosmos-sdk/store",
     "github.com/cosmos/cosmos-sdk/types",
     "github.com/cosmos/cosmos-sdk/types/rest",
-    "github.com/cosmos/sdk-application-tutorial/x/nameservice",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",

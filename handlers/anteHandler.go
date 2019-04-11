@@ -40,6 +40,7 @@ func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore stor
 	var totalInputAmt, totalOutputAmt *big.Int
 
 	// attempt to recover signers
+	//fmt.Println("spendMsgAnteHandler")
 	signers := spendMsg.GetSigners()
 	if len(signers) == 0 {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true

@@ -1,9 +1,11 @@
 package msgs
 
 import (
+	//"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	//ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -26,6 +28,7 @@ func (msg SpendMsg) Route() string { return SpendMsgRoute }
 // CONTRACT: a nil slice is returned if recovery fails
 func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
+	//fmt.Println("GET SIGNERS TX HASH", ethcmn.ToHex(txHash), "INPUT0 SIGNATURE ", ethcmn.ToHex(msg.Input0.Signature[:]))
 	var addrs []sdk.AccAddress
 
 	// recover first owner

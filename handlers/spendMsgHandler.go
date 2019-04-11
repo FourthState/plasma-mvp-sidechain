@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"crypto/sha256"
+	//"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	//ethcmn "github.com/ethereum/go-ethereum/common"
 	"math/big"
 )
 
@@ -42,16 +44,20 @@ func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, n
 		}
 
 		var inputKeys [][]byte
+		//fmt.Println("NewSpendHandler")
 		for i, key := range spendMsg.GetSigners() {
 			inputKeys = append(inputKeys, append(key[:], spendMsg.InputAt(uint8(i)).Position.Bytes()...))
 		}
 
 		// try to spend the inputs. Abort if the inputs don't exist or have been spent
+		//fmt.Println("Spending first output")
+		//fmt.Println(common.BytesToAddress(inputKeys[0][:common.AddressLength]).String(), spendMsg.Input0.Position, ethcmn.ToHex(spenderKeys[0]))
 		res := utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[0][:common.AddressLength]), spendMsg.Input0.Position, spenderKeys)
 		if !res.IsOK() {
 			return res
 		}
 		if spendMsg.HasSecondInput() {
+			//fmt.Println("Spending second output")
 			res := utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[1][:common.AddressLength]), spendMsg.Input1.Position, spenderKeys)
 			if !res.IsOK() {
 				return res
