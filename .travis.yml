@@ -46,7 +46,7 @@ services:
   - docker
 
 after_success:
-  - docker build -t foamspace/plasma-mvp-demo .
+  - docker build -t foamspace/plasma-mvp-demo:latest .
 
 deploy:
   provider: script
