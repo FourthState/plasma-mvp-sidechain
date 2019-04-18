@@ -45,6 +45,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/proof"), queryProofHandler(cdc, cliCtx)).Methods("GET")
 	r.HandleFunc(fmt.Sprint("/health"), healthHandler(cdc, cliCtx)).Methods("GET")
 	r.HandleFunc(fmt.Sprint("/spend"), postSpendHandler(cdc, cliCtx)).Methods("POST")
+	r.HandleFunc(fmt.Sprint("/tx/rlp"), postTxRLPHandler(cdc, cliCtx)).Methods("POST")
 	r.HandleFunc(fmt.Sprint("/tx/hash"), postTxHashHandler(cdc, cliCtx)).Methods("POST")
 }
 
@@ -310,10 +311,26 @@ func postTxHashHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFun
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
 			return
 		}
-
-		txHash := ethcmn.ToHex(req.TxHash())
+		txHash := req.TxHash()
+		txHashHex := ethcmn.ToHex(txHash)
 		//fmt.Println("txHash (hex): ", txHash)
 
-		rest.PostProcessResponse(w, cdc, txHash, ctx.Indent)
+		rest.PostProcessResponse(w, cdc, txHashHex, ctx.Indent)
+	}
+}
+
+func postTxRLPHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req plasma.Transaction
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+		txRLP := req.TxBytes()
+		txRLPHex := ethcmn.ToHex(txRLP)
+		//fmt.Println("txHash (hex): ", txHash)
+
+		rest.PostProcessResponse(w, cdc, txRLPHex, ctx.Indent)
 	}
 }
