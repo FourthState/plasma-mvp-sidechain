@@ -328,8 +328,21 @@ func postTxRLPHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc
 			return
 		}
 		txRLP := req.TxBytes()
+		var txDecoded plasma.Transaction
+		err := rlp.DecodeBytes(txRLP, &txDecoded)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+
+		}
+		if string(txDecoded.TxBytes()) != string(txRLP) {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, "decoded tx not what it should be!")
+			return
+
+		}
+
+		fmt.Println("Checked that tx encoded properly")
 		txRLPHex := ethcmn.ToHex(txRLP)
-		//fmt.Println("txHash (hex): ", txHash)
 
 		rest.PostProcessResponse(w, cdc, txRLPHex, ctx.Indent)
 	}
