@@ -28,7 +28,7 @@ Usage:
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		viper.BindPFlags(cmd.Flags())
 
-		key, err := store.GetKey(args[1])
+		key, err := store.GetKey(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account: { %s }", err)
 		}

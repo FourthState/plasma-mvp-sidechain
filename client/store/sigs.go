@@ -10,9 +10,27 @@ const (
 	signatureDir = "data/signatures.ldb"
 )
 
-// Saves confirmation signature
-// Overrides any value previously set at the given position
-func SaveSig(position plasma.Position, sig []byte) error {
+// Saves confirmation signatures
+// If prepend is set to true, sig will be prepended to the currently stored signatures
+// Otherwise it will be appended
+// This ordering should be determined by input order in the transaction
+// If the length of the currently stored signatures is 130 an error is returned
+func SaveSig(position plasma.Position, sig []byte, prepend bool) error {
+	if len(sig) != 65 {
+		return fmt.Errorf("signature must have a length of 65 bytes")
+	}
+
+	signatures, err := GetSig(position)
+	if len(signatures) == 130 {
+		return fmt.Errorf("two signatures already exist for the given position")
+	}
+
+	if prepend {
+		signatures = append(sig, signatures...)
+	} else {
+		signatures = append(signatures, sig...)
+	}
+
 	dir := getDir(signatureDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
@@ -21,7 +39,7 @@ func SaveSig(position plasma.Position, sig []byte) error {
 	defer db.Close()
 
 	k := getSigKey(position)
-	if err := db.Put(k, sig, nil); err != nil {
+	if err := db.Put(k, signatures, nil); err != nil {
 		return fmt.Errorf("failed to save confirmation signature: { %s }", err)
 	}
 
@@ -39,7 +57,7 @@ func GetSig(position plasma.Position) ([]byte, error) {
 
 	k := getSigKey(position)
 	if sig, err := db.Get(k, nil); err != nil {
-		return nil, fmt.Errorf("failed to get signature: { %s }", err)
+		return []byte{}, fmt.Errorf("failed to get signature: { %s }", err)
 	} else {
 		return sig, nil
 	}

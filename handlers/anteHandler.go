@@ -84,9 +84,9 @@ func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore stor
 	// input0 + input1 (totalInputAmt) == output0 + output1 + Fee (totalOutputAmt)
 	totalOutputAmt = spendMsg.Output0.Amount
 	if spendMsg.HasSecondOutput() {
-		totalOutputAmt = totalOutputAmt.Add(totalOutputAmt.Add(totalOutputAmt, spendMsg.Output1.Amount), spendMsg.Fee)
+		totalOutputAmt = new(big.Int).Add(new(big.Int).Add(totalOutputAmt, spendMsg.Output1.Amount), spendMsg.Fee)
 	} else {
-		totalOutputAmt = totalOutputAmt.Add(totalOutputAmt, spendMsg.Fee)
+		totalOutputAmt = new(big.Int).Add(totalOutputAmt, spendMsg.Fee)
 	}
 
 	if totalInputAmt.Cmp(totalOutputAmt) != 0 {

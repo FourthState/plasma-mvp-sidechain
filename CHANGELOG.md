@@ -19,6 +19,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Plasma configuration file
 - Added IncludeDepositMsg with handling to allow explicit deposit inclusion into sidechain
 ### Changed
+- [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated sign command to iterate over an account to finalize transactions
+- [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated spend to auto generate transaction for users based on the utxos they own
 - [\#120](https://github.com/FourthState/plasma-mvp-sidechain/pull/118) Fixed Length TxBytes (811), compatible with rootchain v1.0.0
 - **plasmacli:** [\#108](https://github.com/FourthState/plasma-mvp-sidechain/pull/108) home flag renamed to directory, flags have suffix "F" for local flags, and "Flag" for persistent flags
 - **plasmacli:** [\#116](https://github.com/FourthState/plasma-mvp-sidechain/pull/116) client keystore/ renamed to store/

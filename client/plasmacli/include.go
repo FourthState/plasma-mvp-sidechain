@@ -15,10 +15,9 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(includeCmd)
-	includeCmd.Flags().Int64P(flagReplay, "r", 0, "Replay Nonce that can be incremented to allow for resubmissions of include deposit messages")
-	includeCmd.Flags().String(flagAddress, "", "address represented as hex string")
-	includeCmd.Flags().BoolP(flagSync, "s", false, "wait for transaction commitment synchronously")
+	includeCmd.Flags().Int64P(replayF, "r", 0, "Replay Nonce that can be incremented to allow for resubmissions of include deposit messages")
+	includeCmd.Flags().String(addressF, "", "address represented as hex string")
+	includeCmd.Flags().Bool(asyncF, false, "wait for transaction commitment synchronously")
 }
 
 var includeCmd = &cobra.Command{
@@ -42,7 +41,7 @@ var includeCmd = &cobra.Command{
 				return fmt.Errorf("Could not retrieve account: %s", args[1])
 			}
 		} else {
-			addrToken := viper.GetString(flagAddress)
+			addrToken := viper.GetString(addressF)
 			addrToken = strings.TrimSpace(addrToken)
 			if !ethcmn.IsHexAddress(addrToken) {
 				return fmt.Errorf("invalid address provided. please use hex format")
@@ -58,7 +57,7 @@ var includeCmd = &cobra.Command{
 			return fmt.Errorf("could not parse deposit nonce. Please resubmit with nonce in base 10")
 		}
 
-		replay := viper.GetInt(flagReplay)
+		replay := viper.GetInt(replayF)
 
 		msg := msgs.IncludeDepositMsg{
 			DepositNonce: nonce,
@@ -76,16 +75,16 @@ var includeCmd = &cobra.Command{
 		}
 
 		// broadcast to the node
-		if viper.GetBool(flagSync) {
+		if viper.GetBool(asyncF) {
+			if _, err := ctx.BroadcastTxAsync(txBytes); err != nil {
+				return err
+			}
+		} else {
 			res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
 			if err != nil {
 				return err
 			}
 			fmt.Printf("Committed at block %d. Hash %s\n", res.Height, res.TxHash)
-		} else {
-			if _, err := ctx.BroadcastTxAsync(txBytes); err != nil {
-				return err
-			}
 		}
 
 		return nil
