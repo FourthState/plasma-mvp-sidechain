@@ -5,11 +5,13 @@ import (
 	config "github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"math/big"
 	"os"
 	"path/filepath"
 )
@@ -61,34 +63,38 @@ func EthCmd() *cobra.Command {
 // Update ethereum client connection if params have changed
 func persistentPreRunEFn() func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		plasmaConfigFilePath := filepath.Join(viper.GetString(store.DirFlag), "plasma.toml")
-
-		if _, err := os.Stat(plasmaConfigFilePath); os.IsNotExist(err) {
-			plasmaConfig := config.DefaultPlasmaConfig()
-			config.WritePlasmaConfigFile(plasmaConfigFilePath, plasmaConfig)
-		}
-
-		viper.SetConfigName("plasma")
-		if err := viper.MergeInConfig(); err != nil {
-			return err
-		}
-
-		conf, err := config.ParsePlasmaConfigFromViper()
-		if err != nil {
-			return err
-		}
-
-		// Check to see if the eth connection params have changed
-		if conf.EthNodeURL == "" {
-			return fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", viper.GetString(store.DirFlag))
-		} else if rc.nodeURL != conf.EthNodeURL {
-			if err := initEthConn(conf); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return setupPlasmaConfig()
 	}
+}
+
+func setupPlasmaConfig() error {
+	plasmaConfigFilePath := filepath.Join(viper.GetString(store.DirFlag), "plasma.toml")
+
+	if _, err := os.Stat(plasmaConfigFilePath); os.IsNotExist(err) {
+		plasmaConfig := config.DefaultPlasmaConfig()
+		config.WritePlasmaConfigFile(plasmaConfigFilePath, plasmaConfig)
+	}
+
+	viper.SetConfigName("plasma")
+	if err := viper.MergeInConfig(); err != nil {
+		return err
+	}
+
+	conf, err := config.ParsePlasmaConfigFromViper()
+	if err != nil {
+		return err
+	}
+
+	// Check to see if the eth connection params have changed
+	if conf.EthNodeURL == "" {
+		return fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", viper.GetString(store.DirFlag))
+	} else if rc.nodeURL != conf.EthNodeURL {
+		if err := initEthConn(conf); err != nil {
+			return err
+		}
+	}
+	return nil
+
 }
 
 // Create a connection to an eth node based on
@@ -113,4 +119,38 @@ func initEthConn(conf config.PlasmaConfig) error {
 	}
 
 	return nil
+}
+
+// indicates if the position provided has been exitted.
+func HasTxExitted(position plasma.Position) (bool, error) {
+	if err := setupPlasmaConfig(); err != nil {
+		return true, err
+	}
+
+	type exit struct {
+		Amount       *big.Int
+		CommittedFee *big.Int
+		CreatedAt    *big.Int
+		Owner        ethcmn.Address
+		State        uint8
+	}
+
+	var (
+		e   exit
+		err error
+	)
+
+	priority := position.Priority()
+	if position.IsDeposit() {
+		e, err = rc.contract.DepositExits(nil, priority)
+	} else {
+		e, err = rc.contract.TxExits(nil, priority)
+	}
+
+	// censor spends until the error is fixed
+	if err != nil {
+		return true, err
+	}
+
+	return e.State == 1 || e.State == 3, nil
 }

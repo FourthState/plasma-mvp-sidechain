@@ -1,7 +1,6 @@
 package query
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/cosmos/cosmos-sdk/client/context"
@@ -42,13 +41,7 @@ var blockCmd = &cobra.Command{
 			return err
 		}
 
-		resp, err := json.Marshal(block)
-		if err != nil {
-			fmt.Println("error marshaling")
-			return err
-		}
-
-		fmt.Printf("Block Data\n%s\n", resp)
+		fmt.Printf("Header: %x\nTxs: %d\nFee: %d\n", block.Header, block.TxnCount, block.FeeAmount)
 		return nil
 	},
 }

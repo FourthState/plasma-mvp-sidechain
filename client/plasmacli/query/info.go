@@ -11,8 +11,10 @@ import (
 	"strings"
 )
 
-// TODO: Change this from being a command to a flag for the account command
-// If --all then print all info for account
+func init() {
+	queryCmd.AddCommand(infoCmd)
+}
+
 var infoCmd = &cobra.Command{
 	Use:   "info <address>",
 	Args:  cobra.ExactArgs(1),

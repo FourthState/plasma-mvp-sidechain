@@ -19,16 +19,16 @@ var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 
 // Flags
 const (
-	flagAccount      = "accounts"
-	flagAddress      = "address"
-	flagOwner        = "owner"
-	flagPositions    = "position"
-	flagConfirmSigs0 = "Input0ConfirmSigs"
-	flagConfirmSigs1 = "Input1ConfirmSigs"
-	flagInputs       = "inputValues"
-	flagSync         = "sync"
-	flagFee          = "fee"
-	flagReplay       = "replay"
+	accountF      = "accounts"
+	addressF      = "address"
+	asyncF        = "async"
+	confirmSigs0F = "Input0ConfirmSigs"
+	confirmSigs1F = "Input1ConfirmSigs"
+	feeF          = "fee"
+	inputsF       = "inputValues"
+	ownerF        = "owner"
+	positionF     = "position"
+	replayF       = "replay"
 )
 
 var rootCmd = &cobra.Command{
@@ -36,21 +36,15 @@ var rootCmd = &cobra.Command{
 	Short: "Plasma Client",
 }
 
-func main() {
-	Execute()
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
 func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
+}
+
+func main() {
+	cobra.EnableCommandSorting = false
+
+	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	rootCmd.PersistentFlags().StringP(store.DirFlag, "d", homeDir, "directory for plasmacli")
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
@@ -66,15 +60,32 @@ func init() {
 	viper.AddConfigPath(homeDir)
 	plasmaDir := filepath.Join(homeDir, "plasma.toml")
 	if _, err := os.Stat(plasmaDir); os.IsNotExist(err) {
+
 		config.WritePlasmaConfigFile(plasmaDir, config.DefaultPlasmaConfig())
 	}
 
 	rootCmd.AddCommand(
-		keys.KeysCmd(),
-		query.QueryCmd(),
 		eth.EthCmd(),
+		query.QueryCmd(),
 		eth.ProveCmd(),
+		includeCmd,
+		client.LineBreak,
+		signCmd,
+		spendCmd,
+		client.LineBreak,
+		keys.KeysCmd(),
+		client.LineBreak,
+		versionCmd,
 	)
+
+	Execute()
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set
