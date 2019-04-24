@@ -90,8 +90,11 @@ A Position contains the block number, transaction index, output index, and depos
 
 `FromPositionString(string)` takes in a string in the format "(blknum.txindex.oindex.depositnonce)" and returns a Position with the passed in values. 
 
-**Transaction**
+**Confirmation Signatures**
 
+Confirmation Signatures are signed by the owners of the inputs in a transaction.
+The Confirmation Hash that is signed over, comprises of the: hash of the transaction + root hash of the block the transaction occured in.
+Transaction are not considered final until the confirmation signauture is signed and sent to the output owners. 
 
 ## Utils
 

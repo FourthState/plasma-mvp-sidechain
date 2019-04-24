@@ -58,7 +58,6 @@ func init() {
 		fmt.Println(err)
 	}
 
-	viper.Set(client.FlagTrustNode, true)
 	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
 
 	viper.AddConfigPath(homeDir)
