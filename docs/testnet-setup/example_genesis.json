@@ -1,6 +1,6 @@
 {
-  "genesis_time": "2018-11-10T23:09:36.891350775Z",
-  "chain_id": "test-chain-z467uy",
+  "genesis_time": "2019-02-04T03:55:12.9352086Z",
+  "chain_id": "fourth-state-plasma",
   "consensus_params": {
     "block_size": {
       "max_bytes": "22020096",
@@ -17,34 +17,12 @@
   },
   "app_hash": "",
   "app_state": {
-    "genvalidator": {
+    "validator": {
       "validator_pubkey": {
         "type": "tendermint/PubKeyEd25519",
-        "value": "M2fnNquqN9I17/gb2pK8Tq8QNy4vaQwUxEGKUe0f0Ys="
+        "value": "pWyYZblMTzOqekbnRv9V7YHOr0tIXrVJayIHxoUuLS0="
       },
-      "fee_address": "0x495B9e12A0bC69a9dC83631bEde98de0CF0B298D"
-    },
-    "UTXOs":  [
-          {
-            "Address": "0xc01BD94dB00C19d44D42c866cC14111015923160",
-            "Denom": "100",
-            "Position": [
-              "0",
-              "0",
-              "0",
-              "1"
-            ]
-          },
-          {
-            "Address": "0xc01BD94dB00C19d44D42c866cC14111015923160",
-            "Denom": "100",
-            "Position": [
-              "0",
-              "0",
-              "0",
-              "2" 
-        ]
-      }
-    ]
+      "fee_address": "0xec36ead9c897b609a4ffa5820e1b2b137d454343"
+    }
   }
 }
