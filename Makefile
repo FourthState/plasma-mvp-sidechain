@@ -37,4 +37,4 @@ test-unit:
 	go test -mod=readonly -race -coverprofile=coverage.txt -covermode=atomic -v ./...
 
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: build build-plasmad build-plasmacli install go.sum
+.PHONY: all build install go.sum test test-unit
