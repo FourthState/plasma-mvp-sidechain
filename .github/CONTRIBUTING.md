@@ -7,17 +7,15 @@ Contribute to design discussions and conversation by joining our [Discord Server
 ## Prerequisites
 * [Golang](https://golang.org/doc/install)
 
-* [dep](https://github.com/golang/dep)
-
 ## How to get started:
 
 Add this repository into your $GOPATH/src/github.com/FourthState directory:
 
 `go get "github.com/FourthState/plasma-mvp-sidechain"`
 
-To get dependencies:
+Testing:
 
-`dep ensure -vendor-only`
+`make test`
 
 ### Forking
 
