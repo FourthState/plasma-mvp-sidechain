@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 ### Added
+- [\#141](https://github.com/FourthState/plasma-mvp-sidechain/pull/141) Added Makefile
 - [\#126](https://github.com/FourthState/plasma-mvp-sidechain/pull/126) Added installation script
 - **plasmacli:** [\#110](https://github.com/FourthState/plasma-mvp-sidechain/pull/110) Added eth subcommand for rootchain interaction
 - **plasmacli:** [\#110](https://github.com/FourthState/plasma-mvp-sidechain/pull/110) Added plasma.toml in .plasmacli/ for rootchain connection configuration
@@ -19,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Plasma configuration file
 - Added IncludeDepositMsg with handling to allow explicit deposit inclusion into sidechain
 ### Changed
+- [\#141](https://github.com/FourthState/plasma-mvp-sidechain/pull/141) Dependency management is now handled by go modules instead of Dep
 - [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated sign command to iterate over an account to finalize transactions
 - [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated spend to auto generate transaction for users based on the utxos they own
 - [\#120](https://github.com/FourthState/plasma-mvp-sidechain/pull/118) Fixed Length TxBytes (811), compatible with rootchain v1.0.0
@@ -30,6 +32,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Updated client
 - Updated documentation
 - Upgrade to v0.32.0 of Cosmos SDK, v0.28.0 of TM
+### Deprecated 
+- Dep is no longer be supported
 
 ## PreHistory
 
