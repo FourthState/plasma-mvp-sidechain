@@ -30,18 +30,13 @@ chmod +x install.sh
 ### Manual Install
 
 **Requirements**: 
-- [golang](https://golang.org/)
-- [dep](https://github.com/golang/dep)
+- [golang v1.11+](https://golang.org/)
 
 Pull the latest version of the develop branch.
-Run `dep ensure -vendor-only`
+
+`make install`
 
 ***Plasma Node:***
-
-```
-cd server/plasmad/
-go install
-```
 
 Run `plasmad init` to start an instance of a plasma node.
 Use the `--home <dirpath>` to specify a location where you want your plasma node to exist.
@@ -50,11 +45,6 @@ Navigate to `<dirpath>/config/` (default is `$HOME/.plasmad/config`), set config
 Run `plasmad start` to begin running the plasma node. 
 
 ***Plasma Client:***
-
-```
-cd client/plasmacli/ 
-go install
-```
 
 Navigate to `$HOME/.plasmacli`, set ethereum client configuration parameters in plasma.toml.
 Use `plasmacli` to run any of the commands for this light client
