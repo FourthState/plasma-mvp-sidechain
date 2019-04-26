@@ -1,5 +1,7 @@
 export GO111MODULE=on
 
+all: install test
+
 ########################################
 ### Install & Build
 
