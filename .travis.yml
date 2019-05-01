@@ -2,6 +2,7 @@ language: go
 
 dist: xenial
 sudo: true
+skip_cleanup: true
 
 go:
   - 1.12.x
