@@ -39,14 +39,14 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), buyNameHandler(cdc, cliCtx)).Methods("POST")
 	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), setNameHandler(cdc, cliCtx)).Methods("PUT")
 	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), setNameHandler(cdc, cliCtx)).Methods("PUT")
-	r.HandleFunc(fmt.Sprint("/deposit/include"), postDepositHandler(cdc, cliCtx)).Methods("POST")
-	r.HandleFunc(fmt.Sprintf("/balance/{%s}", ownerAddress), queryBalanceHandler(cdc, cliCtx)).Methods("GET")
-	r.HandleFunc(fmt.Sprint("/utxo"), queryUTXOHandler(cdc, cliCtx)).Methods("GET")
-	r.HandleFunc(fmt.Sprint("/proof"), queryProofHandler(cdc, cliCtx)).Methods("GET")
-	r.HandleFunc(fmt.Sprint("/health"), healthHandler(cdc, cliCtx)).Methods("GET")
-	r.HandleFunc(fmt.Sprint("/spend"), postSpendHandler(cdc, cliCtx)).Methods("POST")
-	r.HandleFunc(fmt.Sprint("/tx/rlp"), postTxRLPHandler(cdc, cliCtx)).Methods("POST")
-	r.HandleFunc(fmt.Sprint("/tx/hash"), postTxHashHandler(cdc, cliCtx)).Methods("POST")
+	r.HandleFunc(fmt.Sprint("/deposit/include"), postDepositHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprintf("/balance/{%s}", ownerAddress), queryBalanceHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/utxo"), queryUTXOHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/proof"), queryProofHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/health"), healthHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/spend"), postSpendHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/tx/rlp"), postTxRLPHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/tx/hash"), postTxHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -341,7 +341,7 @@ func postTxRLPHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc
 
 		}
 
-		fmt.Println("Checked that tx encoded properly")
+		//fmt.Println("Checked that tx encoded properl")
 		txRLPHex := ethcmn.ToHex(txRLP)
 
 		rest.PostProcessResponse(w, cdc, txRLPHex, ctx.Indent)

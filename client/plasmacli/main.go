@@ -11,6 +11,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/lcd"
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/gorilla/handlers"
+	//"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -59,6 +61,11 @@ func MkCodec() *codec.Codec {
 
 func registerRoutes(rs *lcd.RestServer) {
 	plasmarest.RegisterRoutes(rs.CliCtx, rs.Mux, rs.Cdc)
+	corsMiddleware := handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}),
+		handlers.AllowedOrigins([]string{"*"}))
+	//optionsMiddleware := mux.CORSMethodMiddleware(rs.Mux)
+	rs.Mux.Use(corsMiddleware)
 }
 
 func init() {
