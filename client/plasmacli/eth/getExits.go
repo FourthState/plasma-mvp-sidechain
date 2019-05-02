@@ -140,9 +140,13 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 		State        uint8
 	}
 
+	var position plasma.Position
+
 	if deposits {
+		position(big.NewInt(0), big.NewInt(0), big.NewInt(0), key)
 		exit, err = rc.contract.DepositExits(nil, key)
 	} else {
+		position := plasma.NewPosition(new(big.Int).Div(key, blockIndexFactor), new(big.Int).Div(new(big.Int).Mod(key, blockIndexFactor), 10), new(big.Int).Mod(key, 2), big.NewInt(0))
 		exit, err = rc.contract.TxExits(nil, key)
 	}
 
@@ -153,7 +157,6 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 	if !utils.IsZeroAddress(addr) && exit.Owner != addr {
 		return nil
 	}
-
 	state := parseState(exit.State)
 	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\n\n",
 		exit.Owner, exit.Amount, state, exit.CommittedFee, time.Unix(exit.CreatedAt.Int64(), 0))
