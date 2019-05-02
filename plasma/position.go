@@ -194,3 +194,12 @@ func FromPositionString(posStr string) (Position, error) {
 	pos := NewPosition(blkNum, txIndex, oIndex, depositNonce)
 	return pos, pos.ValidateBasic()
 }
+
+// Return the position of a utxo given the exit key
+func FromExitKey(key *big.Int, deposit bool) Position {
+	if deposit {
+		return NewPosition(big.NewInt(0), 0, 0, big.NewInt(0))
+	} else {
+		return NewPosition(new(big.Int).Div(key, big.NewInt(blockIndexFactor)), uint16(key.Int64()%blockIndexFactor/txIndexFactor), uint8(key.Int64()%2), big.NewInt(0))
+	}
+}

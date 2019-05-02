@@ -140,13 +140,11 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 		State        uint8
 	}
 
-	var position plasma.Position
+	position := plasma.FromExitKey(key, deposits)
 
 	if deposits {
-		position(big.NewInt(0), big.NewInt(0), big.NewInt(0), key)
 		exit, err = rc.contract.DepositExits(nil, key)
 	} else {
-		position := plasma.NewPosition(new(big.Int).Div(key, blockIndexFactor), new(big.Int).Div(new(big.Int).Mod(key, blockIndexFactor), 10), new(big.Int).Mod(key, 2), big.NewInt(0))
 		exit, err = rc.contract.TxExits(nil, key)
 	}
 
