@@ -42,7 +42,6 @@ contract PlasmaMVP {
     address public operator;
 
     uint256 public lastCommittedBlock;
-    uint256 public deployedBlock;
     uint256 public depositNonce;
     mapping(uint256 => plasmaBlock) public plasmaChain;
     mapping(uint256 => depositStruct) public deposits;
@@ -123,7 +122,6 @@ contract PlasmaMVP {
         lastCommittedBlock = 0;
         depositNonce = 1;
         minExitBond = 200000;
-        deployedBlock = block.number;
     }
 
     // @param blocks       32 byte merkle headers appended in ascending order
