@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/log"
+	rpc "github.com/tendermint/tendermint/rpc/core"
 	"math/big"
 	"sync"
 	"time"
@@ -187,6 +188,15 @@ func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 		e   exit
 		err error
 	)
+
+	stat, err := rpc.Status()
+	if err != nil {
+		fmt.Println(err.Error())
+		return false
+	}
+	if !stat.SyncInfo.CatchingUp {
+		return false
+	}
 
 	priority := position.Priority()
 	if position.IsDeposit() {
