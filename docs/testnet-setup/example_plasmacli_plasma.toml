@@ -1,0 +1,12 @@
+# This is a TOML config file.
+# For more information, see https://github.com/toml-lang/toml
+
+# Ethereum plasma contract address
+ethereum_plasma_contract_address = "0x9c36F39E87f3EA5283e186b385232044dC2f8c30"
+
+# Node URL for eth client
+ethereum_nodeurl = "http://localhost:8545"
+
+# Number of Ethereum blocks until a transaction is considered final
+ethereum_finality = "1"
+

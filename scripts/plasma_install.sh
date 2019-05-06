@@ -19,20 +19,13 @@ echo "export PATH=\$PATH:\$GOPATH/bin" >> ~/.profile
 
 source ~/.profile
 
-# Install dep
-curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-
 # Install plasmad and plasmacli
 go get github.com/FourthState/plasma-mvp-sidechain
 cd ~/go/src/github.com/FourthState/plasma-mvp-sidechain/
 git fetch --all
 git checkout develop
-dep ensure
-cd server/plasmad/
-go install
+make install
 plasmad unsafe-reset-all
-cd ../../client/plasmacli/
-go install
 
 # Install npm, Truffle
 apt-get install nodejs
@@ -60,8 +53,14 @@ WantedBy=multi-user.target" > geth.service
 
 sudo mv geth.service /etc/systemd/system/
 sudo systemctl enable geth.service
+sudo service geth start
 
 echo ""
-echo "Run 'sudo service geth start' to begin syncing to rinkeby network"
-echo "Set configuration parameters in ~./plasmacli/plasma.toml, ~/.plasmad/config/"
+echo "Geth has begun syncing to rinkeby network"
+echo "Run 'sudo service geth status' to check its status"
+echo "Run 'sudo service geth stop' to stop the geth full node"
+echo "Set configuration parameters in ~./plasmacli/plasma.toml and ~/.plasmad/config/"
+echo "Copy your genesis file to ~/.plasmad/config/genesis.json or modify the existing one"
+echo "Add the operators node to 'persisten peers' in ~/.plasmad/config/config.toml"
+echo "Add the plasma contract address to plasma.toml in ~/.plasmacli and ~/.plasmad/config"
 echo ""
