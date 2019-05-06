@@ -88,8 +88,8 @@ func TestDepositFinalityBound(t *testing.T) {
 	client, _ := InitEthConn(clientAddr, logger)
 
 	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
-	// finality bound of 1 ethereum block
-	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, commitmentRate, logger, true, privKey)
+	// finality bound of 2 ethereum blocks
+	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 2, commitmentRate, logger, true, privKey)
 
 	// mine a block so that the headers channel is filled with a block
 	err := client.rpc.Call(nil, "evm_mine")
@@ -105,19 +105,22 @@ func TestDepositFinalityBound(t *testing.T) {
 	_, err = plasma.operatorSession.Deposit(operatorAddress)
 	require.NoError(t, err, "error sending a deposit tx")
 
-	_, threshold, ok := plasma.GetDeposit(nonce)
-	require.False(t, ok, "retrieved a deposit that was inside the finality bound")
-	require.Equal(t, big.NewInt(1), threshold, "Finality threshold calculated incorrectly. Should still need to wait one more block")
+	_, threshold, ok := plasma.GetDeposit(big.NewInt(1), nonce)
+	require.False(t, ok, "retrieved a deposit that occurred after pegged block")
+	require.Equal(t, big.NewInt(2), threshold, "Finality threshold calculated incorrectly. Should still need to wait two more blocks")
 
-	// mine another block so that the deposit falls outside the finality bound
-	err = client.rpc.Call(nil, "evm_mine")
-	require.NoError(t, err, "error mining a block")
-	time.Sleep(1 * time.Second)
+	/* Mine 3 blocks for finality bound */
+	for i := 0; i < 3; i++ {
+		// mine another block so that the deposit falls outside the finality bound
+		err = client.rpc.Call(nil, "evm_mine")
+		require.NoError(t, err, "error mining a block")
+		time.Sleep(1 * time.Second)
+	}
 
-	deposit, threshold, ok := plasma.GetDeposit(nonce)
+	deposit, threshold, ok := plasma.GetDeposit(big.NewInt(1), nonce)
 	require.True(t, ok, "could not retrieve a deposit that was deemed final")
 
 	require.Equal(t, uint64(10), deposit.Amount.Uint64(), "deposit amount mismatch")
 	require.True(t, bytes.Equal(operatorAddress[:], deposit.Owner[:]), "deposit owner mismatch")
-	require.True(t, threshold.Sign() == 0, "Finality threshold not calculated correctly. Deposit should be final with threshold = 0")
+	require.True(t, threshold.Sign() <= 0, "Finality threshold not calculated correctly. Deposit should be final with threshold = 0")
 }

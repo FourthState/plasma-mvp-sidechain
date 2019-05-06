@@ -16,8 +16,8 @@ import (
 // the reason for an interface is to allow the connection object
 // to be cooked when testing the ante handler
 type plasmaConn interface {
-	GetDeposit(*big.Int) (plasma.Deposit, *big.Int, bool)
-	HasTxBeenExited(plasma.Position) bool
+	GetDeposit(*big.Int, *big.Int) (plasma.Deposit, *big.Int, bool)
+	HasTxBeenExited(*big.Int, plasma.Position) bool
 }
 
 func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) sdk.AnteHandler {
@@ -109,7 +109,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	if inputUTXO.Spent {
 		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, already spent", input.Position).Result()
 	}
-	if client.HasTxBeenExited(input.Position) {
+	if client.HasTxBeenExited(big.NewInt(ctx.BlockHeight()), input.Position) {
 		return nil, ErrExitedInput(DefaultCodespace, "input, %v, utxo has exitted", input.Position).Result()
 	}
 
@@ -124,7 +124,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	// check if the parent utxo has exited
 	for _, key := range inputUTXO.InputKeys {
 		utxo, _ := utxoStore.GetUTXOWithKey(ctx, key)
-		if client.HasTxBeenExited(utxo.Position) {
+		if client.HasTxBeenExited(big.NewInt(ctx.BlockHeight()), utxo.Position) {
 			return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %v", utxo.Output.Owner, utxo.Position)).Result()
 		}
 	}
@@ -159,14 +159,14 @@ func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, msg m
 	if utxoStore.HasUTXO(ctx, msg.Owner, depositPosition) {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
 	}
-	_, threshold, ok := client.GetDeposit(msg.DepositNonce)
+	_, threshold, ok := client.GetDeposit(big.NewInt(ctx.BlockHeight()), msg.DepositNonce)
 	if !ok && threshold == nil {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist.", msg.DepositNonce.String()).Result(), true
 	}
 	if !ok {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), threshold.Int64()).Result(), true
 	}
-	exitted := client.HasTxBeenExited(depositPosition)
+	exitted := client.HasTxBeenExited(big.NewInt(ctx.BlockHeight()), depositPosition)
 	if exitted {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
 	}

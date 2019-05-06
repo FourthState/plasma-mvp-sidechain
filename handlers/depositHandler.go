@@ -19,7 +19,7 @@ func NewDepositHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex, clien
 		// Increment txIndex so that it doesn't collide with SpendMsg
 		nextTxIndex()
 
-		deposit, _, _ := client.GetDeposit(depositMsg.DepositNonce)
+		deposit, _, _ := client.GetDeposit(big.NewInt(ctx.BlockHeight()), depositMsg.DepositNonce)
 
 		utxo := store.UTXO{
 			Output:   plasma.NewOutput(deposit.Owner, deposit.Amount),

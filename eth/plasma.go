@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/tendermint/tendermint/libs/log"
-	rpc "github.com/tendermint/tendermint/rpc/core"
 	"math/big"
 	"sync"
 	"time"
@@ -135,7 +134,7 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.Pla
 }
 
 // GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
+func (plasma *Plasma) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
 	deposit, err := plasma.contract.Deposits(nil, nonce)
 	if err != nil {
 		// TODO: log the error
@@ -146,19 +145,15 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, *big.Int,
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
-	// check the finality bound
-	ethBlockNum, err := plasma.client.LatestBlockNum()
+	// check the finality bound based off pegged ETH block
+	ethBlockNum, err := plasma.ethBlockPeg(tmBlock)
 	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("failed to retrieve the latest ethereum block number { %s }", err))
+		plasma.logger.Error(fmt.Sprintf("Could not get associated ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
 		return plasmaTypes.Deposit{}, nil, false
 	}
-
-	if ethBlockNum.Sign() < 0 {
-		plasma.logger.Error(fmt.Sprintf("failed to retrieve information about deposit %s", nonce))
-		return plasmaTypes.Deposit{}, nil, false
-	}
-
-	// how many blocks have occurred since deposit
+	
+	// how many blocks have occurred since deposit. 
+	// Note: Since pegged ETH block num could be before deposit's EthBlockNum, interval may be negative
 	interval := new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum)
 	// how many more blocks need to get added for deposit to be considered final
 	// Note: If deposit is finalized, threshold can be 0 or negative
@@ -175,11 +170,12 @@ func (plasma *Plasma) GetDeposit(nonce *big.Int) (plasmaTypes.Deposit, *big.Int,
 }
 
 // HasTXBeenExited indicates if the position has ever been exited
-func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
+func (plasma *Plasma) HasTxBeenExited(tmBlock *big.Int, position plasmaTypes.Position) bool {
 	type exit struct {
 		Amount       *big.Int
 		CommittedFee *big.Int
 		CreatedAt    *big.Int
+		EthBlockNum  *big.Int
 		Owner        common.Address
 		State        uint8
 	}
@@ -188,15 +184,6 @@ func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 		e   exit
 		err error
 	)
-
-	stat, err := rpc.Status()
-	if err != nil {
-		fmt.Println(err.Error())
-		return false
-	}
-	if !stat.SyncInfo.CatchingUp {
-		return false
-	}
 
 	priority := position.Priority()
 	if position.IsDeposit() {
@@ -211,5 +198,41 @@ func (plasma *Plasma) HasTxBeenExited(position plasmaTypes.Position) bool {
 		return true
 	}
 
-	return e.State == 1 || e.State == 3
+	ethBlockNum, err := plasma.ethBlockPeg(tmBlock)
+	if err != nil {
+		plasma.logger.Error(fmt.Sprintf("Could not get associated ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
+	}
+
+	// Return true if exit is pending/finalized AND exit happened before the pegged ETH block
+	return (e.State == 1 || e.State == 3) && e.EthBlockNum.Cmp(ethBlockNum) == -1
+}
+
+// Return the Ethereum Block that sidechain should use to synchronize current block tx's with rootchain state
+func (plasma *Plasma) ethBlockPeg(tmBlock *big.Int) (*big.Int, error) {
+	lastCommittedBlock, err := plasma.contract.LastCommittedBlock(nil)
+	if err != nil {
+		return nil, err
+	}
+	// If no blocks submitted, use latestBlock as peg
+	if lastCommittedBlock.Sign() == 0 {
+		latestBlock, err := plasma.client.LatestBlockNum()
+		if err != nil {
+			return nil, err
+		}
+		return latestBlock, nil
+	}
+	var blockIndex *big.Int 
+	prevBlock := new(big.Int).Sub(tmBlock, big.NewInt(1))
+	// For syncing nodes, peg to EthBlock at TMBLock-1 submission
+	// For live nodes, peg to LastCommittedBlock
+	if (lastCommittedBlock.Cmp(prevBlock) == 1) {
+		blockIndex = prevBlock
+	} else {
+		blockIndex = lastCommittedBlock
+	}
+	submittedBlock, err := plasma.contract.PlasmaChain(nil, blockIndex)
+	if err != nil {
+		return nil, err
+	}
+	return submittedBlock.EthBlockNum, nil
 }
