@@ -151,8 +151,8 @@ func (plasma *Plasma) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasmaTypes.
 		plasma.logger.Error(fmt.Sprintf("Could not get associated ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
 		return plasmaTypes.Deposit{}, nil, false
 	}
-	
-	// how many blocks have occurred since deposit. 
+
+	// how many blocks have occurred since deposit.
 	// Note: Since pegged ETH block num could be before deposit's EthBlockNum, interval may be negative
 	interval := new(big.Int).Sub(ethBlockNum, deposit.EthBlockNum)
 	// how many more blocks need to get added for deposit to be considered final
@@ -221,11 +221,11 @@ func (plasma *Plasma) ethBlockPeg(tmBlock *big.Int) (*big.Int, error) {
 		}
 		return latestBlock, nil
 	}
-	var blockIndex *big.Int 
+	var blockIndex *big.Int
 	prevBlock := new(big.Int).Sub(tmBlock, big.NewInt(1))
 	// For syncing nodes, peg to EthBlock at TMBLock-1 submission
 	// For live nodes, peg to LastCommittedBlock
-	if (lastCommittedBlock.Cmp(prevBlock) == 1) {
+	if lastCommittedBlock.Cmp(prevBlock) == 1 {
 		blockIndex = prevBlock
 	} else {
 		blockIndex = lastCommittedBlock
