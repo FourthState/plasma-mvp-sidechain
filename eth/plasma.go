@@ -148,7 +148,7 @@ func (plasma *Plasma) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasmaTypes.
 	// check the finality bound based off pegged ETH block
 	ethBlockNum, err := plasma.ethBlockPeg(tmBlock)
 	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("Could not get associated ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
+		plasma.logger.Error(fmt.Sprintf("Could not get pegged ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
@@ -201,6 +201,7 @@ func (plasma *Plasma) HasTxBeenExited(tmBlock *big.Int, position plasmaTypes.Pos
 	ethBlockNum, err := plasma.ethBlockPeg(tmBlock)
 	if err != nil {
 		plasma.logger.Error(fmt.Sprintf("Could not get associated ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
+		return true
 	}
 
 	// Return true if exit is pending/finalized AND exit happened before the pegged ETH block
