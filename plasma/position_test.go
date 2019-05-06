@@ -74,3 +74,13 @@ func TestPositionValidation(t *testing.T) {
 		require.Errorf(t, pos.ValidateBasic(), "invalid position: %s", posStr)
 	}
 }
+
+func TestPositionFromKey(t *testing.T) {
+	utxoKey := big.NewInt(133*blockIndexFactor + 14*txIndexFactor)
+	utxo := FromExitKey(utxoKey, false)
+	require.Equal(t, utxo, NewPosition(big.NewInt(133), 14, 0, big.NewInt(0)), "error retrieving correct position from exit key")
+
+	depositKey := big.NewInt(10)
+	deposit := FromExitKey(depositKey, true)
+	require.Equal(t, deposit, NewPosition(big.NewInt(0), 0, 0, depositKey), "error retrieving correct position from deposit exit key")
+}
