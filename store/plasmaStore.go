@@ -89,3 +89,15 @@ func (store PlasmaStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
 
 	return plasmaBlockNum
 }
+
+func (store PlasmaStore) CurrentPlasmaBlockNum(ctx sdk.Context) *big.Int {
+	var plasmaBlockNum *big.Int
+	data := store.Get(ctx, []byte(plasmaBlockNumKey))
+	if data == nil {
+		plasmaBlockNum = big.NewInt(1)
+	} else {
+		plasmaBlockNum = new(big.Int).SetBytes(data)
+	}
+
+	return plasmaBlockNum
+}

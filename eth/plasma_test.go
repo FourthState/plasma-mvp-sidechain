@@ -2,8 +2,9 @@ package eth
 
 import (
 	"bytes"
-	//plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/plasma"
-	//"github.com/FourthState/plasma-mvp-sidechain/utils"
+	"crypto/sha256"
+	"fmt"
+	plasmaTypes "github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -25,7 +26,7 @@ const (
 )
 
 var (
-	commitmentRate, _ = time.ParseDuration("1m")
+	commitmentRate, _ = time.ParseDuration("1s")
 )
 
 func TestConnection(t *testing.T) {
@@ -54,7 +55,7 @@ func TestPlasmaInit(t *testing.T) {
 	require.NoError(t, err, "error binding to contract")
 }
 
-/* Test needs to be changed to simulate the sdk context and plasma store.
+// Test needs to be changed to simulate the sdk context and plasma store.
 func TestSubmitBlock(t *testing.T) {
 	logger := log.NewNopLogger()
 	client, _ := InitEthConn(clientAddr, logger)
@@ -62,33 +63,51 @@ func TestSubmitBlock(t *testing.T) {
 	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
 	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, commitmentRate, logger, true, privKey)
 
-	var header [32]byte
-	copy(header[:], crypto.Keccak256([]byte("blah")))
-	block := plasmaTypes.Block{
-		Header:    header,
-		TxnCount:  1,
-		FeeAmount: utils.Big0,
+	// Setup context and plasma store
+	ctx, plasmaStore := setup()
+
+	time.Sleep(2 * time.Second)
+
+	// Submit 2 blocks
+	var expectedBlocks []plasmaTypes.Block
+	for i := 1; i < 3; i++ {
+		block := plasmaTypes.Block{
+			Header:    sha256.Sum256([]byte(fmt.Sprintf("Block: %d", i))),
+			TxnCount:  uint16(i + 1),
+			FeeAmount: big.NewInt(int64(i + 2)),
+		}
+		expectedBlocks = append(expectedBlocks, block)
+		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
 	}
-	err := plasma.SubmitBlock(block)
+
+	err := plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+
 	require.NoError(t, err, "block submission error")
 
 	blockNum, err := plasma.contract.LastCommittedBlock(nil)
 	require.NoError(t, err, "failed to query for the last committed block")
+	require.Equal(t, big.NewInt(2), blockNum, "Did not submit both blocks correctly")
 
-	result, err := plasma.contract.PlasmaChain(nil, blockNum)
-	require.NoError(t, err, "failed contract plasma chain query")
+	for j := 0; j < 2; j++ {
+		result, err := plasma.contract.PlasmaChain(nil, big.NewInt(int64(j+1)))
+		require.NoError(t, err, "failed contract plasma chain query")
 
-	require.Truef(t, bytes.Compare(result.Header[:], header[:]) == 0,
-		"Mismatch in block headers. Got: %x. Expected: %x", result, header)
+		require.Truef(t, bytes.Compare(expectedBlocks[j].Header[:], result.Header[:]) == 0,
+			"Mismatch in block headers for submitted block %d. Got: %x. Expected: %x", j, result.Header[:], expectedBlocks[j].Header[:])
+
+		require.Equal(t, big.NewInt(int64(expectedBlocks[j].TxnCount)), result.NumTxns, fmt.Sprintf("Wrong number of tx's for submitted block: %d", j))
+
+		require.Equal(t, expectedBlocks[j].FeeAmount, result.FeeAmount, fmt.Sprintf("Wrong Fee amount for submitted block: %d", j))
+
+	}
 }
-*/
 
 func TestDepositFinalityBound(t *testing.T) {
 	logger := log.NewNopLogger()
 	client, _ := InitEthConn(clientAddr, logger)
 
 	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
-	// finality bound of 1 ethereum block
+	// finality bound of 2 ethereum blocks
 	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, commitmentRate, logger, true, privKey)
 
 	// mine a block so that the headers channel is filled with a block
@@ -105,16 +124,57 @@ func TestDepositFinalityBound(t *testing.T) {
 	_, err = plasma.operatorSession.Deposit(operatorAddress)
 	require.NoError(t, err, "error sending a deposit tx")
 
-	_, threshold, ok := plasma.GetDeposit(nonce)
-	require.False(t, ok, "retrieved a deposit that was inside the finality bound")
-	require.Equal(t, big.NewInt(1), threshold, "Finality threshold calculated incorrectly. Should still need to wait one more block")
+	// Setup context and plasma store
+	ctx, plasmaStore := setup()
 
-	// mine another block so that the deposit falls outside the finality bound
-	err = client.rpc.Call(nil, "evm_mine")
-	require.NoError(t, err, "error mining a block")
-	time.Sleep(1 * time.Second)
+	// Reset operatorSession
+	plasma.operatorSession.TransactOpts.Value = nil
 
-	deposit, threshold, ok := plasma.GetDeposit(nonce)
+	var block plasmaTypes.Block
+	// Must restore old blocks since we're using fresh plasmaStore but using old contract
+	// that already has submitted blocks. Store blocks 1-3 to get plasmaConn to submit new block 3
+	for i := 1; i < 4; i++ {
+		block = plasmaTypes.Block{
+			Header:    sha256.Sum256([]byte(fmt.Sprintf("Block: %d", i))),
+			TxnCount:  uint16(i + 1),
+			FeeAmount: big.NewInt(int64(i + 2)),
+		}
+		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
+	}
+
+	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+
+	require.NoError(t, err, "block submission error")
+
+	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+	require.NoError(t, err, "block submission error")
+
+	// Try to retrieve deposit from before peg
+	_, threshold, ok := plasma.GetDeposit(big.NewInt(2), nonce)
+	require.False(t, ok, "retrieved a deposit that occurred after pegged block")
+	require.Equal(t, big.NewInt(3), threshold, "Finality threshold calculated incorrectly. Should still need to wait two more blocks")
+
+	/* Mine 3 blocks for finality bound */
+	for i := 0; i < 3; i++ {
+		// mine another block so that the deposit falls outside the finality bound
+		err = client.rpc.Call(nil, "evm_mine")
+		require.NoError(t, err, "error mining a block")
+		time.Sleep(1 * time.Second)
+	}
+
+	/* Submit block to advance peg */
+	block = plasmaTypes.Block{
+		Header:    sha256.Sum256([]byte("Block: 4")),
+		TxnCount:  uint16(2),
+		FeeAmount: big.NewInt(3),
+	}
+	plasmaStore.StoreBlock(ctx, big.NewInt(4), block)
+
+	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+	require.NoError(t, err, "block submission error")
+
+	// Try to retrieve deposit once peg has advanced AND finality bound reached.
+	deposit, threshold, ok := plasma.GetDeposit(big.NewInt(4), nonce)
 	require.True(t, ok, "could not retrieve a deposit that was deemed final")
 
 	require.Equal(t, uint64(10), deposit.Amount.Uint64(), "deposit amount mismatch")

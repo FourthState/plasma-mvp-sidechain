@@ -136,6 +136,7 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 		Amount       *big.Int
 		CommittedFee *big.Int
 		CreatedAt    *big.Int
+		EthBlockNum  *big.Int
 		Owner        ethcmn.Address
 		State        uint8
 	}
@@ -156,8 +157,8 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 		return nil
 	}
 	state := parseState(exit.State)
-	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\nPosition %s\n\n",
-		exit.Owner, exit.Amount, state, exit.CommittedFee, time.Unix(exit.CreatedAt.Int64(), 0), position)
+	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\nEthBlockNum: %v\nPosition %s\n\n",
+		exit.Owner, exit.Amount, state, exit.CommittedFee, time.Unix(exit.CreatedAt.Int64(), 0), exit.EthBlockNum, position)
 	if state == "Pending" {
 		timeLeft := time.Until(time.Unix(exit.CreatedAt.Int64(), 0).Add(time.Hour * oneWeek))
 		if timeLeft > 0 {
