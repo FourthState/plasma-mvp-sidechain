@@ -55,7 +55,7 @@ func TestPlasmaInit(t *testing.T) {
 	require.NoError(t, err, "error binding to contract")
 }
 
-// Test needs to be changed to simulate the sdk context and plasma store. 
+// Test needs to be changed to simulate the sdk context and plasma store.
 func TestSubmitBlock(t *testing.T) {
 	logger := log.NewNopLogger()
 	client, _ := InitEthConn(clientAddr, logger)
@@ -72,9 +72,9 @@ func TestSubmitBlock(t *testing.T) {
 	var expectedBlocks []plasmaTypes.Block
 	for i := 1; i < 3; i++ {
 		block := plasmaTypes.Block{
-			Header: sha256.Sum256([]byte(fmt.Sprintf("Block: %d", i))),
-			TxnCount: uint16(i+1),
-			FeeAmount: big.NewInt(int64(i+2)),
+			Header:    sha256.Sum256([]byte(fmt.Sprintf("Block: %d", i))),
+			TxnCount:  uint16(i + 1),
+			FeeAmount: big.NewInt(int64(i + 2)),
 		}
 		expectedBlocks = append(expectedBlocks, block)
 		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
@@ -89,17 +89,17 @@ func TestSubmitBlock(t *testing.T) {
 	require.Equal(t, big.NewInt(2), blockNum, "Did not submit both blocks correctly")
 
 	for j := 0; j < 2; j++ {
-		result, err := plasma.contract.PlasmaChain(nil, big.NewInt(int64(j + 1)))
+		result, err := plasma.contract.PlasmaChain(nil, big.NewInt(int64(j+1)))
 		require.NoError(t, err, "failed contract plasma chain query")
 
 		require.Truef(t, bytes.Compare(expectedBlocks[j].Header[:], result.Header[:]) == 0,
-		"Mismatch in block headers for submitted block %d. Got: %x. Expected: %x", j, result.Header[:], expectedBlocks[j].Header[:])
+			"Mismatch in block headers for submitted block %d. Got: %x. Expected: %x", j, result.Header[:], expectedBlocks[j].Header[:])
 
 		require.Equal(t, big.NewInt(int64(expectedBlocks[j].TxnCount)), result.NumTxns, fmt.Sprintf("Wrong number of tx's for submitted block: %d", j))
 
 		require.Equal(t, expectedBlocks[j].FeeAmount, result.FeeAmount, fmt.Sprintf("Wrong Fee amount for submitted block: %d", j))
 
-	}	
+	}
 }
 
 func TestDepositFinalityBound(t *testing.T) {
@@ -135,9 +135,9 @@ func TestDepositFinalityBound(t *testing.T) {
 	// that already has submitted blocks. Store blocks 1-3 to get plasmaConn to submit new block 3
 	for i := 1; i < 4; i++ {
 		block = plasmaTypes.Block{
-			Header: sha256.Sum256([]byte(fmt.Sprintf("Block: %d", i))),
-			TxnCount: uint16(i+1),
-			FeeAmount: big.NewInt(int64(i+2)),
+			Header:    sha256.Sum256([]byte(fmt.Sprintf("Block: %d", i))),
+			TxnCount:  uint16(i + 1),
+			FeeAmount: big.NewInt(int64(i + 2)),
 		}
 		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
 	}
@@ -145,7 +145,6 @@ func TestDepositFinalityBound(t *testing.T) {
 	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
 
 	require.NoError(t, err, "block submission error")
-
 
 	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
 	require.NoError(t, err, "block submission error")
@@ -165,8 +164,8 @@ func TestDepositFinalityBound(t *testing.T) {
 
 	/* Submit block to advance peg */
 	block = plasmaTypes.Block{
-		Header: sha256.Sum256([]byte("Block: 4")),
-		TxnCount: uint16(2),
+		Header:    sha256.Sum256([]byte("Block: 4")),
+		TxnCount:  uint16(2),
 		FeeAmount: big.NewInt(3),
 	}
 	plasmaStore.StoreBlock(ctx, big.NewInt(4), block)
