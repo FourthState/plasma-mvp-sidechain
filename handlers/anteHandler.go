@@ -166,8 +166,8 @@ func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, plasm
 	if !ok {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), threshold.Int64()).Result(), true
 	}
-	exitted := client.HasTxBeenExited(plasmaStore.CurrentPlasmaBlockNum(ctx), depositPosition)
-	if exitted {
+	exited := client.HasTxBeenExited(plasmaStore.CurrentPlasmaBlockNum(ctx), depositPosition)
+	if exited {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
 	}
 	return ctx, sdk.Result{}, false
