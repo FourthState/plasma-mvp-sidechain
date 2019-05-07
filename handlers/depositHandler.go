@@ -8,7 +8,7 @@ import (
 	"math/big"
 )
 
-func NewDepositHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
+func NewDepositHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		depositMsg, ok := msg.(msgs.IncludeDepositMsg)
 		if !ok {
@@ -19,7 +19,7 @@ func NewDepositHandler(utxoStore store.UTXOStore, nextTxIndex NextTxIndex, clien
 		// Increment txIndex so that it doesn't collide with SpendMsg
 		nextTxIndex()
 
-		deposit, _, _ := client.GetDeposit(big.NewInt(ctx.BlockHeight()), depositMsg.DepositNonce)
+		deposit, _, _ := client.GetDeposit(plasmaStore.CurrentPlasmaBlockNum(ctx), depositMsg.DepositNonce)
 
 		utxo := store.UTXO{
 			Output:   plasma.NewOutput(deposit.Owner, deposit.Amount),

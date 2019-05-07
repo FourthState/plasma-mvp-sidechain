@@ -134,7 +134,7 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.Pla
 }
 
 // GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
+func (plasma *Plasma) GetDeposit(plasmaBlock *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
 	deposit, err := plasma.contract.Deposits(nil, nonce)
 	if err != nil {
 		// TODO: log the error
@@ -146,9 +146,9 @@ func (plasma *Plasma) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasmaTypes.
 	}
 
 	// check the finality bound based off pegged ETH block
-	ethBlockNum, err := plasma.ethBlockPeg(tmBlock)
+	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlock)
 	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("Could not get pegged ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
+		plasma.logger.Error(fmt.Sprintf("could not get pegged ETH Block for sidechain block %d: %s", plasmaBlock.Int64(), err.Error()))
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
@@ -170,7 +170,7 @@ func (plasma *Plasma) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasmaTypes.
 }
 
 // HasTXBeenExited indicates if the position has ever been exited
-func (plasma *Plasma) HasTxBeenExited(tmBlock *big.Int, position plasmaTypes.Position) bool {
+func (plasma *Plasma) HasTxBeenExited(plasmaBlock *big.Int, position plasmaTypes.Position) bool {
 	type exit struct {
 		Amount       *big.Int
 		CommittedFee *big.Int
@@ -198,18 +198,18 @@ func (plasma *Plasma) HasTxBeenExited(tmBlock *big.Int, position plasmaTypes.Pos
 		return true
 	}
 
-	ethBlockNum, err := plasma.ethBlockPeg(tmBlock)
+	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlock)
 	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("Could not get associated ETH Block for sidechain block %d: %s", tmBlock.Int64(), err.Error()))
+		plasma.logger.Error(fmt.Sprintf("could not get associated ETH Block for plasma block %d: %s", plasmaBlock.Int64(), err.Error()))
 		return true
 	}
 
 	// Return true if exit is pending/finalized AND exit happened before the pegged ETH block
-	return (e.State == 1 || e.State == 3) && e.EthBlockNum.Cmp(ethBlockNum) == -1
+	return (e.State == 1 || e.State == 3) && e.EthBlockNum.Cmp(ethBlockNum) <= 0
 }
 
 // Return the Ethereum Block that sidechain should use to synchronize current block tx's with rootchain state
-func (plasma *Plasma) ethBlockPeg(tmBlock *big.Int) (*big.Int, error) {
+func (plasma *Plasma) ethBlockPeg(plasmaBlock *big.Int) (*big.Int, error) {
 	lastCommittedBlock, err := plasma.contract.LastCommittedBlock(nil)
 	if err != nil {
 		return nil, err
@@ -223,8 +223,8 @@ func (plasma *Plasma) ethBlockPeg(tmBlock *big.Int) (*big.Int, error) {
 		return latestBlock, nil
 	}
 	var blockIndex *big.Int
-	prevBlock := new(big.Int).Sub(tmBlock, big.NewInt(1))
-	// For syncing nodes, peg to EthBlock at TMBLock-1 submission
+	prevBlock := new(big.Int).Sub(plasmaBlock, big.NewInt(1))
+	// For syncing nodes, peg to EthBlock at plasmaBlock-1 submission
 	// For live nodes, peg to LastCommittedBlock
 	if lastCommittedBlock.Cmp(prevBlock) == 1 {
 		blockIndex = prevBlock
