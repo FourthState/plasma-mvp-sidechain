@@ -9,10 +9,8 @@ RUN apk add git make npm curl gcc libc-dev && \
     mkdir -p $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
 
 WORKDIR $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
-COPY Gopkg.toml Gopkg.lock ./
+COPY go.mod go.sum ./
 
-# install dep, vendor dependencies, and copy over the repository
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh && dep ensure -vendor-only
 COPY . .
 
 # install plasmad
