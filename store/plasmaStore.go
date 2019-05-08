@@ -10,7 +10,7 @@ import (
 )
 
 type PlasmaStore struct {
-	KVStore
+	kvStore
 }
 
 const (
@@ -22,7 +22,7 @@ const (
 
 func NewPlasmaStore(ctxKey sdk.StoreKey) PlasmaStore {
 	return PlasmaStore{
-		KVStore: NewKVStore(ctxKey),
+		kvStore: NewKVStore(ctxKey),
 	}
 }
 
