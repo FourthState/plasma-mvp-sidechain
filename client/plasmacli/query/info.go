@@ -65,6 +65,10 @@ var infoCmd = &cobra.Command{
 			fmt.Printf("End UTXO %d info\n\n", i)
 		}
 
+		if len(resp.Utxos) == 0 {
+			fmt.Println("no information available for this address")
+		}
+
 		return nil
 	},
 }
