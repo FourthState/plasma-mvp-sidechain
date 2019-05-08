@@ -8,6 +8,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/handlers"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/query"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -58,15 +59,17 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	baseApp.SetCommitMultiStoreTracer(traceStore)
 
 	utxoStoreKey := sdk.NewKVStoreKey("utxo")
+	utxoStore := store.NewUTXOStore(utxoStoreKey)
 	plasmaStoreKey := sdk.NewKVStoreKey("plasma")
+	plasmaStore := store.NewPlasmaStore(plasmaStoreKey)
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
 		cdc:       cdc,
 		txIndex:   0,
 		feeAmount: big.NewInt(0), // we do not use `utils.BigZero` because the feeAmount is going to be updated
 
-		utxoStore:   store.NewUTXOStore(utxoStoreKey),
-		plasmaStore: store.NewPlasmaStore(plasmaStoreKey),
+		utxoStore:   utxoStore,
+		plasmaStore: plasmaStore,
 	}
 
 	// set configs
@@ -107,6 +110,11 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	}
 	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, app.plasmaStore, nextTxIndex, feeUpdater))
 	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.utxoStore, app.plasmaStore, nextTxIndex, plasmaClient))
+
+	// custom queriers
+	app.QueryRouter().
+		AddRoute("utxo", query.NewUtxoQuerier(utxoStore)).
+		AddRoute("plasma", query.NewPlasmaQuerier(plasmaStore))
 
 	// Set the AnteHandler
 	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, plasmaClient))

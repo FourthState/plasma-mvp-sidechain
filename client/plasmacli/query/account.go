@@ -1,14 +1,14 @@
 package query
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
-	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/query"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
-	"math/big"
 )
 
 func init() {
@@ -28,25 +28,22 @@ var balanceCmd = &cobra.Command{
 			return err
 		}
 
-		res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
+		queryRoute := fmt.Sprintf("custom/utxo/balance/%s", addr.Hex())
+		data, err := ctx.Query(queryRoute, nil)
 		if err != nil {
 			return err
 		}
 
-		total := big.NewInt(0)
-		utxo := store.UTXO{}
-		for _, pair := range res {
-			if err := rlp.DecodeBytes(pair.Value, &utxo); err != nil {
-				return err
-			}
-
-			if !utxo.Spent {
-				fmt.Printf("Position: %s , Amount: %d\n", utxo.Position, utxo.Output.Amount.Uint64())
-				total = total.Add(total, utxo.Output.Amount)
-			}
+		var resp query.BalanceResp
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return err
+		} else if !bytes.Equal(resp.Address[:], addr[:]) {
+			return fmt.Errorf("Mismatch in Account and Response Address.\nAccount: 0x%x\n Response: 0x%x\n",
+				addr, resp.Address)
 		}
 
-		fmt.Printf("Total: %d\n", total.Uint64())
+		fmt.Printf("Address: %0x\n", resp.Address)
+		fmt.Printf("Total: %s\n", resp.Total)
 		return nil
 	},
 }

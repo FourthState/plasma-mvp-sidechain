@@ -118,12 +118,12 @@ func (u UTXO) SpenderPositions() []plasma.Position {
 /* Store */
 
 type UTXOStore struct {
-	KVStore
+	kvStore
 }
 
 func NewUTXOStore(ctxKey sdk.StoreKey) UTXOStore {
 	return UTXOStore{
-		KVStore: NewKVStore(ctxKey),
+		kvStore: NewKVStore(ctxKey),
 	}
 }
 
