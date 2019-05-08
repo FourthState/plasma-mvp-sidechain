@@ -1,12 +1,13 @@
 package query
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/query"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -25,19 +26,25 @@ var infoCmd = &cobra.Command{
 		if !common.IsHexAddress(addrStr) {
 			return fmt.Errorf("Invalid address provided. Please use hex format")
 		}
+		addr := common.HexToAddress(addrStr)
+		fmt.Printf("Querying information for 0x%x\n", addr)
 
 		// query for all utxos owned by this address
-		res, err := ctx.QuerySubspace(common.HexToAddress(addrStr).Bytes(), "utxo")
+		queryRoute := fmt.Sprintf("custom/utxo/info/%s", addr.Hex())
+		data, err := ctx.Query(queryRoute, nil)
 		if err != nil {
 			return err
 		}
 
-		utxo := store.UTXO{}
-		for i, pair := range res {
-			if err := rlp.DecodeBytes(pair.Value, &utxo); err != nil {
-				return err
-			}
+		var resp query.InfoResp
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return err
+		} else if !bytes.Equal(resp.Address[:], addr[:]) {
+			return fmt.Errorf("Mismatch in Account and Response Address.\nAccount: 0x%x\n Response: 0x%x\n",
+				addr, resp.Address)
+		}
 
+		for i, utxo := range resp.Utxos {
 			fmt.Printf("UTXO %d\n", i)
 			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent)
 
@@ -57,8 +64,6 @@ var infoCmd = &cobra.Command{
 
 			fmt.Printf("End UTXO %d info\n\n", i)
 		}
-
-		fmt.Println()
 
 		return nil
 	},
