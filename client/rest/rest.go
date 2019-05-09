@@ -36,9 +36,6 @@ const (
 )
 
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) {
-	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), buyNameHandler(cdc, cliCtx)).Methods("POST")
-	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), setNameHandler(cdc, cliCtx)).Methods("PUT")
-	// r.HandleFunc(fmt.Sprintf("/%s/names", storeName), setNameHandler(cdc, cliCtx)).Methods("PUT")
 	r.HandleFunc(fmt.Sprint("/deposit/include"), postDepositHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprintf("/balance/{%s}", ownerAddress), queryBalanceHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/utxo"), queryUTXOHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
@@ -47,6 +44,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/spend"), postSpendHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/tx/rlp"), postTxRLPHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/tx/hash"), postTxHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/tx/bytes"), postTxBytesHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -345,5 +343,30 @@ func postTxRLPHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc
 		txRLPHex := ethcmn.ToHex(txRLP)
 
 		rest.PostProcessResponse(w, cdc, txRLPHex, ctx.Indent)
+	}
+}
+
+func postTxBytesHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req string
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+
+		txBytes, err := hex.Decode(req)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request as HexString")
+		}
+
+		var txDecoded plasma.Transaction
+		err = rlp.DecodeBytes(txBytes, &txDecoded)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		rest.PostProcessResponse(w, cdc, txDecoded, ctx.Indent)
 	}
 }

@@ -88,6 +88,19 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
+			if config.RPC.CORSAllowedOrigins == nil {
+				config.RPC.CORSAllowedOrigins = make([]string, 0)
+			}
+			hasStar := false
+			for _, o := range config.RPC.CORSAllowedOrigins {
+				if o == "*" {
+					hasStar = true
+				}
+			}
+			if !hasStar {
+				config.RPC.CORSAllowedOrigins = append(config.RPC.CORSAllowedOrigins, "*")
+			}
+
 			// write tendermint and plasma config files to disk
 			tmConfig.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
 			pConfig.WritePlasmaConfigFile(filepath.Join(config.RootDir, "config", "plasma.toml"), pConfig.DefaultPlasmaConfig())
