@@ -9,24 +9,23 @@ import (
 	"math/big"
 )
 
-type PlasmaStore struct {
+type BlockStore struct {
 	kvStore
 }
 
 const (
-	confirmSigKey     = "confirmSignature"
 	blockKey          = "block"
 	plasmaBlockNumKey = "plasmaBlockNum"
 	plasmaToTmKey     = "plasmatotm"
 )
 
-func NewPlasmaStore(ctxKey sdk.StoreKey) PlasmaStore {
-	return PlasmaStore{
+func NewBlockStore(ctxKey sdk.StoreKey) BlockStore {
+	return BlockStore{
 		kvStore: NewKVStore(ctxKey),
 	}
 }
 
-func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma.Block, bool) {
+func (store BlockStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma.Block, bool) {
 	key := prefixKey(blockKey, blockHeight.Bytes())
 	data := store.Get(ctx, key)
 	if data == nil {
@@ -35,14 +34,14 @@ func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma
 
 	block := plasma.Block{}
 	if err := rlp.DecodeBytes(data, &block); err != nil {
-		panic(fmt.Sprintf("plasma store corrupted: %s", err))
+		panic(fmt.Sprintf("block store corrupted: %s", err))
 	}
 
 	return block, true
 }
 
 // StoreBlock will store the plasma block and return the plasma block number in which it was stored under
-func (store PlasmaStore) StoreBlock(ctx sdk.Context, tmBlockHeight *big.Int, block plasma.Block) *big.Int {
+func (store BlockStore) StoreBlock(ctx sdk.Context, tmBlockHeight *big.Int, block plasma.Block) *big.Int {
 	plasmaBlockNum := store.NextPlasmaBlockNum(ctx)
 
 	plasmaBlockKey := prefixKey(blockKey, plasmaBlockNum.Bytes())
@@ -63,19 +62,7 @@ func (store PlasmaStore) StoreBlock(ctx sdk.Context, tmBlockHeight *big.Int, blo
 	return plasmaBlockNum
 }
 
-func (store PlasmaStore) StoreConfirmSignatures(ctx sdk.Context, position plasma.Position, confirmSignatures [][65]byte) {
-	key := prefixKey(confirmSigKey, position.Bytes())
-
-	var sigs []byte
-	sigs = append(sigs, confirmSignatures[0][:]...)
-	if len(confirmSignatures) == 2 {
-		sigs = append(sigs, confirmSignatures[1][:]...)
-	}
-
-	store.Set(ctx, key, sigs)
-}
-
-func (store PlasmaStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
+func (store BlockStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, []byte(plasmaBlockNumKey))
 	if data == nil {
@@ -90,7 +77,7 @@ func (store PlasmaStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
 	return plasmaBlockNum
 }
 
-func (store PlasmaStore) CurrentPlasmaBlockNum(ctx sdk.Context) *big.Int {
+func (store BlockStore) CurrentPlasmaBlockNum(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, []byte(plasmaBlockNumKey))
 	if data == nil {
