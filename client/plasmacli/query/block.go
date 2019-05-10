@@ -1,12 +1,11 @@
 package query
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/query"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
-	"math/big"
 	"strings"
 )
 
@@ -20,28 +19,22 @@ var blockCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext().WithTrustNode(true)
-		blockNum, ok := new(big.Int).SetString(strings.TrimSpace(args[0]), 10)
-		if !ok {
-			return fmt.Errorf("block number must be provided in decimal format")
-		}
+		num := strings.TrimSpace(args[0])
 
-		key := append([]byte("block::"), blockNum.Bytes()...)
-		data, err := ctx.QueryStore(key, "plasma")
+		queryPath := fmt.Sprintf("custom/plasma/block/%s", num)
+		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
-			fmt.Println("error querying store")
-			return err
-		}
-		if data == nil {
-			return fmt.Errorf("plasma block does not exist")
-		}
-
-		block := plasma.Block{}
-		if err := rlp.DecodeBytes(data, &block); err != nil {
-			fmt.Println("error decoding")
 			return err
 		}
 
-		fmt.Printf("Header: %x\nTxs: %d\nFee: %d\n", block.Header, block.TxnCount, block.FeeAmount)
+		var resp query.BlockResp
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return err
+		}
+
+		fmt.Printf("Block Header: 0x%x\n", resp.Header)
+		fmt.Printf("Transaction Count: %d, FeeAmount: %d\n", resp.TxnCount, resp.FeeAmount)
+		fmt.Printf("Tendermint BlockHeight: %d\n", resp.TMBlockHeight)
 		return nil
 	},
 }

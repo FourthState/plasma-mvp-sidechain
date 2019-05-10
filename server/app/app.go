@@ -164,7 +164,7 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 		return abci.ResponseEndBlock{}
 	}
 
-	tmBlockHeight := big.NewInt(ctx.BlockHeight())
+	tmBlockHeight := uint64(ctx.BlockHeight())
 
 	var header [32]byte
 	copy(header[:], ctx.BlockHeader().DataHash)

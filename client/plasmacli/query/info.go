@@ -1,10 +1,9 @@
 package query
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/query"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
@@ -36,15 +35,12 @@ var infoCmd = &cobra.Command{
 			return err
 		}
 
-		var resp query.InfoResp
-		if err := json.Unmarshal(data, &resp); err != nil {
+		var utxos []store.UTXO
+		if err := json.Unmarshal(data, &utxos); err != nil {
 			return err
-		} else if !bytes.Equal(resp.Address[:], addr[:]) {
-			return fmt.Errorf("Mismatch in Account and Response Address.\nAccount: 0x%x\n Response: 0x%x\n",
-				addr, resp.Address)
 		}
 
-		for i, utxo := range resp.Utxos {
+		for i, utxo := range utxos {
 			fmt.Printf("UTXO %d\n", i)
 			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent)
 
@@ -63,6 +59,10 @@ var infoCmd = &cobra.Command{
 			}
 
 			fmt.Printf("End UTXO %d info\n\n", i)
+		}
+
+		if len(utxos) == 0 {
+			fmt.Println("no information available for this address")
 		}
 
 		return nil
