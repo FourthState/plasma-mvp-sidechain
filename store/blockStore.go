@@ -50,7 +50,7 @@ func NewBlockStore(ctxKey sdk.StoreKey) BlockStore {
 	}
 }
 
-func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
+func (store BlockStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
 	key := prefixKey(blockKey, blockHeight.Bytes())
 	data := store.Get(ctx, key)
 	if data == nil {
@@ -66,7 +66,7 @@ func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block,
 }
 
 // StoreBlock will store the plasma block and return the plasma block number in which it was stored under
-func (store PlasmaStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
+func (store BlockStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
 	plasmaBlockNum := store.NextPlasmaBlockNum(ctx)
 
 	plasmaBlockKey := prefixKey(blockKey, plasmaBlockNum.Bytes())

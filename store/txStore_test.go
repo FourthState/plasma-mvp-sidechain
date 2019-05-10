@@ -16,17 +16,15 @@ func TestTxSerialization(t *testing.T) {
 
 	// no default attributes
 	transaction := plasma.Transaction{
-		Input0:  plasma.NewInput(plasma.NewPosition(utils.Big1, 15, 1, utils.Big0), sigs, [][65]byte{}),
-		Input1:  plasma.NewInput(plasma.NewPosition(utils.Big0, 0, 0, utils.Big1), sigs, [][65]byte{}),
-		Output0: plasma.NewOutput(common.HexToAddress("1"), utils.Big1),
-		Output1: plasma.NewOutput(common.HexToAddress("2"), utils.Big2),
+		Inputs:  []plasma.Input{plasma.NewInput(plasma.NewPosition(utils.Big1, 15, 1, utils.Big0), sigs, [][65]byte{}), plasma.NewInput(plasma.NewPosition(utils.Big0, 0, 0, utils.Big1), sigs, [][65]byte{})},
+		Outputs: []plasma.Output{plasma.NewOutput(common.HexToAddress("1"), utils.Big1), plasma.NewOutput(common.HexToAddress("2"), utils.Big2)},
 		Fee:     utils.Big1,
 	}
 
 	tx := Transaction{
 		Transaction:      transaction,
 		Spent:            []bool{false, false},
-		Spenders:         [][32]byte{},
+		Spenders:         [][]byte{},
 		ConfirmationHash: hashes,
 	}
 

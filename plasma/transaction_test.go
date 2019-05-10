@@ -13,7 +13,6 @@ import (
 
 func TestTransactionSerialization(t *testing.T) {
 	one := big.NewInt(1)
-	zero := big.NewInt(0)
 
 	// contstruct a transaction
 	tx := &Transaction{}
@@ -28,7 +27,6 @@ func TestTransactionSerialization(t *testing.T) {
 	copy(confirmSig1[1][65-len([]byte("a very long string turned into bytes")):], []byte("a very long string turned into bytes"))
 	tx.Inputs = append(tx.Inputs, NewInput(pos, [65]byte{}, confirmSig1))
 	tx.Outputs = append(tx.Outputs, NewOutput(common.HexToAddress("1"), one))
-	tx.Outputs = append(tx.Outputs, NewOutput(common.HexToAddress("0"), zero))
 	tx.Fee = big.NewInt(1)
 
 	bytes, err := rlp.EncodeToBytes(tx)
