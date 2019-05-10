@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
-	"github.com/FourthState/plasma-mvp-sidechain/query"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/spf13/cobra"
@@ -33,13 +32,13 @@ var balanceCmd = &cobra.Command{
 			return err
 		}
 
-		var resp query.BalanceResp
-		if err := json.Unmarshal(data, &resp); err != nil {
+		var total string
+		if err := json.Unmarshal(data, &total); err != nil {
 			return err
 		}
 
-		fmt.Printf("Address: %0x\n", resp.Address)
-		fmt.Printf("Total: %s\n", resp.Total)
+		fmt.Printf("Address: %0x\n", addr)
+		fmt.Printf("Total: %s\n", total)
 		return nil
 	},
 }

@@ -14,16 +14,6 @@ const (
 	QueryInfo    = "info"
 )
 
-type BalanceResp struct {
-	Address common.Address
-	Total   *big.Int
-}
-
-type InfoResp struct {
-	Address common.Address
-	Utxos   []store.UTXO
-}
-
 func NewUtxoQuerier(utxoStore store.UTXOStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
@@ -40,11 +30,7 @@ func NewUtxoQuerier(utxoStore store.UTXOStore) sdk.Querier {
 			if err != nil {
 				return nil, sdk.ErrInternal("failed query balance")
 			}
-			data, err := json.Marshal(BalanceResp{addr, total})
-			if err != nil {
-				return nil, sdk.ErrInternal("serialization error")
-			}
-			return data, nil
+			return []byte(total.String()), nil
 
 		case QueryInfo:
 			if len(path) != 2 {
@@ -55,7 +41,7 @@ func NewUtxoQuerier(utxoStore store.UTXOStore) sdk.Querier {
 			if err != nil {
 				return nil, sdk.ErrInternal("failed utxo retrieval")
 			}
-			data, err := json.Marshal(InfoResp{addr, utxos})
+			data, err := json.Marshal(utxos)
 			if err != nil {
 				return nil, sdk.ErrInternal("serialization error")
 			}

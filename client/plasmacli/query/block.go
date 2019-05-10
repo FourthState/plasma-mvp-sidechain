@@ -27,8 +27,6 @@ var blockCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Println(string(data), "\n")
-
 		var resp query.BlockResp
 		if err := json.Unmarshal(data, &resp); err != nil {
 			return err
@@ -36,7 +34,7 @@ var blockCmd = &cobra.Command{
 
 		fmt.Printf("Block Header: 0x%x\n", resp.Header)
 		fmt.Printf("Transaction Count: %d, FeeAmount: %d\n", resp.TxnCount, resp.FeeAmount)
-		fmt.Printf("Tendermint BlockHeight: %d", resp.TMBlockHeight)
+		fmt.Printf("Tendermint BlockHeight: %d\n", resp.TMBlockHeight)
 		return nil
 	},
 }
