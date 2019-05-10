@@ -59,13 +59,13 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 	confirmSigs0 := parseSig(t.Tx.Input0ConfirmSigs)
 	confirmSigs1 := parseSig(t.Tx.Input1ConfirmSigs)
 
-	tx.Input0 = NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum0[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex0[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex0[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce0[:]).Int64())),
-		t.Sigs[0], confirmSigs0)
-	tx.Input1 = NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum1[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex1[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex1[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce1[:]).Int64())),
-		t.Sigs[1], confirmSigs1)
+	tx.Inputs = append(tx.Inputs, NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum0[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex0[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex0[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce0[:]).Int64())),
+		t.Sigs[0], confirmSigs0))
+	tx.Inputs = append(tx.Inputs, NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum1[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex1[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex1[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce1[:]).Int64())),
+		t.Sigs[1], confirmSigs1))
 	// set signatures if applicable
-	tx.Output0 = NewOutput(t.Tx.NewOwner0, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount0[:]).Int64()))
-	tx.Output1 = NewOutput(t.Tx.NewOwner1, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount1[:]).Int64()))
+	tx.Outputs = append(tx.Outputs, NewOutput(t.Tx.NewOwner0, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount0[:]).Int64())))
+	tx.Outputs = append(tx.Outputs, NewOutput(t.Tx.NewOwner1, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount1[:]).Int64())))
 	tx.Fee = big.NewInt(new(big.Int).SetBytes(t.Tx.Fee[:]).Int64())
 
 	return nil
@@ -73,28 +73,29 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 
 func (tx Transaction) ValidateBasic() error {
 	// validate inputs
-	if err := tx.Input0.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid first input { %s }", err)
+	for i, input := range tx.Inputs {
+		if err := input.ValidateBasic(); err != nil {
+			return fmt.Errorf("invalid input with index %d: %s", i, err)
+		}
+		if input.Position.IsNilPosition() {
+			return fmt.Errorf("input position cannot be nil")
+		}
 	}
-	if tx.Input0.Position.IsNilPosition() {
-		return fmt.Errorf("first input cannot be nil")
-	}
-	if err := tx.Input1.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid second input { %s }", err)
-	}
-	if tx.Input0.Position.String() == tx.Input1.Position.String() {
-		return fmt.Errorf("same position cannot be spent twice")
+
+	if len(tx.Inputs) > 1 {
+		if tx.Inputs[0].Position.String() == tx.Inputs[1].Position.String() {
+			return fmt.Errorf("same position cannot be spent twice")
+		}
 	}
 
 	// validate outputs
-	if err := tx.Output0.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid first output { %s }", err)
-	}
-	if utils.IsZeroAddress(tx.Output0.Owner) || tx.Output0.Amount.Sign() == 0 {
-		return fmt.Errorf("first output must have a valid address and non-zero amount")
-	}
-	if err := tx.Output1.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid second output { %s }", err)
+	for i, output := range tx.Outputs {
+		if err := output.ValidateBasic(); err != nil {
+			return fmt.Errorf("invalid output with index %d: %s", i, err)
+		}
+		if utils.IsZeroAddress(output.Owner) || output.Amount.Sign() == 0 {
+			return fmt.Errorf("output with index %d must have a valid address and non-zero amount", i)
+		}
 	}
 
 	return nil
@@ -127,37 +128,15 @@ func (tx Transaction) Sigs() (sigs [2][65]byte) {
 	return sigs
 }
 
-// HasSecondInput is an indicator for the existence of a second input
-func (tx Transaction) HasSecondInput() bool {
-	return !tx.Input1.Position.IsNilPosition()
-}
-
-// HasSecondOutput is an indicator if the second output is used in this transaction
-func (tx Transaction) HasSecondOutput() bool {
-	return !utils.IsZeroAddress(tx.Output1.Owner)
-}
-
-// OutputAt is a selector for the outputs
-func (tx Transaction) OutputAt(i uint8) Output {
-	if i == 0 {
-		return tx.Output0
+func (tx Transaction) String() (str string) {
+	for i, input := range tx.Inputs {
+		str += fmt.Sprintf("Input %d: %s\n", i, input)
 	}
-
-	return tx.Output1
-}
-
-// InputAt is a selector for the inputs
-func (tx Transaction) InputAt(i uint8) Input {
-	if i == 0 {
-		return tx.Input0
+	for i, output := range tx.Outputs {
+		str += fmt.Sprintf("Output %d: %s\n", i, output)
 	}
-
-	return tx.Input1
-}
-
-func (tx Transaction) String() string {
-	return fmt.Sprintf("Input0: %s\nInput1: %s\nOutput0: %s\nOutput1: %s\nFee: %s\n",
-		tx.Input0, tx.Input1, tx.Output0, tx.Output1, tx.Fee)
+	str += fmt.Sprintf("Fee: %s\n", tx.Fee)
+	return str
 }
 
 /* Helpers */
@@ -167,22 +146,20 @@ func (tx Transaction) toTxList() txList {
 	// pointer safety if a transaction
 	// object was ever created with Transaction{}
 	txList := txList{}
-	if tx.Input0.BlockNum == nil {
-		tx.Input0.BlockNum = utils.Big0
-	} else if tx.Input1.BlockNum == nil {
-		tx.Input1.BlockNum = utils.Big0
+
+	for i, input := range tx.Inputs {
+		if input.BlockNum == nil {
+			tx.Inputs[i].BlockNum = utils.Big0
+		}
+		if input.DepositNonce == nil {
+			tx.Inputs[i].DepositNonce = utils.Big0
+		}
 	}
 
-	if tx.Input0.DepositNonce == nil {
-		tx.Input0.DepositNonce = utils.Big0
-	} else if tx.Input1.DepositNonce == nil {
-		tx.Input1.DepositNonce = utils.Big0
-	}
-
-	if tx.Output0.Amount == nil {
-		tx.Output0.Amount = utils.Big0
-	} else if tx.Output1.Amount == nil {
-		tx.Output1.Amount = utils.Big0
+	for i, output := range tx.Outputs {
+		if output.Amount == nil {
+			tx.Outputs[i].Amount = utils.Big0
+		}
 	}
 
 	if tx.Fee == nil {
@@ -191,53 +168,60 @@ func (tx Transaction) toTxList() txList {
 
 	// fill in txList with values
 	// Input 0
-	if len(tx.Input0.BlockNum.Bytes()) > 0 {
-		copy(txList.BlkNum0[32-len(tx.Input0.BlockNum.Bytes()):], tx.Input0.BlockNum.Bytes())
+	input := tx.Inputs[0]
+	if len(input.BlockNum.Bytes()) > 0 {
+		copy(txList.BlkNum0[32-len(input.BlockNum.Bytes()):], input.BlockNum.Bytes())
 	}
-	txList.TxIndex0[31] = byte(tx.Input0.TxIndex)
-	txList.TxIndex0[30] = byte(tx.Input0.TxIndex >> 8)
-	txList.OIndex0[31] = byte(tx.Input0.OutputIndex)
-	if len(tx.Input0.DepositNonce.Bytes()) > 0 {
-		copy(txList.DepositNonce0[32-len(tx.Input0.DepositNonce.Bytes()):], tx.Input0.DepositNonce.Bytes())
+	txList.TxIndex0[31] = byte(input.TxIndex)
+	txList.TxIndex0[30] = byte(input.TxIndex >> 8)
+	txList.OIndex0[31] = byte(input.OutputIndex)
+	if len(input.DepositNonce.Bytes()) > 0 {
+		copy(txList.DepositNonce0[32-len(input.DepositNonce.Bytes()):], input.DepositNonce.Bytes())
 	}
-	switch len(tx.Input0.ConfirmSignatures) {
+	switch len(input.ConfirmSignatures) {
 	case 1:
-		copy(txList.Input0ConfirmSigs[:65], tx.Input0.ConfirmSignatures[0][:])
+		copy(txList.Input0ConfirmSigs[:65], input.ConfirmSignatures[0][:])
 	case 2:
-		copy(txList.Input0ConfirmSigs[:65], tx.Input0.ConfirmSignatures[0][:])
-		copy(txList.Input0ConfirmSigs[65:], tx.Input0.ConfirmSignatures[1][:])
+		copy(txList.Input0ConfirmSigs[:65], input.ConfirmSignatures[0][:])
+		copy(txList.Input0ConfirmSigs[65:], input.ConfirmSignatures[1][:])
 	}
 
 	// Input 1
-	if len(tx.Input1.BlockNum.Bytes()) > 0 {
-		copy(txList.BlkNum1[32-len(tx.Input1.BlockNum.Bytes()):], tx.Input1.BlockNum.Bytes())
-	}
-	txList.TxIndex1[31] = byte(tx.Input1.TxIndex)
-	txList.TxIndex1[30] = byte(tx.Input1.TxIndex >> 8)
-	txList.OIndex1[31] = byte(tx.Input1.OutputIndex)
-	if len(tx.Input1.DepositNonce.Bytes()) > 0 {
-		copy(txList.DepositNonce1[32-len(tx.Input1.DepositNonce.Bytes()):], tx.Input1.DepositNonce.Bytes())
-	}
+	if len(tx.Inputs) > 1 {
+		input = tx.Inputs[1]
+		if len(input.BlockNum.Bytes()) > 0 {
+			copy(txList.BlkNum1[32-len(input.BlockNum.Bytes()):], input.BlockNum.Bytes())
+		}
+		txList.TxIndex1[31] = byte(input.TxIndex)
+		txList.TxIndex1[30] = byte(input.TxIndex >> 8)
+		txList.OIndex1[31] = byte(input.OutputIndex)
+		if len(input.DepositNonce.Bytes()) > 0 {
+			copy(txList.DepositNonce1[32-len(input.DepositNonce.Bytes()):], input.DepositNonce.Bytes())
+		}
 
-	switch len(tx.Input1.ConfirmSignatures) {
-	case 1:
-		copy(txList.Input1ConfirmSigs[:65], tx.Input1.ConfirmSignatures[0][:])
-	case 2:
-		copy(txList.Input1ConfirmSigs[:65], tx.Input1.ConfirmSignatures[0][:])
-		copy(txList.Input1ConfirmSigs[65:], tx.Input1.ConfirmSignatures[1][:])
+		switch len(input.ConfirmSignatures) {
+		case 1:
+			copy(txList.Input1ConfirmSigs[:65], input.ConfirmSignatures[0][:])
+		case 2:
+			copy(txList.Input1ConfirmSigs[:65], input.ConfirmSignatures[0][:])
+			copy(txList.Input1ConfirmSigs[65:], input.ConfirmSignatures[1][:])
+		}
 	}
-
 	// Outputs and Fee
-	txList.NewOwner0 = tx.Output0.Owner
-	if len(tx.Output0.Amount.Bytes()) > 0 {
-		copy(txList.Amount0[32-len(tx.Output0.Amount.Bytes()):], tx.Output0.Amount.Bytes())
+	output := tx.Outputs[0]
+	txList.NewOwner0 = output.Owner
+	if len(output.Amount.Bytes()) > 0 {
+		copy(txList.Amount0[32-len(output.Amount.Bytes()):], output.Amount.Bytes())
 	}
-	txList.NewOwner1 = tx.Output1.Owner
-	if len(tx.Output1.Amount.Bytes()) > 0 {
-		copy(txList.Amount1[32-len(tx.Output1.Amount.Bytes()):], tx.Output1.Amount.Bytes())
-	}
-	if len(tx.Fee.Bytes()) > 0 {
-		copy(txList.Fee[32-len(tx.Fee.Bytes()):], tx.Fee.Bytes())
+	if len(tx.Outputs) > 1 {
+		output = tx.Outputs[1]
+		txList.NewOwner1 = output.Owner
+		if len(output.Amount.Bytes()) > 0 {
+			copy(txList.Amount1[32-len(output.Amount.Bytes()):], output.Amount.Bytes())
+		}
+		if len(tx.Fee.Bytes()) > 0 {
+			copy(txList.Fee[32-len(tx.Fee.Bytes()):], tx.Fee.Bytes())
+		}
 	}
 	return txList
 }
