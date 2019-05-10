@@ -481,6 +481,24 @@ func TestAnteDepositDNE(t *testing.T) {
 
 }
 
+func TestAnteDepositWrongOwner(t *testing.T) {
+	// setup
+	ctx, utxoStore, plasmaStore := setup()
+	// connection always returns valid deposits
+	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
+
+	// Try to include with wrong owner
+	msg := msgs.IncludeDepositMsg{
+		DepositNonce: big.NewInt(3),
+		Owner:        badAddr,
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+
+	require.False(t, res.IsOK(), "Wrong Owner deposit inclusion did not error")
+	require.True(t, abort, "Wrong owner deposit inclusion did not abort")
+}
+
 func setupInputs(ctx sdk.Context, utxoStore store.UTXOStore, inputs ...inputUTXO) {
 	for _, i := range inputs {
 		utxo := store.UTXO{
