@@ -9,9 +9,9 @@ import (
 )
 
 type Deposit struct {
-	Output  plasma.Output
+	Deposit plasma.Deposit
 	Spent   bool
-	Spender [32]byte
+	Spender []byte
 }
 
 /* Deposit Store */
@@ -52,7 +52,7 @@ func (store DepositStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit 
 	store.Set(ctx, nonce.Bytes(), data)
 }
 
-func (store DepositStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spender [32]byte) sdk.Result {
+func (store DepositStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spender []byte) sdk.Result {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
 		return sdk.ErrUnknownRequest(fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()

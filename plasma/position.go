@@ -86,7 +86,7 @@ func (p Position) ValidateBasic() error {
 	// deposit position
 	if p.IsDeposit() {
 		if p.BlockNum.Sign() > 0 || p.TxIndex > 0 || p.OutputIndex > 0 {
-			return fmt.Errorf("chain postion must be all zero if a deposit nonce is specified. (0.0.0.nonce)")
+			return fmt.Errorf("chain position must be all zero if a deposit nonce is specified. (0.0.0.nonce)")
 		}
 	} else {
 		if p.BlockNum.Sign() == 0 {

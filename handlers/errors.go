@@ -10,6 +10,9 @@ const (
 	CodeInsufficientFee              sdk.CodeType = 1
 	CodeExitedInput                  sdk.CodeType = 2
 	CodeSignatureVerificationFailure sdk.CodeType = 3
+	CodeInvalidTransaction           sdk.CodeType = 4
+	CodeInvalidSignature             sdk.CodeType = 5
+	CodeInvalidInput                 sdk.CodeType = 6
 )
 
 func ErrInsufficientFee(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
@@ -22,4 +25,16 @@ func ErrExitedInput(codespace sdk.CodespaceType, msg string, args ...interface{}
 
 func ErrSignatureVerificationFailure(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(codespace, CodeSignatureVerificationFailure, msg, args)
+}
+
+func ErrInvalidTransaction(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidTransaction, msg, args)
+}
+
+func ErrInvalidSignature(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidSignature, msg, args)
+}
+
+func ErrInvalidInput(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidInput, msg, args)
 }

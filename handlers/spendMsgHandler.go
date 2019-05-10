@@ -6,7 +6,6 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 )
 
@@ -16,7 +15,7 @@ type NextTxIndex func() uint16
 // FeeUpdater updates the aggregate fee amount in a block
 type FeeUpdater func(amt *big.Int) sdk.Error
 
-func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, nextTxIndex NextTxIndex, feeUpdater FeeUpdater) sdk.Handler {
+func NewSpendHandler(txStore store.TxStore, depositStore store.DepositStore, blockStore store.BlockStore, nextTxIndex NextTxIndex, feeUpdater FeeUpdater) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		spendMsg, ok := msg.(msgs.SpendMsg)
 		if !ok {
@@ -24,35 +23,30 @@ func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, n
 		}
 
 		txIndex := nextTxIndex()
-		blockHeight := plasmaStore.NextPlasmaBlockNum(ctx)
+		blockHeight := blockStore.NextPlasmaBlockNum(ctx)
 
 		// construct the confirmation hash
 		merkleHash := spendMsg.MerkleHash()
 		header := ctx.BlockHeader().DataHash
 		confirmationHash := sha256.Sum256(append(merkleHash, header...))
 
-		// positional part of these keys addeded when the new positions are created
-		var spenderKeys [][]byte
-		var positions []plasma.Position
-		positions = append(positions, plasma.NewPosition(blockHeight, txIndex, 0, nil))
-		spenderKeys = append(spenderKeys, append(spendMsg.Output0.Owner[:], positions[0].Bytes()...))
-		if spendMsg.HasSecondOutput() {
-			positions = append(positions, plasma.NewPosition(blockHeight, txIndex, 1, nil))
-			spenderKeys = append(spenderKeys, append(spendMsg.Output1.Owner[:], positions[1].Bytes()...))
+		/* Store Transaction */
+		tx := store.Transaction{
+			Transaction:      spendMsg.Transaction,
+			Spent:            make([]bool, len(spendMsg.Outputs)),
+			Spenders:         make([][]byte, len(spendMsg.Outputs)),
+			ConfirmationHash: confirmationHash[:],
 		}
+		txStore.StoreTx(ctx, tx)
 
-		var inputKeys [][]byte
-		for i, key := range spendMsg.GetSigners() {
-			inputKeys = append(inputKeys, append(key[:], spendMsg.InputAt(uint8(i)).Position.Bytes()...))
-		}
-
-		// try to spend the inputs. Abort if the inputs don't exist or have been spent
-		res := utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[0][:common.AddressLength]), spendMsg.Input0.Position, spenderKeys)
-		if !res.IsOK() {
-			return res
-		}
-		if spendMsg.HasSecondInput() {
-			res := utxoStore.SpendUTXO(ctx, common.BytesToAddress(inputKeys[1][:common.AddressLength]), spendMsg.Input1.Position, spenderKeys)
+		/* Spend Inputs */
+		for _, input := range spendMsg.Inputs {
+			var res sdk.Result
+			if input.Position.IsDeposit() {
+				res = depositStore.SpendDeposit(ctx, input.Position.DepositNonce, spendMsg.TxHash())
+			} else {
+				res = txStore.SpendUTXO(ctx, input.Position, spendMsg.TxHash())
+			}
 			if !res.IsOK() {
 				return res
 			}
@@ -63,18 +57,10 @@ func NewSpendHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, n
 			return sdk.ErrInternal("error updating the aggregate fee").Result()
 		}
 
-		// create new outputs
-		for i, _ := range spenderKeys {
-			utxo := store.UTXO{
-				InputKeys:        inputKeys,
-				ConfirmationHash: confirmationHash[:],
-				MerkleHash:       merkleHash,
-				Output:           spendMsg.OutputAt(uint8(i)),
-				Spent:            false,
-				Position:         positions[i],
-			}
-
-			utxoStore.StoreUTXO(ctx, utxo)
+		/* Create Outputs */
+		for i, _ := range spendMsg.Outputs {
+			pos := plasma.NewPosition(blockHeight, txIndex, uint8(i), big.NewInt(0))
+			txStore.StoreUTXO(ctx, pos, spendMsg.TxHash())
 		}
 
 		return sdk.Result{}

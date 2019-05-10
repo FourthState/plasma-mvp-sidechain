@@ -56,9 +56,9 @@ func TestPositionValidation(t *testing.T) {
 	pos, _ := FromPositionString(posStr)
 	require.NoError(t, pos.ValidateBasic(), "valid position marked as an error")
 
-	// specifiy both deposit nonce and chain position
+	// specify both deposit nonce and chain position
 	cases := []string{
-		// mutual exclusivity between deposit nonce and chain position requried
+		// mutual exclusivity between deposit nonce and chain position required
 		"(1.0.0.5)",
 		"(0.1.0.5)",
 		"(0.0.1.5)",

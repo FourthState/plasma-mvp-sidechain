@@ -97,7 +97,7 @@ Usage:
 		}
 
 		if err := displayExits(curr, lim, addr, viper.GetBool(depositsF)); err != nil {
-			return fmt.Errorf("failure occured while querying exits: { %s }", err)
+			return fmt.Errorf("failure occurred while querying exits: { %s }", err)
 		}
 
 		return nil

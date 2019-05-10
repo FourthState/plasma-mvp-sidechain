@@ -16,8 +16,8 @@ func init() {
 
 var withdrawCmd = &cobra.Command{
 	Use:   "withdraw <account>",
-	Short: "Withdraw all avaliable funds from rootchain contract",
-	Long: `Withdraw all avaliable funds from the rootchain contract
+	Short: "Withdraw all available funds from rootchain contract",
+	Long: `Withdraw all available funds from the rootchain contract
 
 Usage:
 	plasmacli eth withdraw <account> --gas-limit 30000`,

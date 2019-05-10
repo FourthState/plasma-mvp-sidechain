@@ -13,7 +13,7 @@ var rootchainCmd = &cobra.Command{
 	Use:   "rootchain",
 	Short: "Display rootchain contract information",
 	Long: `Display last committed block, total contract balance, total withdraw balance, minimum exit bond, and operator address.
-Total contract balance does not include total withdraw balance. The total withdraw balance are exits that have been finalized, but not transfered yet.`,
+Total contract balance does not include total withdraw balance. The total withdraw balance are exits that have been finalized, but not transferred yet.`,
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, agrs []string) error {
 		lastCommittedBlock, err := rc.contract.LastCommittedBlock(nil)

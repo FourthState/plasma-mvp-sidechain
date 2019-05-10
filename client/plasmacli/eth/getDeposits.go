@@ -16,8 +16,8 @@ func init() {
 
 var getDepositsCmd = &cobra.Command{
 	Use:   "deposit <nonce>",
-	Short: "Query for a deposit that occured on the rootchain",
-	Long: `Queries for deposits that occured on the rootchain.
+	Short: "Query for a deposit that occurred on the rootchain",
+	Long: `Queries for deposits that occurred on the rootchain.
 
 Usage:
 	plasmacli eth query deposit <nonce>

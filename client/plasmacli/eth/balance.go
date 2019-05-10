@@ -15,8 +15,8 @@ func init() {
 
 var balanceCmd = &cobra.Command{
 	Use:   "balance <account>",
-	Short: "Query for balance avaliable for withdraw from rootchain",
-	Long: `Query for balance avaliable for withdrawal from rootchain.
+	Short: "Query for balance available for withdraw from rootchain",
+	Long: `Query for balance available for withdrawal from rootchain.
 	
 Usage: 
 	plasmacli eth query balance <account>

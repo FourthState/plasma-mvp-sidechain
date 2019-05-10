@@ -35,7 +35,7 @@ func (i Input) ValidateBasic() error {
 	var emptySig [65]byte
 	if i.Position.IsNilPosition() {
 		if !bytes.Equal(i.Signature[:], emptySig[:]) || len(i.ConfirmSignatures) > 0 {
-			return fmt.Errorf("nil input should not specifiy a signature nor confirm signatures")
+			return fmt.Errorf("nil input should not specify a signature nor confirm signatures")
 		}
 	} else {
 		if err := i.Position.ValidateBasic(); err != nil {

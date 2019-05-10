@@ -79,7 +79,7 @@ Usage:
 			var result *tm.ResultTx
 			result, confirmSignatures, err = getProof(owner, challengingPos)
 			if err != nil {
-				fmt.Errorf("failed to retrieve exit information: { %s }", err)
+				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}
 
 			txBytes = result.Tx
