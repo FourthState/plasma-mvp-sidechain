@@ -39,10 +39,6 @@
     unused-packages = false
 
 [[constraint]]
-  name = "github.com/pkg/errors"
-  version = "0.8.0"
-
-[[constraint]]
   name = "github.com/spf13/cobra"
   version = "0.0.3"
 
@@ -55,12 +51,12 @@
   version = "1.2.1"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/syndtr/goleveldb"
+  name = "github.com/gorilla/handlers"
+  version = "v1.4.0"
 
 [[constraint]]
-  name = "github.com/tendermint/go-amino"
-  version = "0.14.1"
+  branch = "master"
+  name = "github.com/syndtr/goleveldb"
 
 [[override]]
   name = "github.com/tendermint/iavl"

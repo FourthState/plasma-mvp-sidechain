@@ -278,6 +278,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:664d37ea261f0fc73dd17f4a1f5f46d01fbb0b0d75f6375af064824424109b7d"
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
+  version = "v1.4.0"
+
+[[projects]]
   digest = "1:ca59b1175189b3f0e9f1793d2c350114be36eaabbe5b9f554b35edee1de50aea"
   name = "github.com/gorilla/mux"
   packages = ["."]
@@ -566,7 +574,6 @@
   packages = ["btcec"]
   pruneopts = "UT"
   revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
-  version = "v0.1.0"
 
 [[projects]]
   digest = "1:ad9c4c1a4e7875330b1f62906f2830f043a23edb5db997e3a5ac5d3e6eadf80a"
@@ -840,12 +847,14 @@
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/accounts/keystore",
     "github.com/ethereum/go-ethereum/common",
+    "github.com/ethereum/go-ethereum/common/hexutil",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/crypto",
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rlp",
     "github.com/ethereum/go-ethereum/rpc",
+    "github.com/gorilla/handlers",
     "github.com/gorilla/mux",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
