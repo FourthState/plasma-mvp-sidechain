@@ -1,7 +1,6 @@
 package query
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/query"
@@ -39,9 +38,6 @@ var infoCmd = &cobra.Command{
 		var resp query.InfoResp
 		if err := json.Unmarshal(data, &resp); err != nil {
 			return err
-		} else if !bytes.Equal(resp.Address[:], addr[:]) {
-			return fmt.Errorf("Mismatch in Account and Response Address.\nAccount: 0x%x\n Response: 0x%x\n",
-				addr, resp.Address)
 		}
 
 		for i, utxo := range resp.Utxos {

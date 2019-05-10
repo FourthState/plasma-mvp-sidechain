@@ -1,7 +1,6 @@
 package query
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
@@ -37,9 +36,6 @@ var balanceCmd = &cobra.Command{
 		var resp query.BalanceResp
 		if err := json.Unmarshal(data, &resp); err != nil {
 			return err
-		} else if !bytes.Equal(resp.Address[:], addr[:]) {
-			return fmt.Errorf("Mismatch in Account and Response Address.\nAccount: 0x%x\n Response: 0x%x\n",
-				addr, resp.Address)
 		}
 
 		fmt.Printf("Address: %0x\n", resp.Address)

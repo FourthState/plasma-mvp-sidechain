@@ -6,6 +6,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"io"
 	"math/big"
 )
 
@@ -13,11 +14,35 @@ type PlasmaStore struct {
 	kvStore
 }
 
+type Block struct {
+	plasma.Block
+	TMBlockHeight uint64
+}
+
+type block struct {
+	PlasmaBlock   plasma.Block
+	TMBlockHeight uint64
+}
+
+func (b *Block) EncodeRLP(w io.Writer) error {
+	return rlp.Encode(w, &block{b.Block, b.TMBlockHeight})
+}
+
+func (b *Block) DecodeRLP(s *rlp.Stream) error {
+	var block block
+	if err := s.Decode(&block); err != nil {
+		return err
+	}
+
+	b.Block = block.PlasmaBlock
+	b.TMBlockHeight = block.TMBlockHeight
+	return nil
+}
+
 const (
 	confirmSigKey     = "confirmSignature"
 	blockKey          = "block"
 	plasmaBlockNumKey = "plasmaBlockNum"
-	plasmaToTmKey     = "plasmatotm"
 )
 
 func NewPlasmaStore(ctxKey sdk.StoreKey) PlasmaStore {
@@ -26,14 +51,14 @@ func NewPlasmaStore(ctxKey sdk.StoreKey) PlasmaStore {
 	}
 }
 
-func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma.Block, bool) {
+func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
 	key := prefixKey(blockKey, blockHeight.Bytes())
 	data := store.Get(ctx, key)
 	if data == nil {
-		return plasma.Block{}, false
+		return Block{}, false
 	}
 
-	block := plasma.Block{}
+	block := Block{}
 	if err := rlp.DecodeBytes(data, &block); err != nil {
 		panic(fmt.Sprintf("plasma store corrupted: %s", err))
 	}
@@ -42,11 +67,11 @@ func (store PlasmaStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (plasma
 }
 
 // StoreBlock will store the plasma block and return the plasma block number in which it was stored under
-func (store PlasmaStore) StoreBlock(ctx sdk.Context, tmBlockHeight *big.Int, block plasma.Block) *big.Int {
+func (store PlasmaStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
 	plasmaBlockNum := store.NextPlasmaBlockNum(ctx)
 
 	plasmaBlockKey := prefixKey(blockKey, plasmaBlockNum.Bytes())
-	plasmaBlockData, err := rlp.EncodeToBytes(&block)
+	plasmaBlockData, err := rlp.EncodeToBytes(&Block{block, tmBlockHeight})
 	if err != nil {
 		panic(fmt.Sprintf("error rlp encoding block: %s", err))
 	}
@@ -56,9 +81,6 @@ func (store PlasmaStore) StoreBlock(ctx sdk.Context, tmBlockHeight *big.Int, blo
 
 	// latest plasma block number
 	store.Set(ctx, []byte(plasmaBlockNumKey), plasmaBlockNum.Bytes())
-
-	// plasma block number => tendermint block numper
-	store.Set(ctx, prefixKey(plasmaToTmKey, plasmaBlockNum.Bytes()), tmBlockHeight.Bytes())
 
 	return plasmaBlockNum
 }

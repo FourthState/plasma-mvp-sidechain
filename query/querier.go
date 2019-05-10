@@ -71,6 +71,8 @@ const (
 	QueryBlock = "block"
 )
 
+type BlockResp = store.Block
+
 func NewPlasmaQuerier(plasmaStore store.PlasmaStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
@@ -78,6 +80,23 @@ func NewPlasmaQuerier(plasmaStore store.PlasmaStore) sdk.Querier {
 		}
 
 		switch path[0] {
+		case QueryBlock:
+			if len(path) != 2 {
+				return nil, sdk.ErrUnknownRequest("block query follows /plasma/block/<number>")
+			}
+			blockNum, ok := new(big.Int).SetString(path[1], 10)
+			if !ok {
+				return nil, sdk.ErrUnknownRequest("block number must be provided in deicmal format")
+			}
+			block, ok := plasmaStore.GetBlock(ctx, blockNum)
+			if !ok {
+				return nil, sdk.ErrUnknownRequest("nonexistent plasma block")
+			}
+			data, err := json.Marshal(block)
+			if err != nil {
+				return nil, sdk.ErrInternal("serialization error")
+			}
+			return data, nil
 		default:
 			return nil, sdk.ErrUnknownRequest("unregistered endpoint")
 		}
