@@ -36,10 +36,10 @@ func (msg IncludeDepositMsg) GetSignBytes() []byte {
 
 func (msg IncludeDepositMsg) ValidateBasic() sdk.Error {
 	if msg.DepositNonce.Sign() != 1 {
-		return ErrInvalidTransaction(DefaultCodespace, "DepositNonce must be greater than 0")
+		return ErrInvalidIncludeDepositMsg(DefaultCodespace, "DepositNonce must be greater than 0")
 	}
 	if utils.IsZeroAddress(msg.Owner) {
-		return ErrInvalidTransaction(DefaultCodespace, "Owner must have non-zero address")
+		return ErrInvalidIncludeDepositMsg(DefaultCodespace, "Owner must have non-zero address")
 	}
 	return nil
 }

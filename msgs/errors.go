@@ -4,13 +4,17 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// Reserve errors 100 ~ 199
 const (
 	DefaultCodespace sdk.CodespaceType = "msgs"
 
-	CodeInvalidTransaction sdk.CodeType = 1
+	CodeInvalidSpendMsg          sdk.CodeType = 1
+	CodeInvalidIncludeDepositMsg sdk.CodeType = 2
 )
 
-func ErrInvalidTransaction(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
-	return sdk.NewError(codespace, CodeInvalidTransaction, msg, args...)
+func ErrInvalidSpendMsg(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidSpendMsg, msg, args...)
+}
+
+func ErrInvalidIncludeDepositMsg(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidIncludeDepositMsg, msg, args...)
 }

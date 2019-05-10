@@ -13,10 +13,8 @@ import (
 func TestSpendMsgSerialization(t *testing.T) {
 	msg := SpendMsg{
 		Transaction: plasma.Transaction{
-			Input0:  plasma.NewInput(plasma.NewPosition(nil, 1, 0, nil), [65]byte{}, nil),
-			Input1:  plasma.NewInput(plasma.NewPosition(utils.Big1, 1, 1, nil), [65]byte{}, nil),
-			Output0: plasma.NewOutput(common.HexToAddress("1"), utils.Big1),
-			Output1: plasma.NewOutput(common.Address{}, nil),
+			Inputs:  []plasma.Input{plasma.NewInput(plasma.NewPosition(nil, 1, 0, nil), [65]byte{}, nil), plasma.NewInput(plasma.NewPosition(utils.Big1, 1, 1, nil), [65]byte{}, nil)},
+			Outputs: []plasma.Output{plasma.NewOutput(common.HexToAddress("1"), utils.Big1)},
 			Fee:     utils.Big1,
 		},
 	}

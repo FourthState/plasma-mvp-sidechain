@@ -61,11 +61,15 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 
 	tx.Inputs = append(tx.Inputs, NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum0[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex0[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex0[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce0[:]).Int64())),
 		t.Sigs[0], confirmSigs0))
-	tx.Inputs = append(tx.Inputs, NewInput(NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum1[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex1[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex1[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce1[:]).Int64())),
-		t.Sigs[1], confirmSigs1))
+	pos := NewPosition(big.NewInt(new(big.Int).SetBytes(t.Tx.BlkNum1[:]).Int64()), uint16(new(big.Int).SetBytes(t.Tx.TxIndex1[:]).Int64()), uint8(new(big.Int).SetBytes(t.Tx.OIndex1[:]).Int64()), big.NewInt(new(big.Int).SetBytes(t.Tx.DepositNonce1[:]).Int64()))
+	if !pos.IsNilPosition() {
+		tx.Inputs = append(tx.Inputs, NewInput(pos, t.Sigs[1], confirmSigs1))
+	}
 	// set signatures if applicable
 	tx.Outputs = append(tx.Outputs, NewOutput(t.Tx.NewOwner0, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount0[:]).Int64())))
-	tx.Outputs = append(tx.Outputs, NewOutput(t.Tx.NewOwner1, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount1[:]).Int64())))
+	if !utils.IsZeroAddress(t.Tx.NewOwner1) {
+		tx.Outputs = append(tx.Outputs, NewOutput(t.Tx.NewOwner1, big.NewInt(new(big.Int).SetBytes(t.Tx.Amount1[:]).Int64())))
+	}
 	tx.Fee = big.NewInt(new(big.Int).SetBytes(t.Tx.Fee[:]).Int64())
 
 	return nil
@@ -219,10 +223,11 @@ func (tx Transaction) toTxList() txList {
 		if len(output.Amount.Bytes()) > 0 {
 			copy(txList.Amount1[32-len(output.Amount.Bytes()):], output.Amount.Bytes())
 		}
-		if len(tx.Fee.Bytes()) > 0 {
-			copy(txList.Fee[32-len(tx.Fee.Bytes()):], tx.Fee.Bytes())
-		}
 	}
+	if len(tx.Fee.Bytes()) > 0 {
+		copy(txList.Fee[32-len(tx.Fee.Bytes()):], tx.Fee.Bytes())
+	}
+
 	return txList
 }
 

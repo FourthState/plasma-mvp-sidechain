@@ -29,15 +29,15 @@ func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 	var addrs []sdk.AccAddress
 
 	// recover first owner
-	pubKey, err := crypto.SigToPub(txHash, msg.Input0.Signature[:])
+	pubKey, err := crypto.SigToPub(txHash, msg.Inputs[0].Signature[:])
 	if err != nil {
 		return nil
 	}
 	addrs = append(addrs, sdk.AccAddress(crypto.PubkeyToAddress(*pubKey).Bytes()))
 
-	if msg.HasSecondInput() {
+	if len(msg.Inputs) > 1 {
 		// recover the second owner
-		pubKey, err = crypto.SigToPub(txHash, msg.Input1.Signature[:])
+		pubKey, err = crypto.SigToPub(txHash, msg.Inputs[1].Signature[:])
 		if err != nil {
 			return nil
 		}
@@ -53,7 +53,7 @@ func (msg SpendMsg) GetSignBytes() []byte {
 
 func (msg SpendMsg) ValidateBasic() sdk.Error {
 	if err := msg.Transaction.ValidateBasic(); err != nil {
-		return ErrInvalidTransaction(DefaultCodespace, err.Error())
+		return ErrInvalidSpendMsg(DefaultCodespace, err.Error())
 	}
 
 	return nil
