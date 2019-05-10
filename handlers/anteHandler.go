@@ -20,23 +20,23 @@ type plasmaConn interface {
 	HasTxBeenExited(*big.Int, plasma.Position) bool
 }
 
-func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) sdk.AnteHandler {
+func NewAnteHandler(txStore store.TxStore, depositStore store.DepositStore, blockStore store.BlockStore, client plasmaConn) sdk.AnteHandler {
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
 		msg := tx.GetMsgs()[0] // tx should only have one msg
 		switch mtype := msg.Type(); mtype {
 		case "include_deposit":
 			depositMsg := msg.(msgs.IncludeDepositMsg)
-			return includeDepositAnteHandler(ctx, utxoStore, plasmaStore, depositMsg, client)
+			return includeDepositAnteHandler(ctx, depositStore, blockStore, depositMsg, client)
 		case "spend_utxo":
 			spendMsg := msg.(msgs.SpendMsg)
-			return spendMsgAnteHandler(ctx, spendMsg, utxoStore, plasmaStore, client)
+			return spendMsgAnteHandler(ctx, spendMsg, txStore, depositStore, blockStore, client)
 		default:
-			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
+			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
 	}
 }
 
-func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, txStore store.TxStore, depositStore store.DepositStore, blockStore store.BlockStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	var totalInputAmt, totalOutputAmt *big.Int
 
 	// attempt to recover signers
@@ -46,7 +46,7 @@ func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore stor
 	}
 
 	/* validate the first input */
-	amt, res := validateInput(ctx, spendMsg.Input0, common.BytesToAddress(signers[0]), utxoStore, plasmaStore, client)
+	amt, res := validateInput(ctx, spendMsg.Input0, common.BytesToAddress(signers[0]), txStore, blockStore, client)
 	if !res.IsOK() {
 		return ctx, res, true
 	}
@@ -58,24 +58,14 @@ func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore stor
 
 	totalInputAmt = amt
 
-	// store confirm signatures
-	if !spendMsg.Input0.Position.IsDeposit() && spendMsg.Input0.TxIndex < 1<<16-1 {
-		plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input0.Position, spendMsg.Input0.ConfirmSignatures)
-	}
-
 	/* validate second input if applicable */
 	if spendMsg.HasSecondInput() {
 		if len(signers) != 2 {
 			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "second signature not present").Result(), true
 		}
-		amt, res = validateInput(ctx, spendMsg.Input1, common.BytesToAddress(signers[1]), utxoStore, plasmaStore, client)
+		amt, res = validateInput(ctx, spendMsg.Input1, common.BytesToAddress(signers[1]), txStore, blockStore, client)
 		if !res.IsOK() {
 			return ctx, res, true
-		}
-
-		// store confirm signature
-		if !spendMsg.Input1.Position.IsDeposit() && spendMsg.Input1.TxIndex < 1<<16-1 {
-			plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input1.Position, spendMsg.Input1.ConfirmSignatures)
 		}
 
 		totalInputAmt = totalInputAmt.Add(totalInputAmt, amt)
@@ -97,7 +87,7 @@ func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore stor
 }
 
 // validates the inputs against the utxo store and returns the amount of the respective input
-func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (*big.Int, sdk.Result) {
+func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, txStore store.TxStore, blockStore store.BlockStore, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
 
 	// inputUTXO must be owned by the signer due to the prefix so we do not need to
@@ -135,12 +125,12 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 }
 
 // validates the input's confirm signatures
-func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputUTXO store.UTXO) sdk.Result {
-	if len(inputUTXO.InputKeys) != len(input.ConfirmSignatures) {
+func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputTx store.Transaction) sdk.Result {
+	if len(input.ConfirmSignatures) > 0 && (inputTx.Transaction.HasSecondInput) {
 		return msgs.ErrInvalidTransaction(DefaultCodespace, "incorrect number of confirm signatures").Result()
 	}
 
-	confirmationHash := utils.ToEthSignedMessageHash(inputUTXO.ConfirmationHash[:])[:]
+	confirmationHash := utils.ToEthSignedMessageHash(inputTx.ConfirmationHash[:])[:]
 	for i, key := range inputUTXO.InputKeys {
 		address := key[:common.AddressLength]
 
@@ -154,19 +144,18 @@ func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputUTXO st
 	return sdk.Result{}
 }
 
-func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
-	depositPosition := plasma.NewPosition(big.NewInt(0), 0, 0, msg.DepositNonce)
-	if utxoStore.HasUTXO(ctx, msg.Owner, depositPosition) {
+func includeDepositAnteHandler(ctx sdk.Context, depositStore store.DepositStore, blockStore store.BlockStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+	if depositStore.HasDeposit(ctx, msg.Owner, msg.DepositNonce) {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
 	}
-	_, threshold, ok := client.GetDeposit(plasmaStore.CurrentPlasmaBlockNum(ctx), msg.DepositNonce)
+	_, threshold, ok := client.GetDeposit(blockStore.CurrentPlasmaBlockNum(ctx), msg.DepositNonce)
 	if !ok && threshold == nil {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist.", msg.DepositNonce.String()).Result(), true
 	}
 	if !ok {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), threshold.Int64()).Result(), true
 	}
-	exited := client.HasTxBeenExited(plasmaStore.CurrentPlasmaBlockNum(ctx), depositPosition)
+	exited := client.HasTxBeenExited(blockStore.CurrentPlasmaBlockNum(ctx), depositPosition)
 	if exited {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
 	}

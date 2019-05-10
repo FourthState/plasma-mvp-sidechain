@@ -16,9 +16,10 @@ const (
 
 /* Wrap plasma transaction with spend information */
 type Transaction struct {
-	Transaction plasma.Transaction
-	Spent       []bool
-	Spenders    [][32]byte
+	Transaction      plasma.Transaction
+	ConfirmationHash []byte
+	Spent            []bool
+	Spenders         [][32]byte
 }
 
 /* Wrap plasma output with spend information */

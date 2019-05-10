@@ -10,27 +10,32 @@ import (
 	"testing"
 )
 
-func TestUTXOSerialization(t *testing.T) {
-	keys := [][]byte{[]byte("hamdi")}
+func TestTxSerialization(t *testing.T) {
 	hashes := []byte("allam")
-	// no default attributes
-	utxo := UTXO{
-		InputKeys:        keys,
-		SpenderKeys:      keys,
-		ConfirmationHash: hashes,
-		MerkleHash:       hashes,
+	var sigs [65]byte
 
-		Output:   plasma.NewOutput(common.HexToAddress("1"), utils.Big1),
-		Position: plasma.NewPosition(utils.Big1, 0, 0, utils.Big1),
-		Spent:    true,
+	// no default attributes
+	transaction := plasma.Transaction{
+		Input0:  plasma.NewInput(plasma.NewPosition(utils.Big1, 15, 1, utils.Big0), sigs, [][65]byte{}),
+		Input1:  plasma.NewInput(plasma.NewPosition(utils.Big0, 0, 0, utils.Big1), sigs, [][65]byte{}),
+		Output0: plasma.NewOutput(common.HexToAddress("1"), utils.Big1),
+		Output1: plasma.NewOutput(common.HexToAddress("2"), utils.Big2),
+		Fee:     utils.Big1,
 	}
 
-	bytes, err := rlp.EncodeToBytes(&utxo)
+	tx := Transaction{
+		Transaction:      transaction,
+		Spent:            []bool{false, false},
+		Spenders:         [][32]byte{},
+		ConfirmationHash: hashes,
+	}
+
+	bytes, err := rlp.EncodeToBytes(&tx)
 	require.NoError(t, err)
 
-	recoveredUTXO := UTXO{}
-	err = rlp.DecodeBytes(bytes, &recoveredUTXO)
+	recoveredTx := Transaction{}
+	err = rlp.DecodeBytes(bytes, &recoveredTx)
 	require.NoError(t, err)
 
-	require.True(t, reflect.DeepEqual(utxo, recoveredUTXO), "mismatch in serialized and deserialized utxos")
+	require.True(t, reflect.DeepEqual(tx, recoveredTx), "mismatch in serialized and deserialized transactions")
 }
