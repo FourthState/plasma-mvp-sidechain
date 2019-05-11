@@ -55,9 +55,9 @@ func (store DepositStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit 
 func (store DepositStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spender []byte) sdk.Result {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()
+		return ErrOutputDNE(DefaultCodespace, fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()
 	} else if deposit.Spent {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("deposit with nonce %s is already spent", nonce)).Result()
+		return ErrOutputSpent(DefaultCodespace, fmt.Sprintf("deposit with nonce %s is already spent", nonce)).Result()
 	}
 
 	deposit.Spent = true
