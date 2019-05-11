@@ -159,7 +159,7 @@ func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, plasm
 	if utxoStore.HasUTXO(ctx, msg.Owner, depositPosition) {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
 	}
-	_, threshold, ok := client.GetDeposit(plasmaStore.CurrentPlasmaBlockNum(ctx), msg.DepositNonce)
+	deposit, threshold, ok := client.GetDeposit(plasmaStore.CurrentPlasmaBlockNum(ctx), msg.DepositNonce)
 	if !ok && threshold == nil {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist.", msg.DepositNonce.String()).Result(), true
 	}
@@ -169,6 +169,9 @@ func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, plasm
 	exited := client.HasTxBeenExited(plasmaStore.CurrentPlasmaBlockNum(ctx), depositPosition)
 	if exited {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
+	}
+	if !bytes.Equal(msg.Owner.Bytes(), deposit.Owner.Bytes()) {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, fmt.Sprintf("msg has the wrong owner field for given deposit. Resubmit with correct deposit owner: %s", deposit.Owner.String())).Result(), true
 	}
 	return ctx, sdk.Result{}, false
 }

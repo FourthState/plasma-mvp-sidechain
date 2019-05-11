@@ -19,6 +19,7 @@ var (
 	addr       = crypto.PubkeyToAddress(privKey.PublicKey)
 	// bad keys to check against the deposit
 	badPrivKey, _ = crypto.GenerateKey()
+	badAddr       = crypto.PubkeyToAddress(badPrivKey.PublicKey)
 )
 
 type inputUTXO struct {
@@ -479,6 +480,24 @@ func TestAnteDepositDNE(t *testing.T) {
 	require.False(t, res.IsOK(), "Nonexistent deposit inclusion did not error")
 	require.True(t, abort, "Nonexistent deposit inclusion did not abort")
 
+}
+
+func TestAnteDepositWrongOwner(t *testing.T) {
+	// setup
+	ctx, utxoStore, plasmaStore := setup()
+	// connection always returns valid deposits
+	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
+
+	// Try to include with wrong owner
+	msg := msgs.IncludeDepositMsg{
+		DepositNonce: big.NewInt(3),
+		Owner:        badAddr,
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+
+	require.False(t, res.IsOK(), "Wrong Owner deposit inclusion did not error")
+	require.True(t, abort, "Wrong owner deposit inclusion did not abort")
 }
 
 func setupInputs(ctx sdk.Context, utxoStore store.UTXOStore, inputs ...inputUTXO) {
