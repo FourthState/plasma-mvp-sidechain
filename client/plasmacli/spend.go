@@ -46,7 +46,7 @@ Usage:
 	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
-		ctx := context.NewCLIContext()
+		//ctx := context.NewCLIContext()
 
 		// parse accounts
 		var accs []string
@@ -161,19 +161,23 @@ Usage:
 			return err
 		}
 
-		// broadcast to the node
-		if viper.GetBool(asyncF) {
-			if _, err := ctx.BroadcastTxAsync(txBytes); err != nil {
-				return err
-			}
-		} else {
-			res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Committed at block %d. Hash 0x%x\n", res.Height, res.TxHash)
-		}
+		fmt.Printf("%x\n", txBytes)
 
+		/*
+			// broadcast to the node
+			if viper.GetBool(asyncF) {
+				if _, err := ctx.BroadcastTxAsync(txBytes); err != nil {
+					return err
+				}
+			} else {
+				res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Committed at block %d. Hash 0x%x\n", res.Height, res.TxHash)
+			}
+
+		*/
 		return nil
 	},
 }
