@@ -19,6 +19,7 @@ var (
 	addr       = crypto.PubkeyToAddress(privKey.PublicKey)
 	// bad keys to check against the deposit
 	badPrivKey, _ = crypto.GenerateKey()
+	badAddr       = crypto.PubkeyToAddress(badPrivKey.PublicKey)
 )
 
 type inputUTXO struct {
