@@ -144,9 +144,9 @@ func (store TxStore) SpendUTXO(ctx sdk.Context, pos plasma.Position, spender []b
 
 	tx, ok := store.GetTx(ctx, hash)
 	if !ok {
-		return sdk.ErrUnknownRequest(fmt.Sprintf("output with index %x and transaction hash 0x%x does not exist", pos.OutputIndex, hash)).Result()
+		return ErrOutputDNE(DefaultCodespace, fmt.Sprintf("output with index %x and transaction hash 0x%x does not exist", pos.OutputIndex, hash)).Result()
 	} else if tx.Spent[pos.OutputIndex] {
-		return sdk.ErrUnauthorized(fmt.Sprintf("output with index %x and transaction hash 0x%x is already spent", pos.OutputIndex, hash)).Result()
+		return ErrOutputSpent(DefaultCodespace, fmt.Sprintf("output with index %x and transaction hash 0x%x is already spent", pos.OutputIndex, hash)).Result()
 	}
 
 	tx.Spent[pos.OutputIndex] = true
