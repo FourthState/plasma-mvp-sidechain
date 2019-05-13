@@ -1,11 +1,11 @@
 package query
 
 import (
-	"encoding/json"
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -26,14 +26,8 @@ var balanceCmd = &cobra.Command{
 			return err
 		}
 
-		queryRoute := fmt.Sprintf("custom/utxo/balance/%s", addr.Hex())
-		data, err := ctx.Query(queryRoute, nil)
+		total, err := Balance(ctx, addr)
 		if err != nil {
-			return err
-		}
-
-		var total string
-		if err := json.Unmarshal(data, &total); err != nil {
 			return err
 		}
 
@@ -41,4 +35,14 @@ var balanceCmd = &cobra.Command{
 		fmt.Printf("Total: %s\n", total)
 		return nil
 	},
+}
+
+func Balance(ctx context.CLIContext, addr common.Address) (string, error) {
+	queryRoute := fmt.Sprintf("custom/utxo/balance/%s", addr.Hex())
+	data, err := ctx.Query(queryRoute, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }

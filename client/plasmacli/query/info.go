@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"strings"
@@ -20,23 +19,16 @@ var infoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Information on owned utxos valid and invalid",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext().WithCodec(codec.New())
+		ctx := context.NewCLIContext()
 		addrStr := strings.TrimSpace(args[0])
 		if !common.IsHexAddress(addrStr) {
 			return fmt.Errorf("Invalid address provided. Please use hex format")
 		}
 		addr := common.HexToAddress(addrStr)
-		fmt.Printf("Querying information for 0x%x\n", addr)
+		fmt.Printf("Querying information for 0x%x\n\n", addr)
 
-		// query for all utxos owned by this address
-		queryRoute := fmt.Sprintf("custom/utxo/info/%s", addr.Hex())
-		data, err := ctx.Query(queryRoute, nil)
+		utxos, err := Info(ctx, addr)
 		if err != nil {
-			return err
-		}
-
-		var utxos []store.UTXO
-		if err := json.Unmarshal(data, &utxos); err != nil {
 			return err
 		}
 
@@ -67,4 +59,20 @@ var infoCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func Info(ctx context.CLIContext, addr common.Address) ([]store.UTXO, error) {
+	// query for all utxos owned by this address
+	queryRoute := fmt.Sprintf("custom/utxo/info/%s", addr.Hex())
+	data, err := ctx.Query(queryRoute, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var utxos []store.UTXO
+	if err := json.Unmarshal(data, &utxos); err != nil {
+		return nil, err
+	}
+
+	return utxos, nil
 }

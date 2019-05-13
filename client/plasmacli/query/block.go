@@ -3,7 +3,7 @@ package query
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/query"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/spf13/cobra"
 	"strings"
@@ -21,20 +21,30 @@ var blockCmd = &cobra.Command{
 		ctx := context.NewCLIContext().WithTrustNode(true)
 		num := strings.TrimSpace(args[0])
 
-		queryPath := fmt.Sprintf("custom/plasma/block/%s", num)
-		data, err := ctx.Query(queryPath, nil)
+		block, err := Block(ctx, num)
 		if err != nil {
 			return err
 		}
 
-		var resp query.BlockResp
-		if err := json.Unmarshal(data, &resp); err != nil {
-			return err
-		}
+		fmt.Printf("Block Header: 0x%x\n", block.Header)
+		fmt.Printf("Transaction Count: %d, FeeAmount: %d\n", block.TxnCount, block.FeeAmount)
+		fmt.Printf("Tendermint BlockHeight: %d\n", block.TMBlockHeight)
 
-		fmt.Printf("Block Header: 0x%x\n", resp.Header)
-		fmt.Printf("Transaction Count: %d, FeeAmount: %d\n", resp.TxnCount, resp.FeeAmount)
-		fmt.Printf("Tendermint BlockHeight: %d\n", resp.TMBlockHeight)
 		return nil
 	},
+}
+
+func Block(ctx context.CLIContext, num string) (store.Block, error) {
+	queryPath := fmt.Sprintf("custom/plasma/block/%s", num)
+	data, err := ctx.Query(queryPath, nil)
+	if err != nil {
+		return store.Block{}, err
+	}
+
+	var block store.Block
+	if err := json.Unmarshal(data, &block); err != nil {
+		return store.Block{}, err
+	}
+
+	return block, nil
 }

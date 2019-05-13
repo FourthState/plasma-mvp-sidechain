@@ -44,22 +44,19 @@ func init() {
 func main() {
 	cobra.EnableCommandSorting = false
 
-	rootCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
+	rootCmd.PersistentFlags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
+	rootCmd.PersistentFlags().Bool(client.FlagTrustNode, true, "Trust connected full node (don't verify proofs for responses)")
 	rootCmd.PersistentFlags().StringP(store.DirFlag, "d", homeDir, "directory for plasmacli")
+
+	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
+
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
 	}
 
-	if err := viper.BindPFlags(rootCmd.Flags()); err != nil {
-		fmt.Println(err)
-	}
-
-	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
-
 	viper.AddConfigPath(homeDir)
 	plasmaDir := filepath.Join(homeDir, "plasma.toml")
 	if _, err := os.Stat(plasmaDir); os.IsNotExist(err) {
-
 		config.WritePlasmaConfigFile(plasmaDir, config.DefaultPlasmaConfig())
 	}
 
@@ -69,18 +66,17 @@ func main() {
 		eth.ProveCmd(),
 		includeCmd,
 		client.LineBreak,
+
 		signCmd,
 		spendCmd,
 		client.LineBreak,
+
 		keys.KeysCmd(),
 		client.LineBreak,
+
 		versionCmd,
 	)
 
-	Execute()
-}
-
-func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
