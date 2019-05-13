@@ -115,6 +115,9 @@ func TestTransactions(t *testing.T) {
 
 		// Create and store new transaction
 		tx := Transaction{plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs))}
+		for i, _ := range tx.Spenders {
+			tx.Spenders[i] = []byte{}
+		}
 		txStore.StoreTx(ctx, tx)
 
 		// Create Outputs
