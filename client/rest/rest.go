@@ -24,8 +24,11 @@ import (
 	tm "github.com/tendermint/tendermint/rpc/core/types"
 
 	plasma "github.com/FourthState/plasma-mvp-sidechain/plasma"
+	elasticsearch "github.com/elastic/go-elasticsearch"
 
+	//"bytes"
 	//"io/ioutil"
+	"io/ioutil"
 	"math/big"
 )
 
@@ -36,6 +39,12 @@ const (
 )
 
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) {
+
+	es, err := elasticsearch.NewDefaultClient()
+	if err != nil {
+		fmt.Printf("Error creating the client: %s", err)
+	}
+
 	r.HandleFunc(fmt.Sprint("/deposit/include"), postDepositHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprintf("/balance/{%s}", ownerAddress), queryBalanceHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/utxo"), queryUTXOHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
@@ -45,6 +54,9 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/tx/rlp"), postTxRLPHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/tx/hash"), postTxHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/tx/bytes"), postTxBytesHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+
+	// elasticsearch endpoints
+	r.HandleFunc(fmt.Sprint("/logs"), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -368,5 +380,18 @@ func postTxBytesHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFu
 		}
 
 		rest.PostProcessResponse(w, cdc, txDecoded, ctx.Indent)
+	}
+}
+
+func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		res, err := es.Info()
+		if err != nil {
+			fmt.Printf("Error getting response: %s", err)
+		}
+		body, err := ioutil.ReadAll(res.Body)
+
+		rest.PostProcessResponse(w, cdc, body, cliCtx.Indent)
 	}
 }

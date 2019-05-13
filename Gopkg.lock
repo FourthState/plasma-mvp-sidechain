@@ -160,6 +160,18 @@
   version = "v1.7.1"
 
 [[projects]]
+  digest = "1:2af3a6e1f12e54cef95c6051cd1cb1e154629a4b82c692ac8a92f00259f570eb"
+  name = "github.com/elastic/go-elasticsearch"
+  packages = [
+    ".",
+    "esapi",
+    "estransport",
+  ]
+  pruneopts = "UT"
+  revision = "3aa68f5e96e138fa4dafc9403b10674b4310a632"
+  version = "v0.0.0"
+
+[[projects]]
   digest = "1:87fa9f2d71fd2516e6c0d906b7eb58886c8b4fcc6ee8cada0553a0e50bfeef3a"
   name = "github.com/ethereum/go-ethereum"
   packages = [
@@ -841,6 +853,7 @@
     "github.com/cosmos/cosmos-sdk/store",
     "github.com/cosmos/cosmos-sdk/types",
     "github.com/cosmos/cosmos-sdk/types/rest",
+    "github.com/elastic/go-elasticsearch",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
