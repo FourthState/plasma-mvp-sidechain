@@ -1,10 +1,10 @@
 package rest
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	url "net/url"
-
 	//clientrest "github.com/cosmos/cosmos-sdk/client/rest"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -19,13 +19,18 @@ import (
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	hex "github.com/ethereum/go-ethereum/common/hexutil"
 	//"github.com/ethereum/go-ethereum/crypto"
+	"bytes"
+	ctxt "context"
+	plasma "github.com/FourthState/plasma-mvp-sidechain/plasma"
+	elasticsearch "github.com/elastic/go-elasticsearch"
+	esapi "github.com/elastic/go-elasticsearch/esapi"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/gorilla/mux"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
 
-	plasma "github.com/FourthState/plasma-mvp-sidechain/plasma"
-
 	//"io/ioutil"
+	"io/ioutil"
 	"math/big"
 )
 
@@ -33,9 +38,16 @@ const (
 	ownerAddress = "ownerAddress"
 	position     = "position"
 	signature    = "signature"
+	logsHash     = "logsHash"
 )
 
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) {
+
+	es, err := elasticsearch.NewDefaultClient()
+	if err != nil {
+		fmt.Printf("Error creating the client: %s", err)
+	}
+
 	r.HandleFunc(fmt.Sprint("/deposit/include"), postDepositHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprintf("/balance/{%s}", ownerAddress), queryBalanceHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/utxo"), queryUTXOHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
@@ -45,6 +57,10 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/tx/rlp"), postTxRLPHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/tx/hash"), postTxHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/tx/bytes"), postTxBytesHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+
+	// elasticsearch endpoints
+	r.HandleFunc(fmt.Sprintf("/logs/{%s}", logsHash), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es)).Methods("POST", "OPTIONS")
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -368,5 +384,86 @@ func postTxBytesHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFu
 		}
 
 		rest.PostProcessResponse(w, cdc, txDecoded, ctx.Indent)
+	}
+}
+
+func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		body, err := ioutil.ReadAll(r.Body)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		docID := ethcmn.ToHex(crypto.Keccak256(body))
+
+		req := esapi.IndexRequest{
+			Index:      "logs",
+			DocumentID: docID,
+			Body:       bytes.NewReader(body),
+			Refresh:    "true",
+		}
+
+		res, err := req.Do(ctxt.Background(), es)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		if res.IsError() {
+			fmt.Print(res)
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, "ES Error while indexing logs")
+		} else {
+			rest.PostProcessResponse(w, cdc, docID, cliCtx.Indent)
+		}
+	}
+}
+
+type EsSource struct {
+	Source map[string]json.RawMessage `json:"_source"`
+}
+
+func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+		param := vars[logsHash]
+
+		req := esapi.GetRequest{
+			Index:      "logs",
+			DocumentID: param,
+		}
+
+		res, err := req.Do(ctxt.Background(), es)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		hit := EsSource{
+			Source: make(map[string]json.RawMessage),
+		}
+
+		if err := json.NewDecoder(res.Body).Decode(&hit); err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		fmt.Println(hit.Source)
+		//if !ok {
+		//	rest.WriteErrorResponse(w, http.StatusInternalServerError, errors.New("ES _source wasnt a json object"))
+		//}
+
+		//mapString := make(map[string]string)
+
+		//for key, value := range hit {
+		//	strKey := fmt.Sprintf("%v", key)
+		//	strValue := fmt.Sprintf("%v", value)
+
+		//	mapString[strKey] = strValue
+		//}
+
+		rest.PostProcessResponse(w, cdc, hit.Source, cliCtx.Indent)
 	}
 }
