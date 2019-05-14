@@ -57,6 +57,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 
 	// elasticsearch endpoints
 	r.HandleFunc(fmt.Sprint("/logs"), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es)).Methods("POST", "OPTIONS")
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -380,6 +381,20 @@ func postTxBytesHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFu
 		}
 
 		rest.PostProcessResponse(w, cdc, txDecoded, ctx.Indent)
+	}
+}
+
+func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		body, err := ioutil.ReadAll(r.Body)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		rest.PostProcessResponse(w, cdc, body, cliCtx.Indent)
 	}
 }
 
