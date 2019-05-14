@@ -421,6 +421,10 @@ func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsea
 	}
 }
 
+type EsSource struct {
+	Source map[string]json.RawMessage `json:"_source"`
+}
+
 func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -438,23 +442,28 @@ func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsear
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
 		}
 
-		var resMap map[string]interface{}
+		hit := EsSource{
+			Source: make(map[string]json.RawMessage),
+		}
 
-		if err := json.NewDecoder(res.Body).Decode(&resMap); err != nil {
+		if err := json.NewDecoder(res.Body).Decode(&hit); err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
 		}
 
-		hit := resMap["_source"].(map[string]interface{})
+		fmt.Println(hit.Source)
+		//if !ok {
+		//	rest.WriteErrorResponse(w, http.StatusInternalServerError, errors.New("ES _source wasnt a json object"))
+		//}
 
-		mapString := make(map[string]string)
+		//mapString := make(map[string]string)
 
-		for key, value := range hit {
-			strKey := fmt.Sprintf("%v", key)
-			strValue := fmt.Sprintf("%v", value)
+		//for key, value := range hit {
+		//	strKey := fmt.Sprintf("%v", key)
+		//	strValue := fmt.Sprintf("%v", value)
 
-			mapString[strKey] = strValue
-		}
+		//	mapString[strKey] = strValue
+		//}
 
-		rest.PostProcessResponse(w, cdc, mapString, cliCtx.Indent)
+		rest.PostProcessResponse(w, cdc, hit.Source, cliCtx.Indent)
 	}
 }
