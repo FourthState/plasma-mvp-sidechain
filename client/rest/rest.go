@@ -61,6 +61,10 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	// elasticsearch endpoints
 	r.HandleFunc(fmt.Sprintf("/logs/{%s}", logsHash), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es)).Methods("POST", "OPTIONS")
+
+	// presence claims
+	r.HandleFunc(fmt.Sprint("/presence_claim"), postPresenceClaimHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -465,5 +469,21 @@ func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsear
 		//}
 
 		rest.PostProcessResponse(w, cdc, hit.Source, cliCtx.Indent)
+	}
+}
+
+func postPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req msgs.InitiatePresenceClaimMsg
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+
+		fmt.Print(req)
+
+		rest.PostProcessResponse(w, cdc, "ok!", ctx.Indent)
+
 	}
 }
