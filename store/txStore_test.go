@@ -114,7 +114,7 @@ func TestTransactions(t *testing.T) {
 		require.False(t, ok, "did not return error on nonexistent transaction")
 
 		// Create and store new transaction
-		tx := Transaction{plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs))}
+		tx := Transaction{plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs)), GetPosition("(4567.1.1.0)")}
 		for i, _ := range tx.Spenders {
 			tx.Spenders[i] = []byte{}
 		}

@@ -6,6 +6,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"math/big"
 )
 
 const (
@@ -20,6 +21,7 @@ type Transaction struct {
 	ConfirmationHash []byte
 	Spent            []bool
 	Spenders         [][]byte
+	Position         plasma.Position
 }
 
 /* Wrap plasma output with spend information */
@@ -120,6 +122,17 @@ func (store TxStore) HasUTXO(ctx sdk.Context, pos plasma.Position) bool {
 	return store.HasTx(ctx, hash)
 }
 
+// Store the given Account
+func (store TxStore) StoreAccount(ctx sdk.Context, addr common.Address, acc Account) {
+	key := prefixKey(accountKey, addr.Bytes())
+	data, err := rlp.EncodeToBytes(&acc)
+	if err != nil {
+		panic(fmt.Sprintf("error marshaling transaction: %s", err))
+	}
+
+	store.Set(ctx, key, data)
+}
+
 // Add a mapping from transaction hash to transaction
 func (store TxStore) StoreTx(ctx sdk.Context, tx Transaction) {
 	data, err := rlp.EncodeToBytes(&tx)
@@ -129,6 +142,7 @@ func (store TxStore) StoreTx(ctx sdk.Context, tx Transaction) {
 
 	key := prefixKey(hashKey, tx.Transaction.TxHash())
 	store.Set(ctx, key, data)
+	store.storeUTXOsWithAccount(ctx, tx)
 }
 
 // Add a mapping from position to transaction hash
@@ -137,7 +151,7 @@ func (store TxStore) StoreUTXO(ctx sdk.Context, pos plasma.Position, hash []byte
 	store.Set(ctx, key, hash)
 }
 
-// Updates Spent and Spender in transaction that contains this utxo
+// Updates Spent, Spender fields and Account associated with this utxo
 func (store TxStore) SpendUTXO(ctx sdk.Context, pos plasma.Position, spender []byte) sdk.Result {
 	key := prefixKey(positionKey, pos.Bytes())
 	hash := store.Get(ctx, key)
@@ -153,6 +167,74 @@ func (store TxStore) SpendUTXO(ctx sdk.Context, pos plasma.Position, spender []b
 	tx.Spenders[pos.OutputIndex] = spender
 
 	store.StoreTx(ctx, tx)
+	store.spendUTXOWithAccount(ctx, pos, tx.Transaction)
 
 	return sdk.Result{}
+}
+
+/* Helpers */
+
+func (store TxStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utxos []Output) {
+	for _, p := range acc.Unspent {
+		utxo, ok := store.GetUTXO(ctx, p)
+		if ok {
+			utxos = append(utxos, utxo)
+		}
+	}
+	return utxos
+}
+
+func (store TxStore) StoreDepositWithAccount(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
+	store.addToAccount(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
+}
+
+func (store TxStore) storeUTXOsWithAccount(ctx sdk.Context, tx Transaction) {
+	for i, output := range tx.Transaction.Outputs {
+		store.addToAccount(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
+	}
+}
+
+func (store TxStore) spendDepositWithAccount(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
+	store.subtractFromAccount(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
+}
+
+func (store TxStore) spendUTXOWithAccount(ctx sdk.Context, pos plasma.Position, plasmaTx plasma.Transaction) {
+	store.subtractFromAccount(ctx, plasmaTx.Outputs[pos.OutputIndex].Owner, plasmaTx.Outputs[pos.OutputIndex].Amount, pos)
+}
+
+func (store TxStore) addToAccount(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
+	acc, ok := store.GetAccount(ctx, addr)
+	if !ok {
+		acc = Account{big.NewInt(0), make([]plasma.Position, 0), make([]plasma.Position, 0)}
+	}
+
+	acc.Balance = new(big.Int).Add(acc.Balance, amount)
+	acc.Unspent = append(acc.Unspent, pos)
+	store.StoreAccount(ctx, addr, acc)
+}
+
+func (store TxStore) subtractFromAccount(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
+	acc, ok := store.GetAccount(ctx, addr)
+	if !ok {
+		panic(fmt.Sprintf("transaction store has been corrupted"))
+	}
+
+	// Update Account
+	acc.Balance = new(big.Int).Sub(acc.Balance, amount)
+	if acc.Balance.Sign() == -1 {
+		panic(fmt.Sprintf("account with address 0x%x has a negative balance", addr))
+	}
+
+	removePosition(acc.Unspent, pos)
+	acc.Spent = append(acc.Spent, pos)
+	store.StoreAccount(ctx, addr, acc)
+}
+
+func removePosition(positions []plasma.Position, pos plasma.Position) []plasma.Position {
+	for i, p := range positions {
+		if p.String() == pos.String() {
+			positions = append(positions[:i], positions[i+1:]...)
+		}
+	}
+	return positions
 }

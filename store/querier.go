@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -13,7 +14,7 @@ const (
 	QueryInfo    = "info"
 )
 
-func NewUtxoQuerier(utxoStore UTXOStore) sdk.Querier {
+func NewTxQuerier(txStore TxStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
 			return nil, sdk.ErrUnknownRequest("path not specified")
@@ -25,7 +26,7 @@ func NewUtxoQuerier(utxoStore UTXOStore) sdk.Querier {
 				return nil, sdk.ErrUnknownRequest("balance query follows balance/<address>")
 			}
 			addr := common.HexToAddress(path[1])
-			total, err := queryBalance(ctx, utxoStore, addr)
+			total, err := queryBalance(ctx, txStore, addr)
 			if err != nil {
 				return nil, sdk.ErrInternal("failed query balance")
 			}
@@ -36,7 +37,7 @@ func NewUtxoQuerier(utxoStore UTXOStore) sdk.Querier {
 				return nil, sdk.ErrUnknownRequest("info query follows /info/<address>")
 			}
 			addr := common.HexToAddress(path[1])
-			utxos, err := queryInfo(ctx, utxoStore, addr)
+			utxos, err := queryInfo(ctx, txStore, addr)
 			if err != nil {
 				return nil, err
 			}
@@ -52,43 +53,28 @@ func NewUtxoQuerier(utxoStore UTXOStore) sdk.Querier {
 	}
 }
 
-func queryBalance(ctx sdk.Context, utxoStore UTXOStore, addr common.Address) (*big.Int, sdk.Error) {
-	iter := sdk.KVStorePrefixIterator(utxoStore.KVStore(ctx), addr.Bytes())
-	total := big.NewInt(0)
-	for ; iter.Valid(); iter.Next() {
-		utxo, ok := utxoStore.GetUTXOWithKey(ctx, iter.Key())
-		if !ok {
-			return nil, sdk.ErrInternal("failed utxo retrieval")
-		}
-
-		if !utxo.Spent {
-			total = total.Add(total, utxo.Output.Amount)
-		}
+func queryBalance(ctx sdk.Context, txStore TxStore, addr common.Address) (*big.Int, sdk.Error) {
+	acc, ok := txStore.GetAccount(ctx, addr)
+	if !ok {
+		return nil, ErrAccountDNE(DefaultCodespace, fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
 	}
 
-	return total, nil
+	return acc.GetBalance(), nil
 }
 
-func queryInfo(ctx sdk.Context, utxoStore UTXOStore, addr common.Address) ([]UTXO, sdk.Error) {
-	var utxos []UTXO
-	iter := sdk.KVStorePrefixIterator(utxoStore.KVStore(ctx), addr.Bytes())
-	for ; iter.Valid(); iter.Next() {
-		utxo, ok := utxoStore.GetUTXOWithKey(ctx, iter.Key())
-		if !ok {
-			return nil, sdk.ErrInternal("failed utxo retrieval")
-		}
-
-		utxos = append(utxos, utxo)
+func queryInfo(ctx sdk.Context, txStore TxStore, addr common.Address) ([]Output, sdk.Error) {
+	acc, ok := txStore.GetAccount(ctx, addr)
+	if !ok {
+		return nil, ErrAccountDNE(DefaultCodespace, fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
 	}
-
-	return utxos, nil
+	return txStore.GetUnspentForAccount(ctx, acc), nil
 }
 
 const (
 	QueryBlock = "block"
 )
 
-func NewPlasmaQuerier(plasmaStore PlasmaStore) sdk.Querier {
+func NewBlockQuerier(blockStore BlockStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
 			return nil, sdk.ErrUnknownRequest("path not specified")
@@ -103,7 +89,7 @@ func NewPlasmaQuerier(plasmaStore PlasmaStore) sdk.Querier {
 			if !ok {
 				return nil, sdk.ErrUnknownRequest("block number must be provided in deicmal format")
 			}
-			block, ok := plasmaStore.GetBlock(ctx, blockNum)
+			block, ok := blockStore.GetBlock(ctx, blockNum)
 			if !ok {
 				return nil, sdk.ErrUnknownRequest("nonexistent plasma block")
 			}
