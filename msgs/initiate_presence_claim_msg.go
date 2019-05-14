@@ -16,9 +16,9 @@ const (
 )
 
 type InitiatePresenceClaimMsg struct {
-	ZoneID       [32]byte   `json: "zoneID"`
-	UTXOPosition [4]big.Int `json: "uxoPosition"`
-	Signature    *[65]byte  `json: "signature"`
+	ZoneID       [32]byte   `json:"zoneID"`
+	UTXOPosition [4]big.Int `json:"uxoPosition"`
+	Signature    [65]byte   `json:"signature"`
 }
 
 func (msg InitiatePresenceClaimMsg) Type() string { return "initiate_presence_claim" }
@@ -27,7 +27,12 @@ func (msg InitiatePresenceClaimMsg) Route() string { return InitiatePresenceClai
 
 func (msg InitiatePresenceClaimMsg) TxHash() []byte {
 
-	bytes, _ := rlp.EncodeToBytes(&msg)
+	messageNoSig := InitiatePresenceClaimMsg{}
+
+	messageNoSig.ZoneID = msg.ZoneID
+	messageNoSig.UTXOPosition = msg.UTXOPosition
+
+	bytes, _ := rlp.EncodeToBytes(&messageNoSig)
 
 	return crypto.Keccak256(bytes)
 }
@@ -51,10 +56,7 @@ func (msg InitiatePresenceClaimMsg) GetSignBytes() []byte {
 }
 
 func (msg InitiatePresenceClaimMsg) ValidateBasic() sdk.Error {
-	if err := msg.ValidateBasic(); err != nil {
-		return ErrInvalidTransaction(DefaultCodespace, err.Error())
-	}
-
+	// TODO validate message here
 	return nil
 }
 

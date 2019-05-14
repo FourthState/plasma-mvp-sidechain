@@ -213,30 +213,12 @@ func postDepositHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFu
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req PostDepositReq
 
-		//body, err := ioutil.ReadAll(r.Body)
-		//if err != nil {
-		//	rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-		//}
-
-		//err = json.Unmarshal(body, &req)
-		//fmt.Println("body", ethcmn.ToHex(body))
-
-		//if err != nil {
-		//	rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-		//}
 		if !rest.ReadRESTReq(w, r, cdc, &req) {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "failed to parse request")
 			return
 		}
 
 		owner := ethcmn.HexToAddress(req.OwnerAddress)
-		//fmt.Println("owner", req.OwnerAddress)
-
-		//baseReq := req.BaseReq.Sanitize()
-		//if !baseReq.ValidateBasic(w) {
-		//	return
-		//}
-		//fmt.Println("deposit", req.DepositNonce)
 
 		nonce, ok := new(big.Int).SetString(req.DepositNonce, 10)
 		if !ok {
@@ -250,22 +232,18 @@ func postDepositHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFu
 			ReplayNonce:  uint64(0),
 		}
 
-		//fmt.Println("1")
 		txBytes, err := rlp.EncodeToBytes(&msg)
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		//fmt.Println("2")
 		// broadcast to the node
 		res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		//fmt.Println("3")
-		//fmt.Println("res")
 		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
 		return
 	}
@@ -279,23 +257,6 @@ func postSpendHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
 			return
 		}
-
-		//fmt.Println("tx to spend: ", req)
-
-		//txHash := req.TxHash()
-
-		//txHashMessage := utils.ToEthSignedMessageHash(txHash)
-		//fmt.Println("TX HASH MESSAGE ", ethcmn.ToHex(txHashMessage))
-
-		//pubKey, err := crypto.SigToPub(txHashMessage, req.Input0.Signature[:])
-		//if err != nil {
-		//	rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
-		//	return
-		//}
-		//signAddr := crypto.PubkeyToAddress(*pubKey)
-		//fmt.Printf("address from signature: %x \n", signAddr)
-
-		// create SpendMsg and txBytes
 		msg := msgs.SpendMsg{
 			Transaction: req,
 		}
@@ -331,7 +292,6 @@ func postTxHashHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFun
 		}
 		txHash := req.TxHash()
 		txHashHex := ethcmn.ToHex(txHash)
-		//fmt.Println("txHash (hex): ", txHash)
 
 		rest.PostProcessResponse(w, cdc, txHashHex, ctx.Indent)
 	}
@@ -359,7 +319,6 @@ func postTxRLPHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc
 
 		}
 
-		//fmt.Println("Checked that tx encoded properl")
 		txRLPHex := ethcmn.ToHex(txRLP)
 
 		rest.PostProcessResponse(w, cdc, txRLPHex, ctx.Indent)
@@ -454,36 +413,56 @@ func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsear
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
 		}
 
-		fmt.Println(hit.Source)
-		//if !ok {
-		//	rest.WriteErrorResponse(w, http.StatusInternalServerError, errors.New("ES _source wasnt a json object"))
-		//}
-
-		//mapString := make(map[string]string)
-
-		//for key, value := range hit {
-		//	strKey := fmt.Sprintf("%v", key)
-		//	strValue := fmt.Sprintf("%v", value)
-
-		//	mapString[strKey] = strValue
-		//}
-
 		rest.PostProcessResponse(w, cdc, hit.Source, cliCtx.Indent)
 	}
 }
 
+type postPresenceClaimReq struct {
+	ZoneID       string     `json:"zoneID"`
+	UTXOPosition [4]big.Int `json:"utxoPosition"`
+	Signature    string     `json:"signature"`
+}
+
+// TODO: POST body validation
 func postPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req msgs.InitiatePresenceClaimMsg
+		var req postPresenceClaimReq
 
 		if !rest.ReadRESTReq(w, r, cdc, &req) {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
 			return
 		}
 
-		fmt.Print(req)
+		claim := msgs.InitiatePresenceClaimMsg{}
 
-		rest.PostProcessResponse(w, cdc, "ok!", ctx.Indent)
+		copy(claim.ZoneID[:], ethcmn.FromHex(req.ZoneID))
+
+		copy(claim.Signature[:], ethcmn.FromHex(req.Signature))
+
+		claim.UTXOPosition = req.UTXOPosition
+
+		fmt.Println("zoneID", claim.ZoneID)
+		fmt.Println("utxoPosition", claim.UTXOPosition)
+		fmt.Println("signature", claim.Signature)
+
+		if err := claim.ValidateBasic(); err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Invalid `InitiatePresenceClaimMsg`: "+err.Error())
+			return
+		}
+
+		txBytes, err := rlp.EncodeToBytes(&claim)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to encode `InitiatePresenceClaimMsg`: "+err.Error())
+			return
+		}
+
+		// broadcast to the node
+		res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to broadcast `InitiatePresenceClaimMsg` "+err.Error())
+			return
+		}
+		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
 
 	}
 }

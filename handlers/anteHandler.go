@@ -30,6 +30,10 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 		case "spend_utxo":
 			spendMsg := msg.(msgs.SpendMsg)
 			return spendMsgAnteHandler(ctx, spendMsg, utxoStore, plasmaStore, client)
+		case "initiate_presence_claim":
+			initiatePresenceClaimMsg := msg.(msgs.InitiatePresenceClaimMsg)
+			fmt.Print(initiatePresenceClaimMsg.ZoneID)
+			panic("InitiatePresenceClaimMsg antehandler not yet implemented")
 		default:
 			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
