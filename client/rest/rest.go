@@ -1,10 +1,10 @@
 package rest
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	url "net/url"
-
 	//clientrest "github.com/cosmos/cosmos-sdk/client/rest"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -19,14 +19,16 @@ import (
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	hex "github.com/ethereum/go-ethereum/common/hexutil"
 	//"github.com/ethereum/go-ethereum/crypto"
+	"bytes"
+	ctxt "context"
+	plasma "github.com/FourthState/plasma-mvp-sidechain/plasma"
+	elasticsearch "github.com/elastic/go-elasticsearch"
+	esapi "github.com/elastic/go-elasticsearch/esapi"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/gorilla/mux"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
 
-	plasma "github.com/FourthState/plasma-mvp-sidechain/plasma"
-	elasticsearch "github.com/elastic/go-elasticsearch"
-
-	//"bytes"
 	//"io/ioutil"
 	"io/ioutil"
 	"math/big"
@@ -36,6 +38,7 @@ const (
 	ownerAddress = "ownerAddress"
 	position     = "position"
 	signature    = "signature"
+	logsHash     = "logsHash"
 )
 
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) {
@@ -56,7 +59,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/tx/bytes"), postTxBytesHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
 	// elasticsearch endpoints
-	r.HandleFunc(fmt.Sprint("/logs"), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprintf("/logs/{%s}", logsHash), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es)).Methods("POST", "OPTIONS")
 }
 
@@ -394,19 +397,64 @@ func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsea
 			return
 		}
 
-		rest.PostProcessResponse(w, cdc, body, cliCtx.Indent)
+		docID := ethcmn.ToHex(crypto.Keccak256(body))
+
+		req := esapi.IndexRequest{
+			Index:      "logs",
+			DocumentID: docID,
+			Body:       bytes.NewReader(body),
+			Refresh:    "true",
+		}
+
+		res, err := req.Do(ctxt.Background(), es)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		if res.IsError() {
+			fmt.Print(res)
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, "ES Error while indexing logs")
+		} else {
+			rest.PostProcessResponse(w, cdc, docID, cliCtx.Indent)
+		}
 	}
 }
 
 func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		res, err := es.Info()
-		if err != nil {
-			fmt.Printf("Error getting response: %s", err)
-		}
-		body, err := ioutil.ReadAll(res.Body)
+		vars := mux.Vars(r)
+		param := vars[logsHash]
 
-		rest.PostProcessResponse(w, cdc, body, cliCtx.Indent)
+		req := esapi.GetRequest{
+			Index:      "logs",
+			DocumentID: param,
+		}
+
+		res, err := req.Do(ctxt.Background(), es)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		var resMap map[string]interface{}
+
+		if err := json.NewDecoder(res.Body).Decode(&resMap); err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		hit := resMap["_source"].(map[string]interface{})
+
+		mapString := make(map[string]string)
+
+		for key, value := range hit {
+			strKey := fmt.Sprintf("%v", key)
+			strValue := fmt.Sprintf("%v", value)
+
+			mapString[strKey] = strValue
+		}
+
+		rest.PostProcessResponse(w, cdc, mapString, cliCtx.Indent)
 	}
 }
