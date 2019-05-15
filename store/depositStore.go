@@ -8,23 +8,6 @@ import (
 	"math/big"
 )
 
-type Deposit struct {
-	Deposit plasma.Deposit
-	Spent   bool
-	Spender []byte
-}
-
-/* Deposit Store */
-type DepositStore struct {
-	kvStore
-}
-
-func NewDepositStore(ctxKey sdk.StoreKey) DepositStore {
-	return DepositStore{
-		kvStore: NewKVStore(ctxKey),
-	}
-}
-
 func (store DepositStore) GetDeposit(ctx sdk.Context, nonce *big.Int) (Deposit, bool) {
 	data := store.Get(ctx, nonce.Bytes())
 	if data == nil {

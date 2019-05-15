@@ -8,6 +8,8 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
+/* This file contains helper functions for testing */
+
 func setup() (ctx sdk.Context, key sdk.StoreKey) {
 	db := db.NewMemDB()
 	ms := cosmosStore.NewCommitMultiStore(db)
@@ -18,4 +20,9 @@ func setup() (ctx sdk.Context, key sdk.StoreKey) {
 	ms.LoadLatestVersion()
 
 	return ctx, key
+}
+
+func getPosition(posStr string) plasma.Position {
+	pos, _ := plasma.FromPositionString(posStr)
+	return pos
 }
