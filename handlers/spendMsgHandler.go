@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
@@ -36,6 +37,7 @@ func NewSpendHandler(txStore store.TxStore, depositStore store.DepositStore, blo
 			Spent:            make([]bool, len(spendMsg.Outputs)),
 			Spenders:         make([][]byte, len(spendMsg.Outputs)),
 			ConfirmationHash: confirmationHash[:],
+			Position:         plasma.NewPosition(blockHeight, txIndex, 0, big.NewInt(0)),
 		}
 		txStore.StoreTx(ctx, tx)
 
@@ -43,7 +45,15 @@ func NewSpendHandler(txStore store.TxStore, depositStore store.DepositStore, blo
 		for _, input := range spendMsg.Inputs {
 			var res sdk.Result
 			if input.Position.IsDeposit() {
-				res = depositStore.SpendDeposit(ctx, input.Position.DepositNonce, spendMsg.TxHash())
+				// Spend deposit and update account
+				nonce := input.Position.DepositNonce
+				deposit, ok := depositStore.GetDeposit(ctx, nonce)
+				if !ok {
+					panic(fmt.Sprintf("deposit store corrupted"))
+				}
+
+				res = depositStore.SpendDeposit(ctx, nonce, spendMsg.TxHash())
+				txStore.SpendDepositWithAccount(ctx, nonce, deposit.Deposit)
 			} else {
 				res = txStore.SpendUTXO(ctx, input.Position, spendMsg.TxHash())
 			}

@@ -6,7 +6,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func NewDepositHandler(depositStore store.DepositStore, blockStore store.BlockStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
+func NewDepositHandler(depositStore store.DepositStore, txStore store.TxStore, blockStore store.BlockStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		depositMsg, ok := msg.(msgs.IncludeDepositMsg)
 		if !ok {
@@ -24,6 +24,8 @@ func NewDepositHandler(depositStore store.DepositStore, blockStore store.BlockSt
 			Spender: nil,
 		}
 		depositStore.StoreDeposit(ctx, depositMsg.DepositNonce, dep)
+		txStore.StoreDepositWithAccount(ctx, depositMsg.DepositNonce, deposit)
+
 		return sdk.Result{}
 	}
 }

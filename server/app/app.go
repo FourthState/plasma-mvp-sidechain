@@ -113,7 +113,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		return nil
 	}
 	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.txStore, app.depositStore, app.blockStore, nextTxIndex, feeUpdater))
-	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.depositStore, app.blockStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.depositStore, app.txStore, app.blockStore, nextTxIndex, plasmaClient))
 
 	// custom queriers
 	app.QueryRouter().

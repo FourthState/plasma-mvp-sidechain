@@ -9,21 +9,24 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-func setup() (sdk.Context, store.UTXOStore, store.PlasmaStore) {
+func setup() (sdk.Context, store.TxStore, store.DepositStore, store.BlockStore) {
 	db := db.NewMemDB()
 	ms := cosmosStore.NewCommitMultiStore(db)
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 
-	plasmaStoreKey := sdk.NewKVStoreKey("plasma")
-	utxoStoreKey := sdk.NewKVStoreKey("utxo")
+	blockStoreKey := sdk.NewKVStoreKey("block")
+	depositStoreKey := sdk.NewKvStoreKey("deposit")
+	txStoreKey := sdk.NewKVStoreKey("tx")
 
-	ms.MountStoreWithDB(plasmaStoreKey, sdk.StoreTypeIAVL, db)
-	ms.MountStoreWithDB(utxoStoreKey, sdk.StoreTypeIAVL, db)
+	ms.MountStoreWithDB(blockStoreKey, sdk.StoreTypeIAVL, db)
+	ms.MountStoreWithDB(depositStoreKey, sdk.StoreTypeIAVL, db)
+	ms.MountStoreWithDB(txStoreKey, sdk.StoreTypeIAVL, db)
 	ms.LoadLatestVersion()
 
-	plasmaStore := store.NewPlasmaStore(plasmaStoreKey)
-	utxoStore := store.NewUTXOStore(utxoStoreKey)
+	blockStore := store.NewBlockStore(blockStoreKey)
+	depositStore := store.NewDepositStore(depositStoreKey)
+	txStore := store.NewUTXOStore(txStoreKey)
 
-	return ctx, utxoStore, plasmaStore
+	return ctx, txStore, depositStore, blockStore
 }

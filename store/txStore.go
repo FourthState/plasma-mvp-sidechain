@@ -194,7 +194,7 @@ func (store TxStore) storeUTXOsWithAccount(ctx sdk.Context, tx Transaction) {
 	}
 }
 
-func (store TxStore) spendDepositWithAccount(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
+func (store TxStore) SpendDepositWithAccount(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
 	store.subtractFromAccount(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
 }
 
