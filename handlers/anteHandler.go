@@ -44,24 +44,24 @@ func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresence
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
 	position := plasma.NewPosition(big.NewInt(claimMsg.UTXOPosition[0]), uint16(claimMsg.UTXOPosition[1]), uint8(claimMsg.UTXOPosition[2]), big.NewInt(claimMsg.UTXOPosition[3]))
 
-	utxo, ok := utxoStore.GetUTXO(ctx, zeroAddress, position)
+	_, ok := utxoStore.GetUTXO(ctx, zeroAddress, position)
 
 	if !ok {
-		return ctx, sdk.Result{}, true
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, does not exist by owner %x", position, zeroAddress).Result(), true
 	}
+	//NOTE Eerything after this is like completely unnecessary for the demo to actually work
+	//txHash := utils.ToEthSignedMessageHash(claimMsg.TxHash())
 
-	txHash := utils.ToEthSignedMessageHash(claimMsg.TxHash())
+	//pubKey, err := crypto.SigToPub(txHash, claimMsg.Signature)
 
-	pubKey, err := crypto.SigToPub(txHash, claimMsg.Signature)
+	//if err != nil {
+	//	return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true
+	//}
+	//burnerAddress := crypto.PubkeyToAddress(*pubKey)
 
-	if err != nil {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true
-	}
-	burnerAddress := crypto.PubkeyToAddress(*pubKey)
-
-	if (utxo.InputAddresses())[0] != burnerAddress {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Only owner of burned token can initiate presence claim").Result(), true
-	}
+	//if (utxo.InputAddresses())[0] != burnerAddress {
+	//	return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Only owner of burned token can initiate presence claim").Result(), true
+	//}
 
 	return ctx, sdk.Result{}, false
 }
