@@ -32,12 +32,38 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 			return spendMsgAnteHandler(ctx, spendMsg, utxoStore, plasmaStore, client)
 		case "initiate_presence_claim":
 			initiatePresenceClaimMsg := msg.(msgs.InitiatePresenceClaimMsg)
-			fmt.Print(initiatePresenceClaimMsg.ZoneID)
-			panic("InitiatePresenceClaimMsg antehandler not yet implemented")
+			return initiateClaimMsgAnteHandler(ctx, initiatePresenceClaimMsg, utxoStore, plasmaStore, client)
 		default:
 			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
 	}
+}
+
+func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresenceClaimMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+
+	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
+	position := plasma.NewPosition(big.NewInt(claimMsg.UTXOPosition[0]), uint16(claimMsg.UTXOPosition[1]), uint8(claimMsg.UTXOPosition[2]), big.NewInt(claimMsg.UTXOPosition[3]))
+
+	utxo, ok := utxoStore.GetUTXO(ctx, zeroAddress, position)
+
+	if !ok {
+		return ctx, sdk.Result{}, true
+	}
+
+	txHash := utils.ToEthSignedMessageHash(claimMsg.TxHash())
+
+	pubKey, err := crypto.SigToPub(txHash, claimMsg.Signature)
+
+	if err != nil {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true
+	}
+	burnerAddress := crypto.PubkeyToAddress(*pubKey)
+
+	if (utxo.InputAddresses())[0] != burnerAddress {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Only owner of burned token can initiate presence claim").Result(), true
+	}
+
+	return ctx, sdk.Result{}, false
 }
 
 func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {

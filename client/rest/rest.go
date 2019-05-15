@@ -418,9 +418,9 @@ func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsear
 }
 
 type postPresenceClaimReq struct {
-	ZoneID       string     `json:"zoneID"`
-	UTXOPosition [4]big.Int `json:"utxoPosition"`
-	Signature    string     `json:"signature"`
+	ZoneID       string   `json:"zoneID"`
+	UTXOPosition [4]int64 `json:"utxoPosition"`
+	Signature    string   `json:"signature"`
 }
 
 // TODO: POST body validation

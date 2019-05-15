@@ -8,22 +8,21 @@ import (
 	//ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"math/big"
 )
 
 const (
-	InitiatePresenceClaimRoute = "initiate_presence_claim"
+	InitiatePresenceClaimMsgRoute = "initiatePresenceClaim"
 )
 
 type InitiatePresenceClaimMsg struct {
-	ZoneID       [32]byte   `json:"zoneID"`
-	UTXOPosition [4]big.Int `json:"uxoPosition"`
-	Signature    [65]byte   `json:"signature"`
+	ZoneID       [32]byte `json:"zoneID"`
+	UTXOPosition [4]int64 `json:"uxoPosition"`
+	Signature    []byte   `json:"signature"`
 }
 
 func (msg InitiatePresenceClaimMsg) Type() string { return "initiate_presence_claim" }
 
-func (msg InitiatePresenceClaimMsg) Route() string { return InitiatePresenceClaimRoute }
+func (msg InitiatePresenceClaimMsg) Route() string { return InitiatePresenceClaimMsgRoute }
 
 func (msg InitiatePresenceClaimMsg) TxHash() []byte {
 
