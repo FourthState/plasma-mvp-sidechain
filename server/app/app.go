@@ -36,8 +36,9 @@ type PlasmaMVPChain struct {
 	feeAmount *big.Int
 
 	// persistent stores
-	utxoStore   store.UTXOStore
-	plasmaStore store.PlasmaStore
+	utxoStore          store.UTXOStore
+	plasmaStore        store.PlasmaStore
+	presenceClaimStore store.PresenceClaimStore
 
 	// smart contract connection
 	ethConnection *eth.Plasma
@@ -59,14 +60,16 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	utxoStoreKey := sdk.NewKVStoreKey("utxo")
 	plasmaStoreKey := sdk.NewKVStoreKey("plasma")
+	presenceClaimStoreKey := sdk.NewKVStoreKey("presenceClaim")
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
 		cdc:       cdc,
 		txIndex:   0,
 		feeAmount: big.NewInt(0), // we do not use `utils.BigZero` because the feeAmount is going to be updated
 
-		utxoStore:   store.NewUTXOStore(utxoStoreKey),
-		plasmaStore: store.NewPlasmaStore(plasmaStoreKey),
+		utxoStore:          store.NewUTXOStore(utxoStoreKey),
+		plasmaStore:        store.NewPlasmaStore(plasmaStoreKey),
+		presenceClaimStore: store.NewPresenceClaimStore(presenceClaimStoreKey),
 	}
 
 	// set configs
@@ -107,7 +110,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	}
 	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, app.plasmaStore, nextTxIndex, feeUpdater))
 	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.utxoStore, nextTxIndex, plasmaClient))
-	app.Router().AddRoute(msgs.InitiatePresenceClaimMsgRoute, handlers.InitiatePresenceClaimHandler(app.utxoStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.InitiatePresenceClaimMsgRoute, handlers.InitiatePresenceClaimHandler(app.presenceClaimStore, nextTxIndex, plasmaClient))
 
 	// Set the AnteHandler
 	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, plasmaClient))

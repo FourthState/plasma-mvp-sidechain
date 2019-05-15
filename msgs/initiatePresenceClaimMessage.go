@@ -2,7 +2,7 @@ package msgs
 
 import (
 	//"fmt"
-	//"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	//ethcmn "github.com/ethereum/go-ethereum/common"
@@ -15,9 +15,9 @@ const (
 )
 
 type InitiatePresenceClaimMsg struct {
-	ZoneID       [32]byte `json:"zoneID"`
-	UTXOPosition [4]int64 `json:"uxoPosition"`
-	Signature    []byte   `json:"signature"`
+	ZoneID       [32]byte        `json:"zoneID"`
+	UTXOPosition plasma.Position `json:"uxoPosition"`
+	Signature    []byte          `json:"signature"`
 }
 
 func (msg InitiatePresenceClaimMsg) Type() string { return "initiate_presence_claim" }

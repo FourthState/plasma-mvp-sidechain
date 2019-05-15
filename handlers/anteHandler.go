@@ -42,12 +42,11 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresenceClaimMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
-	position := plasma.NewPosition(big.NewInt(claimMsg.UTXOPosition[0]), uint16(claimMsg.UTXOPosition[1]), uint8(claimMsg.UTXOPosition[2]), big.NewInt(claimMsg.UTXOPosition[3]))
 
-	_, ok := utxoStore.GetUTXO(ctx, zeroAddress, position)
+	_, ok := utxoStore.GetUTXO(ctx, zeroAddress, claimMsg.UTXOPosition)
 
 	if !ok {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, does not exist by owner %x", position, zeroAddress).Result(), true
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, does not exist by owner %x", claimMsg.UTXOPosition, zeroAddress).Result(), true
 	}
 	//NOTE Eerything after this is like completely unnecessary for the demo to actually work
 	//txHash := utils.ToEthSignedMessageHash(claimMsg.TxHash())

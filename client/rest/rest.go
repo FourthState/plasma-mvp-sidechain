@@ -418,9 +418,9 @@ func getLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsear
 }
 
 type postPresenceClaimReq struct {
-	ZoneID       string   `json:"zoneID"`
-	UTXOPosition [4]int64 `json:"utxoPosition"`
-	Signature    string   `json:"signature"`
+	ZoneID       string `json:"zoneID"`
+	UTXOPosition string `json:"utxoPosition"`
+	Signature    string `json:"signature"`
 }
 
 // TODO: POST body validation
@@ -439,7 +439,7 @@ func postPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 
 		copy(claim.Signature[:], ethcmn.FromHex(req.Signature))
 
-		claim.UTXOPosition = req.UTXOPosition
+		claim.UTXOPosition, _ = plasma.FromPositionString(req.UTXOPosition)
 
 		fmt.Println("zoneID", claim.ZoneID)
 		fmt.Println("utxoPosition", claim.UTXOPosition)
