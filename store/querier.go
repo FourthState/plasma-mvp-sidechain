@@ -14,7 +14,7 @@ const (
 	QueryInfo    = "info"
 )
 
-func NewTxQuerier(txStore TxStore) sdk.Querier {
+func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
 			return nil, sdk.ErrUnknownRequest("path not specified")
@@ -26,7 +26,7 @@ func NewTxQuerier(txStore TxStore) sdk.Querier {
 				return nil, sdk.ErrUnknownRequest("balance query follows balance/<address>")
 			}
 			addr := common.HexToAddress(path[1])
-			total, err := queryBalance(ctx, txStore, addr)
+			total, err := queryBalance(ctx, outputStore, addr)
 			if err != nil {
 				return nil, sdk.ErrInternal("failed query balance")
 			}
@@ -37,7 +37,7 @@ func NewTxQuerier(txStore TxStore) sdk.Querier {
 				return nil, sdk.ErrUnknownRequest("info query follows /info/<address>")
 			}
 			addr := common.HexToAddress(path[1])
-			utxos, err := queryInfo(ctx, txStore, addr)
+			utxos, err := queryInfo(ctx, outputStore, addr)
 			if err != nil {
 				return nil, err
 			}
@@ -53,21 +53,21 @@ func NewTxQuerier(txStore TxStore) sdk.Querier {
 	}
 }
 
-func queryBalance(ctx sdk.Context, txStore TxStore, addr common.Address) (*big.Int, sdk.Error) {
-	acc, ok := txStore.GetAccount(ctx, addr)
+func queryBalance(ctx sdk.Context, outputStore OutputStore, addr common.Address) (*big.Int, sdk.Error) {
+	acc, ok := outputStore.GetAccount(ctx, addr)
 	if !ok {
 		return nil, ErrAccountDNE(DefaultCodespace, fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
 	}
 
-	return acc.GetBalance(), nil
+	return acc.Balance, nil
 }
 
-func queryInfo(ctx sdk.Context, txStore TxStore, addr common.Address) ([]Output, sdk.Error) {
-	acc, ok := txStore.GetAccount(ctx, addr)
+func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]Output, sdk.Error) {
+	acc, ok := outputStore.GetAccount(ctx, addr)
 	if !ok {
 		return nil, ErrAccountDNE(DefaultCodespace, fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
 	}
-	return txStore.GetUnspentForAccount(ctx, acc), nil
+	return outputStore.GetUnspentForAccount(ctx, acc), nil
 }
 
 const (

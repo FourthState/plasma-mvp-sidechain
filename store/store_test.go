@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	cosmosStore "github.com/cosmos/cosmos-sdk/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	abci "github.com/tendermint/tendermint/abci/types"

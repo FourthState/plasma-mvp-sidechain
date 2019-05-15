@@ -2,6 +2,8 @@ package store
 
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
 	"math/big"
@@ -60,7 +62,7 @@ func TestTxSerialization(t *testing.T) {
 
 	// Construct Transaction
 	transaction := plasma.Transaction{
-		Inputs:  []plasma.Input{plasma.NewInput(getPosition("(1.15.1.0)"), sigs, [][65]byte{}), plasma.NewInput(getPosition("(0.0.0.1)")), sigs, [][65]byte{}},
+		Inputs:  []plasma.Input{plasma.NewInput(getPosition("(1.15.1.0)"), sigs, [][65]byte{}), plasma.NewInput(getPosition("(0.0.0.1)"), sigs, [][65]byte{})},
 		Outputs: []plasma.Output{plasma.NewOutput(common.HexToAddress("1"), utils.Big1), plasma.NewOutput(common.HexToAddress("2"), utils.Big2)},
 		Fee:     utils.Big1,
 	}

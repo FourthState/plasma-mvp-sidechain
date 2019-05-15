@@ -136,9 +136,8 @@ func (store OutputStore) HasOutput(ctx sdk.Context, pos plasma.Position) bool {
 // -----------------------------------------------------------------------------
 /* Set */
 
-// SetDeposit adds an unspent deposit to the output store
-// The deposit owner's account is updated
-func (store OutputStore) SetDeposit(ctx sdk.Context, nonce *big.Int, deposit Deposit) {
+// SetDeposit overwrites the deposit stored with the given nonce
+func (store OutputStore) setDeposit(ctx sdk.Context, nonce *big.Int, deposit Deposit) {
 	data, err := rlp.EncodeToBytes(&deposit)
 	if err != nil {
 		panic(fmt.Sprintf("error marshaling deposit with nonce %s: %s", nonce, err))
@@ -149,7 +148,7 @@ func (store OutputStore) SetDeposit(ctx sdk.Context, nonce *big.Int, deposit Dep
 }
 
 // SetAccount overwrites the account stored at the given address
-func (store OutputStore) SetAccount(ctx sdk.Context, addr common.Address, acc Account) {
+func (store OutputStore) setAccount(ctx sdk.Context, addr common.Address, acc Account) {
 	key := prefixKey(accountKey, addr.Bytes())
 	data, err := rlp.EncodeToBytes(&acc)
 	if err != nil {
@@ -159,9 +158,8 @@ func (store OutputStore) SetAccount(ctx sdk.Context, addr common.Address, acc Ac
 	store.Set(ctx, key, data)
 }
 
-// SetTx adds a mapping from transaction hash to transaction
-// Accounts are updated using the transaction's outputs
-func (store OutputStore) SetTx(ctx sdk.Context, tx Transaction) {
+// SetTx overwrites the mapping from transaction hash to transaction
+func (store OutputStore) setTx(ctx sdk.Context, tx Transaction) {
 	data, err := rlp.EncodeToBytes(&tx)
 	if err != nil {
 		panic(fmt.Sprintf("error marshaling transaction: %s", err))
@@ -169,20 +167,39 @@ func (store OutputStore) SetTx(ctx sdk.Context, tx Transaction) {
 
 	key := prefixKey(hashKey, tx.Transaction.TxHash())
 	store.Set(ctx, key, data)
-	store.storeUTXOsWithAccount(ctx, tx)
 }
 
 // SetOutput adds a mapping from position to transaction hash
-func (store OutputStore) SetOutput(ctx sdk.Context, pos plasma.Position, hash []byte) {
+func (store OutputStore) setOutput(ctx sdk.Context, pos plasma.Position, hash []byte) {
 	key := prefixKey(positionKey, pos.Bytes())
 	store.Set(ctx, key, hash)
+}
+
+// -----------------------------------------------------------------------------
+/* Store */
+
+// StoreDeposit adds an unspent deposit
+// Updates the deposit owner's account
+func (store OutputStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
+	store.setDeposit(ctx, nonce, Deposit{deposit, false, make([]byte, 0)})
+	store.addToAccount(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
+}
+
+// StoreTx adds the transaction
+// Updates the output owner's accounts
+func (store OutputStore) StoreTx(ctx sdk.Context, tx Transaction) {
+	store.setTx(ctx, tx)
+	for i, output := range tx.Transaction.Outputs {
+		store.addToAccount(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
+		store.setOutput(ctx, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)), tx.Transaction.TxHash())
+	}
 }
 
 // -----------------------------------------------------------------------------
 /* Spend */
 
 // SpendDeposit changes the deposit to be spent
-// Updates the account of the deposit owner
+// Updates the account of the deposit owner in the SetDeposit call
 func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spender []byte) sdk.Result {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
@@ -194,8 +211,9 @@ func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spender [
 	deposit.Spent = true
 	deposit.Spender = spender
 
-	store.StoreDeposit(ctx, nonce, deposit)
-	spendDepositWithAccount(ctx, nonce, deposit)
+	store.setDeposit(ctx, nonce, deposit)
+	store.subtractFromAccount(ctx, deposit.Deposit.Owner, deposit.Deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
+
 	return sdk.Result{}
 }
 
@@ -215,8 +233,8 @@ func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spend
 	tx.Spent[pos.OutputIndex] = true
 	tx.Spenders[pos.OutputIndex] = spender
 
-	store.StoreTx(ctx, tx)
-	store.spendUTXOWithAccount(ctx, pos, tx.Transaction)
+	store.setTx(ctx, tx)
+	store.subtractFromAccount(ctx, tx.Transaction.Outputs[pos.OutputIndex].Owner, tx.Transaction.Outputs[pos.OutputIndex].Amount, pos)
 
 	return sdk.Result{}
 }
@@ -227,34 +245,12 @@ func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spend
 // GetUnspentForAccount returns the unspent outputs that belong to the given account
 func (store OutputStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utxos []Output) {
 	for _, p := range acc.Unspent {
-		utxo, ok := store.GetUTXO(ctx, p)
+		utxo, ok := store.GetOutput(ctx, p)
 		if ok {
 			utxos = append(utxos, utxo)
 		}
 	}
 	return utxos
-}
-
-// addDepositToAccount adds the deposit to the deposit owner's account
-func (store OutputStore) addDepositToAccount(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
-	store.addToAccount(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
-}
-
-// addOutputsToAccount adds all the outputs in the given transaction to the respectively owners' accounts
-func (store OutputStore) addOutputsToAccount(ctx sdk.Context, tx Transaction) {
-	for i, output := range tx.Transaction.Outputs {
-		store.addToAccount(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
-	}
-}
-
-// spendDepositFromAccount marks the deposit as spent from the deposit owner's account
-func (store OutputStore) spendDepositWithAccount(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
-	store.subtractFromAccount(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
-}
-
-// spendOutputFromAccount marks the output as spent form the owner's account
-func (store OutputStore) spendOutputFromAccount(ctx sdk.Context, pos plasma.Position, plasmaTx plasma.Transaction) {
-	store.subtractFromAccount(ctx, plasmaTx.Outputs[pos.OutputIndex].Owner, plasmaTx.Outputs[pos.OutputIndex].Amount, pos)
 }
 
 // addToAccount adds the passed in amount to the account with the given address
@@ -267,7 +263,7 @@ func (store OutputStore) addToAccount(ctx sdk.Context, addr common.Address, amou
 
 	acc.Balance = new(big.Int).Add(acc.Balance, amount)
 	acc.Unspent = append(acc.Unspent, pos)
-	store.StoreAccount(ctx, addr, acc)
+	store.setAccount(ctx, addr, acc)
 }
 
 // subtractFromAccount subtracts the passed in amount from the account with the given address
@@ -286,7 +282,7 @@ func (store OutputStore) subtractFromAccount(ctx sdk.Context, addr common.Addres
 
 	removePosition(acc.Unspent, pos)
 	acc.Spent = append(acc.Spent, pos)
-	store.StoreAccount(ctx, addr, acc)
+	store.setAccount(ctx, addr, acc)
 }
 
 // helper function to remove a position from the unspent list
