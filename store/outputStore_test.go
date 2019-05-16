@@ -56,6 +56,50 @@ func TestDeposits(t *testing.T) {
 	}
 }
 
+// Test Get, Has, Store, Spend functions for fees
+func TestFees(t *testing.T) {
+	ctx, key := setup()
+	outputStore := NewOutputStore(key)
+
+	addr := common.BytesToAddress([]byte("asdfasdf"))
+	for i := int64(1); i <= 15; i++ {
+		pos := plasma.NewPosition(big.NewInt(int64(i)), 1<<16-1, 0, big.NewInt(0))
+		hash := []byte("hash that the fee was spent in")
+
+		// Retrieve/Spend nonexistent fee
+		exists := outputStore.HasFee(ctx, pos)
+		require.False(t, exists, "returned true for nonexistent fee")
+		recoveredFee, ok := outputStore.GetFee(ctx, pos)
+		require.Empty(t, recoveredFee, "did not return empty struct for nonexistent fee")
+		require.False(t, ok, "did not return error on nonexistent fee")
+		res := outputStore.SpendFee(ctx, pos, hash)
+		require.Equal(t, res.Code, CodeOutputDNE, "did not return that fee does not exist")
+
+		// Create and store new fee
+		output := plasma.NewOutput(addr, big.NewInt(int64(1000*i)))
+		fee := Output{output, false, make([]byte, 0)}
+		outputStore.StoreFee(ctx, pos, output)
+
+		exists = outputStore.HasFee(ctx, pos)
+		require.True(t, exists, "returned false for fee that was stored")
+		recoveredFee, ok = outputStore.GetFee(ctx, pos)
+		require.True(t, ok, "error when retrieving fee")
+		require.True(t, reflect.DeepEqual(fee, recoveredFee), fmt.Sprintf("mismatch in stored fee and retrieved fee on iteration %d", i))
+
+		// Spend Fee
+		res = outputStore.SpendFee(ctx, pos, hash)
+		require.True(t, res.IsOK(), "returned error when spending fee")
+		res = outputStore.SpendFee(ctx, pos, hash)
+		require.Equal(t, res.Code, CodeOutputSpent, "allowed output to be spent twice")
+
+		fee.Spent = true
+		fee.Spender = hash
+		recoveredFee, ok = outputStore.GetFee(ctx, pos)
+		require.True(t, ok, "error when retrieving fee")
+		require.True(t, reflect.DeepEqual(fee, recoveredFee), "mismatch in stored and retrieved fee")
+	}
+}
+
 // Test Get, Has, Store, Spend functions for transactions
 func TestTransactions(t *testing.T) {
 	// Setup
