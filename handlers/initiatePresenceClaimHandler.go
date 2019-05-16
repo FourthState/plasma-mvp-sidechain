@@ -30,7 +30,7 @@ func InitiatePresenceClaimHandler(claimStore store.PresenceClaimStore, nextTxInd
 			ZoneID:       claimMsg.ZoneID,
 			UTXOPosition: claimMsg.UTXOPosition,
 			UserAddress:  burnerAddress,
-			Logs:         nil,
+			LogsHash:     nil,
 		}
 
 		claimStore.StorePresenceClaim(ctx, claim)

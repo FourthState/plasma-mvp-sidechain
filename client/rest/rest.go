@@ -39,6 +39,7 @@ const (
 	position     = "position"
 	signature    = "signature"
 	logsHash     = "logsHash"
+	claimID      = "claimID"
 )
 
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) {
@@ -464,5 +465,41 @@ func postPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 		}
 		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
 
+	}
+}
+
+func queryPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+		claimHex := vars[claimID]
+
+		claimKey, err := hex.Decode(claimHex)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		res, err := ctx.QuerySubspace(claimKey, "presence_claim")
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		if len(res) != 1 {
+			rest.WriteErrorResponse(w, http.StatusNotFound, "No UTXO found")
+			return
+		}
+
+		claimBytes := res[0]
+
+		claim := store.PresenceClaim{}
+		if err := rlp.DecodeBytes(claimBytes.Value, &claim); err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		rest.PostProcessResponse(w, cdc, claim, ctx.Indent)
 	}
 }
