@@ -134,7 +134,7 @@ func TestTransactions(t *testing.T) {
 		}
 
 		// Create and store new transaction
-		tx := Transaction{plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs)), getPosition("(4567.1.1.0)")}
+		tx := Transaction{plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs)), plasmaTx.Position}
 		for i, _ := range tx.Spenders {
 			tx.Spenders[i] = []byte{}
 		}
@@ -144,7 +144,7 @@ func TestTransactions(t *testing.T) {
 		for j, _ := range plasmaTx.Transaction.Outputs {
 			p := plasma.NewPosition(pos.BlockNum, pos.TxIndex, uint8(j), pos.DepositNonce)
 			exists = outputStore.HasOutput(ctx, p)
-			require.True(t, exists, "returned false for stored Output")
+			require.True(t, exists, fmt.Sprintf("returned false for stored output with index %d on case %d", j, i))
 		}
 
 		// Check for Tx
@@ -162,18 +162,18 @@ func TestTransactions(t *testing.T) {
 			require.True(t, reflect.DeepEqual(tx, recoveredTx), fmt.Sprintf("mismatch in stored transaction and retrieved transaction on case %d", i))
 
 			res := outputStore.SpendOutput(ctx, p, plasmaTx.Transaction.MerkleHash())
-			require.True(t, res.IsOK(), "returned error when spending Output")
+			require.True(t, res.IsOK(), "returned error when spending output")
 			res = outputStore.SpendOutput(ctx, p, plasmaTx.Transaction.MerkleHash())
-			require.Equal(t, res.Code, CodeOutputSpent, "allowed output to be spent twice")
+			require.Equal(t, res.Code, CodeOutputSpent, fmt.Sprintf("allowed output with index %d to be spent twice on case %d", j, i))
 
 			tx.Spent[j] = true
 			tx.Spenders[j] = plasmaTx.Transaction.MerkleHash()
 			recoveredTx, ok = outputStore.GetTxWithPosition(ctx, p)
 			require.True(t, ok, "error when retrieving transaction")
-			require.True(t, reflect.DeepEqual(tx, recoveredTx), "mismatch in stored and retrieved transaction")
+			require.True(t, reflect.DeepEqual(tx, recoveredTx), fmt.Sprintf("mismatch in stored and retrieved transaction on case %d", i))
 			recoveredTx, ok = outputStore.GetTx(ctx, plasmaTx.Transaction.TxHash())
 			require.True(t, ok, "error when retrieving transaction")
-			require.True(t, reflect.DeepEqual(tx, recoveredTx), "mismatch in stored and retrieved transaction")
+			require.True(t, reflect.DeepEqual(tx, recoveredTx), fmt.Sprintf("mismatch in stored and retrieved transaction on case %d", i))
 		}
 	}
 }

@@ -63,8 +63,8 @@ func TestSubmitBlock(t *testing.T) {
 	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
 	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, commitmentRate, logger, true, privKey)
 
-	// Setup context and plasma store
-	ctx, plasmaStore := setup()
+	// Setup context and block store
+	ctx, blockStore := setup()
 
 	time.Sleep(2 * time.Second)
 
@@ -77,10 +77,10 @@ func TestSubmitBlock(t *testing.T) {
 			FeeAmount: big.NewInt(int64(i + 2)),
 		}
 		expectedBlocks = append(expectedBlocks, block)
-		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
+		blockStore.StoreBlock(ctx, uint64(i), block)
 	}
 
-	err := plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+	err := plasma.CommitPlasmaHeaders(ctx, blockStore)
 
 	require.NoError(t, err, "block submission error")
 
@@ -124,14 +124,14 @@ func TestDepositFinalityBound(t *testing.T) {
 	_, err = plasma.operatorSession.Deposit(operatorAddress)
 	require.NoError(t, err, "error sending a deposit tx")
 
-	// Setup context and plasma store
-	ctx, plasmaStore := setup()
+	// Setup context and block store
+	ctx, blockStore := setup()
 
 	// Reset operatorSession
 	plasma.operatorSession.TransactOpts.Value = nil
 
 	var block plasmaTypes.Block
-	// Must restore old blocks since we're using fresh plasmaStore but using old contract
+	// Must restore old blocks since we're using fresh blockStore but using old contract
 	// that already has submitted blocks. Store blocks 1-3 to get plasmaConn to submit new block 3
 	for i := 1; i < 4; i++ {
 		block = plasmaTypes.Block{
@@ -139,14 +139,14 @@ func TestDepositFinalityBound(t *testing.T) {
 			TxnCount:  uint16(i + 1),
 			FeeAmount: big.NewInt(int64(i + 2)),
 		}
-		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
+		blockStore.StoreBlock(ctx, uint64(i), block)
 	}
 
-	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+	err = plasma.CommitPlasmaHeaders(ctx, blockStore)
 
 	require.NoError(t, err, "block submission error")
 
-	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+	err = plasma.CommitPlasmaHeaders(ctx, blockStore)
 	require.NoError(t, err, "block submission error")
 
 	// Try to retrieve deposit from before peg
@@ -168,9 +168,9 @@ func TestDepositFinalityBound(t *testing.T) {
 		TxnCount:  uint16(2),
 		FeeAmount: big.NewInt(3),
 	}
-	plasmaStore.StoreBlock(ctx, big.NewInt(4), block)
+	blockStore.StoreBlock(ctx, uint64(4), block)
 
-	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
+	err = plasma.CommitPlasmaHeaders(ctx, blockStore)
 	require.NoError(t, err, "block submission error")
 
 	// Try to retrieve deposit once peg has advanced AND finality bound reached.

@@ -87,6 +87,11 @@ func (store OutputStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position)
 
 // GetOutput returns the output at the given position
 func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output, bool) {
+	// allow deposits to returned as an output
+	if pos.IsDeposit() {
+		return store.depositToOutput(ctx, pos.DepositNonce)
+	}
+
 	key := prefixKey(positionKey, pos.Bytes())
 	hash := store.Get(ctx, key)
 
@@ -253,6 +258,20 @@ func (store OutputStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utx
 	return utxos
 }
 
+// depositToOutput retrieves the deposit with the given nonce, and returns it as an output
+func (store OutputStore) depositToOutput(ctx sdk.Context, nonce *big.Int) (Output, bool) {
+	deposit, ok := store.GetDeposit(ctx, nonce)
+	if !ok {
+		return Output{}, ok
+	}
+	output := Output{
+		Output:  plasma.NewOutput(deposit.Deposit.Owner, deposit.Deposit.Amount),
+		Spent:   deposit.Spent,
+		Spender: deposit.Spender,
+	}
+	return output, ok
+}
+
 // addToAccount adds the passed in amount to the account with the given address
 // adds the position provided to the list of unspent positions within the account
 func (store OutputStore) addToAccount(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
@@ -280,7 +299,7 @@ func (store OutputStore) subtractFromAccount(ctx sdk.Context, addr common.Addres
 		panic(fmt.Sprintf("account with address 0x%x has a negative balance", addr))
 	}
 
-	removePosition(acc.Unspent, pos)
+	acc.Unspent = removePosition(acc.Unspent, pos)
 	acc.Spent = append(acc.Spent, pos)
 	store.setAccount(ctx, addr, acc)
 }

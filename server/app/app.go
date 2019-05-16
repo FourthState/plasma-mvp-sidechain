@@ -36,9 +36,8 @@ type PlasmaMVPChain struct {
 	feeAmount *big.Int
 
 	// persistent stores
-	txStore      store.TxStore
-	depositStore store.DepositStore
-	blockStore   store.BlockStore
+	outputStore store.OutputStore
+	blockStore  store.BlockStore
 
 	// smart contract connection
 	ethConnection *eth.Plasma
@@ -58,12 +57,10 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	cdc := MakeCodec()
 	baseApp.SetCommitMultiStoreTracer(traceStore)
 
-	txStoreKey := sdk.NewKVStoreKey("transaction")
-	txStore := store.NewUTXOStore(txStoreKey)
-	depositStoreKey := sdk.NewKVStoreKey("deposit")
-	depositStore := store.NewDepositStore(depositStoreKey)
+	outputStoreKey := sdk.NewKVStoreKey("outputs")
+	outputStore := store.NewOutputStore(outputStoreKey)
 	blockStoreKey := sdk.NewKVStoreKey("block")
-	blockStore := store.NewPlasmaStore(blockStoreKey)
+	blockStore := store.NewBlockStore(blockStoreKey)
 
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
@@ -71,9 +68,8 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		txIndex:   0,
 		feeAmount: big.NewInt(0), // we do not use `utils.BigZero` because the feeAmount is going to be updated
 
-		blockStore:   plasmaStore,
-		depositStore: depositStore,
-		txStore:      txStore,
+		blockStore:  blockStore,
+		outputStore: outputStore,
 	}
 
 	// set configs
@@ -112,16 +108,16 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		app.feeAmount = app.feeAmount.Add(app.feeAmount, amt)
 		return nil
 	}
-	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.txStore, app.depositStore, app.blockStore, nextTxIndex, feeUpdater))
-	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.depositStore, app.txStore, app.blockStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.outputStore, app.blockStore, nextTxIndex, feeUpdater))
+	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.outputStore, app.blockStore, nextTxIndex, plasmaClient))
 
 	// custom queriers
 	app.QueryRouter().
-		AddRoute("tx", query.NewUtxoQuerier(utxoStore)).
-		AddRoute("block", query.NewPlasmaQuerier(plasmaStore))
+		AddRoute("tx", store.NewOutputQuerier(outputStore)).
+		AddRoute("block", store.NewBlockQuerier(blockStore))
 
 	// Set the AnteHandler
-	app.SetAnteHandler(handlers.NewAnteHandler(app.txStore, app.depositStore, app.blockStore, plasmaClient))
+	app.SetAnteHandler(handlers.NewAnteHandler(app.outputStore, app.blockStore, plasmaClient))
 
 	// set the rest of the chain flow
 	app.SetEndBlocker(app.endBlocker)
@@ -129,8 +125,8 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	// mount and load stores
 	// IAVL store used by default. `fauxMerkleMode` defaults to false
-	app.MountStores(txStoreKey, depositStore, blockStoreKey)
-	if err := app.LoadLatestVersion(utxoStoreKey); err != nil {
+	app.MountStores(outputStoreKey, blockStoreKey)
+	if err := app.LoadLatestVersion(outputStoreKey); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -168,7 +164,7 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 	var header [32]byte
 	copy(header[:], ctx.BlockHeader().DataHash)
 	block := plasma.NewBlock(header, app.txIndex, app.feeAmount)
-	plasmaBlockNum := app.blockStore.StoreBlock(ctx, tmBlockHeight, block)
+	app.blockStore.StoreBlock(ctx, tmBlockHeight, block)
 	app.ethConnection.CommitPlasmaHeaders(ctx, app.blockStore)
 
 	app.txIndex = 0

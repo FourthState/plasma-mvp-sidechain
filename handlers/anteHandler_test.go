@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
@@ -22,20 +23,18 @@ var (
 )
 
 type Tx struct {
-	Transaction plasma.Transaction
+	Transaction      plasma.Transaction
 	ConfirmationHash []byte
-	Spent        []bool
-	Spenders [][]byte
-	Position plasma.Position
+	Spent            []bool
+	Spenders         [][]byte
+	Position         plasma.Position
 }
 
 type Deposit struct {
-	Owner common.Address
-	Nonce *big.Int
+	Owner       common.Address
+	Nonce       *big.Int
 	EthBlockNum *big.Int
-	Amount *big.Int
-	Spent	bool
-	Spender	[]byte
+	Amount      *big.Int
 }
 
 // cook the plasma connection
@@ -60,16 +59,17 @@ func (p exitConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) bool { 
 
 func TestAnteChecks(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
-	handler := NewAnteHandler(txStore, depositStore, blockStore, conn{})
+	ctx, outputStore, blockStore := setup()
+	handler := NewAnteHandler(outputStore, blockStore, conn{})
 
 	// cook up some input deposits
 	inputs := []Deposit{
-		{addr, big.NewInt(1), big.NewInt(100), big.NewInt(10), false, []byte{}},
-		{addr, big.NewInt(2), big.NewInt(101), big.NewInt(10), false, []byte{}},
-		{addr, big.NewInt(3), big.NewInt(102), big.NewInt(10), false, []byte{}},
+		{addr, big.NewInt(1), big.NewInt(100), big.NewInt(10)},
+		{addr, big.NewInt(2), big.NewInt(101), big.NewInt(10)},
+		{addr, big.NewInt(3), big.NewInt(102), big.NewInt(10)},
 	}
-	setupDeposits(ctx, depositStore, inputs...)
+	setupDeposits(ctx, outputStore, inputs...)
+	outputStore.SpendDeposit(ctx, big.NewInt(3), []byte("spender hash"))
 
 	type validationCase struct {
 		reason string
@@ -191,19 +191,18 @@ func TestAnteChecks(t *testing.T) {
 
 func TestAnteExitedInputs(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
-	handler := NewAnteHandler(txStore, depositStore, blockStore, exitConn{})
+	ctx, outputStore, blockStore := setup()
+	handler := NewAnteHandler(outputStore, blockStore, exitConn{})
 
-	// place Inputs in store
+	// place inputs in store
 	inputs := Tx{
-		Transaction:     ,
-		Address:      addr,
-		ConfirmationHash: ,
-		Spent: []bool{false},
-		Spenders: [][]byte{},
-		Position: []plasma.Position[]
+		Transaction:      plasma.Transaction{[]plasma.Input{plasma.NewInput(getPosition("10.0.0.0"), [65]byte{}, nil)}, []plasma.Output{plasma.NewOutput(addr, big.NewInt(10))}, big.NewInt(0)},
+		ConfirmationHash: []byte("confirmation hash"),
+		Spent:            []bool{false},
+		Spenders:         [][]byte{},
+		Position:         getPosition("(1.0.0.0)"),
 	}
-	setupTxs(ctx, txStore, inputs)
+	setupTxs(ctx, outputStore, inputs)
 
 	// create msg
 	spendMsg := msgs.SpendMsg{
@@ -228,15 +227,15 @@ func TestAnteExitedInputs(t *testing.T) {
 
 func TestAnteInvalidConfirmSig(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
-	handler := NewAnteHandler(txStore, depositStore, blockStore, conn{})
+	ctx, outputStore, blockStore := setup()
+	handler := NewAnteHandler(outputStore, blockStore, conn{})
 
 	// place inputs in store
 	inputs := []Deposit{
-		{addr, utils.Big1, big.NewInt(50), big.NewInt(10), false, []byte{}},
-		{addr, utils.Big2, big.NewInt(55), big.NewInt(10), false, []byte{}},
+		{addr, utils.Big1, big.NewInt(50), big.NewInt(10)},
+		{addr, utils.Big2, big.NewInt(55), big.NewInt(10)},
 	}
-	setupDeposits(ctx, depositStore, inputs...)
+	setupDeposits(ctx, outputStore, inputs...)
 
 	parentTx := msgs.SpendMsg{
 		Transaction: plasma.Transaction{
@@ -246,24 +245,22 @@ func TestAnteInvalidConfirmSig(t *testing.T) {
 		},
 	}
 
-	// set regular transaction utxo in store
+	// set regular transaction output in store
 	// parent input was 0.0.0.2
 	// must create confirmation hash
 	// also need confirm sig of parent in order to spend
-	InputsKey := store.GetUTXOStoreKey(addr, plasma.NewPosition(nil, 0, 0, utils.Big2))
 	confBytes := sha256.Sum256(append(parentTx.MerkleHash(), ctx.BlockHeader().DataHash...))
 	confHash := utils.ToEthSignedMessageHash(confBytes[:])
 	badConfSig, _ := crypto.Sign(confHash, badPrivKey)
-	inputUTXO := store.UTXO{
-		InputsKeys:       [][]byte{InputsKey},
-		ConfirmationHash: confBytes[:],
-		Output: plasma.Output{
-			Owner:  addr,
-			Amount: big.NewInt(10),
-		},
-		Position: plasma.NewPosition(utils.Big1, 0, 0, nil),
+
+	tx := store.Transaction{
+		Transaction:      parentTx.Transaction,
+		ConfirmationHash: confHash[:],
+		Spent:            []bool{false},
+		Spenders:         make([][]byte, len(parentTx.Transaction.Outputs)),
+		Position:         getPosition("(1.0.0.0)"),
 	}
-	utxoStore.StoreUTXO(ctx, inputUTXO)
+	outputStore.StoreTx(ctx, tx)
 
 	// store confirm sig into correct format
 	var invalidConfirmSig [65]byte
@@ -292,15 +289,15 @@ func TestAnteInvalidConfirmSig(t *testing.T) {
 
 func TestAnteValidTx(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
-	handler := NewAnteHandler(txStore, depositStore, blockStore, conn{})
+	ctx, outputStore, blockStore := setup()
+	handler := NewAnteHandler(outputStore, blockStore, conn{})
 
 	// place inputs in store
-	inputs := []InputUTXO{
-		{nil, 0, 0, utils.Big1, addr, false},
-		{nil, 0, 0, utils.Big2, addr, true},
+	inputs := []Deposit{
+		{addr, utils.Big1, big.NewInt(1000), big.NewInt(10)},
+		{addr, utils.Big2, big.NewInt(1200), big.NewInt(10)},
 	}
-	setupInputs(ctx, txStore, inputs...)
+	setupDeposits(ctx, outputStore, inputs...)
 
 	parentTx := msgs.SpendMsg{
 		Transaction: plasma.Transaction{
@@ -314,20 +311,19 @@ func TestAnteValidTx(t *testing.T) {
 	// parent input was 0.0.0.2
 	// must create input key and confirmation hash
 	// also need confirm sig of parent in order to spend
-	InputKey := store.GetUTXOStoreKey(addr, plasma.NewPosition(nil, 0, 0, utils.Big2))
 	confBytes := sha256.Sum256(append(parentTx.MerkleHash(), ctx.BlockHeader().DataHash...))
 	confHash := utils.ToEthSignedMessageHash(confBytes[:])
 	confSig, _ := crypto.Sign(confHash, privKey)
-	inputUTXO := store.UTXO{
-		InputKeys:        [][]byte{inputKey},
+
+	tx := store.Transaction{
+		Transaction:      parentTx.Transaction,
 		ConfirmationHash: confBytes[:],
-		Output: plasma.Output{
-			Owner:  addr,
-			Amount: big.NewInt(10),
-		},
-		Position: plasma.NewPosition(utils.Big1, 0, 0, nil),
+		Spent:            []bool{false},
+		Spenders:         make([][]byte, len(parentTx.Transaction.Outputs)),
+		Position:         getPosition("(1.0.0.0)"),
 	}
-	utxoStore.StoreUTXO(ctx, inputUTXO)
+	outputStore.StoreTx(ctx, tx)
+	outputStore.SpendDeposit(ctx, big.NewInt(2), tx.Transaction.TxHash())
 
 	// store confirm sig into correct format
 	var confirmSig [65]byte
@@ -349,9 +345,8 @@ func TestAnteValidTx(t *testing.T) {
 	copy(spendMsg.Inputs[1].Signature[:], sig[:])
 
 	_, res, abort := handler(ctx, spendMsg, false)
-	require.True(t, res.IsOK(), "Valid tx does not have OK result")
+	require.True(t, res.IsOK(), fmt.Sprintf("Valid tx does not have OK result: %s", res.Log))
 	require.False(t, abort, "Valid tx aborted")
-
 }
 
 /*=====================================================================================================================================*/
@@ -359,15 +354,15 @@ func TestAnteValidTx(t *testing.T) {
 
 func TestAnteDeposit(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
-	handler := NewAnteHandler(txStore, depositStore, blockStore, conn{})
+	ctx, outputStore, blockStore := setup()
+	handler := NewAnteHandler(outputStore, blockStore, conn{})
 
 	// place input in store
-	inputs := []InputUTXO{
-		{nil, 0, 0, utils.Big1, addr, false},
-		{nil, 0, 0, utils.Big2, addr, true},
+	inputs := []Deposit{
+		{addr, utils.Big1, big.NewInt(150), big.NewInt(10)},
+		{addr, utils.Big2, big.NewInt(200), big.NewInt(10)},
 	}
-	setupInputs(ctx, utxoStore, inputs...)
+	setupDeposits(ctx, outputStore, inputs...)
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -411,9 +406,9 @@ func (d dneConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) bool { r
 
 func TestAnteDepositUnfinal(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
+	ctx, outputStore, blockStore := setup()
 	// connection always returns unfinalized deposits
-	handler := NewAnteHandler(txStore, depositStore, blockStore, unfinalConn{})
+	handler := NewAnteHandler(outputStore, blockStore, unfinalConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -429,9 +424,9 @@ func TestAnteDepositUnfinal(t *testing.T) {
 
 func TestAnteDepositExitted(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
+	ctx, outputStore, blockStore := setup()
 	// connection always returns exitted deposits
-	handler := NewAnteHandler(utxoStore, depositStore, blockStore, exitConn{})
+	handler := NewAnteHandler(outputStore, blockStore, exitConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -447,9 +442,9 @@ func TestAnteDepositExitted(t *testing.T) {
 
 func TestAnteDepositDNE(t *testing.T) {
 	// setup
-	ctx, txStore, depositStore, blockStore := setup()
+	ctx, outputStore, blockStore := setup()
 	// connection always returns exitted deposits
-	handler := NewAnteHandler(txStore, depositStore, blockStore, dneConn{})
+	handler := NewAnteHandler(outputStore, blockStore, dneConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -463,36 +458,26 @@ func TestAnteDepositDNE(t *testing.T) {
 
 }
 
-func setupDeposits(ctx sdk.Context, txStore store.TxStore, depositStore store.DepositStore, inputs ...InputUTXO) {
+func setupDeposits(ctx sdk.Context, outputStore store.OutputStore, inputs ...Deposit) {
 	for _, i := range inputs {
-			deposit := store.Deposit{
-				Deposit: plasma.Deposit{
-					Owner: i.Owner,
-					Amount: i.Amount,
-					EthBlockNum: i.EthBlockNum
-				},
-				Spent: i.Spent,
-				Spender: i.Spender,
-			}
-			depositStore.StoreDeposit(ctx, i.Nonce, deposit)
-			txStore.StoreDepositWithAccount(ctx, i.Nonce, deposit)
+		deposit := plasma.Deposit{
+			Owner:       i.Owner,
+			Amount:      i.Amount,
+			EthBlockNum: i.EthBlockNum,
+		}
+		outputStore.StoreDeposit(ctx, i.Nonce, deposit)
 	}
 }
 
-func setupTxs(ctx sdk.Context, txStore store.TxStore, inputs ...InputUTXO) {
+func setupTxs(ctx sdk.Context, outputStore store.OutputStore, inputs ...Tx) {
 	for _, i := range inputs {
-		pos := plasma.NewPosition(i.BlockNum, i.TxIndex, i.OIndex, i.DepositNonce)
-		if pos.IsDeposit() {
-					} else {
-			tx := store.Transaction{
-				Output: plasma.Output{
-					Owner:  i.Address,
-					Amount: big.NewInt(10),
-				},
-				Spent:    i.Spent,
-				Position: pos,
-			}
+		tx := store.Transaction{
+			Transaction:      i.Transaction,
+			ConfirmationHash: i.ConfirmationHash,
+			Spent:            i.Spent,
+			Spenders:         i.Spenders,
+			Position:         i.Position,
 		}
-		
+		outputStore.StoreTx(ctx, tx)
 	}
 }
