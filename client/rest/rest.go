@@ -64,7 +64,8 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es)).Methods("POST", "OPTIONS")
 
 	// presence claims
-	r.HandleFunc(fmt.Sprint("/presence_claim"), postPresenceClaimHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/presence_claim/hash"), postPresenceClaimHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/presence_claim/create"), postPresenceClaimHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
 }
 
@@ -438,7 +439,8 @@ func postPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 
 		copy(claim.ZoneID[:], ethcmn.FromHex(req.ZoneID))
 
-		copy(claim.Signature[:], ethcmn.FromHex(req.Signature))
+		sig := ethcmn.FromHex(req.Signature)
+		claim.Signature = &sig
 
 		claim.UTXOPosition, _ = plasma.FromPositionString(req.UTXOPosition)
 
@@ -471,8 +473,14 @@ func postPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 func queryPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		vars := mux.Vars(r)
-		claimHex := vars[claimID]
+		vals, err := url.ParseQuery(r.URL.RawQuery)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		claimHex := vals[claimID][0]
 
 		claimKey, err := hex.Decode(claimHex)
 
@@ -501,5 +509,20 @@ func queryPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Ha
 		}
 
 		rest.PostProcessResponse(w, cdc, claim, ctx.Indent)
+	}
+}
+
+func postPresenceClaimHashHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req msgs.InitiatePresenceClaimMsg
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+		txHash := req.TxHash()
+		txHashHex := ethcmn.ToHex(txHash)
+
+		rest.PostProcessResponse(w, cdc, txHashHex, ctx.Indent)
 	}
 }

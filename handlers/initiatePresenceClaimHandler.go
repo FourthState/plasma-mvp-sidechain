@@ -18,7 +18,7 @@ func InitiatePresenceClaimHandler(claimStore store.PresenceClaimStore, nextTxInd
 		}
 
 		txHash := utils.ToEthSignedMessageHash(claimMsg.TxHash())
-		pubKey, err := crypto.SigToPub(txHash, claimMsg.Signature)
+		pubKey, err := crypto.SigToPub(txHash, *(claimMsg.Signature))
 
 		if err != nil {
 			msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result()

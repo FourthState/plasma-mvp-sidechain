@@ -17,7 +17,7 @@ const (
 type InitiatePresenceClaimMsg struct {
 	ZoneID       [32]byte        `json:"zoneID"`
 	UTXOPosition plasma.Position `json:"uxoPosition"`
-	Signature    []byte          `json:"signature"`
+	Signature    *([]byte)       `json:"signature"`
 }
 
 func (msg InitiatePresenceClaimMsg) Type() string { return "initiate_presence_claim" }
@@ -41,7 +41,7 @@ func (msg InitiatePresenceClaimMsg) TxHash() []byte {
 func (msg InitiatePresenceClaimMsg) GetSigners() []sdk.AccAddress {
 	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
 
-	pubKey, err := crypto.SigToPub(txHash, msg.Signature[:])
+	pubKey, err := crypto.SigToPub(txHash, (*msg.Signature)[:])
 	if err != nil {
 		return nil
 	}

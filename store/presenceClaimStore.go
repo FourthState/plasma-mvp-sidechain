@@ -14,7 +14,7 @@ type PresenceClaim struct {
 	ZoneID       [32]byte        `json:"zoneID`
 	UTXOPosition plasma.Position `json:"utxoPosition"`
 	UserAddress  common.Address  `json:"userAddress"`
-	LogsHash     []byte          `json:"logsHash"`
+	LogsHash     *[]byte         `json:"logsHash"`
 }
 
 func (claim *PresenceClaim) EncodeRLP(w io.Writer) error {
