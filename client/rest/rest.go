@@ -65,6 +65,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 
 	// presence claims
 	r.HandleFunc(fmt.Sprint("/presence_claim/hash"), postPresenceClaimHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/presence_claim"), queryPresenceClaimHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/presence_claim/create"), postPresenceClaimHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
 }
@@ -437,16 +438,16 @@ func postPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 
 		claim := msgs.InitiatePresenceClaimMsg{}
 
-		copy(claim.ZoneID[:], ethcmn.FromHex(req.ZoneID))
+		claim.ZoneID = ethcmn.FromHex(req.ZoneID)
 
 		sig := ethcmn.FromHex(req.Signature)
 		claim.Signature = &sig
 
 		claim.UTXOPosition, _ = plasma.FromPositionString(req.UTXOPosition)
 
-		fmt.Println("zoneID", claim.ZoneID)
+		fmt.Println("zoneID", hex.Encode(claim.ZoneID))
 		fmt.Println("utxoPosition", claim.UTXOPosition)
-		fmt.Println("signature", claim.Signature)
+		fmt.Println("signature", hex.Encode(*(claim.Signature)))
 
 		if err := claim.ValidateBasic(); err != nil {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Invalid `InitiatePresenceClaimMsg`: "+err.Error())
@@ -489,7 +490,7 @@ func queryPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Ha
 			return
 		}
 
-		res, err := ctx.QuerySubspace(claimKey, "presence_claim")
+		res, err := ctx.QuerySubspace(claimKey, "presenceClaim")
 
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
@@ -497,7 +498,9 @@ func queryPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Ha
 		}
 
 		if len(res) != 1 {
-			rest.WriteErrorResponse(w, http.StatusNotFound, "No UTXO found")
+			fmt.Println(claimKey)
+			msg := "No PresenceClaim found with hash " + claimHex
+			rest.WriteErrorResponse(w, http.StatusNotFound, msg)
 			return
 		}
 
@@ -514,15 +517,21 @@ func queryPresenceClaimHandler(cdc *codec.Codec, ctx context.CLIContext) http.Ha
 
 func postPresenceClaimHashHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req msgs.InitiatePresenceClaimMsg
+		var req postPresenceClaimReq
 
 		if !rest.ReadRESTReq(w, r, cdc, &req) {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
 			return
 		}
-		txHash := req.TxHash()
-		txHashHex := ethcmn.ToHex(txHash)
 
-		rest.PostProcessResponse(w, cdc, txHashHex, ctx.Indent)
+		messageNoSig := msgs.InitiatePresenceClaimMsg{}
+
+		messageNoSig.ZoneID = ethcmn.FromHex(req.ZoneID)
+		messageNoSig.UTXOPosition, _ = plasma.FromPositionString(req.UTXOPosition)
+
+		claimHash := messageNoSig.TxHash()
+
+		claimHashHex := hex.Encode(claimHash)
+		rest.PostProcessResponse(w, cdc, claimHashHex, ctx.Indent)
 	}
 }

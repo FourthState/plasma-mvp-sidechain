@@ -41,7 +41,7 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 
 func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresenceClaimMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 
-	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
+	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000001")
 
 	_, ok := utxoStore.GetUTXO(ctx, zeroAddress, claimMsg.UTXOPosition)
 
@@ -62,6 +62,7 @@ func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresence
 	//	return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Only owner of burned token can initiate presence claim").Result(), true
 	//}
 
+	fmt.Println("initiateClaimMsgAnteHandler")
 	return ctx, sdk.Result{}, false
 }
 

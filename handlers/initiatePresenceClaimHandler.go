@@ -8,10 +8,12 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	//"math/big"
+	"fmt"
 )
 
 func InitiatePresenceClaimHandler(claimStore store.PresenceClaimStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
+		fmt.Println("InitiatePresenceClaimHandler begin")
 		claimMsg, ok := msg.(msgs.InitiatePresenceClaimMsg)
 		if !ok {
 			panic("Msg does not implement InitiatePresenceClaimMsg")
@@ -26,14 +28,18 @@ func InitiatePresenceClaimHandler(claimStore store.PresenceClaimStore, nextTxInd
 
 		burnerAddress := crypto.PubkeyToAddress(*pubKey)
 
+		var logsHash []byte
 		claim := store.PresenceClaim{
 			ZoneID:       claimMsg.ZoneID,
 			UTXOPosition: claimMsg.UTXOPosition,
 			UserAddress:  burnerAddress,
-			LogsHash:     nil,
+			LogsHash:     &logsHash,
 		}
+		fmt.Println("InitiatePresenceClaimHandler store")
 
 		claimStore.StorePresenceClaim(ctx, claim)
+
+		fmt.Println("InitiatePresenceClaimHandler end")
 
 		return sdk.Result{}
 	}

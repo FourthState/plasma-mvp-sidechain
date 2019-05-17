@@ -15,7 +15,7 @@ const (
 )
 
 type InitiatePresenceClaimMsg struct {
-	ZoneID       [32]byte        `json:"zoneID"`
+	ZoneID       []byte          `json:"zoneID"`
 	UTXOPosition plasma.Position `json:"uxoPosition"`
 	Signature    *([]byte)       `json:"signature"`
 }

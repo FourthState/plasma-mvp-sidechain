@@ -6,24 +6,15 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	hex "github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
-	"io"
 )
 
 type PresenceClaim struct {
-	ZoneID       [32]byte        `json:"zoneID`
+	ZoneID       []byte          `json:"zoneID"`
 	UTXOPosition plasma.Position `json:"utxoPosition"`
 	UserAddress  common.Address  `json:"userAddress"`
 	LogsHash     *[]byte         `json:"logsHash"`
-}
-
-func (claim *PresenceClaim) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &claim)
-}
-
-func (claim *PresenceClaim) DecodeRLP(s *rlp.Stream) error {
-	return s.Decode(&claim)
-
 }
 
 type PresenceClaimStore struct {
@@ -31,9 +22,7 @@ type PresenceClaimStore struct {
 }
 
 func NewPresenceClaimStore(ctxKey sdk.StoreKey) PresenceClaimStore {
-	return PresenceClaimStore{
-		KVStore: NewKVStore(ctxKey),
-	}
+	return PresenceClaimStore{NewKVStore(ctxKey)}
 }
 
 func (store PresenceClaimStore) GetPresenceClaim(ctx sdk.Context, key []byte) (PresenceClaim, bool) {
@@ -61,10 +50,12 @@ func (store PresenceClaimStore) StorePresenceClaim(ctx sdk.Context, claim Presen
 	messageNoSig.UTXOPosition = claim.UTXOPosition
 
 	claimHash := messageNoSig.TxHash()
+	fmt.Println("StorePresenceClaim hash", hex.Encode(claimHash))
 	data, err := rlp.EncodeToBytes(&claim)
 	if err != nil {
 		panic(fmt.Sprintf("Error marshaling utxo: %s", err))
 	}
+	fmt.Println("StorePresenceClaim bytes", data)
 
 	store.Set(ctx, claimHash, data)
 }

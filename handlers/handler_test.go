@@ -24,6 +24,7 @@ func setup() (sdk.Context, store.UTXOStore, store.PlasmaStore) {
 
 	plasmaStore := store.NewPlasmaStore(plasmaStoreKey)
 	utxoStore := store.NewUTXOStore(utxoStoreKey)
+	claimStore := store.NewPresenceClaimStore(presenceClaimStoreKey)
 
 	return ctx, utxoStore, plasmaStore
 }
