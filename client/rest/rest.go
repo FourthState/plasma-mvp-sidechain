@@ -62,6 +62,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	// elasticsearch endpoints
 	r.HandleFunc(fmt.Sprintf("/logs/{%s}", logsHash), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/logs/tx"), postPostLogsTxHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
 	// presence claims
 	r.HandleFunc(fmt.Sprint("/presence_claim/hash"), postPresenceClaimHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
@@ -533,5 +534,29 @@ func postPresenceClaimHashHandler(cdc *codec.Codec, ctx context.CLIContext) http
 
 		claimHashHex := hex.Encode(claimHash)
 		rest.PostProcessResponse(w, cdc, claimHashHex, ctx.Indent)
+	}
+}
+
+func postPostLogsTxHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req msgs.PostLogsMsg
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+
+		txBytes, err := rlp.EncodeToBytes(&req)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to encode `InitiatePresenceClaimMsg`: "+err.Error())
+			return
+		}
+
+		res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to broadcast `InitiatePresenceClaimMsg` "+err.Error())
+			return
+		}
+		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
 	}
 }
