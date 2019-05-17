@@ -20,7 +20,7 @@ type plasmaConn interface {
 	HasTxBeenExited(plasma.Position) bool
 }
 
-func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) sdk.AnteHandler {
+func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, presenceClaimStore store.PresenceClaimStore, client plasmaConn) sdk.AnteHandler {
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
 		msg := tx.GetMsgs()[0] // tx should only have one msg
 		switch mtype := msg.Type(); mtype {
@@ -33,6 +33,9 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, cl
 		case "initiate_presence_claim":
 			initiatePresenceClaimMsg := msg.(msgs.InitiatePresenceClaimMsg)
 			return initiateClaimMsgAnteHandler(ctx, initiatePresenceClaimMsg, utxoStore, plasmaStore, client)
+		case "post_logs":
+			postLogsMsg := msg.(msgs.PostLogsMsg)
+			return postLogsMsgAnteHandler(ctx, postLogsMsg, utxoStore, plasmaStore, presenceClaimStore, client)
 		default:
 			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
@@ -63,6 +66,11 @@ func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresence
 	//}
 
 	fmt.Println("initiateClaimMsgAnteHandler")
+	return ctx, sdk.Result{}, false
+}
+
+func postLogsMsgAnteHandler(ctx sdk.Context, claimMsg msgs.PostLogsMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, presenceClaimStore store.PresenceClaimStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+	// TODO implement logic
 	return ctx, sdk.Result{}, false
 }
 

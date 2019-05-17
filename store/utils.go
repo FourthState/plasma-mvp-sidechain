@@ -26,3 +26,8 @@ func GetUTXOStoreKey(addr ethcmn.Address, pos plasma.Position) []byte {
 func GetStoreKey(utxo UTXO) []byte {
 	return GetUTXOStoreKey(utxo.Output.Owner, utxo.Position)
 }
+
+func GetStoreKeyBurned(position plasma.Position) []byte {
+	owner := ethcmn.HexToAddress("0x0000000000000000000000000000000000000001")
+	return GetUTXOStoreKey(owner, position)
+}

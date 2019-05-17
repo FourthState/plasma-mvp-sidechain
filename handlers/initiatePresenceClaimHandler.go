@@ -11,7 +11,7 @@ import (
 	"fmt"
 )
 
-func InitiatePresenceClaimHandler(claimStore store.PresenceClaimStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
+func InitiatePresenceClaimHandler(claimStore store.PresenceClaimStore, utxoStore store.UTXOStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		fmt.Println("InitiatePresenceClaimHandler begin")
 		claimMsg, ok := msg.(msgs.InitiatePresenceClaimMsg)
