@@ -68,6 +68,8 @@ func PostLogsHandler(claimStore store.PresenceClaimStore, utxoStore store.UTXOSt
 		}
 
 		utxoStore.StoreUTXO(ctx, newUtxo)
+		oldUTXOKey := store.GetUTXOStoreKey(zeroAddress, claim.UTXOPosition)
+		utxoStore.Delete(ctx, oldUTXOKey)
 
 		return sdk.Result{}
 	}
