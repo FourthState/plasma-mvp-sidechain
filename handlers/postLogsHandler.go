@@ -13,10 +13,20 @@ import (
 
 func PostLogsHandler(claimStore store.PresenceClaimStore, utxoStore store.UTXOStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
-		_, ok := msg.(msgs.PostLogsMsg)
+		postLogsMsg, ok := msg.(msgs.PostLogsMsg)
 		if !ok {
 			panic("Msg does not implement InitiatePresenceClaimMsg")
 		}
+
+		claim, ok := claimStore.GetPresenceClaim(ctx, postLogsMsg.ClaimID)
+
+		if !ok {
+			msgs.ErrInvalidTransaction(DefaultCodespace, "No claim found with claimID").Result()
+		}
+
+		claim.LogsHash = &(postLogsMsg.LogsHash)
+
+		claimStore.StorePresenceClaim(ctx, claim)
 
 		return sdk.Result{}
 	}
