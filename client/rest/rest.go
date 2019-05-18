@@ -537,16 +537,27 @@ func postPresenceClaimHashHandler(cdc *codec.Codec, ctx context.CLIContext) http
 	}
 }
 
+type postLogsMsg struct {
+	ClaimID   string `json:"claimID"`
+	LogsHash  string `json:"logsHash"`
+	Signature string `json:"signature"`
+}
+
 func postPostLogsTxHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req msgs.PostLogsMsg
+		var req postLogsMsg
 
 		if !rest.ReadRESTReq(w, r, cdc, &req) {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
 			return
 		}
 
-		txBytes, err := rlp.EncodeToBytes(&req)
+		var claimMsg msgs.PostLogsMsg
+		claimMsg.ClaimID = ethcmn.FromHex(req.ClaimID)
+		claimMsg.LogsHash = ethcmn.FromHex(req.LogsHash)
+		claimMsg.Signature = ethcmn.FromHex(req.Signature)
+
+		txBytes, err := rlp.EncodeToBytes(&claimMsg)
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to encode `InitiatePresenceClaimMsg`: "+err.Error())
 			return

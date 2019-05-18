@@ -14,9 +14,9 @@ const (
 )
 
 type PostLogsMsg struct {
-	ClaimID   []byte    `json:"claimID"`
-	LogsHash  []byte    `json:"logsHash"`
-	Signature *([]byte) `json:"signature"`
+	ClaimID   []byte `json:"claimID"`
+	LogsHash  []byte `json:"logsHash"`
+	Signature []byte `json:"signature"`
 }
 
 func (msg PostLogsMsg) Type() string  { return "post_logs" }
@@ -40,7 +40,7 @@ func (msg PostLogsMsg) TxHash() []byte {
 func (msg PostLogsMsg) GetSigners() []sdk.AccAddress {
 	txHash := utils.ToEthSignedMessageHash(msg.TxHash())
 
-	pubKey, err := crypto.SigToPub(txHash, (*(msg.Signature))[:])
+	pubKey, err := crypto.SigToPub(txHash, msg.Signature[:])
 	if err != nil {
 		return nil
 	}
