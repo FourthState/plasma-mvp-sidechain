@@ -39,6 +39,7 @@ type PlasmaMVPChain struct {
 	utxoStore          store.UTXOStore
 	plasmaStore        store.PlasmaStore
 	presenceClaimStore store.PresenceClaimStore
+	zoneStore          store.ZoneStore
 
 	// smart contract connection
 	ethConnection *eth.Plasma
@@ -61,6 +62,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	utxoStoreKey := sdk.NewKVStoreKey("utxo")
 	plasmaStoreKey := sdk.NewKVStoreKey("plasma")
 	presenceClaimStoreKey := sdk.NewKVStoreKey("presenceClaim")
+	zoneStoreKey := sdk.NewKVStoreKey("zone")
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
 		cdc:       cdc,
@@ -70,6 +72,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		utxoStore:          store.NewUTXOStore(utxoStoreKey),
 		plasmaStore:        store.NewPlasmaStore(plasmaStoreKey),
 		presenceClaimStore: store.NewPresenceClaimStore(presenceClaimStoreKey),
+		zoneStore:          store.NewZoneStore(zoneStoreKey),
 	}
 
 	// set configs
