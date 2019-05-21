@@ -32,17 +32,25 @@ func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, pr
 			return spendMsgAnteHandler(ctx, spendMsg, utxoStore, plasmaStore, client)
 		case "initiate_presence_claim":
 			initiatePresenceClaimMsg := msg.(msgs.InitiatePresenceClaimMsg)
-			return initiateClaimMsgAnteHandler(ctx, initiatePresenceClaimMsg, utxoStore, plasmaStore, client)
+			return initiateClaimMsgAnteHandler(ctx, initiatePresenceClaimMsg, utxoStore)
 		case "post_logs":
-			postLogsMsg := msg.(msgs.PostLogsMsg)
-			return postLogsMsgAnteHandler(ctx, postLogsMsg, utxoStore, plasmaStore, presenceClaimStore, client)
+			postlogsmsg := msg.(msgs.PostLogsMsg)
+			return postLogsMsgAnteHandler(ctx, postlogsmsg)
+		case "create_zone":
+			createZoneMsg := msg.(msgs.CreateZoneMsg)
+			return createZoneMsgAnteHandler(ctx, createZoneMsg)
 		default:
 			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
 	}
 }
 
-func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresenceClaimMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+func createZoneMsgAnteHandler(ctx sdk.Context, createZoneMsg msgs.CreateZoneMsg) (newCtx sdk.Context, res sdk.Result, abort bool) {
+
+	return ctx, sdk.Result{}, false
+}
+
+func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresenceClaimMsg, utxoStore store.UTXOStore) (newCtx sdk.Context, res sdk.Result, abort bool) {
 
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000001")
 
@@ -65,11 +73,10 @@ func initiateClaimMsgAnteHandler(ctx sdk.Context, claimMsg msgs.InitiatePresence
 	//	return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Only owner of burned token can initiate presence claim").Result(), true
 	//}
 
-	fmt.Println("initiateClaimMsgAnteHandler")
 	return ctx, sdk.Result{}, false
 }
 
-func postLogsMsgAnteHandler(ctx sdk.Context, claimMsg msgs.PostLogsMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, presenceClaimStore store.PresenceClaimStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+func postLogsMsgAnteHandler(ctx sdk.Context, claimMsg msgs.PostLogsMsg) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	// TODO implement logic
 	return ctx, sdk.Result{}, false
 }
