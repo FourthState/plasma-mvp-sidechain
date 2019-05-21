@@ -10,7 +10,7 @@ import (
 type Zone struct {
 	ZoneID  []byte           `json:"zoneID"`
 	Beacons []common.Address `json:"beacons"`
-	Geohash []string         `json:"geohash"`
+	Geohash string           `json:"geohash"`
 }
 
 type ZoneStore struct {
@@ -59,7 +59,6 @@ func (store ZoneStore) StoreZone(ctx sdk.Context, zone Zone) {
 	}
 
 	store.Set(ctx, zone.ZoneID, data)
-
 	for _, a := range zone.Beacons {
 		store.Set(ctx, a.Bytes(), data)
 	}

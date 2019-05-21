@@ -69,6 +69,9 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/presence_claim"), queryPresenceClaimHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/presence_claim/create"), postPresenceClaimHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
+	// zone
+	r.HandleFunc(fmt.Sprint("/zone/create"), postCreateZoneHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -568,6 +571,53 @@ func postPostLogsTxHandler(cdc *codec.Codec, ctx context.CLIContext) http.Handle
 			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to broadcast `InitiatePresenceClaimMsg` "+err.Error())
 			return
 		}
+		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
+	}
+}
+
+type postCreateZone struct {
+	ZoneID    string   `json:"zoneID`
+	Beacons   []string `json:"beacons"`
+	Geohash   string   `json:"geohash"`
+	Signature string   `json:"signature"`
+}
+
+func postCreateZoneHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req postCreateZone
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+
+		var beacons []ethcmn.Address
+
+		for _, beaconStr := range req.Beacons {
+
+			beacon := ethcmn.HexToAddress(beaconStr)
+			beacons = append(beacons, beacon)
+		}
+
+		zoneMsg := msgs.CreateZoneMsg{
+			ZoneID:    ethcmn.FromHex(req.ZoneID),
+			Beacons:   beacons,
+			Geohash:   req.Geohash,
+			Signature: ethcmn.FromHex(req.Signature),
+		}
+
+		txBytes, err := rlp.EncodeToBytes(&zoneMsg)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to encode `InitiatePresenceClaimMsg`: "+err.Error())
+			return
+		}
+
+		res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to broadcast `InitiatePresenceClaimMsg` "+err.Error())
+			return
+		}
+
 		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
 	}
 }
