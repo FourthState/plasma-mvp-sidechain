@@ -115,6 +115,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.utxoStore, nextTxIndex, plasmaClient))
 	app.Router().AddRoute(msgs.InitiatePresenceClaimMsgRoute, handlers.InitiatePresenceClaimHandler(app.presenceClaimStore, app.utxoStore, nextTxIndex, plasmaClient))
 	app.Router().AddRoute(msgs.PostLogsMsgRoute, handlers.PostLogsHandler(app.presenceClaimStore, app.utxoStore, app.plasmaStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.CreateZoneMsgRoute, handlers.CreateZoneHandler(app.zoneStore))
 
 	// Set the AnteHandler
 	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, app.presenceClaimStore, plasmaClient))
