@@ -35,11 +35,13 @@ import (
 )
 
 const (
-	ownerAddress = "ownerAddress"
-	position     = "position"
-	signature    = "signature"
-	logsHash     = "logsHash"
-	claimID      = "claimID"
+	ownerAddress  = "ownerAddress"
+	position      = "position"
+	signature     = "signature"
+	logsHash      = "logsHash"
+	claimID       = "claimID"
+	zoneID        = "zoneID"
+	beaconAddress = "beaconAddress"
 )
 
 func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) {
@@ -69,6 +71,13 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/presence_claim"), queryPresenceClaimHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/presence_claim/create"), postPresenceClaimHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
+	// zone
+	r.HandleFunc(fmt.Sprint("/zone/create"), postCreateZoneHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/zone/hash"), postZoneHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprintf("/zone/{%s}", zoneID), queryZoneHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
+
+	//zone
+	r.HandleFunc(fmt.Sprintf("/beacon/{%s}/zones", beaconAddress), queryZoneByBeaconHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 }
 
 func healthHandler(cdc *codec.Codec, cliCtx context.CLIContext) http.HandlerFunc {
@@ -569,5 +578,154 @@ func postPostLogsTxHandler(cdc *codec.Codec, ctx context.CLIContext) http.Handle
 			return
 		}
 		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
+	}
+}
+
+type postCreateZone struct {
+	ZoneID    string   `json:"zoneID"`
+	Beacons   []string `json:"beacons"`
+	Geohash   string   `json:"geohash"`
+	Signature string   `json:"signature"`
+}
+
+func postCreateZoneHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req postCreateZone
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+
+		var beacons []ethcmn.Address
+
+		for _, beaconStr := range req.Beacons {
+
+			beacon := ethcmn.HexToAddress(beaconStr)
+			beacons = append(beacons, beacon)
+		}
+		fmt.Println("POST zone/create ", req)
+
+		zoneMsg := msgs.CreateZoneMsg{
+			ZoneID:    ethcmn.FromHex(req.ZoneID),
+			Beacons:   beacons,
+			Geohash:   req.Geohash,
+			Signature: ethcmn.FromHex(req.Signature),
+		}
+
+		txBytes, err := rlp.EncodeToBytes(&zoneMsg)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to encode `CreateZoneMsg`: "+err.Error())
+			return
+		}
+
+		res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to broadcast `CreateZoneMsg` "+err.Error())
+			return
+		}
+
+		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
+	}
+}
+
+func postZoneHashHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req postCreateZone
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+
+		var beacons []ethcmn.Address
+
+		for _, beaconStr := range req.Beacons {
+
+			beacon := ethcmn.HexToAddress(beaconStr)
+			beacons = append(beacons, beacon)
+		}
+
+		zoneMsg := msgs.CreateZoneMsg{
+			ZoneID:    ethcmn.FromHex(req.ZoneID),
+			Beacons:   beacons,
+			Geohash:   req.Geohash,
+			Signature: ethcmn.FromHex(req.Signature),
+		}
+
+		txHash := zoneMsg.TxHash()
+
+		rest.PostProcessResponse(w, cdc, ethcmn.ToHex(txHash), ctx.Indent)
+	}
+}
+
+func queryZoneHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+		param := vars[zoneID]
+
+		zoneKey, err := hex.Decode(param)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		res, err := ctx.QuerySubspace(zoneKey, "zone")
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		if len(res) != 1 {
+			msg := "No zone found with hash " + param
+			rest.WriteErrorResponse(w, http.StatusNotFound, msg)
+			return
+		}
+
+		zoneBytes := res[0]
+
+		zone := store.Zone{}
+		if err := rlp.DecodeBytes(zoneBytes.Value, &zone); err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		rest.PostProcessResponse(w, cdc, zone, ctx.Indent)
+	}
+}
+
+func queryZoneByBeaconHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+		param := vars[beaconAddress]
+
+		fmt.Println("BeaconAddress", param)
+
+		beaconKey := ethcmn.HexToAddress(param).Bytes()
+
+		res, err := ctx.QuerySubspace(beaconKey, "zone")
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		var zones []store.Zone
+
+		zone := store.Zone{}
+
+		for _, pair := range res {
+			if err := rlp.DecodeBytes(pair.Value, &zone); err != nil {
+				rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			zones = append(zones, zone)
+
+		}
+
+		rest.PostProcessResponse(w, cdc, zones, ctx.Indent)
 	}
 }

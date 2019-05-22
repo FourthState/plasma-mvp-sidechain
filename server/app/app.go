@@ -39,6 +39,7 @@ type PlasmaMVPChain struct {
 	utxoStore          store.UTXOStore
 	plasmaStore        store.PlasmaStore
 	presenceClaimStore store.PresenceClaimStore
+	zoneStore          store.ZoneStore
 
 	// smart contract connection
 	ethConnection *eth.Plasma
@@ -61,6 +62,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	utxoStoreKey := sdk.NewKVStoreKey("utxo")
 	plasmaStoreKey := sdk.NewKVStoreKey("plasma")
 	presenceClaimStoreKey := sdk.NewKVStoreKey("presenceClaim")
+	zoneStoreKey := sdk.NewKVStoreKey("zone")
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
 		cdc:       cdc,
@@ -70,6 +72,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		utxoStore:          store.NewUTXOStore(utxoStoreKey),
 		plasmaStore:        store.NewPlasmaStore(plasmaStoreKey),
 		presenceClaimStore: store.NewPresenceClaimStore(presenceClaimStoreKey),
+		zoneStore:          store.NewZoneStore(zoneStoreKey),
 	}
 
 	// set configs
@@ -112,6 +115,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.utxoStore, nextTxIndex, plasmaClient))
 	app.Router().AddRoute(msgs.InitiatePresenceClaimMsgRoute, handlers.InitiatePresenceClaimHandler(app.presenceClaimStore, app.utxoStore, nextTxIndex, plasmaClient))
 	app.Router().AddRoute(msgs.PostLogsMsgRoute, handlers.PostLogsHandler(app.presenceClaimStore, app.utxoStore, app.plasmaStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.CreateZoneMsgRoute, handlers.CreateZoneHandler(app.zoneStore))
 
 	// Set the AnteHandler
 	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, app.presenceClaimStore, plasmaClient))
@@ -122,7 +126,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	// mount and load stores
 	// IAVL store used by default. `fauxMerkleMode` defaults to false
-	app.MountStores(utxoStoreKey, plasmaStoreKey, presenceClaimStoreKey)
+	app.MountStores(utxoStoreKey, plasmaStoreKey, presenceClaimStoreKey, zoneStoreKey)
 	if err := app.LoadLatestVersion(utxoStoreKey); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
