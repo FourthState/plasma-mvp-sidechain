@@ -59,13 +59,18 @@
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
 [[projects]]
-  digest = "1:a90fdbbff9e7bbfad76666c35534b7534dd73ebecb9c7daa82fe2de68afbaa4b"
+  digest = "1:b5d77508ca426c02428442515822f5d605d4b4688800283c86737dc7c6deaeca"
   name = "github.com/cosmos/cosmos-sdk"
   packages = [
     "baseapp",
     "client",
     "client/context",
     "client/keys",
+    "client/lcd",
+    "client/lcd/statik",
+    "client/rest",
+    "client/rpc",
+    "client/tx",
     "client/utils",
     "cmd/gaia/app",
     "cmd/gaia/init",
@@ -94,15 +99,21 @@
     "types/rest",
     "version",
     "x/auth",
+    "x/auth/client/rest",
     "x/auth/client/txbuilder",
     "x/bank",
+    "x/bank/client/rest",
     "x/bank/simulation",
     "x/distribution",
+    "x/distribution/client/common",
+    "x/distribution/client/rest",
     "x/distribution/keeper",
     "x/distribution/simulation",
     "x/distribution/tags",
     "x/distribution/types",
     "x/gov",
+    "x/gov/client/rest",
+    "x/gov/client/utils",
     "x/gov/tags",
     "x/mint",
     "x/mock",
@@ -110,9 +121,11 @@
     "x/params",
     "x/params/subspace",
     "x/slashing",
+    "x/slashing/client/rest",
     "x/slashing/tags",
     "x/staking",
     "x/staking/client/cli",
+    "x/staking/client/rest",
     "x/staking/keeper",
     "x/staking/querier",
     "x/staking/simulation",
@@ -145,6 +158,18 @@
   pruneopts = "UT"
   revision = "cbaa98ba5575e67703b32b4b19f73c91f3c4159e"
   version = "v1.7.1"
+
+[[projects]]
+  digest = "1:2af3a6e1f12e54cef95c6051cd1cb1e154629a4b82c692ac8a92f00259f570eb"
+  name = "github.com/elastic/go-elasticsearch"
+  packages = [
+    ".",
+    "esapi",
+    "estransport",
+  ]
+  pruneopts = "UT"
+  revision = "3aa68f5e96e138fa4dafc9403b10674b4310a632"
+  version = "v0.0.0"
 
 [[projects]]
   digest = "1:87fa9f2d71fd2516e6c0d906b7eb58886c8b4fcc6ee8cada0553a0e50bfeef3a"
@@ -263,6 +288,14 @@
   pruneopts = "UT"
   revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:664d37ea261f0fc73dd17f4a1f5f46d01fbb0b0d75f6375af064824424109b7d"
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:ca59b1175189b3f0e9f1793d2c350114be36eaabbe5b9f554b35edee1de50aea"
@@ -434,6 +467,14 @@
   revision = "bbced9601137e764853b2fad7ec3e2dc4c504e02"
 
 [[projects]]
+  digest = "1:ea0700160aca4ef099f4e06686a665a87691f4248dddd40796925eda2e46bd64"
+  name = "github.com/rakyll/statik"
+  packages = ["fs"]
+  pruneopts = "UT"
+  revision = "aa8a7b1baecd0f31a436bf7956fcdcc609a83035"
+  version = "v0.1.4"
+
+[[projects]]
   digest = "1:c4556a44e350b50a490544d9b06e9fba9c286c21d6c0e47f54f3a9214597298c"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
@@ -545,7 +586,6 @@
   packages = ["btcec"]
   pruneopts = "UT"
   revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
-  version = "v0.1.0"
 
 [[projects]]
   digest = "1:ad9c4c1a4e7875330b1f62906f2830f043a23edb5db997e3a5ac5d3e6eadf80a"
@@ -806,23 +846,29 @@
     "github.com/cosmos/cosmos-sdk/baseapp",
     "github.com/cosmos/cosmos-sdk/client",
     "github.com/cosmos/cosmos-sdk/client/context",
+    "github.com/cosmos/cosmos-sdk/client/lcd",
     "github.com/cosmos/cosmos-sdk/cmd/gaia/init",
     "github.com/cosmos/cosmos-sdk/codec",
     "github.com/cosmos/cosmos-sdk/server",
     "github.com/cosmos/cosmos-sdk/store",
     "github.com/cosmos/cosmos-sdk/types",
+    "github.com/cosmos/cosmos-sdk/types/rest",
+    "github.com/elastic/go-elasticsearch",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/accounts/keystore",
     "github.com/ethereum/go-ethereum/common",
+    "github.com/ethereum/go-ethereum/common/hexutil",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/crypto",
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rlp",
     "github.com/ethereum/go-ethereum/rpc",
+    "github.com/gorilla/handlers",
+    "github.com/gorilla/mux",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/require",

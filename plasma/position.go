@@ -11,10 +11,10 @@ import (
 
 // Position for an input/output
 type Position struct {
-	BlockNum     *big.Int
-	TxIndex      uint16
-	OutputIndex  uint8
-	DepositNonce *big.Int
+	BlockNum     *big.Int `json:"blockNumber"`
+	TxIndex      uint16   `json:"transactionIndex"`
+	OutputIndex  uint8    `json:"outputIndex"`
+	DepositNonce *big.Int `json:"depositNonce"`
 }
 
 type position struct {

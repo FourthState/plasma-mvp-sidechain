@@ -1,12 +1,23 @@
 language: go
 
+dist: xenial
+sudo: true
+skip_cleanup: true
+
 go:
-  - 1.11.x
+  - 1.12.x
 
 env:
-  - DEP_VERSION="0.4.1"
+  - DEP_VERSION="0.5.1"
+
+addons:
+  apt:
+    packages:
+    - git
 
 before_install:
+  - sudo apt-get update
+  - sudo apt-get install binutils jq
   # Download the binary to bin folder in $GOPATH
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
   # Make the binary executable
@@ -14,11 +25,16 @@ before_install:
 
 install:
   - dep ensure -vendor-only
+  # replace with this repo
+  - mkdir -p $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
+  - cp -r $GOPATH/src/github.com/f-o-a-m/plasma-mvp-sidechain $GOPATH/src/github.com/FourthState/
+  - cd $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
 
 before_script:
   - npm install -g truffle@5.0.2 ganache-cli@6.2.5
 
 script:
+  - git remote get-url --all origin
   - ganache-cli -m=plasma > /dev/null &
   - sleep 5
   - cd contracts/
@@ -27,5 +43,14 @@ script:
   - cd ../
   - go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...
 
+services:
+  - docker
+
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - docker build -t foamspace/plasma-mvp-sidechain:latest .
+
+deploy:
+  provider: script
+  script: bash docker-push.sh
+  on:
+    branch: http-server

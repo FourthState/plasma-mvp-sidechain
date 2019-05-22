@@ -11,8 +11,8 @@ import (
 
 // Output represents the outputs of a transaction
 type Output struct {
-	Owner  common.Address
-	Amount *big.Int
+	Owner  common.Address `json:"owner"`
+	Amount *big.Int       `json:"amount"`
 }
 
 type output struct {

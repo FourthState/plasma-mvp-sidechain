@@ -6,8 +6,13 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/keys"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
+	plasmarest "github.com/FourthState/plasma-mvp-sidechain/client/rest"
 	"github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/lcd"
+	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/gorilla/handlers"
+	//"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -47,6 +52,22 @@ func Execute() {
 	}
 }
 
+func MkCodec() *codec.Codec {
+	var cdc = codec.New()
+	codec.RegisterCrypto(cdc)
+	plasmarest.RegisterCodec(cdc)
+	return cdc
+}
+
+func registerRoutes(rs *lcd.RestServer) {
+	plasmarest.RegisterRoutes(rs.CliCtx, rs.Mux, rs.Cdc)
+	corsMiddleware := handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}),
+		handlers.AllowedOrigins([]string{"*"}))
+	//optionsMiddleware := mux.CORSMethodMiddleware(rs.Mux)
+	rs.Mux.Use(corsMiddleware)
+}
+
 func init() {
 	// initConfig to be ran when Execute is called
 	cobra.OnInitialize(initConfig)
@@ -61,7 +82,7 @@ func init() {
 	}
 
 	viper.Set(client.FlagTrustNode, true)
-	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
+	viper.Set(client.FlagListenAddr, "tcp://0.0.0.0:1317")
 
 	viper.AddConfigPath(homeDir)
 	plasmaDir := filepath.Join(homeDir, "plasma.toml")
@@ -69,11 +90,14 @@ func init() {
 		config.WritePlasmaConfigFile(plasmaDir, config.DefaultPlasmaConfig())
 	}
 
+	cdc := MkCodec()
+
 	rootCmd.AddCommand(
 		keys.KeysCmd(),
 		query.QueryCmd(),
 		eth.EthCmd(),
 		eth.ProveCmd(),
+		lcd.ServeCommand(cdc, registerRoutes),
 	)
 }
 

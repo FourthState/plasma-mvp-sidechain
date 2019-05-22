@@ -36,8 +36,9 @@ type PlasmaMVPChain struct {
 	feeAmount *big.Int
 
 	// persistent stores
-	utxoStore   store.UTXOStore
-	plasmaStore store.PlasmaStore
+	utxoStore          store.UTXOStore
+	plasmaStore        store.PlasmaStore
+	presenceClaimStore store.PresenceClaimStore
 
 	// smart contract connection
 	ethConnection *eth.Plasma
@@ -59,14 +60,16 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	utxoStoreKey := sdk.NewKVStoreKey("utxo")
 	plasmaStoreKey := sdk.NewKVStoreKey("plasma")
+	presenceClaimStoreKey := sdk.NewKVStoreKey("presenceClaim")
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
 		cdc:       cdc,
 		txIndex:   0,
 		feeAmount: big.NewInt(0), // we do not use `utils.BigZero` because the feeAmount is going to be updated
 
-		utxoStore:   store.NewUTXOStore(utxoStoreKey),
-		plasmaStore: store.NewPlasmaStore(plasmaStoreKey),
+		utxoStore:          store.NewUTXOStore(utxoStoreKey),
+		plasmaStore:        store.NewPlasmaStore(plasmaStoreKey),
+		presenceClaimStore: store.NewPresenceClaimStore(presenceClaimStoreKey),
 	}
 
 	// set configs
@@ -107,9 +110,11 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	}
 	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.utxoStore, app.plasmaStore, nextTxIndex, feeUpdater))
 	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.utxoStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.InitiatePresenceClaimMsgRoute, handlers.InitiatePresenceClaimHandler(app.presenceClaimStore, app.utxoStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.PostLogsMsgRoute, handlers.PostLogsHandler(app.presenceClaimStore, app.utxoStore, app.plasmaStore, nextTxIndex, plasmaClient))
 
 	// Set the AnteHandler
-	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, plasmaClient))
+	app.SetAnteHandler(handlers.NewAnteHandler(app.utxoStore, app.plasmaStore, app.presenceClaimStore, plasmaClient))
 
 	// set the rest of the chain flow
 	app.SetEndBlocker(app.endBlocker)
@@ -117,7 +122,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	// mount and load stores
 	// IAVL store used by default. `fauxMerkleMode` defaults to false
-	app.MountStores(utxoStoreKey, plasmaStoreKey)
+	app.MountStores(utxoStoreKey, plasmaStoreKey, presenceClaimStoreKey)
 	if err := app.LoadLatestVersion(utxoStoreKey); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
