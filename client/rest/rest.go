@@ -704,12 +704,7 @@ func queryZoneByBeaconHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 
 		fmt.Println("BeaconAddress", param)
 
-		beaconKey, err := hex.Decode(param)
-
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
+		beaconKey := ethcmn.HexToAddress(param).Bytes()
 
 		res, err := ctx.QuerySubspace(beaconKey, "zone")
 
@@ -727,6 +722,7 @@ func queryZoneByBeaconHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 				rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
+			zones = append(zones, zone)
 
 		}
 
