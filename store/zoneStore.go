@@ -18,9 +18,7 @@ type ZoneStore struct {
 }
 
 func NewZoneStore(ctxKey sdk.StoreKey) ZoneStore {
-	return ZoneStore{
-		KVStore: NewKVStore(ctxKey),
-	}
+	return ZoneStore{NewKVStore(ctxKey)}
 }
 
 func (store ZoneStore) GetZoneByID(ctx sdk.Context, key []byte) (Zone, bool) {
@@ -53,13 +51,18 @@ func (store ZoneStore) GetZonesByAddress(ctx sdk.Context, key []byte) (Zone, boo
 
 func (store ZoneStore) StoreZone(ctx sdk.Context, zone Zone) {
 
+	fmt.Println("Begin StoreZone")
+	fmt.Println("StoreZone", zone)
+
 	data, err := rlp.EncodeToBytes(&zone)
 	if err != nil {
 		panic(fmt.Sprintf("Error marshaling zone: %s", err))
 	}
 
+	fmt.Println("StoreZone Set", zone.ZoneID, data)
 	store.Set(ctx, zone.ZoneID, data)
 	for _, a := range zone.Beacons {
+		fmt.Println(a, data)
 		store.Set(ctx, a.Bytes(), data)
 	}
 }

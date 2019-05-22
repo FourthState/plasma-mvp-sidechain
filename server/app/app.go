@@ -126,7 +126,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	// mount and load stores
 	// IAVL store used by default. `fauxMerkleMode` defaults to false
-	app.MountStores(utxoStoreKey, plasmaStoreKey, presenceClaimStoreKey)
+	app.MountStores(utxoStoreKey, plasmaStoreKey, presenceClaimStoreKey, zoneStoreKey)
 	if err := app.LoadLatestVersion(utxoStoreKey); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
