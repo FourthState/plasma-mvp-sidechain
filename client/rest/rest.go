@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	url "net/url"
@@ -363,6 +364,41 @@ func postTxBytesHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFu
 	}
 }
 
+func jsonTxSenderLensThing(jsonBytes []byte) (string, error) {
+	logMap := make(map[string]interface{})
+	err := json.Unmarshal(jsonBytes, &logMap)
+	if err != nil {
+		return "", err
+	}
+	txField, ok := logMap["tx"]
+	if !ok {
+		return "", errors.New("no tx field in payload")
+	}
+	txFieldAsMap, ok := txField.(map[string]interface{})
+	if !ok {
+		return "", errors.New("tx field wasnt a json object")
+	}
+	descField, ok := txFieldAsMap["description"]
+	if !ok {
+		return "", errors.New("tx object didnt have a description field")
+	}
+	descFieldAsMap, ok := descField.(map[string]interface{})
+	if !ok {
+		return "", errors.New("description field wasnt a json object")
+	}
+	// imagine how much better go would be if it had GENERICS and an OPTION MONAD
+	// like rust almost, or something. SAD!
+	addressField, ok := descFieldAsMap["address"]
+	if !ok {
+		return "", errors.New("description object didnt have an address field")
+	}
+	addressFieldAsString, ok := addressField.(string)
+	if !ok {
+		return "", errors.New("address field wasnt a string")
+	}
+	return addressFieldAsString, nil
+}
+
 func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -372,6 +408,22 @@ func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsea
 			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
+
+		sender, err := jsonTxSenderLensThing(body)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		fmt.Println("Sender", sender)
+
+		//	zones, err := getAllZonesABeaconBelongsTo(ctx, ethcmn.HexToAddress(sender))
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		//primaryZone := zones[0]
 
 		docID := ethcmn.ToHex(crypto.Keccak256(body))
 
@@ -704,28 +756,36 @@ func queryZoneByBeaconHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 
 		fmt.Println("BeaconAddress", param)
 
-		beaconKey := ethcmn.HexToAddress(param).Bytes()
-
-		res, err := ctx.QuerySubspace(beaconKey, "zone")
+		beaconKey := ethcmn.HexToAddress(param)
+		zones, err := getAllZonesABeaconBelongsTo(ctx, beaconKey)
 
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		var zones []store.Zone
-
-		zone := store.Zone{}
-
-		for _, pair := range res {
-			if err := rlp.DecodeBytes(pair.Value, &zone); err != nil {
-				rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
-				return
-			}
-			zones = append(zones, zone)
-
 		}
 
 		rest.PostProcessResponse(w, cdc, zones, ctx.Indent)
 	}
+}
+
+func getAllZonesABeaconBelongsTo(ctx context.CLIContext, beaconAddress ethcmn.Address) ([]store.Zone, error) {
+	res, err := ctx.QuerySubspace(beaconAddress.Bytes(), "zone")
+
+	if err != nil {
+		return nil, err
+	}
+
+	var zones []store.Zone
+
+	zone := store.Zone{}
+
+	for _, pair := range res {
+		if err := rlp.DecodeBytes(pair.Value, &zone); err != nil {
+			return nil, err
+		}
+		zones = append(zones, zone)
+
+	}
+
+	return zones, nil
+
 }
