@@ -26,6 +26,7 @@ import (
 	elasticsearch "github.com/elastic/go-elasticsearch"
 	esapi "github.com/elastic/go-elasticsearch/esapi"
 	"github.com/ethereum/go-ethereum/crypto"
+	db "github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/gorilla/mux"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
@@ -52,6 +53,9 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 		fmt.Printf("Error creating the client: %s", err)
 	}
 
+	// logsDB :: Map ClaimID [LogsHash]
+	logsHashDB := db.NewMemDatabase()
+
 	r.HandleFunc(fmt.Sprint("/deposit/include"), postDepositHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprintf("/balance/{%s}", ownerAddress), queryBalanceHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/utxo"), queryUTXOHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
@@ -64,7 +68,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 
 	// elasticsearch endpoints
 	r.HandleFunc(fmt.Sprintf("/logs/{%s}", logsHash), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
-	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es, logsHashDB)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/logs/tx"), postPostLogsTxHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
 	// presence claims
@@ -399,7 +403,7 @@ func jsonTxSenderLensThing(jsonBytes []byte) (string, error) {
 	return addressFieldAsString, nil
 }
 
-func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client) http.HandlerFunc {
+func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsearch.Client, logsHashDB *db.MemDatabase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		body, err := ioutil.ReadAll(r.Body)
@@ -408,22 +412,6 @@ func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsea
 			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-
-		sender, err := jsonTxSenderLensThing(body)
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		fmt.Println("Sender", sender)
-
-		//	zones, err := getAllZonesABeaconBelongsTo(ctx, ethcmn.HexToAddress(sender))
-
-		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
-		}
-
-		//primaryZone := zones[0]
 
 		docID := ethcmn.ToHex(crypto.Keccak256(body))
 
@@ -446,6 +434,47 @@ func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsea
 		} else {
 			rest.PostProcessResponse(w, cdc, docID, cliCtx.Indent)
 		}
+
+		// record the logsHash in an in memory map
+		sender, err := jsonTxSenderLensThing(body)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		fmt.Println("Sender", sender)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		zones, err := getAllZonesABeaconBelongsTo(cliCtx, ethcmn.HexToAddress(sender))
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}
+
+		primaryZone := zones[0]
+
+		claims, err := getClaimsForZone(cliCtx, primaryZone.ZoneID)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		// this currently gets overwritten whenever you initiate a new open presence claim
+		primaryClaim := claims[0]
+
+		claimHash := store.GetPresenceClaimHash(primaryClaim)
+
+		err = logsHashDB.Put(ethcmn.FromHex(docID), claimHash)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
 	}
 }
 
@@ -765,6 +794,28 @@ func queryZoneByBeaconHandler(cdc *codec.Codec, ctx context.CLIContext) http.Han
 
 		rest.PostProcessResponse(w, cdc, zones, ctx.Indent)
 	}
+}
+
+func getClaimsForZone(ctx context.CLIContext, zoneID []byte) ([]store.PresenceClaim, error) {
+	res, err := ctx.QuerySubspace(zoneID, "presenceClaim")
+
+	if err != nil {
+		return nil, err
+	}
+
+	var claims []store.PresenceClaim
+
+	claim := store.PresenceClaim{}
+
+	for _, pair := range res {
+		if err := rlp.DecodeBytes(pair.Value, &claim); err != nil {
+			return nil, err
+		}
+		claims = append(claims, claim)
+
+	}
+
+	return claims, nil
 }
 
 func getAllZonesABeaconBelongsTo(ctx context.CLIContext, beaconAddress ethcmn.Address) ([]store.Zone, error) {
