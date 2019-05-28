@@ -840,3 +840,34 @@ func getAllZonesABeaconBelongsTo(ctx context.CLIContext, beaconAddress ethcmn.Ad
 	return zones, nil
 
 }
+
+func getAllLogsHashesForZone(cliCtx context.CLIContext, db *db.MemDatabase, zoneID []byte) ([][]byte, error) {
+
+	claims, err := getClaimsForZone(cliCtx, zoneID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// this currently gets overwritten whenever you initiate a new open presence claim
+	primaryClaimID := store.GetPresenceClaimHash(claims[0])
+
+	allLogs := db.Keys()
+
+	var primaryClaimLogs [][]byte
+
+	for _, logHash := range allLogs {
+		claimID, err := db.Get(logHash)
+		if err != nil {
+			return nil, err
+		}
+
+		if bytes.Equal(claimID, primaryClaimID) {
+			primaryClaimLogs = append(primaryClaimLogs, logHash)
+		}
+
+	}
+
+	return primaryClaimLogs, nil
+
+}
