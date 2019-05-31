@@ -132,6 +132,14 @@ func (tx Transaction) Sigs() (sigs [2][65]byte) {
 	return sigs
 }
 
+// InputPositions returns the input positions for this transaction
+func (tx Transaction) InputPositions() (positions []Position) {
+	for _, input := range tx.Inputs {
+		positions = append(positions, input.Position)
+	}
+	return positions
+}
+
 func (tx Transaction) String() (str string) {
 	for i, input := range tx.Inputs {
 		str += fmt.Sprintf("Input %d: %s\n", i, input)

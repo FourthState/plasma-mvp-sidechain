@@ -81,9 +81,17 @@ func (store OutputStore) GetFee(ctx sdk.Context, pos plasma.Position) (Output, b
 
 // GetOutput returns the output at the given position
 func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output, bool) {
-	// allow deposits to returned as an output
+	// allow deposits/fees to returned as an output
 	if pos.IsDeposit() {
 		return store.depositToOutput(ctx, pos.DepositNonce)
+	}
+
+	if pos.IsFee() {
+		fee, ok := store.GetFee(ctx, pos)
+		if !ok {
+			return Output{}, ok
+		}
+		return fee, ok
 	}
 
 	key := prefixKey(positionKey, pos.Bytes())
@@ -308,11 +316,17 @@ func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spend
 /* Helpers */
 
 // GetUnspentForAccount returns the unspent outputs that belong to the given account
-func (store OutputStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utxos []Output) {
+// Returns using struct QueryOutput so user has access to transaction that created the output
+func (store OutputStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utxos []QueryOutput) {
 	for _, p := range acc.Unspent {
-		utxo, ok := store.GetOutput(ctx, p)
+		output, ok := store.GetOutput(ctx, p)
+		var utxo QueryOutput
 		if ok {
-			utxos = append(utxos, utxo)
+			utxo.Output = output
+		}
+		tx, ok := store.GetTxWithPosition(ctx, p)
+		if ok {
+			utxo.Tx = tx
 		}
 	}
 	return utxos

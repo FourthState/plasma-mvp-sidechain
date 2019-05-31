@@ -108,7 +108,7 @@ Usage:
 
 		// generate outputs
 		// use change to determine outcome of second output
-		tx.Output0 = plasma.NewOutput(toAddrs[0], amounts[0])
+		tx.Outputs[0] = plasma.NewOutput(toAddrs[0], amounts[0])
 		if len(toAddrs) > 1 {
 			if change.Sign() == 0 {
 				tx.Output1 = plasma.NewOutput(toAddrs[1], amounts[1])

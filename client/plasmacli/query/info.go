@@ -34,20 +34,12 @@ var infoCmd = &cobra.Command{
 
 		for i, utxo := range utxos {
 			fmt.Printf("UTXO %d\n", i)
-			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent)
-
+			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Tx.Position, utxo.Output.Output.Amount.String(), utxo.Output.Spent, utxo.Output.Spender)
+			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.Tx.Transaction.TxHash(), utxo.Tx.ConfirmationHash)
 			// print inputs if applicable
-			inputAddresses := utxo.InputAddresses()
-			positions := utxo.InputPositions()
-			for i, _ := range inputAddresses {
-				fmt.Printf("Input Owner %d, Position: %s\n", i, positions[i])
-			}
-
-			// print spenders if applicable
-			spenderAddresses := utxo.SpenderAddresses()
-			positions = utxo.SpenderPositions()
-			for i, _ := range spenderAddresses {
-				fmt.Printf("Spender Owner %d, Position: %s\n", i, positions[i])
+			positions := utxo.Tx.Transaction.InputPositions()
+			for i, p := range positions {
+				fmt.Printf("Input %d Position: %s\n", i, p)
 			}
 
 			fmt.Printf("End UTXO %d info\n\n", i)
@@ -61,7 +53,7 @@ var infoCmd = &cobra.Command{
 	},
 }
 
-func Info(ctx context.CLIContext, addr common.Address) ([]store.UTXO, error) {
+func Info(ctx context.CLIContext, addr common.Address) ([]store.QueryOutput, error) {
 	// query for all utxos owned by this address
 	queryRoute := fmt.Sprintf("custom/utxo/info/%s", addr.Hex())
 	data, err := ctx.Query(queryRoute, nil)
@@ -69,7 +61,7 @@ func Info(ctx context.CLIContext, addr common.Address) ([]store.UTXO, error) {
 		return nil, err
 	}
 
-	var utxos []store.UTXO
+	var utxos []store.QueryOutput
 	if err := json.Unmarshal(data, &utxos); err != nil {
 		return nil, err
 	}

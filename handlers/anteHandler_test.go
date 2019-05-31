@@ -37,6 +37,11 @@ type Deposit struct {
 	Amount      *big.Int
 }
 
+type Output struct {
+	Output   plasma.Output
+	Position plasma.Position
+}
+
 // cook the plasma connection
 type conn struct{}
 
@@ -62,14 +67,22 @@ func TestAnteChecks(t *testing.T) {
 	ctx, outputStore, blockStore := setup()
 	handler := NewAnteHandler(outputStore, blockStore, conn{})
 
+	feePosition := getPosition("(100.65535.0.0)")
 	// cook up some input deposits
 	inputs := []Deposit{
 		{addr, big.NewInt(1), big.NewInt(100), big.NewInt(10)},
 		{addr, big.NewInt(2), big.NewInt(101), big.NewInt(10)},
 		{addr, big.NewInt(3), big.NewInt(102), big.NewInt(10)},
 	}
+	fee := Output{
+		Output:   plasma.NewOutput(addr, big.NewInt(10)),
+		Position: feePosition,
+	}
+
 	setupDeposits(ctx, outputStore, inputs...)
-	outputStore.SpendDeposit(ctx, big.NewInt(3), []byte("spender hash"))
+	setupFees(ctx, outputStore, fee)
+
+	outputStore.SpendFee(ctx, feePosition, []byte("spender hash"))
 
 	type validationCase struct {
 		reason string
@@ -94,7 +107,7 @@ func TestAnteChecks(t *testing.T) {
 			reason: "incorrect second signature",
 			SpendMsg: msgs.SpendMsg{
 				Transaction: plasma.Transaction{
-					Inputs:  []plasma.Input{plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil), plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big2), [65]byte{}, nil)},
+					Inputs:  []plasma.Input{plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil), plasma.NewInput(feePosition, [65]byte{}, nil)},
 					Outputs: []plasma.Output{plasma.NewOutput(addr, big.NewInt(20))},
 					Fee:     utils.Big0,
 				},
@@ -154,7 +167,7 @@ func TestAnteChecks(t *testing.T) {
 			reason: "Inputs utxo already spent",
 			SpendMsg: msgs.SpendMsg{
 				Transaction: plasma.Transaction{
-					Inputs:  []plasma.Input{plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil), plasma.NewInput(plasma.NewPosition(nil, 0, 0, big.NewInt(3)), [65]byte{}, nil)},
+					Inputs:  []plasma.Input{plasma.NewInput(plasma.NewPosition(nil, 0, 0, utils.Big1), [65]byte{}, nil), plasma.NewInput(feePosition, [65]byte{}, nil)},
 					Outputs: []plasma.Output{plasma.NewOutput(addr, big.NewInt(10)), plasma.NewOutput(addr, big.NewInt(10))},
 					Fee:     utils.Big0,
 				},
@@ -456,6 +469,12 @@ func TestAnteDepositDNE(t *testing.T) {
 	require.False(t, res.IsOK(), "Nonexistent deposit inclusion did not error")
 	require.True(t, abort, "Nonexistent deposit inclusion did not abort")
 
+}
+
+func setupFees(ctx sdk.Context, outputStore store.OutputStore, inputs ...Output) {
+	for _, output := range inputs {
+		outputStore.StoreFee(ctx, output.Position, output.Output)
+	}
 }
 
 func setupDeposits(ctx sdk.Context, outputStore store.OutputStore, inputs ...Deposit) {

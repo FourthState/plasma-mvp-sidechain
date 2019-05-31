@@ -34,3 +34,10 @@ type Transaction struct {
 	Spenders         [][]byte
 	Position         plasma.Position
 }
+
+/* Wraps Output with transaction is was created with
+   this allows for input addresses to be retireved */
+type QueryOutput struct {
+	Output Output
+	Tx     Transaction
+}

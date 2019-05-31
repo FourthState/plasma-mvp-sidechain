@@ -62,7 +62,7 @@ func queryBalance(ctx sdk.Context, outputStore OutputStore, addr common.Address)
 	return acc.Balance, nil
 }
 
-func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]Output, sdk.Error) {
+func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]QueryOutput, sdk.Error) {
 	acc, ok := outputStore.GetAccount(ctx, addr)
 	if !ok {
 		return nil, ErrAccountDNE(DefaultCodespace, fmt.Sprintf("no account exists for the address provided: 0x%x", addr))

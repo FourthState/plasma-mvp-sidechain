@@ -4,10 +4,10 @@ import (
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/cosmos/cosmos-sdk/client/context"
+	//	"github.com/FourthState/plasma-mvp-sidechain/store"
+	//	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
+	//	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -73,30 +73,32 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
+
+//TODO: REDO
 func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, []byte, error) {
-	ctx := context.NewCLIContext().WithTrustNode(true)
+	/*	ctx := context.NewCLIContext().WithTrustNode(true)
 
-	// query for the output
-	key := append(addr.Bytes(), position.Bytes()...)
-	res, err := ctx.QueryStore(key, "utxo")
-	if err != nil {
-		return &tm.ResultTx{}, nil, err
-	}
+		// query for the output
+		key := append(store.Key, position.Bytes()...)
+		res, err := ctx.QueryStore(key, "outputs")
+		if err != nil {
+			return &tm.ResultTx{}, nil, err
+		}
 
-	utxo := store.UTXO{}
-	if err := rlp.DecodeBytes(res, &utxo); err != nil {
-		return &tm.ResultTx{}, nil, err
-	}
+		utxo := store.Output{}
+		if err := rlp.DecodeBytes(res, &utxo); err != nil {
+			return &tm.ResultTx{}, nil, err
+		}
 
-	// query tm node for information about this tx
-	result, err := ctx.Client.Tx(utxo.MerkleHash, true)
-	if err != nil {
-		return &tm.ResultTx{}, nil, err
-	}
+		// query tm node for information about this tx
+		result, err := ctx.Client.Tx(utxo.MerkleHash, true)
+		if err != nil {
+			return &tm.ResultTx{}, nil, err
+		}
 
-	// Look for confirmation signatures
-	key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
-	sigs, err := ctx.QueryStore(key, "plasma")
-
-	return result, sigs, nil
+		// Look for confirmation signatures
+		key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
+		sigs, err := ctx.QueryStore(key, "plasma")
+	*/
+	return &tm.ResultTx{}, []byte{}, nil
 }
