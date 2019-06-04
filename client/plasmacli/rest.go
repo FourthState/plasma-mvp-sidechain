@@ -27,11 +27,12 @@ func registerRoutes(rs *lcd.RestServer) {
 	r := rs.Mux
 
 	r.HandleFunc("/balance/{address}", balanceHandler(ctx)).Methods("GET")
-	r.HandleFunc("/block/{num}", blockHandler(ctx)).Methods("GET")
-	r.HandleFunc("/info/{address}", infoHandler(ctx)).Methods("GET")
-	r.HandleFunc("/submit", submitHandler(ctx)).Methods("POST")
-
+	r.HandleFunc("/block/{num:[0-9]+}", blockHandler(ctx)).Methods("GET")
 	r.HandleFunc("/blocks", blocksHandler(ctx)).Methods("GET")
+	r.HandleFunc("/blocks/{num:[0-9]+}", blocksHandler(ctx)).Methods("GET")
+	r.HandleFunc("/info/{address}", infoHandler(ctx)).Methods("GET")
+
+	r.HandleFunc("/submit", submitHandler(ctx)).Methods("POST")
 }
 
 func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
@@ -127,7 +128,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 
 		if num == "0" || num == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("plasma block start at 1"))
+			w.Write([]byte("plasma blocks start at 1"))
 			return
 		}
 
@@ -150,13 +151,14 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 		tmBlock, err := ctx.Client.Block(&height)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			// log the error
+			w.Write([]byte(err.Error()))
 			return
 		}
 
 		data, err := json.Marshal(resp{block.Block, tmBlock.Block.Data.Txs})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
 			return
 		}
 
@@ -168,5 +170,34 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 // retrieve metadata about the last 10 blocks
 func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		num, ok := mux.Vars(r)["num"]
+		if !ok {
+			num = ""
+		}
+
+		if num == "0" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("plasma blocks start at 1"))
+			return
+		}
+
+		blocksResp, err := query.BlocksMetadata(ctx, num)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			// TODO: check the against the codespace type
+			// maybe the block does not exist?
+			return
+		}
+
+		data, err := json.Marshal(blocksResp)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
 	}
 }
