@@ -54,35 +54,6 @@ func TestPlasmaInit(t *testing.T) {
 	require.NoError(t, err, "error binding to contract")
 }
 
-/* Test needs to be changed to simulate the sdk context and plasma store.
-func TestSubmitBlock(t *testing.T) {
-	logger := log.NewNopLogger()
-	client, _ := InitEthConn(clientAddr, logger)
-
-	privKey, _ := crypto.HexToECDSA(operatorPrivKey)
-	plasma, _ := InitPlasma(common.HexToAddress(plasmaContractAddr), client, 1, commitmentRate, logger, true, privKey)
-
-	var header [32]byte
-	copy(header[:], crypto.Keccak256([]byte("blah")))
-	block := plasmaTypes.Block{
-		Header:    header,
-		TxnCount:  1,
-		FeeAmount: utils.Big0,
-	}
-	err := plasma.SubmitBlock(block)
-	require.NoError(t, err, "block submission error")
-
-	blockNum, err := plasma.contract.LastCommittedBlock(nil)
-	require.NoError(t, err, "failed to query for the last committed block")
-
-	result, err := plasma.contract.PlasmaChain(nil, blockNum)
-	require.NoError(t, err, "failed contract plasma chain query")
-
-	require.Truef(t, bytes.Compare(result.Header[:], header[:]) == 0,
-		"Mismatch in block headers. Got: %x. Expected: %x", result, header)
-}
-*/
-
 func TestDepositFinalityBound(t *testing.T) {
 	logger := log.NewNopLogger()
 	client, _ := InitEthConn(clientAddr, logger)
