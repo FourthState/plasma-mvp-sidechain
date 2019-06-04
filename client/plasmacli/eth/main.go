@@ -131,6 +131,7 @@ func HasTxExitted(position plasma.Position) (bool, error) {
 		Amount       *big.Int
 		CommittedFee *big.Int
 		CreatedAt    *big.Int
+		EthBlockNum  *big.Int
 		Owner        ethcmn.Address
 		State        uint8
 	}

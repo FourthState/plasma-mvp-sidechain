@@ -19,6 +19,7 @@ var (
 	addr       = crypto.PubkeyToAddress(privKey.PublicKey)
 	// bad keys to check against the deposit
 	badPrivKey, _ = crypto.GenerateKey()
+	badAddr       = crypto.PubkeyToAddress(badPrivKey.PublicKey)
 )
 
 type inputUTXO struct {
@@ -34,10 +35,10 @@ type inputUTXO struct {
 type conn struct{}
 
 // all deposits should be in an amount of 10eth owner by addr(defined above)
-func (p conn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
+func (p conn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
 	return plasma.Deposit{addr, big.NewInt(10), utils.Big0}, big.NewInt(-2), true
 }
-func (p conn) HasTxBeenExited(pos plasma.Position) bool { return false }
+func (p conn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) bool { return false }
 
 var _ plasmaConn = conn{}
 
@@ -45,10 +46,10 @@ var _ plasmaConn = conn{}
 type exitConn struct{}
 
 // all deposits should be in an amount of 10eth owner by addr(defined above)
-func (p exitConn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
+func (p exitConn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
 	return plasma.Deposit{addr, big.NewInt(10), utils.Big0}, big.NewInt(-2), true
 }
-func (p exitConn) HasTxBeenExited(pos plasma.Position) bool { return true }
+func (p exitConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) bool { return true }
 
 func TestAnteChecks(t *testing.T) {
 	// setup
@@ -408,7 +409,7 @@ func TestAnteDeposit(t *testing.T) {
 
 type unfinalConn struct{}
 
-func (u unfinalConn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
+func (u unfinalConn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
 	dep := plasma.Deposit{
 		Owner:       addr,
 		Amount:      big.NewInt(10),
@@ -417,15 +418,15 @@ func (u unfinalConn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool)
 	return dep, big.NewInt(10), false
 }
 
-func (u unfinalConn) HasTxBeenExited(pos plasma.Position) bool { return false }
+func (u unfinalConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) bool { return false }
 
 type dneConn struct{}
 
-func (d dneConn) GetDeposit(nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
+func (d dneConn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposit, *big.Int, bool) {
 	return plasma.Deposit{}, nil, false
 }
 
-func (d dneConn) HasTxBeenExited(pos plasma.Position) bool { return false }
+func (d dneConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) bool { return false }
 
 func TestAnteDepositUnfinal(t *testing.T) {
 	// setup
@@ -479,6 +480,24 @@ func TestAnteDepositDNE(t *testing.T) {
 	require.False(t, res.IsOK(), "Nonexistent deposit inclusion did not error")
 	require.True(t, abort, "Nonexistent deposit inclusion did not abort")
 
+}
+
+func TestAnteDepositWrongOwner(t *testing.T) {
+	// setup
+	ctx, utxoStore, plasmaStore := setup()
+	// connection always returns valid deposits
+	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
+
+	// Try to include with wrong owner
+	msg := msgs.IncludeDepositMsg{
+		DepositNonce: big.NewInt(3),
+		Owner:        badAddr,
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+
+	require.False(t, res.IsOK(), "Wrong Owner deposit inclusion did not error")
+	require.True(t, abort, "Wrong owner deposit inclusion did not abort")
 }
 
 func setupInputs(ctx sdk.Context, utxoStore store.UTXOStore, inputs ...inputUTXO) {
