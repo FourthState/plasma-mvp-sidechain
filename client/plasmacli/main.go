@@ -32,8 +32,9 @@ const (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "plasmacli",
-	Short: "Plasma Client",
+	Use:           "plasmacli",
+	Short:         "Plasma Client",
+	SilenceErrors: true,
 }
 
 func init() {

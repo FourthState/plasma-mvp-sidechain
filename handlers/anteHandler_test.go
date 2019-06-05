@@ -20,6 +20,7 @@ var (
 	addr       = crypto.PubkeyToAddress(privKey.PublicKey)
 	// bad keys to check against the deposit
 	badPrivKey, _ = crypto.GenerateKey()
+	badAddr       = crypto.PubkeyToAddress(badPrivKey.PublicKey)
 )
 
 type Tx struct {
@@ -475,6 +476,24 @@ func setupFees(ctx sdk.Context, outputStore store.OutputStore, inputs ...Output)
 	for _, output := range inputs {
 		outputStore.StoreFee(ctx, output.Position, output.Output)
 	}
+}
+
+func TestAnteDepositWrongOwner(t *testing.T) {
+	// setup
+	ctx, outputStore, blockStore := setup()
+	// connection always returns valid deposits
+	handler := NewAnteHandler(outputStore, blockStore, conn{})
+
+	// Try to include with wrong owner
+	msg := msgs.IncludeDepositMsg{
+		DepositNonce: big.NewInt(3),
+		Owner:        badAddr,
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+
+	require.False(t, res.IsOK(), "Wrong Owner deposit inclusion did not error")
+	require.True(t, abort, "Wrong owner deposit inclusion did not abort")
 }
 
 func setupDeposits(ctx sdk.Context, outputStore store.OutputStore, inputs ...Deposit) {

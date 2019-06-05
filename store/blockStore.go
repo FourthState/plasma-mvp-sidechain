@@ -84,6 +84,18 @@ func (store BlockStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block 
 	return plasmaBlockNum
 }
 
+func (store BlockStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
+	var plasmaBlockNum *big.Int
+	data := store.Get(ctx, []byte(plasmaBlockNumKey))
+	if data == nil {
+		plasmaBlockNum = big.NewInt(1)
+	} else {
+		plasmaBlockNum = new(big.Int).SetBytes(data)
+	}
+
+	return plasmaBlockNum
+}
+
 func (store BlockStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, []byte(plasmaBlockNumKey))
@@ -94,18 +106,6 @@ func (store BlockStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
 
 		// increment the block number
 		plasmaBlockNum = plasmaBlockNum.Add(plasmaBlockNum, utils.Big1)
-	}
-
-	return plasmaBlockNum
-}
-
-func (store BlockStore) CurrentPlasmaBlockNum(ctx sdk.Context) *big.Int {
-	var plasmaBlockNum *big.Int
-	data := store.Get(ctx, []byte(plasmaBlockNumKey))
-	if data == nil {
-		plasmaBlockNum = big.NewInt(1)
-	} else {
-		plasmaBlockNum = new(big.Int).SetBytes(data)
 	}
 
 	return plasmaBlockNum

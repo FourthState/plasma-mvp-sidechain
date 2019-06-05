@@ -66,7 +66,7 @@ func TestPlasmaBlockStorage(t *testing.T) {
 		require.True(t, ok, "error when retrieving block")
 		require.True(t, reflect.DeepEqual(block, recoveredBlock), fmt.Sprintf("mismatch in stored block and retrieved block, iteration %d", i))
 
-		currPlasmaBlock := blockStore.CurrentPlasmaBlockNum(ctx)
+		currPlasmaBlock := blockStore.PlasmaBlockHeight(ctx)
 		require.Equal(t, currPlasmaBlock, blockNum, fmt.Sprintf("stored block number returned %d, current plasma block returned %d", blockNum, currPlasmaBlock))
 
 	}

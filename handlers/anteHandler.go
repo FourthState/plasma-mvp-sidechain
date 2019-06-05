@@ -166,5 +166,8 @@ func includeDepositAnteHandler(ctx sdk.Context, outputStore store.OutputStore, b
 	if exited {
 		return ctx, ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
 	}
+	if !bytes.Equal(msg.Owner.Bytes(), deposit.Owner.Bytes()) {
+		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, fmt.Sprintf("msg has the wrong owner field for given deposit. Resubmit with correct deposit owner: %s", deposit.Owner.String())).Result(), true
+	}
 	return ctx, sdk.Result{}, false
 }
