@@ -34,7 +34,7 @@ var infoCmd = &cobra.Command{
 
 		for i, utxo := range utxos {
 			fmt.Printf("UTXO %d\n", i)
-			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Tx.Position, utxo.Output.Output.Amount.String(), utxo.Output.Spent, utxo.Output.Spender)
+			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Tx.Position, utxo.Output.Output.Amount.String(), utxo.Output.Spent, utxo.Output.SpenderTx)
 			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.Tx.Transaction.TxHash(), utxo.Tx.ConfirmationHash)
 			// print inputs if applicable
 			positions := utxo.Tx.Transaction.InputPositions()
@@ -53,7 +53,7 @@ var infoCmd = &cobra.Command{
 	},
 }
 
-func Info(ctx context.CLIContext, addr common.Address) ([]store.QueryOutput, error) {
+func Info(ctx context.CLIContext, addr common.Address) ([]store.OutputInfo, error) {
 	// query for all utxos owned by this address
 	queryRoute := fmt.Sprintf("custom/utxo/info/%s", addr.Hex())
 	data, err := ctx.Query(queryRoute, nil)
@@ -61,7 +61,7 @@ func Info(ctx context.CLIContext, addr common.Address) ([]store.QueryOutput, err
 		return nil, err
 	}
 
-	var utxos []store.QueryOutput
+	var utxos []store.OutputInfo
 	if err := json.Unmarshal(data, &utxos); err != nil {
 		return nil, err
 	}

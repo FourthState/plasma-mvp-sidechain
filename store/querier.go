@@ -19,6 +19,10 @@ const (
 	// QueryInfo retrieves the entire utxo set owned
 	// by the specified address
 	QueryInfo = "info"
+
+	// QueryOutput retrieves a single output at
+	// the given position
+	QueryOutput = "output"
 )
 
 func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
@@ -53,7 +57,23 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 				return nil, sdk.ErrInternal("serialization error")
 			}
 			return data, nil
-
+		case QueryOutput:
+			if len(path) != 2 {
+				return nil, sdk.ErrUnknownRequest("expected output/<position>")
+			}
+			pos, e := plasma.FromPositionString(path[1])
+			if e != nil {
+				return nil, sdk.ErrInternal("position decoding error")
+			}
+			output, err := queryOutput(ctx, outputStore, pos)
+			if err != nil {
+				return nil, err
+			}
+			data, e := json.Marshal(output)
+			if e != nil {
+				return nil, sdk.ErrInternal("serialization error")
+			}
+			return data, nil
 		default:
 			return nil, sdk.ErrUnknownRequest("unregistered endpoint")
 		}
@@ -69,12 +89,20 @@ func queryBalance(ctx sdk.Context, outputStore OutputStore, addr common.Address)
 	return acc.Balance, nil
 }
 
-func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]QueryOutput, sdk.Error) {
+func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]OutputInfo, sdk.Error) {
 	acc, ok := outputStore.GetAccount(ctx, addr)
 	if !ok {
 		return nil, ErrAccountDNE(fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
 	}
 	return outputStore.GetUnspentForAccount(ctx, acc), nil
+}
+
+func queryOutput(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) (Output, sdk.Error) {
+	output, ok := outputStore.GetOutput(ctx, pos)
+	if !ok {
+		return Output{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
+	}
+	return output, nil
 }
 
 const (

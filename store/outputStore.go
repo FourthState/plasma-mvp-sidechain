@@ -316,11 +316,11 @@ func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spend
 /* Helpers */
 
 // GetUnspentForAccount returns the unspent outputs that belong to the given account
-// Returns using struct QueryOutput so user has access to transaction that created the output
-func (store OutputStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utxos []QueryOutput) {
+// Returns using struct OutputInfo so user has access to transaction that created the output
+func (store OutputStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utxos []OutputInfo) {
 	for _, p := range acc.Unspent {
 		output, ok := store.GetOutput(ctx, p)
-		var utxo QueryOutput
+		var utxo OutputInfo
 		if ok {
 			utxo.Output = output
 		}

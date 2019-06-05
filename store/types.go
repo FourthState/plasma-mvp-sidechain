@@ -37,7 +37,7 @@ type Transaction struct {
 
 /* Wraps Output with transaction is was created with
    this allows for input addresses to be retireved */
-type QueryOutput struct {
+type OutputInfo struct {
 	Output Output
 	Tx     Transaction
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
 	clistore "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
@@ -10,7 +11,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"strings"
@@ -64,20 +64,16 @@ Usage:
 			return err
 		}
 
-		res, err := ctx.QuerySubspace(signerAddr.Bytes(), "utxo")
+		utxos, err := query.Info(ctx, signerAddr)
 		if err != nil {
 			return err
 		}
 
-		utxo := store.UTXO{}
-		for _, pair := range res {
-			if err := rlp.DecodeBytes(pair.Value, &utxo); err != nil {
-				return err
-			}
+		for _, output := range utxos {
 
-			if utxo.Spent {
-				spenderPositions := utxo.SpenderPositions()
-				spenderAddresses := utxo.SpenderAddresses()
+			if output.Output.Spent {
+				spenderPositions := output.Tx.SpenderPositions()
+				spenderAddresses := output.Tx.SpenderAddresses()
 				for i, pos := range spenderPositions {
 					err = signSingleConfirmSig(ctx, pos, signerAddr, spenderAddresses[i], name)
 					if err != nil {
@@ -93,19 +89,13 @@ Usage:
 
 // generate confirmation signature for specified owner and position
 func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr, owner ethcmn.Address, name string) error {
-	// retrieve the new output
-	utxo := store.UTXO{}
-	key := append(owner.Bytes(), position.Bytes()...)
-	res, err := ctx.QueryStore(key, "utxo")
+	// query for output for the specified position
+	output, err := query.Output(ctx, position)
 	if err != nil {
 		return err
 	}
 
-	if err := rlp.DecodeBytes(res, &utxo); err != nil {
-		return err
-	}
-
-	if err := verifyAndSign(utxo, signerAddr, name); err != nil {
+	if err := verifyAndSign(output, signerAddr, name); err != nil {
 		return err
 	}
 	return nil
@@ -114,9 +104,9 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 // verify that the inputs provided are correct
 // signing address should match one of the input addresses
 // generate confirmation signature for given utxo
-func verifyAndSign(utxo store.UTXO, signerAddr ethcmn.Address, name string) error {
-	sig, _ := clistore.GetSig(utxo.Position)
-	inputAddrs := utxo.InputAddresses()
+func verifyAndSign(output store.Output, signerAddr ethcmn.Address, name string) error {
+	sig, _ := clistore.GetSig(output.Position)
+	inputAddrs := output.InputAddresses()
 
 	if len(sig) == 130 || (len(sig) == 65 && len(inputAddrs) == 1) {
 		return nil
@@ -128,7 +118,7 @@ func verifyAndSign(utxo store.UTXO, signerAddr ethcmn.Address, name string) erro
 		}
 
 		// get confirmation to generate signature
-		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", utxo.Position, utxo.Output.Owner, utxo.Output.Amount)
+		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.OutputPosition, output.Output.Owner, output.Output.Amount)
 		buf := cosmoscli.BufferStdin()
 		auth, err := cosmoscli.GetString(signPrompt, buf)
 		if err != nil {
@@ -138,18 +128,18 @@ func verifyAndSign(utxo store.UTXO, signerAddr ethcmn.Address, name string) erro
 			return nil
 		}
 
-		hash := utils.ToEthSignedMessageHash(utxo.ConfirmationHash)
+		hash := utils.ToEthSignedMessageHash(output.Tx.ConfirmationHash)
 		sig, err := clistore.SignHashWithPassphrase(name, hash)
 		if err != nil {
 			return fmt.Errorf("failed to generate confirmation signature: { %s }", err)
 		}
 
-		if err := clistore.SaveSig(utxo.Position, sig, i == 0); err != nil {
+		if err := clistore.SaveSig(output.Output.Position, sig, i == 0); err != nil {
 			return err
 		}
 
 		// print the results
-		fmt.Printf("Confirmation Signature for output with position: %s\n", utxo.Position)
+		fmt.Printf("Confirmation Signature for output with position: %s\n", output.Output.Position)
 		fmt.Printf("0x%x\n", sig)
 	}
 	return nil

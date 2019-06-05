@@ -16,7 +16,7 @@ func NewDepositHandler(outputStore store.OutputStore, blockStore store.BlockStor
 		// Increment txIndex so that it doesn't collide with SpendMsg
 		nextTxIndex()
 
-		deposit, _, _ := client.GetDeposit(blockStore.CurrentPlasmaBlockNum(ctx), depositMsg.DepositNonce)
+		deposit, _, _ := client.GetDeposit(blockStore.PlasmaBlockHeight(ctx), depositMsg.DepositNonce)
 
 		outputStore.StoreDeposit(ctx, depositMsg.DepositNonce, deposit)
 
