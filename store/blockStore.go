@@ -39,9 +39,9 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 	return nil
 }
 
-const (
-	blockKey          = "block"
-	plasmaBlockNumKey = "plasmaBlockNum"
+var (
+	blockKey          = []byte{0x0}
+	plasmaBlockNumKey = []byte{0x1}
 )
 
 func NewBlockStore(ctxKey sdk.StoreKey) BlockStore {

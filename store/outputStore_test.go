@@ -49,7 +49,7 @@ func TestDeposits(t *testing.T) {
 		require.Equal(t, res.Code, CodeOutputSpent, "allowed output to be spent twice")
 
 		deposit.Spent = true
-		deposit.Spender = hash
+		deposit.SpenderTx = hash
 		recoveredDeposit, ok = outputStore.GetDeposit(ctx, nonce)
 		require.True(t, ok, "error when retrieving deposit")
 		require.True(t, reflect.DeepEqual(deposit, recoveredDeposit), "mismatch in stored and retrieved deposit")
@@ -93,7 +93,7 @@ func TestFees(t *testing.T) {
 		require.Equal(t, res.Code, CodeOutputSpent, "allowed output to be spent twice")
 
 		fee.Spent = true
-		fee.Spender = hash
+		fee.SpenderTx = hash
 		recoveredFee, ok = outputStore.GetFee(ctx, pos)
 		require.True(t, ok, "error when retrieving fee")
 		require.True(t, reflect.DeepEqual(fee, recoveredFee), "mismatch in stored and retrieved fee")
@@ -179,8 +179,8 @@ func TestTransactions(t *testing.T) {
 
 		// Create and store new transaction
 		tx := Transaction{plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs)), plasmaTx.Position}
-		for i, _ := range tx.Spenders {
-			tx.Spenders[i] = []byte{}
+		for i, _ := range tx.SpenderTxs {
+			tx.SpenderTxs[i] = []byte{}
 		}
 		outputStore.StoreTx(ctx, tx)
 
@@ -211,7 +211,7 @@ func TestTransactions(t *testing.T) {
 			require.Equal(t, res.Code, CodeOutputSpent, fmt.Sprintf("allowed output with index %d to be spent twice on case %d", j, i))
 
 			tx.Spent[j] = true
-			tx.Spenders[j] = plasmaTx.Transaction.MerkleHash()
+			tx.SpenderTxs[j] = plasmaTx.Transaction.MerkleHash()
 			recoveredTx, ok = outputStore.GetTxWithPosition(ctx, p)
 			require.True(t, ok, "error when retrieving transaction")
 			require.True(t, reflect.DeepEqual(tx, recoveredTx), fmt.Sprintf("mismatch in stored and retrieved transaction on case %d", i))

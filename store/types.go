@@ -14,16 +14,16 @@ type Account struct {
 
 /* Wrap plasma deposit with spend information */
 type Deposit struct {
-	Deposit plasma.Deposit
-	Spent   bool
-	Spender []byte
+	Deposit   plasma.Deposit
+	Spent     bool
+	SpenderTx []byte // transaction hash that spends this deposit
 }
 
 /* Wrap plasma output with spend information */
 type Output struct {
-	Output  plasma.Output
-	Spent   bool
-	Spender []byte
+	Output    plasma.Output
+	Spent     bool
+	SpenderTx []byte // transaction that spends this output
 }
 
 /* Wrap plasma transaction with spend information */
@@ -31,7 +31,7 @@ type Transaction struct {
 	Transaction      plasma.Transaction
 	ConfirmationHash []byte
 	Spent            []bool
-	Spenders         [][]byte
+	SpenderTxs       [][]byte // transaction hashes that spend the outputs of this transaction
 	Position         plasma.Position
 }
 

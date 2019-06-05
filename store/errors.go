@@ -12,14 +12,14 @@ const (
 	CodeAccountDNE  sdk.CodeType = 3
 )
 
-func ErrOutputDNE(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
-	return sdk.NewError(codespace, CodeOutputDNE, msg, args)
+func ErrOutputDNE(msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(DefaultCodespace, CodeOutputDNE, msg, args)
 }
 
-func ErrOutputSpent(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
-	return sdk.NewError(codespace, CodeOutputSpent, msg, args)
+func ErrOutputSpent(msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(DefaultCodespace, CodeOutputSpent, msg, args)
 }
 
-func ErrAccountDNE(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
-	return sdk.NewError(codespace, CodeAccountDNE, msg, args)
+func ErrAccountDNE(msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(DefaultCodespace, CodeAccountDNE, msg, args)
 }

@@ -40,9 +40,9 @@ func TestDepositSerialization(t *testing.T) {
 	}
 
 	deposit := Deposit{
-		Deposit: plasmaDeposit,
-		Spent:   true,
-		Spender: []byte{},
+		Deposit:   plasmaDeposit,
+		Spent:     true,
+		SpenderTx: []byte{},
 	}
 
 	bytes, err := rlp.EncodeToBytes(&deposit)
@@ -70,7 +70,7 @@ func TestTxSerialization(t *testing.T) {
 	tx := Transaction{
 		Transaction:      transaction,
 		Spent:            []bool{false, false},
-		Spenders:         [][]byte{},
+		SpenderTxs:       [][]byte{},
 		ConfirmationHash: hashes,
 	}
 

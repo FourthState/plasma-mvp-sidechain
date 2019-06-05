@@ -34,7 +34,7 @@ func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore,
 		tx := store.Transaction{
 			Transaction:      spendMsg.Transaction,
 			Spent:            make([]bool, len(spendMsg.Outputs)),
-			Spenders:         make([][]byte, len(spendMsg.Outputs)),
+			SpenderTxs:       make([][]byte, len(spendMsg.Outputs)),
 			ConfirmationHash: confirmationHash[:],
 			Position:         plasma.NewPosition(blockHeight, txIndex, 0, big.NewInt(0)),
 		}
@@ -58,9 +58,6 @@ func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore,
 		if err := feeUpdater(spendMsg.Fee); err != nil {
 			return sdk.ErrInternal("error updating the aggregate fee").Result()
 		}
-
-		/* Create Outputs */
-		outputStore.StoreTx(ctx, tx)
 
 		return sdk.Result{}
 	}

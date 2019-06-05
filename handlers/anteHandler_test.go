@@ -26,7 +26,7 @@ type Tx struct {
 	Transaction      plasma.Transaction
 	ConfirmationHash []byte
 	Spent            []bool
-	Spenders         [][]byte
+	SpenderTxs       [][]byte
 	Position         plasma.Position
 }
 
@@ -212,7 +212,7 @@ func TestAnteExitedInputs(t *testing.T) {
 		Transaction:      plasma.Transaction{[]plasma.Input{plasma.NewInput(getPosition("10.0.0.0"), [65]byte{}, nil)}, []plasma.Output{plasma.NewOutput(addr, big.NewInt(10))}, big.NewInt(0)},
 		ConfirmationHash: []byte("confirmation hash"),
 		Spent:            []bool{false},
-		Spenders:         [][]byte{},
+		SpenderTxs:       [][]byte{},
 		Position:         getPosition("(1.0.0.0)"),
 	}
 	setupTxs(ctx, outputStore, inputs)
@@ -270,7 +270,7 @@ func TestAnteInvalidConfirmSig(t *testing.T) {
 		Transaction:      parentTx.Transaction,
 		ConfirmationHash: confHash[:],
 		Spent:            []bool{false},
-		Spenders:         make([][]byte, len(parentTx.Transaction.Outputs)),
+		SpenderTxs:       make([][]byte, len(parentTx.Transaction.Outputs)),
 		Position:         getPosition("(1.0.0.0)"),
 	}
 	outputStore.StoreTx(ctx, tx)
@@ -332,7 +332,7 @@ func TestAnteValidTx(t *testing.T) {
 		Transaction:      parentTx.Transaction,
 		ConfirmationHash: confBytes[:],
 		Spent:            []bool{false},
-		Spenders:         make([][]byte, len(parentTx.Transaction.Outputs)),
+		SpenderTxs:       make([][]byte, len(parentTx.Transaction.Outputs)),
 		Position:         getPosition("(1.0.0.0)"),
 	}
 	outputStore.StoreTx(ctx, tx)
@@ -494,7 +494,7 @@ func setupTxs(ctx sdk.Context, outputStore store.OutputStore, inputs ...Tx) {
 			Transaction:      i.Transaction,
 			ConfirmationHash: i.ConfirmationHash,
 			Spent:            i.Spent,
-			Spenders:         i.Spenders,
+			SpenderTxs:       i.SpenderTxs,
 			Position:         i.Position,
 		}
 		outputStore.StoreTx(ctx, tx)

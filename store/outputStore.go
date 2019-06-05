@@ -9,12 +9,12 @@ import (
 	"math/big"
 )
 
-const (
-	accountKey  = "acc"
-	depositKey  = "deposit"
-	feeKey      = "fee"
-	hashKey     = "hash"
-	positionKey = "pos"
+var (
+	accountKey  = []byte{0x0}
+	depositKey  = []byte{0x1}
+	feeKey      = []byte{0x2}
+	hashKey     = []byte{0x3}
+	positionKey = []byte{0x4}
 )
 
 /* Output Store */
@@ -103,9 +103,9 @@ func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output
 	}
 
 	output := Output{
-		Output:  tx.Transaction.Outputs[pos.OutputIndex],
-		Spent:   tx.Spent[pos.OutputIndex],
-		Spender: tx.Spenders[pos.OutputIndex],
+		Output:    tx.Transaction.Outputs[pos.OutputIndex],
+		Spent:     tx.Spent[pos.OutputIndex],
+		SpenderTx: tx.SpenderTxs[pos.OutputIndex],
 	}
 
 	return output, ok
@@ -254,16 +254,16 @@ func (store OutputStore) StoreTx(ctx sdk.Context, tx Transaction) {
 
 // SpendDeposit changes the deposit to be spent
 // Updates the account of the deposit owner
-func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spender []byte) sdk.Result {
+func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx []byte) sdk.Result {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
-		return ErrOutputDNE(DefaultCodespace, fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()
+		return ErrOutputDNE(fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()
 	} else if deposit.Spent {
-		return ErrOutputSpent(DefaultCodespace, fmt.Sprintf("deposit with nonce %s is already spent", nonce)).Result()
+		return ErrOutputSpent(fmt.Sprintf("deposit with nonce %s is already spent", nonce)).Result()
 	}
 
 	deposit.Spent = true
-	deposit.Spender = spender
+	deposit.SpenderTx = spenderTx
 
 	store.setDeposit(ctx, nonce, deposit)
 	store.subtractFromAccount(ctx, deposit.Deposit.Owner, deposit.Deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
@@ -273,16 +273,16 @@ func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spender [
 
 // SpendFee changes the fee to be spent
 // Updates the account of the fee owner
-func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spender []byte) sdk.Result {
+func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
 	fee, ok := store.GetFee(ctx, pos)
 	if !ok {
-		return ErrOutputDNE(DefaultCodespace, fmt.Sprintf("fee with position %s does not exist", pos)).Result()
+		return ErrOutputDNE(fmt.Sprintf("fee with position %s does not exist", pos)).Result()
 	} else if fee.Spent {
-		return ErrOutputSpent(DefaultCodespace, fmt.Sprintf("fee with position %s is already spent", pos)).Result()
+		return ErrOutputSpent(fmt.Sprintf("fee with position %s is already spent", pos)).Result()
 	}
 
 	fee.Spent = true
-	fee.Spender = spender
+	fee.SpenderTx = spenderTx
 
 	store.setFee(ctx, pos, fee)
 	store.subtractFromAccount(ctx, fee.Output.Owner, fee.Output.Amount, pos)
@@ -292,19 +292,19 @@ func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spender 
 
 // SpendOutput changes the output to be spent
 // Updates the account of the output owner
-func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spender []byte) sdk.Result {
+func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
 	key := prefixKey(positionKey, pos.Bytes())
 	hash := store.Get(ctx, key)
 
 	tx, ok := store.GetTx(ctx, hash)
 	if !ok {
-		return ErrOutputDNE(DefaultCodespace, fmt.Sprintf("output with index %x and transaction hash 0x%x does not exist", pos.OutputIndex, hash)).Result()
+		return ErrOutputDNE(fmt.Sprintf("output with index %x and transaction hash 0x%x does not exist", pos.OutputIndex, hash)).Result()
 	} else if tx.Spent[pos.OutputIndex] {
-		return ErrOutputSpent(DefaultCodespace, fmt.Sprintf("output with index %x and transaction hash 0x%x is already spent", pos.OutputIndex, hash)).Result()
+		return ErrOutputSpent(fmt.Sprintf("output with index %x and transaction hash 0x%x is already spent", pos.OutputIndex, hash)).Result()
 	}
 
 	tx.Spent[pos.OutputIndex] = true
-	tx.Spenders[pos.OutputIndex] = spender
+	tx.SpenderTxs[pos.OutputIndex] = spenderTx
 
 	store.setTx(ctx, tx)
 	store.subtractFromAccount(ctx, tx.Transaction.Outputs[pos.OutputIndex].Owner, tx.Transaction.Outputs[pos.OutputIndex].Amount, pos)
@@ -339,9 +339,9 @@ func (store OutputStore) depositToOutput(ctx sdk.Context, nonce *big.Int) (Outpu
 		return Output{}, ok
 	}
 	output := Output{
-		Output:  plasma.NewOutput(deposit.Deposit.Owner, deposit.Deposit.Amount),
-		Spent:   deposit.Spent,
-		Spender: deposit.Spender,
+		Output:    plasma.NewOutput(deposit.Deposit.Owner, deposit.Deposit.Amount),
+		Spent:     deposit.Spent,
+		SpenderTx: deposit.SpenderTx,
 	}
 	return output, ok
 }

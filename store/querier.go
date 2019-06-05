@@ -56,7 +56,7 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 func queryBalance(ctx sdk.Context, outputStore OutputStore, addr common.Address) (*big.Int, sdk.Error) {
 	acc, ok := outputStore.GetAccount(ctx, addr)
 	if !ok {
-		return nil, ErrAccountDNE(DefaultCodespace, fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
+		return nil, ErrAccountDNE(fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
 	}
 
 	return acc.Balance, nil
@@ -65,7 +65,7 @@ func queryBalance(ctx sdk.Context, outputStore OutputStore, addr common.Address)
 func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]QueryOutput, sdk.Error) {
 	acc, ok := outputStore.GetAccount(ctx, addr)
 	if !ok {
-		return nil, ErrAccountDNE(DefaultCodespace, fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
+		return nil, ErrAccountDNE(fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
 	}
 	return outputStore.GetUnspentForAccount(ctx, acc), nil
 }
