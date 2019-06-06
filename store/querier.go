@@ -22,7 +22,7 @@ const (
 
 	// QueryOutput retrieves a single output at
 	// the given position
-	QueryOutput = "output"
+	QueryOutputInfo = "output"
 )
 
 func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
@@ -57,7 +57,7 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 				return nil, sdk.ErrInternal("serialization error")
 			}
 			return data, nil
-		case QueryOutput:
+		case QueryOutputInfo:
 			if len(path) != 2 {
 				return nil, sdk.ErrUnknownRequest("expected output/<position>")
 			}
@@ -69,7 +69,12 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 			if err != nil {
 				return nil, err
 			}
-			data, e := json.Marshal(output)
+			tx, err := queryTxWithPosition(ctx, outputStore, pos)
+			if err != nil {
+				return nil, err
+			}
+			outputInfo := OutputInfo{output, tx}
+			data, e := json.Marshal(outputInfo)
 			if e != nil {
 				return nil, sdk.ErrInternal("serialization error")
 			}
@@ -103,6 +108,14 @@ func queryOutput(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) 
 		return Output{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
 	}
 	return output, nil
+}
+
+func queryTxWithPosition(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) (Transaction, sdk.Error) {
+	tx, ok := outputStore.GetTxWithPosition(ctx, pos)
+	if !ok {
+		return Transaction{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
+	}
+	return tx, nil
 }
 
 const (

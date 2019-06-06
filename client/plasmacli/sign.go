@@ -21,7 +21,6 @@ const (
 )
 
 func init() {
-	signCmd.Flags().String(ownerF, "", "Owner of the output (required with position flag)")
 	signCmd.Flags().String(positionF, "", "Position of transaction to finalize (required with owner flag)")
 }
 
@@ -33,7 +32,7 @@ Prompt the user for confirmation to finailze the pending transactions. Owner and
 
 Usage:
 	plasmacli sign <account>
-	plasmacli sign <account> --owner <address> --position "(blknum.txindex.oindex.depositnonce)"`,
+	plasmacli sign <account> --position "(blknum.txindex.oindex.depositnonce)"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
@@ -46,21 +45,14 @@ Usage:
 			return err
 		}
 
-		ownerS := viper.GetString(ownerF)
 		positionS := viper.GetString(positionF)
-		if ownerS != "" || positionS != "" {
+		if positionS != "" {
 			position, err := plasma.FromPositionString(strings.TrimSpace(viper.GetString(positionF)))
 			if err != nil {
 				return err
 			}
 
-			ownerStr := utils.RemoveHexPrefix(strings.TrimSpace(viper.GetString(ownerF)))
-			if ownerStr == "" || !ethcmn.IsHexAddress(ownerStr) {
-				return fmt.Errorf("must provide the address that owns position %s using the --owner flag in hex format", position)
-			}
-			ownerAddr := ethcmn.HexToAddress(ownerStr)
-
-			err = signSingleConfirmSig(ctx, position, signerAddr, ownerAddr, name)
+			err = signSingleConfirmSig(ctx, position, signerAddr, name)
 			return err
 		}
 
@@ -72,10 +64,13 @@ Usage:
 		for _, output := range utxos {
 
 			if output.Output.Spent {
-				spenderPositions := output.Tx.SpenderPositions()
-				spenderAddresses := output.Tx.SpenderAddresses()
-				for i, pos := range spenderPositions {
-					err = signSingleConfirmSig(ctx, pos, signerAddr, spenderAddresses[i], name)
+				tx, err := query.Tx(ctx, output.Output.SpenderTx)
+				if err != nil {
+					return err
+				}
+
+				for i, pos := range tx.InputPositions() {
+					err = signSingleConfirmSig(ctx, pos, signerAddr, name)
 					if err != nil {
 						fmt.Println(err)
 					}
@@ -88,9 +83,9 @@ Usage:
 }
 
 // generate confirmation signature for specified owner and position
-func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr, owner ethcmn.Address, name string) error {
+func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr ethcmn.Address, name string) error {
 	// query for output for the specified position
-	output, err := query.Output(ctx, position)
+	output, err := query.OutputInfo(ctx, position)
 	if err != nil {
 		return err
 	}
@@ -104,9 +99,9 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 // verify that the inputs provided are correct
 // signing address should match one of the input addresses
 // generate confirmation signature for given utxo
-func verifyAndSign(output store.Output, signerAddr ethcmn.Address, name string) error {
-	sig, _ := clistore.GetSig(output.Position)
-	inputAddrs := output.InputAddresses()
+func verifyAndSign(output store.OutputInfo, signerAddr ethcmn.Address, name string) error {
+	sig, _ := clistore.GetSig(output.Tx.Position)
+	inputAddrs := output.Tx.InputAddresses()
 
 	if len(sig) == 130 || (len(sig) == 65 && len(inputAddrs) == 1) {
 		return nil
@@ -116,9 +111,9 @@ func verifyAndSign(output store.Output, signerAddr ethcmn.Address, name string) 
 		if input != signerAddr {
 			continue
 		}
-
+		// TODO: fix to use correct position
 		// get confirmation to generate signature
-		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.OutputPosition, output.Output.Owner, output.Output.Amount)
+		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.Tx.Position, output.Output.Owner, output.Output.Amount)
 		buf := cosmoscli.BufferStdin()
 		auth, err := cosmoscli.GetString(signPrompt, buf)
 		if err != nil {
@@ -134,12 +129,12 @@ func verifyAndSign(output store.Output, signerAddr ethcmn.Address, name string) 
 			return fmt.Errorf("failed to generate confirmation signature: { %s }", err)
 		}
 
-		if err := clistore.SaveSig(output.Output.Position, sig, i == 0); err != nil {
+		if err := clistore.SaveSig(output.Tx.Position, sig, i == 0); err != nil {
 			return err
 		}
 
 		// print the results
-		fmt.Printf("Confirmation Signature for output with position: %s\n", output.Output.Position)
+		fmt.Printf("Confirmation Signature for output with position: %s\n", output.Tx.Position)
 		fmt.Printf("0x%x\n", sig)
 	}
 	return nil
