@@ -70,6 +70,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprintf("/logs/{%s}", logsHash), getLogsHandler(cdc, cliCtx, es)).Methods("GET", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/logs"), postLogsHandler(cdc, cliCtx, es, logsHashDB)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/logs/tx"), postPostLogsTxHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
+	r.HandleFunc(fmt.Sprint("/logs/tx/hash"), postPostLogsTxHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 
 	// presence claims
 	r.HandleFunc(fmt.Sprint("/presence_claim/hash"), postPresenceClaimHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
@@ -80,6 +81,7 @@ func RegisterRoutes(cliCtx context.CLIContext, r *mux.Router, cdc *codec.Codec) 
 	r.HandleFunc(fmt.Sprint("/zone/create"), postCreateZoneHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprint("/zone/hash"), postZoneHashHandler(cdc, cliCtx)).Methods("POST", "OPTIONS")
 	r.HandleFunc(fmt.Sprintf("/zone/{%s}", zoneID), queryZoneHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
+	r.HandleFunc(fmt.Sprintf("/zone/{%s}/logs", zoneID), queryZoneLogsHandler(cdc, cliCtx, logsHashDB)).Methods("GET", "OPTIONS")
 
 	//zone
 	r.HandleFunc(fmt.Sprintf("/beacon/{%s}/zones", beaconAddress), queryZoneByBeaconHandler(cdc, cliCtx)).Methods("GET", "OPTIONS")
@@ -450,13 +452,19 @@ func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsea
 
 		zones, err := getAllZonesABeaconBelongsTo(cliCtx, ethcmn.HexToAddress(sender))
 
+		fmt.Println("Zones", zones)
+
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
 		}
 
 		primaryZone := zones[0]
 
+		fmt.Println("PrimaryZone", primaryZone)
+
 		claims, err := getClaimsForZone(cliCtx, primaryZone.ZoneID)
+
+		fmt.Println("Claims", claims)
 
 		if err != nil {
 			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
@@ -465,6 +473,8 @@ func postLogsHandler(cdc *codec.Codec, cliCtx context.CLIContext, es *elasticsea
 
 		// this currently gets overwritten whenever you initiate a new open presence claim
 		primaryClaim := claims[0]
+
+		fmt.Println("PrimaryClaim", primaryClaim)
 
 		claimHash := store.GetPresenceClaimHash(primaryClaim)
 
@@ -628,9 +638,10 @@ func postPresenceClaimHashHandler(cdc *codec.Codec, ctx context.CLIContext) http
 }
 
 type postLogsMsg struct {
-	ClaimID   string `json:"claimID"`
-	LogsHash  string `json:"logsHash"`
-	Signature string `json:"signature"`
+	ClaimID   string   `json:"claimID"`
+	LogsHash  string   `json:"logsHash"`
+	Beacons   []string `json:"beacons"`
+	Signature *string  `json:"signature"`
 }
 
 func postPostLogsTxHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
@@ -645,7 +656,17 @@ func postPostLogsTxHandler(cdc *codec.Codec, ctx context.CLIContext) http.Handle
 		var claimMsg msgs.PostLogsMsg
 		claimMsg.ClaimID = ethcmn.FromHex(req.ClaimID)
 		claimMsg.LogsHash = ethcmn.FromHex(req.LogsHash)
-		claimMsg.Signature = ethcmn.FromHex(req.Signature)
+
+		var beacons []ethcmn.Address
+
+		for _, beacon := range req.Beacons {
+			beacons = append(beacons, ethcmn.HexToAddress(beacon))
+
+		}
+
+		claimMsg.Beacons = beacons
+
+		claimMsg.Signature = ethcmn.FromHex(*req.Signature)
 
 		txBytes, err := rlp.EncodeToBytes(&claimMsg)
 		if err != nil {
@@ -659,6 +680,29 @@ func postPostLogsTxHandler(cdc *codec.Codec, ctx context.CLIContext) http.Handle
 			return
 		}
 		rest.PostProcessResponse(w, cdc, res.TxHash, ctx.Indent)
+	}
+}
+
+func postPostLogsTxHashHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req postLogsMsg
+
+		if !rest.ReadRESTReq(w, r, cdc, &req) {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+
+		var claimMsg msgs.PostLogsMsg
+		claimMsg.ClaimID = ethcmn.FromHex(req.ClaimID)
+		claimMsg.LogsHash = ethcmn.FromHex(req.LogsHash)
+
+		txBytes, err := rlp.EncodeToBytes(&claimMsg)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, "Failed to encode `InitiatePresenceClaimMsg`: "+err.Error())
+			return
+		}
+
+		rest.PostProcessResponse(w, cdc, ethcmn.ToHex(txBytes), ctx.Indent)
 	}
 }
 
@@ -777,6 +821,30 @@ func queryZoneHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc
 	}
 }
 
+func queryZoneLogsHandler(cdc *codec.Codec, ctx context.CLIContext, logsHashDB *db.MemDatabase) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+		param := vars[zoneID]
+
+		zoneID, err := hex.Decode(param)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		res, err := getAllLogsHashesForZone(ctx, logsHashDB, zoneID)
+
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		rest.PostProcessResponse(w, cdc, hexEncodeHashes(res), ctx.Indent)
+	}
+}
+
 func queryZoneByBeaconHandler(cdc *codec.Codec, ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -870,4 +938,17 @@ func getAllLogsHashesForZone(cliCtx context.CLIContext, db *db.MemDatabase, zone
 
 	return primaryClaimLogs, nil
 
+}
+
+func hexEncodeHashes(hashes [][]byte) []string {
+
+	var hexHashes []string
+
+	for _, hash := range hashes {
+		hexHash := ethcmn.ToHex(hash)
+		hexHashes = append(hexHashes, hexHash)
+
+	}
+
+	return hexHashes
 }

@@ -5,12 +5,12 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
+	//"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	//"github.com/ethereum/go-ethereum/crypto"
 	//"math/big"
-	//"fmt"
+	"fmt"
 )
 
 func PostLogsHandler(claimStore store.PresenceClaimStore, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
@@ -47,24 +47,29 @@ func PostLogsHandler(claimStore store.PresenceClaimStore, utxoStore store.UTXOSt
 		header := ctx.BlockHeader().DataHash
 		confirmationHash := sha256.Sum256(append(merkleHash, header...))
 
-		txHash := utils.ToEthSignedMessageHash(postLogsMsg.TxHash())
-		pubKey, _ := crypto.SigToPub(txHash, postLogsMsg.Signature)
+		//	txHash := utils.ToEthSignedMessageHash(postLogsMsg.TxHash())
+		//	pubKey, _ := crypto.SigToPub(txHash, postLogsMsg.Signature)
 
-		recipient := crypto.PubkeyToAddress(*pubKey)
+		recipient := postLogsMsg.Beacons[0]
+		fmt.Printf("Recipient ", recipient.Hex())
 		spenderKeys := [][]byte{append(recipient[:], claim.UTXOPosition.Bytes()...)}
 		output := plasma.Output{
 			Owner:  recipient,
 			Amount: utxo.Output.Amount,
 		}
 
+		position := plasma.NewPosition(blockHeight, txIndex, 0, nil)
+		var inputKeys [][]byte
+		inputKeys = append(inputKeys, append(recipient.Bytes()[:], position.Bytes()...))
+
 		newUtxo := store.UTXO{
-			InputKeys:        nil,
+			InputKeys:        inputKeys,
 			SpenderKeys:      spenderKeys,
 			ConfirmationHash: confirmationHash[:],
 			MerkleHash:       merkleHash,
 			Output:           output,
 			Spent:            false,
-			Position:         plasma.NewPosition(blockHeight, txIndex, 0, nil),
+			Position:         position,
 		}
 
 		utxoStore.StoreUTXO(ctx, newUtxo)

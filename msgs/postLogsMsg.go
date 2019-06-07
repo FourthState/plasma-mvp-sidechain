@@ -4,7 +4,7 @@ import (
 	//"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	//ethcmn "github.com/ethereum/go-ethereum/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -14,9 +14,10 @@ const (
 )
 
 type PostLogsMsg struct {
-	ClaimID   []byte `json:"claimID"`
-	LogsHash  []byte `json:"logsHash"`
-	Signature []byte `json:"signature"`
+	ClaimID   []byte           `json:"claimID"`
+	LogsHash  []byte           `json:"logsHash"`
+	Beacons   []ethcmn.Address `json:"beacons"`
+	Signature []byte           `json:"signature"`
 }
 
 func (msg PostLogsMsg) Type() string  { return "post_logs" }
@@ -28,6 +29,7 @@ func (msg PostLogsMsg) TxHash() []byte {
 
 	postLogsMsg.ClaimID = msg.ClaimID
 	postLogsMsg.LogsHash = msg.LogsHash
+	postLogsMsg.Beacons = msg.Beacons
 
 	bytes, _ := rlp.EncodeToBytes(&postLogsMsg)
 
