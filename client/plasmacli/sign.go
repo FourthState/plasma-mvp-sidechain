@@ -113,7 +113,7 @@ func verifyAndSign(output store.OutputInfo, signerAddr ethcmn.Address, name stri
 		}
 		// TODO: fix to use correct position
 		// get confirmation to generate signature
-		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.Tx.Position, output.Output.Owner, output.Output.Amount)
+		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.Tx.Position, output.Output.Output.Owner, output.Output.Amount)
 		buf := cosmoscli.BufferStdin()
 		auth, err := cosmoscli.GetString(signPrompt, buf)
 		if err != nil {

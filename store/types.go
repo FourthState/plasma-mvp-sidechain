@@ -2,11 +2,13 @@ package store
 
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"math/big"
 )
 
-/* Account */
-type Account struct {
+// Wallet holds reference to the total balance, unspent, and spent outputs
+// at a given address
+type Wallet struct {
 	Balance *big.Int          // total amount avaliable to be spent
 	Unspent []plasma.Position // position of unspent transaction outputs
 	Spent   []plasma.Position // position of spent transaction outputs
@@ -26,6 +28,12 @@ type Output struct {
 	SpenderTx []byte // transaction that spends this output
 }
 
+// TODO: remove
+type OutputInfo struct {
+	Output Output
+	Tx     Transaction
+}
+
 /* Wrap plasma transaction with spend information */
 type Transaction struct {
 	Transaction      plasma.Transaction
@@ -35,9 +43,25 @@ type Transaction struct {
 	Position         plasma.Position
 }
 
-/* Wraps Output with transaction is was created with
-   this allows for input addresses to be retireved */
-type OutputInfo struct {
-	Output Output
-	Tx     Transaction
+// TransactionOutput holds all transactional information related to an output
+// It is used to return output information from the store
+type TransactionOutput struct {
+	plasma.Output
+	Position       plasma.Position
+	Spent          bool
+	SpenderTx      []byte
+	InputAddresses []ethcmn.Address
+	InputPositions []plasma.Position
+}
+
+// NewTransactionOutput is a constructor function for TransactionOutput
+func NewTransactionOutput(output plasma.Output, pos plasma.Position, spent bool, spenderTx []byte, inputAddresses []ethcmn.Address, inputPosition []plasma.Position) TransactionOutput {
+	return TransactionOutput{
+		Output:         output,
+		Position:       pos,
+		Spent:          spent,
+		SpenderTx:      spenderTx,
+		InputAddresses: inputAddresses,
+		InputPositions: inputPositions,
+	}
 }

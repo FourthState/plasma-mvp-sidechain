@@ -9,8 +9,9 @@ import (
 	"math/big"
 )
 
+// keys
 var (
-	accountKey  = []byte{0x0}
+	walletKey   = []byte{0x0}
 	depositKey  = []byte{0x1}
 	feeKey      = []byte{0x2}
 	hashKey     = []byte{0x3}
@@ -31,20 +32,20 @@ func NewOutputStore(ctxKey sdk.StoreKey) OutputStore {
 // -----------------------------------------------------------------------------
 /* Getters */
 
-// GetAccount returns the account at the associated address
-func (store OutputStore) GetAccount(ctx sdk.Context, addr common.Address) (Account, bool) {
-	key := prefixKey(accountKey, addr.Bytes())
+// GetWallet returns the wallet at the associated address
+func (store OutputStore) GetWallet(ctx sdk.Context, addr common.Address) (Wallet, bool) {
+	key := prefixKey(walletKey, addr.Bytes())
 	data := store.Get(ctx, key)
 	if data == nil {
-		return Account{}, false
+		return Wallet{}, false
 	}
 
-	var acc Account
-	if err := rlp.DecodeBytes(data, &acc); err != nil {
+	var wallet Wallet
+	if err := rlp.DecodeBytes(data, &wallet); err != nil {
 		panic(fmt.Sprintf("transaction store corrupted: %s", err))
 	}
 
-	return acc, true
+	return wallet, true
 }
 
 // GetDeposit returns the deposit at the given nonce
@@ -137,9 +138,9 @@ func (store OutputStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position)
 // -----------------------------------------------------------------------------
 /* Has */
 
-// HasAccount returns whether an account at the given address exists
-func (store OutputStore) HasAccount(ctx sdk.Context, addr common.Address) bool {
-	key := prefixKey(accountKey, addr.Bytes())
+// HasWallet returns whether an wallet at the given address exists
+func (store OutputStore) HasWallet(ctx sdk.Context, addr common.Address) bool {
+	key := prefixKey(walletKey, addr.Bytes())
 	return store.Has(ctx, key)
 }
 
@@ -172,10 +173,10 @@ func (store OutputStore) HasTx(ctx sdk.Context, hash []byte) bool {
 // -----------------------------------------------------------------------------
 /* Set */
 
-// SetAccount overwrites the account stored at the given address
-func (store OutputStore) setAccount(ctx sdk.Context, addr common.Address, acc Account) {
-	key := prefixKey(accountKey, addr.Bytes())
-	data, err := rlp.EncodeToBytes(&acc)
+// SetWallet overwrites the wallet stored at the given address
+func (store OutputStore) setWallet(ctx sdk.Context, addr common.Address, wallet Wallet) {
+	key := prefixKey(walletKey, addr.Bytes())
+	data, err := rlp.EncodeToBytes(&wallet)
 	if err != nil {
 		panic(fmt.Sprintf("error marshaling transaction: %s", err))
 	}
@@ -226,25 +227,25 @@ func (store OutputStore) setTx(ctx sdk.Context, tx Transaction) {
 /* Store */
 
 // StoreDeposit adds an unspent deposit
-// Updates the deposit owner's account
+// Updates the deposit owner's wallet
 func (store OutputStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
 	store.setDeposit(ctx, nonce, Deposit{deposit, false, make([]byte, 0)})
-	store.addToAccount(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
+	store.addToWallet(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
 }
 
 // StoreFee adds an unspent fee
-// Updates the fee owner's account
+// Updates the fee owner's wallet
 func (store OutputStore) StoreFee(ctx sdk.Context, pos plasma.Position, output plasma.Output) {
 	store.setFee(ctx, pos, Output{output, false, make([]byte, 0)})
-	store.addToAccount(ctx, output.Owner, output.Amount, pos)
+	store.addToWallet(ctx, output.Owner, output.Amount, pos)
 }
 
 // StoreTx adds the transaction
-// Updates the output owner's accounts
+// Updates the output owner's wallets
 func (store OutputStore) StoreTx(ctx sdk.Context, tx Transaction) {
 	store.setTx(ctx, tx)
 	for i, output := range tx.Transaction.Outputs {
-		store.addToAccount(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
+		store.addToWallet(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
 		store.setOutput(ctx, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)), tx.Transaction.TxHash())
 	}
 }
@@ -253,7 +254,7 @@ func (store OutputStore) StoreTx(ctx sdk.Context, tx Transaction) {
 /* Spend */
 
 // SpendDeposit changes the deposit to be spent
-// Updates the account of the deposit owner
+// Updates the wallet of the deposit owner
 func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx []byte) sdk.Result {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
@@ -266,13 +267,13 @@ func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx
 	deposit.SpenderTx = spenderTx
 
 	store.setDeposit(ctx, nonce, deposit)
-	store.subtractFromAccount(ctx, deposit.Deposit.Owner, deposit.Deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
+	store.subtractFromWallet(ctx, deposit.Deposit.Owner, deposit.Deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
 
 	return sdk.Result{}
 }
 
 // SpendFee changes the fee to be spent
-// Updates the account of the fee owner
+// Updates the wallet of the fee owner
 func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
 	fee, ok := store.GetFee(ctx, pos)
 	if !ok {
@@ -285,13 +286,13 @@ func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderT
 	fee.SpenderTx = spenderTx
 
 	store.setFee(ctx, pos, fee)
-	store.subtractFromAccount(ctx, fee.Output.Owner, fee.Output.Amount, pos)
+	store.subtractFromWallet(ctx, fee.Output.Owner, fee.Output.Amount, pos)
 
 	return sdk.Result{}
 }
 
 // SpendOutput changes the output to be spent
-// Updates the account of the output owner
+// Updates the wallet of the output owner
 func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
 	key := prefixKey(positionKey, pos.Bytes())
 	hash := store.Get(ctx, key)
@@ -307,7 +308,7 @@ func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spend
 	tx.SpenderTxs[pos.OutputIndex] = spenderTx
 
 	store.setTx(ctx, tx)
-	store.subtractFromAccount(ctx, tx.Transaction.Outputs[pos.OutputIndex].Owner, tx.Transaction.Outputs[pos.OutputIndex].Amount, pos)
+	store.subtractFromWallet(ctx, tx.Transaction.Outputs[pos.OutputIndex].Owner, tx.Transaction.Outputs[pos.OutputIndex].Amount, pos)
 
 	return sdk.Result{}
 }
@@ -315,10 +316,10 @@ func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spend
 // -----------------------------------------------------------------------------
 /* Helpers */
 
-// GetUnspentForAccount returns the unspent outputs that belong to the given account
+// GetUnspentForWallett returns the unspent outputs that belong to the given wallet
 // Returns using struct OutputInfo so user has access to transaction that created the output
-func (store OutputStore) GetUnspentForAccount(ctx sdk.Context, acc Account) (utxos []OutputInfo) {
-	for _, p := range acc.Unspent {
+func (store OutputStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (utxos []OutputInfo) {
+	for _, p := range wallet.Unspent {
 		output, ok := store.GetOutput(ctx, p)
 		var utxo OutputInfo
 		if ok {
@@ -346,36 +347,36 @@ func (store OutputStore) depositToOutput(ctx sdk.Context, nonce *big.Int) (Outpu
 	return output, ok
 }
 
-// addToAccount adds the passed in amount to the account with the given address
-// adds the position provided to the list of unspent positions within the account
-func (store OutputStore) addToAccount(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
-	acc, ok := store.GetAccount(ctx, addr)
+// addToWallet adds the passed in amount to the wallet with the given address
+// adds the position provided to the list of unspent positions within the wallet
+func (store OutputStore) addToWallet(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
+	wallet, ok := store.GetWallet(ctx, addr)
 	if !ok {
-		acc = Account{big.NewInt(0), make([]plasma.Position, 0), make([]plasma.Position, 0)}
+		wallet = Wallet{big.NewInt(0), make([]plasma.Position, 0), make([]plasma.Position, 0)}
 	}
 
-	acc.Balance = new(big.Int).Add(acc.Balance, amount)
-	acc.Unspent = append(acc.Unspent, pos)
-	store.setAccount(ctx, addr, acc)
+	wallet.Balance = new(big.Int).Add(wallet.Balance, amount)
+	wallet.Unspent = append(wallet.Unspent, pos)
+	store.setWallet(ctx, addr, wallet)
 }
 
-// subtractFromAccount subtracts the passed in amount from the account with the given address
+// subtractFromWallet subtracts the passed in amount from the wallet with the given address
 // moves the provided position from the unspent list to the spent list
-func (store OutputStore) subtractFromAccount(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
-	acc, ok := store.GetAccount(ctx, addr)
+func (store OutputStore) subtractFromWallet(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
+	wallet, ok := store.GetWallet(ctx, addr)
 	if !ok {
 		panic(fmt.Sprintf("transaction store has been corrupted"))
 	}
 
-	// Update Account
-	acc.Balance = new(big.Int).Sub(acc.Balance, amount)
-	if acc.Balance.Sign() == -1 {
-		panic(fmt.Sprintf("account with address 0x%x has a negative balance", addr))
+	// Update Wallet
+	wallet.Balance = new(big.Int).Sub(wallet.Balance, amount)
+	if wallet.Balance.Sign() == -1 {
+		panic(fmt.Sprintf("wallet with address 0x%x has a negative balance", addr))
 	}
 
-	acc.Unspent = removePosition(acc.Unspent, pos)
-	acc.Spent = append(acc.Spent, pos)
-	store.setAccount(ctx, addr, acc)
+	wallet.Unspent = removePosition(wallet.Unspent, pos)
+	wallet.Spent = append(wallet.Spent, pos)
+	store.setWallet(ctx, addr, wallet)
 }
 
 // helper function to remove a position from the unspent list

@@ -20,9 +20,13 @@ const (
 	// by the specified address
 	QueryInfo = "info"
 
-	// QueryOutput retrieves a single output at
-	// the given position
-	QueryOutputInfo = "output"
+	// QueryTransactionOutput retrieves a single output at
+	// the given position and returns it with transactional
+	// information
+	QueryTransactionOutput = "output"
+
+	// QueryTx retrieves a transaction at the given hash
+	QueryTx = "tx"
 )
 
 func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
@@ -57,24 +61,33 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 				return nil, sdk.ErrInternal("serialization error")
 			}
 			return data, nil
-		case QueryOutputInfo:
+		case QueryTransactionOutput:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("expected output/<position>")
+				return nil, sdk.ErrUnknownRequest("expected txo/<position>")
 			}
 			pos, e := plasma.FromPositionString(path[1])
 			if e != nil {
 				return nil, sdk.ErrInternal("position decoding error")
 			}
-			output, err := queryOutput(ctx, outputStore, pos)
+			output, err := queryTransactionOutput(ctx, outputStore, pos)
 			if err != nil {
 				return nil, err
 			}
-			tx, err := queryTxWithPosition(ctx, outputStore, pos)
-			if err != nil {
-				return nil, err
+			txo := TransactionOutput{}
+			data, e := json.Marshal(txo)
+			if e != nil {
+				return nil, sdk.ErrInternal("serialization error")
 			}
-			outputInfo := OutputInfo{output, tx}
-			data, e := json.Marshal(outputInfo)
+			return data, nil
+		case QueryTx:
+			if len(path) != 2 {
+				return nil, sdk.ErrUnknownRequest("expected tx/<hash>")
+			}
+			tx, ok := outputStore.GetTx(ctx, []byte(path[1]))
+			if !ok {
+				return nil, ErrTxDNE(fmt.Sprintf("no transaction exists for the hash provided: %x", []byte(path[1])))
+			}
+			data, e := json.Marshal(tx)
 			if e != nil {
 				return nil, sdk.ErrInternal("serialization error")
 			}
@@ -86,36 +99,36 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 }
 
 func queryBalance(ctx sdk.Context, outputStore OutputStore, addr common.Address) (*big.Int, sdk.Error) {
-	acc, ok := outputStore.GetAccount(ctx, addr)
+	acc, ok := outputStore.GetWallet(ctx, addr)
 	if !ok {
-		return nil, ErrAccountDNE(fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
+		return nil, ErrWalletDNE(fmt.Sprintf("no wallet exists for the address provided: 0x%x", addr))
 	}
 
 	return acc.Balance, nil
 }
 
 func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]OutputInfo, sdk.Error) {
-	acc, ok := outputStore.GetAccount(ctx, addr)
+	acc, ok := outputStore.GetWallet(ctx, addr)
 	if !ok {
-		return nil, ErrAccountDNE(fmt.Sprintf("no account exists for the address provided: 0x%x", addr))
+		return nil, ErrWalletDNE(fmt.Sprintf("no wallet exists for the address provided: 0x%x", addr))
 	}
-	return outputStore.GetUnspentForAccount(ctx, acc), nil
+	return outputStore.GetUnspentForWallet(ctx, acc), nil
 }
 
-func queryOutput(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) (Output, sdk.Error) {
+func queryTransactionOutput(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) (TransactionOutput, sdk.Error) {
 	output, ok := outputStore.GetOutput(ctx, pos)
 	if !ok {
-		return Output{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
+		return TransactionOutput{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
 	}
-	return output, nil
-}
 
-func queryTxWithPosition(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) (Transaction, sdk.Error) {
 	tx, ok := outputStore.GetTxWithPosition(ctx, pos)
 	if !ok {
-		return Transaction{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
+		return TransactionOutput{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
 	}
-	return tx, nil
+
+	txo := NewTransactionOutput(output.Output, pos, output.Spent, output.SpenderTx, tx.InputAddress(), tx.InputPositions())
+
+	return output, nil
 }
 
 const (

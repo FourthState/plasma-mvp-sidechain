@@ -11,10 +11,10 @@ import (
 	"testing"
 )
 
-// Test that an account can be serialized and deserialized
-func TestAccountSerialization(t *testing.T) {
-	// Construct Account
-	acc := Account{
+// Test that an wallet can be serialized and deserialized
+func TestWalletSerialization(t *testing.T) {
+	// Construct Wallet
+	acc := Wallet{
 		Balance: big.NewInt(234578),
 		Unspent: []plasma.Position{getPosition("(8745.1239.1.0)"), getPosition("(23409.12456.0.0)"), getPosition("(894301.1.1.0)"), getPosition("(0.0.0.540124)")},
 		Spent:   []plasma.Position{getPosition("0.0.0.3"), getPosition("7.734.1.3")},
@@ -23,11 +23,11 @@ func TestAccountSerialization(t *testing.T) {
 	bytes, err := rlp.EncodeToBytes(&acc)
 	require.NoError(t, err)
 
-	recoveredAcc := Account{}
+	recoveredAcc := Wallet{}
 	err = rlp.DecodeBytes(bytes, &recoveredAcc)
 	require.NoError(t, err)
 
-	require.True(t, reflect.DeepEqual(acc, recoveredAcc), "mismatch in serialized and deserialized account")
+	require.True(t, reflect.DeepEqual(acc, recoveredAcc), "mismatch in serialized and deserialized wallet")
 }
 
 // Test that the Deposit can be serialized and deserialized without loss of information

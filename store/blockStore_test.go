@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// Test that a block can be serialized and deserialized
+// test that a block can be serialized and deserialized
 func TestBlockSerialization(t *testing.T) {
 	// Construct Block
 	plasmaBlock := plasma.Block{}
@@ -37,7 +37,7 @@ func TestBlockSerialization(t *testing.T) {
 	require.True(t, reflect.DeepEqual(block, recoveredBlock), "mismatch in serialized and deserialized block")
 }
 
-// Test that the plasma block number increments correctly
+// test that the plasma block number increments correctly
 func TestPlasmaBlockStorage(t *testing.T) {
 	ctx, key := setup()
 	blockStore := NewBlockStore(key)

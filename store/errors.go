@@ -13,6 +13,7 @@ const (
 	CodeTxDNE       sdk.CodeType = 4
 )
 
+// TODO: refactor DNE errors into one
 func ErrOutputDNE(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeOutputDNE, msg, args)
 }
@@ -21,7 +22,7 @@ func ErrOutputSpent(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeOutputSpent, msg, args)
 }
 
-func ErrAccountDNE(msg string, args ...interface{}) sdk.Error {
+func ErrWalletDNE(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeAccountDNE, msg, args)
 }
 

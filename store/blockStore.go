@@ -24,10 +24,12 @@ type block struct {
 	TMBlockHeight uint64
 }
 
+// EncodeRLP RLP encodes a Block struct
 func (b *Block) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, &block{b.Block, b.TMBlockHeight})
 }
 
+// DecodeRLP decodes the byte stream into a Block
 func (b *Block) DecodeRLP(s *rlp.Stream) error {
 	var block block
 	if err := s.Decode(&block); err != nil {
@@ -39,17 +41,20 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 	return nil
 }
 
+// keys
 var (
 	blockKey          = []byte{0x0}
 	plasmaBlockNumKey = []byte{0x1}
 )
 
+// NewBlockStore is a constructor function for BlockStore
 func NewBlockStore(ctxKey sdk.StoreKey) BlockStore {
 	return BlockStore{
 		kvStore: NewKVStore(ctxKey),
 	}
 }
 
+// GetBlock returns the plasma block at the provided height
 func (store BlockStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
 	key := prefixKey(blockKey, blockHeight.Bytes())
 	data := store.Get(ctx, key)
@@ -84,6 +89,7 @@ func (store BlockStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block 
 	return plasmaBlockNum
 }
 
+// PlasmaBlockHeight returns the current plasma block height
 func (store BlockStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, []byte(plasmaBlockNumKey))
@@ -96,6 +102,7 @@ func (store BlockStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	return plasmaBlockNum
 }
 
+// NextPlasmaBlockNum returns the next plasma block number to be used
 func (store BlockStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, []byte(plasmaBlockNumKey))
