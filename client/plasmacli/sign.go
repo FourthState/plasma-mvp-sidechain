@@ -83,6 +83,9 @@ Usage:
 }
 
 // generate confirmation signature for specified owner and position
+// verify that the inputs provided are correct
+// signing address should match one of the input addresses
+// generate confirmation signature for given utxo
 func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr ethcmn.Address, name string) error {
 	// query for output for the specified position
 	output, err := query.OutputInfo(ctx, position)
@@ -90,16 +93,6 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 		return err
 	}
 
-	if err := verifyAndSign(output, signerAddr, name); err != nil {
-		return err
-	}
-	return nil
-}
-
-// verify that the inputs provided are correct
-// signing address should match one of the input addresses
-// generate confirmation signature for given utxo
-func verifyAndSign(output store.OutputInfo, signerAddr ethcmn.Address, name string) error {
 	sig, _ := clistore.GetSig(output.Tx.Position)
 	inputAddrs := output.Tx.InputAddresses()
 
