@@ -25,6 +25,15 @@ func NewPresenceClaimStore(ctxKey sdk.StoreKey) PresenceClaimStore {
 	return PresenceClaimStore{NewKVStore(ctxKey)}
 }
 
+func GetPresenceClaimHash(claim PresenceClaim) []byte {
+
+	messageNoSig := msgs.InitiatePresenceClaimMsg{}
+	messageNoSig.ZoneID = claim.ZoneID
+	messageNoSig.UTXOPosition = claim.UTXOPosition
+
+	return messageNoSig.TxHash()
+}
+
 func (store PresenceClaimStore) GetPresenceClaim(ctx sdk.Context, key []byte) (PresenceClaim, bool) {
 	data := store.Get(ctx, key)
 	if data == nil {
@@ -58,4 +67,5 @@ func (store PresenceClaimStore) StorePresenceClaim(ctx sdk.Context, claim Presen
 	fmt.Println("StorePresenceClaim bytes", data)
 
 	store.Set(ctx, claimHash, data)
+	store.Set(ctx, claim.ZoneID, data)
 }
