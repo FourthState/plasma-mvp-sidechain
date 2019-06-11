@@ -50,6 +50,7 @@ contract PlasmaMVP {
         uint256 numTxns;
         uint256 feeAmount;
         uint256 createdAt;
+        uint256 ethBlockNum;
     }
     struct depositStruct {
         address owner;
@@ -69,6 +70,7 @@ contract PlasmaMVP {
         uint256 amount;
         uint256 committedFee;
         uint256 createdAt;
+        uint256 ethBlockNum;
         address owner;
         uint256[4] position; // (blkNum, txIndex, outputIndex, depositNonce)
         ExitState state; // default value is `NonExistent`
@@ -142,7 +144,8 @@ contract PlasmaMVP {
                 header: headers[i],
                 numTxns: txnsPerBlock[i],
                 feeAmount: feePerBlock[i],
-                createdAt: block.timestamp
+                createdAt: block.timestamp,
+                ethBlockNum: block.number
             });
 
             emit BlockSubmitted(headers[i], lastCommittedBlock, txnsPerBlock[i], feePerBlock[i]);
@@ -179,6 +182,7 @@ contract PlasmaMVP {
             amount: amount,
             committedFee: committedFee,
             createdAt: block.timestamp,
+            ethBlockNum: block.number,
             position: [0,0,0,nonce],
             state: ExitState.Pending
         });
@@ -250,6 +254,7 @@ contract PlasmaMVP {
             amount: amount,
             committedFee: committedFee,
             createdAt: block.timestamp,
+            ethBlockNum: block.number,
             position: [txPos[0], txPos[1], txPos[2], 0],
             state: ExitState.Pending
         });
@@ -358,6 +363,7 @@ contract PlasmaMVP {
             amount: feeAmount,
             committedFee: committedFee,
             createdAt: block.timestamp,
+            ethBlockNum: block.number,
             position: [blockNumber, feeIndex, 0, 0],
             state: ExitState.Pending
         });
