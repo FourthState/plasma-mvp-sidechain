@@ -102,6 +102,22 @@ func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.
 	return store.GetUTXOWithKey(ctx, key)
 }
 
+func (store UTXOStore) GetUTXOSet(ctx sdk.Context, addr common.Address) []UTXO {
+	var utxos []UTXO
+	iter := sdk.KVStorePrefixIterator(store.KVStore(ctx), addr.Bytes())
+	for ; iter.Valid(); iter.Next() {
+		key := iter.Key()
+		utxo, ok := store.GetUTXOWithKey(ctx, key)
+		if !ok {
+			panic(fmt.Sprintf("utxo store corrupted: non-existent key in set: 0x%x", key))
+		}
+
+		utxos = append(utxos, utxo)
+	}
+
+	return utxos
+}
+
 func (store UTXOStore) HasUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) bool {
 	key := GetUTXOStoreKey(addr, pos)
 	return store.Has(ctx, key)
