@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/types"
-	"io/ioutil"
 	"math/big"
 	"net/http"
 	"os"
@@ -95,14 +94,14 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type reqBody struct {
-			Async   bool
-			TxBytes string
+			Async   bool   `json:"async"`
+			TxBytes string `json:"txBytes"`
 		}
 
 		var body reqBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("unable to read request body"))
+			w.Write([]byte("unable to read request body: " + err.Error()))
 			return
 		}
 
