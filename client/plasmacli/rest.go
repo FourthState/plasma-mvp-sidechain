@@ -94,10 +94,29 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 
 func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		txBytes, err := ioutil.ReadAll(hex.NewDecoder(r.Body))
+		type reqBody struct {
+			Async   bool
+			TxBytes string
+		}
+
+		var body reqBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("unable to read request body"))
+			return
+		}
+
+		// clean up txBytes string
+		if len(body.TxBytes) > 2 && body.TxBytes[:2] == "0x" || body.TxBytes[:2] == "0X" {
+			body.TxBytes = body.TxBytes[2:]
+		}
+		if len(body.TxBytes)%2 != 0 {
+			body.TxBytes = "0" + body.TxBytes
+		}
+		txBytes, err := hex.DecodeString(body.TxBytes)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("unable to read transaction bytes. Body must be in hex format"))
+			w.Write([]byte("tx bytes must be in hexadecimal format"))
 			return
 		}
 
@@ -115,7 +134,12 @@ func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 		}
 
 		// deliver the tx
-		_, err = ctx.BroadcastTxAndAwaitCommit(txBytes)
+		if body.Async {
+			_, err = ctx.BroadcastTxAsync(txBytes)
+		} else {
+			_, err = ctx.BroadcastTxAndAwaitCommit(txBytes)
+		}
+
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
