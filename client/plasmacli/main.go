@@ -49,10 +49,9 @@ func main() {
 	rootCmd.PersistentFlags().Bool(client.FlagTrustNode, true, "Trust connected full node (don't verify proofs for responses)")
 	rootCmd.PersistentFlags().StringP(store.DirFlag, "d", homeDir, "directory for plasmacli")
 
-	viper.Set(client.FlagListenAddr, "tcp://localhost:1317")
-
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	viper.AddConfigPath(homeDir)
@@ -66,6 +65,9 @@ func main() {
 		query.QueryCmd(),
 		eth.ProveCmd(),
 		includeCmd,
+		client.LineBreak,
+
+		RestServerCmd(),
 		client.LineBreak,
 
 		signCmd,
