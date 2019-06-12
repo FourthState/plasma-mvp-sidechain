@@ -1,14 +1,12 @@
 package query
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func init() {
@@ -20,24 +18,27 @@ var infoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Information on owned utxos valid and invalid",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext().WithCodec(codec.New())
-		addrStr := strings.TrimSpace(args[0])
-		if !common.IsHexAddress(addrStr) {
+		ctx := context.NewCLIContext()
+		addr := args[0]
+		if !common.IsHexAddress(addr) {
 			return fmt.Errorf("Invalid address provided. Please use hex format")
 		}
 
-		// query for all utxos owned by this address
-		res, err := ctx.QuerySubspace(common.HexToAddress(addrStr).Bytes(), "utxo")
+		// valid arguments
+		cmd.SilenceUsage = true
+
+		queryPath := fmt.Sprintf("custom/utxo/info/%s", addr)
+		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return err
 		}
 
-		utxo := store.UTXO{}
-		for i, pair := range res {
-			if err := rlp.DecodeBytes(pair.Value, &utxo); err != nil {
-				return err
-			}
+		var utxos []store.UTXO
+		if err := json.Unmarshal(data, &utxos); err != nil {
+			return fmt.Errorf("unmarshaling json query response: %s", err)
+		}
 
+		for i, utxo := range utxos {
 			fmt.Printf("UTXO %d\n", i)
 			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent)
 
@@ -58,7 +59,9 @@ var infoCmd = &cobra.Command{
 			fmt.Printf("End UTXO %d info\n\n", i)
 		}
 
-		fmt.Println()
+		if len(utxos) == 0 {
+			fmt.Println("no information available for this address")
+		}
 
 		return nil
 	},

@@ -6,7 +6,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"io"
 )
 
 type UTXO struct {
@@ -18,49 +17,6 @@ type UTXO struct {
 	Output   plasma.Output
 	Spent    bool
 	Position plasma.Position
-}
-
-type utxo struct {
-	InputKeys        [][]byte
-	SpenderKeys      [][]byte
-	ConfirmationHash []byte
-	MerkleHash       []byte
-	Output           []byte
-	Spent            bool
-	Position         []byte
-}
-
-func (u *UTXO) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &utxo{
-		u.InputKeys,
-		u.SpenderKeys,
-		u.ConfirmationHash,
-		u.MerkleHash,
-		u.Output.Bytes(),
-		u.Spent,
-		u.Position.Bytes(),
-	})
-}
-
-func (u *UTXO) DecodeRLP(s *rlp.Stream) error {
-	utxo := utxo{}
-	if err := s.Decode(&utxo); err != nil {
-		return err
-	}
-	if err := rlp.DecodeBytes(utxo.Output, &u.Output); err != nil {
-		return err
-	}
-	if err := rlp.DecodeBytes(utxo.Position, &u.Position); err != nil {
-		return err
-	}
-
-	u.InputKeys = utxo.InputKeys
-	u.SpenderKeys = utxo.SpenderKeys
-	u.ConfirmationHash = utxo.ConfirmationHash
-	u.MerkleHash = utxo.MerkleHash
-	u.Spent = utxo.Spent
-
-	return nil
 }
 
 /* UTXO helper functions */
@@ -118,12 +74,12 @@ func (u UTXO) SpenderPositions() []plasma.Position {
 /* Store */
 
 type UTXOStore struct {
-	KVStore
+	kvStore
 }
 
 func NewUTXOStore(ctxKey sdk.StoreKey) UTXOStore {
 	return UTXOStore{
-		KVStore: NewKVStore(ctxKey),
+		kvStore: NewKVStore(ctxKey),
 	}
 }
 
@@ -144,6 +100,22 @@ func (store UTXOStore) GetUTXOWithKey(ctx sdk.Context, key []byte) (UTXO, bool) 
 func (store UTXOStore) GetUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) (UTXO, bool) {
 	key := GetUTXOStoreKey(addr, pos)
 	return store.GetUTXOWithKey(ctx, key)
+}
+
+func (store UTXOStore) GetUTXOSet(ctx sdk.Context, addr common.Address) []UTXO {
+	var utxos []UTXO
+	iter := sdk.KVStorePrefixIterator(store.KVStore(ctx), addr.Bytes())
+	for ; iter.Valid(); iter.Next() {
+		key := iter.Key()
+		utxo, ok := store.GetUTXOWithKey(ctx, key)
+		if !ok {
+			panic(fmt.Sprintf("utxo store corrupted: non-existent key in set: 0x%x", key))
+		}
+
+		utxos = append(utxos, utxo)
+	}
+
+	return utxos
 }
 
 func (store UTXOStore) HasUTXO(ctx sdk.Context, addr common.Address, pos plasma.Position) bool {

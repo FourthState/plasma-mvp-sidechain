@@ -77,7 +77,7 @@ func TestSubmitBlock(t *testing.T) {
 			FeeAmount: big.NewInt(int64(i + 2)),
 		}
 		expectedBlocks = append(expectedBlocks, block)
-		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
+		plasmaStore.StoreBlock(ctx, uint64(i), block)
 	}
 
 	err := plasma.CommitPlasmaHeaders(ctx, plasmaStore)
@@ -139,7 +139,7 @@ func TestDepositFinalityBound(t *testing.T) {
 			TxnCount:  uint16(i + 1),
 			FeeAmount: big.NewInt(int64(i + 2)),
 		}
-		plasmaStore.StoreBlock(ctx, big.NewInt(int64(i)), block)
+		plasmaStore.StoreBlock(ctx, uint64(i), block)
 	}
 
 	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
@@ -168,7 +168,7 @@ func TestDepositFinalityBound(t *testing.T) {
 		TxnCount:  uint16(2),
 		FeeAmount: big.NewInt(3),
 	}
-	plasmaStore.StoreBlock(ctx, big.NewInt(4), block)
+	plasmaStore.StoreBlock(ctx, uint64(4), block)
 
 	err = plasma.CommitPlasmaHeaders(ctx, plasmaStore)
 	require.NoError(t, err, "block submission error")
