@@ -49,7 +49,7 @@ var rc Plasma
 
 var ethCmd = &cobra.Command{
 	Use:   "eth",
-	Short: "Interact with Ethereum rootchain contract",
+	Short: "Interact with the plasma smart contract",
 	Long: `Configurations for interacting with the rootchain contract can be specified in <dirpath>/plasma.toml.
 An eth node instance needs to be running for this command to work.`,
 	PersistentPreRunE: persistentPreRunEFn(),
