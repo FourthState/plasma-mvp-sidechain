@@ -68,7 +68,6 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(
 		eth.EthCmd(),
 		query.QueryCmd(),
-		eth.ProveCmd(),
 		includeCmd,
 		client.LineBreak,
 
