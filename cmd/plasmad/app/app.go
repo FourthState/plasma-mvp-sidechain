@@ -78,13 +78,20 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	}
 
 	// connect to remote client
-	ethClient, err := eth.InitEthConn(app.nodeURL, logger)
+	eth.SetLogger(logger)
+	ethClient, err := eth.InitEthConn(app.nodeURL)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	plasmaClient, err := eth.InitPlasma(app.plasmaContractAddress, ethClient, app.blockFinality, app.blockCommitmentRate, logger,
-		app.isOperator, app.operatorPrivateKey)
+	plasmaClient, err := eth.InitPlasma(app.plasmaContractAddress, ethClient, app.blockFinality)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	if app.IsOperator {
+		plasmaClient, err := plasmaClient.WithOperatorSession(app.operatorPrivateKey, app.blockCommitmentRate)
+	}
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -94,6 +101,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	// query for the operator address
 	addr, err := plasmaClient.OperatorAddress()
 	if err != nil {
+		logger.Error("unable to query the contract for the operator address")
 		fmt.Println(err)
 		os.Exit(1)
 	}
