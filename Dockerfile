@@ -8,12 +8,12 @@
 FROM golang:1.12-alpine3.9 AS builder
 
 RUN apk add git make npm curl gcc libc-dev && \
-    mkdir -p $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
+    mkdir -p /root/plasma-mvp-sidechain
 
 # install dependencies
-WORKDIR $GOPATH/src/github.com/FourthState/plasma-mvp-sidechain
+WORKDIR /root/plasma-mvp-sidechain
 COPY go.mod go.sum ./
-RUN go build -mod=readonly ./...
+RUN go mod download
 
 COPY . .
 
@@ -33,4 +33,3 @@ COPY --from=builder /go/bin/plasmacli /usr/bin/plasmacli
 
 # As an executable, the dameon will simply start
 CMD ["plasmad", "start"]
-ENTRYPOINT ["plasmad"]
