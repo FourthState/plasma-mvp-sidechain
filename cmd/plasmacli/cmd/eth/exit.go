@@ -15,14 +15,16 @@ import (
 	"strconv"
 )
 
-func init() {
-	ethCmd.AddCommand(exitCmd)
+func ExitCmd() *cobra.Command {
 	exitCmd.Flags().String(feeF, "0", "fee committed in an unfinalized spend of the input")
 	exitCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for exiting utxo")
 	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
+	viper.BindPFlags(exitCmd.Flags())
+
+	return exitCmd
 }
 
 var exitCmd = &cobra.Command{
@@ -74,12 +76,12 @@ Transaction Exit Usage:
 			From:     auth.From,
 			Signer:   auth.Signer,
 			GasLimit: gasLimit,
-			Value:    big.NewInt(minExitBond),
+			Value:    big.NewInt(200000), // minExitBond
 		}
 
 		// send fee exit
 		if position.IsFee() {
-			tx, err = rc.contract.StartFeeExit(transactOpts, position.BlockNum, big.NewInt(fee))
+			tx, err = plasmaContract.StartFeeExit(transactOpts, position.BlockNum, big.NewInt(fee))
 			if err != nil {
 				return fmt.Errorf("failed to start fee exit: { %s }", err)
 			}
@@ -89,7 +91,7 @@ Transaction Exit Usage:
 
 		// send deposit exit
 		if position.IsDeposit() {
-			tx, err := rc.contract.StartDepositExit(transactOpts, position.DepositNonce, big.NewInt(fee))
+			tx, err := plasmaContract.StartDepositExit(transactOpts, position.DepositNonce, big.NewInt(fee))
 			if err != nil {
 				return fmt.Errorf("failed to start deposit exit: { %s }", err)
 			}
@@ -127,7 +129,7 @@ Transaction Exit Usage:
 		}
 
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
-		tx, err = rc.contract.StartTransactionExit(transactOpts, txPos, txBytes, proof, confirmSignatures, big.NewInt(fee))
+		tx, err = plasmaContract.StartTransactionExit(transactOpts, txPos, txBytes, proof, confirmSignatures, big.NewInt(fee))
 		if err != nil {
 			return fmt.Errorf("failed to start transaction exit: { %s }", err)
 		}
@@ -166,7 +168,8 @@ func parseProof(txBytes, proof, confirmSignatures []byte) ([]byte, []byte, []byt
 	}
 
 	if len(proof) == 0 {
-		fmt.Println("Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block then this transaction will fail.")
+		fmt.Println("Warning: No proof was found or provided. If the exiting transaction was not the only transaction included in the block, this transaction will fail.")
 	}
+
 	return txBytes, proof, confirmSignatures, nil
 }

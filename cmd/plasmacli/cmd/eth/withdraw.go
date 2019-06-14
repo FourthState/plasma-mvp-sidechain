@@ -9,9 +9,9 @@ import (
 	"strconv"
 )
 
-func init() {
-	ethCmd.AddCommand(withdrawCmd)
+func WithdrawCmd() *cobra.Command {
 	withdrawCmd.Flags().StringP(gasLimitF, "g", "150000", "gas limit for ethereum transaction")
+	return withdrawCmd
 }
 
 var withdrawCmd = &cobra.Command{
@@ -43,7 +43,7 @@ Usage:
 			GasLimit: gasLimit,
 		}
 
-		tx, err := rc.contract.Withdraw(transactOpts)
+		tx, err := plasmaContract.Withdraw(transactOpts)
 		if err != nil {
 			return fmt.Errorf("failed to withdraw: { %s }", err)
 		}

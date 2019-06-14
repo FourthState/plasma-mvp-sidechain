@@ -1,4 +1,4 @@
-package eth
+package query
 
 import (
 	"fmt"
@@ -8,10 +8,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-func init() {
-	queryCmd.AddCommand(balanceCmd)
+func BalanceCmd() *cobra.Command {
 	balanceCmd.Flags().StringP(addrF, "A", "", "query based on address")
-	viper.BindPFlags(balanceCmd.Flags())
+	return balanceCmd
 }
 
 var balanceCmd = &cobra.Command{
@@ -36,7 +35,8 @@ Usage:
 			return fmt.Errorf("please provide an account or use the address flag")
 		}
 
-		balance, err := rc.contract.BalanceOf(nil, addr)
+		balance, err := plasmaContract.BalanceOf(nil, addr)
+
 		if err != nil {
 			return fmt.Errorf("failed to retrieve balance: { %s }", err)
 		}

@@ -1,4 +1,4 @@
-package eth
+package query
 
 import (
 	"fmt"
@@ -8,13 +8,13 @@ import (
 	"strconv"
 )
 
-func init() {
-	queryCmd.AddCommand(getDepositsCmd)
-	getDepositsCmd.Flags().Bool(allF, false, "all deposits will be displayed")
-	getDepositsCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")
+func DepositCmd() *cobra.Command {
+	depositCmd.Flags().Bool(allF, false, "all deposits will be displayed")
+	depositCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")
+	return depositCmd
 }
 
-var getDepositsCmd = &cobra.Command{
+var depositCmd = &cobra.Command{
 	Use:   "deposit <nonce>",
 	Short: "Query for a deposit that occured on the rootchain",
 	Long: `Queries for deposits that occured on the rootchain.
@@ -32,7 +32,7 @@ Usage:
 			return fmt.Errorf("failed to parse limit - %s", err)
 		}
 
-		lastNonce, err := rc.contract.DepositNonce(nil)
+		lastNonce, err := plasmaContract.DepositNonce(nil)
 		if err != nil {
 			return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
 		}
@@ -62,7 +62,7 @@ Usage:
 
 func displayDeposits(curr, lim int64) error {
 	for lim > 0 {
-		deposit, err := rc.contract.Deposits(nil, big.NewInt(curr))
+		deposit, err := plasmaContract.Deposits(nil, big.NewInt(curr))
 		if err != nil {
 			return err
 		}

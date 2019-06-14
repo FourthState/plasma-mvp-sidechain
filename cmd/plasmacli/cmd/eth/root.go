@@ -2,18 +2,18 @@ package eth
 
 import (
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/eth/query"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
-	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
+	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/cosmos/cosmos-sdk/client"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"math/big"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 const (
@@ -32,42 +32,49 @@ const (
 	sigsF      = "signatures"
 	trustNodeF = "trust-node"
 	txBytesF   = "tx-bytes"
-
-	minExitBond = 200000 // specified by rootchain contract
-	oneWeek     = 168    // 168 hours in a week
 )
 
-type Plasma struct {
-	ec *ethclient.Client
+var plasmaContract *eth.Plasma
 
-	contract *contracts.PlasmaMVP
+func EthCmd() *cobra.Command {
+	ethCmd.AddCommand(
+		ProveCmd(),
+		ChallengeCmd(),
+		ExitCmd(),
+		FinalizeCmd(),
+		DepositCmd(),
+		WithdrawCmd(),
+		client.LineBreak,
 
-	nodeURL string // current url set for the eth client
+		query.QueryCmd(plasmaContract),
+	)
+
+	return ethCmd
 }
-
-var rc Plasma
 
 var ethCmd = &cobra.Command{
 	Use:   "eth",
 	Short: "Interact with the plasma smart contract",
 	Long: `Configurations for interacting with the rootchain contract can be specified in <dirpath>/plasma.toml.
 An eth node instance needs to be running for this command to work.`,
-	PersistentPreRunE: persistentPreRunEFn(),
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		plasma, err := setupPlasmaConn()
+		if err != nil {
+			return err
+		}
+
+		plasmaContract = plasma
+		return nil
+	},
 }
 
-func EthCmd() *cobra.Command {
-	return ethCmd
-}
-
-// Parse plasma.toml before every call to the eth command
-// Update ethereum client connection if params have changed
-func persistentPreRunEFn() func(*cobra.Command, []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		return setupPlasmaConfig()
+func setupPlasmaConn() (*eth.Plasma, error) {
+	if plasmaContract != nil {
+		return nil, nil
 	}
-}
 
-func setupPlasmaConfig() error {
+	// Parse plasma.toml before every call to the eth command
+	// Update ethereum client connection if params have changed
 	plasmaConfigFilePath := filepath.Join(viper.GetString(store.DirFlag), "plasma.toml")
 
 	if _, err := os.Stat(plasmaConfigFilePath); os.IsNotExist(err) {
@@ -77,81 +84,48 @@ func setupPlasmaConfig() error {
 
 	viper.SetConfigName("plasma")
 	if err := viper.MergeInConfig(); err != nil {
-		return err
+		return nil, err
 	}
 
 	conf, err := config.ParsePlasmaConfigFromViper()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Check to see if the eth connection params have changed
+	dir := viper.GetString(store.DirFlag)
 	if conf.EthNodeURL == "" {
-		return fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", viper.GetString(store.DirFlag))
-	} else if rc.nodeURL != conf.EthNodeURL {
-		if err := initEthConn(conf); err != nil {
-			return err
-		}
+		return nil, fmt.Errorf("please specify a node url for eth connection in %s/plasma.toml", dir)
+	} else if conf.EthPlasmaContractAddr == "" || !ethcmn.IsHexAddress(conf.EthPlasmaContractAddr) {
+		return nil, fmt.Errorf("please specic a valid contract address in %s/plasma.toml", dir)
 	}
-	return nil
 
+	ethClient, err := eth.InitEthConn(conf.EthNodeURL)
+	if err != nil {
+		return nil, err
+	}
+	blockFinality, err := strconv.ParseUint(conf.EthBlockFinality, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	plasma, err := eth.InitPlasma(ethcmn.HexToAddress(conf.EthPlasmaContractAddr), ethClient, blockFinality)
+	if err != nil {
+		return nil, err
+	}
+
+	return plasma, nil
 }
 
-// Create a connection to an eth node based on
-// the params set in plasma.toml
-func initEthConn(conf config.PlasmaConfig) error {
-	c, err := rpc.Dial(conf.EthNodeURL)
-	if err != nil {
-		return fmt.Errorf("failed to dial node url: { %s }", err)
-	}
-	ec := ethclient.NewClient(c)
-
-	// Bind rootchain contract and operator account
-	plasmaContract, err := contracts.NewPlasmaMVP(ethcmn.HexToAddress(conf.EthPlasmaContractAddr), ec)
-	if err != nil {
-		return fmt.Errorf("failed to bind to contract: { %s }", err)
-	}
-
-	rc = Plasma{
-		ec:       ec,
-		contract: plasmaContract,
-		nodeURL:  conf.EthNodeURL,
-	}
-
-	return nil
-}
-
-// indicates if the position provided has been exitted.
-func HasTxExitted(position plasma.Position) (bool, error) {
-	if err := setupPlasmaConfig(); err != nil {
-		return true, err
-	}
-
-	type exit struct {
-		Amount       *big.Int
-		CommittedFee *big.Int
-		CreatedAt    *big.Int
-		EthBlockNum  *big.Int
-		Owner        ethcmn.Address
-		State        uint8
-	}
-
-	var (
-		e   exit
-		err error
-	)
-
-	priority := position.Priority()
-	if position.IsDeposit() {
-		e, err = rc.contract.DepositExits(nil, priority)
-	} else {
-		e, err = rc.contract.TxExits(nil, priority)
-	}
-
-	// censor spends until the error is fixed
+func HasTxExited(pos plasma.Position) (bool, error) {
+	p, err := setupPlasmaConn()
 	if err != nil {
 		return true, err
 	}
 
-	return e.State == 1 || e.State == 3, nil
+	exited, err := p.HasTxBeenExited(nil, pos)
+	if err != nil {
+		return true, err
+	}
+
+	return exited, nil
 }

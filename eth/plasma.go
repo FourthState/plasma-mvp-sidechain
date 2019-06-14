@@ -57,7 +57,8 @@ func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64
 	return plasma, nil
 }
 
-// WithOperatorSession will set up an session with th
+// WithOperatorSession will set up an operators session with the smart contract. The contract's operator public key must
+// match the public key corresponding `operatorPrivKey`
 func (plasma *Plasma) WithOperatorSession(operatorPrivkey *ecdsa.PrivateKey, commitmentRate time.Duration) (*Plasma, error) {
 	logger.Info(fmt.Sprintf("block commitment rate set to %s", commitmentRate))
 
@@ -150,11 +151,13 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.Pla
 	return err
 }
 
-// GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(plasmaBlock *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
+// GetDeposit checks the existence of a deposit nonce. The state is synchronized with the provided `plasmaBlockHeight. The deposit
+// must have occured before or at the same pegged ethereum block as `plasmaBlockHeight`.
+func (plasma *Plasma) GetDeposit(plasmaBlockHeight *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
 	deposit, err := plasma.Deposits(nil, nonce)
 	if err != nil {
 		// TODO: log the error
+		logger.Error(fmt.Sprintf("failed deposit retrieval: %s", err))
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
@@ -163,9 +166,9 @@ func (plasma *Plasma) GetDeposit(plasmaBlock *big.Int, nonce *big.Int) (plasmaTy
 	}
 
 	// check the finality bound based off pegged ETH block
-	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlock)
+	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlockHeight)
 	if err != nil {
-		logger.Error(fmt.Sprintf("could not get pegged ETH Block for sidechain block %d: %s", plasmaBlock.Int64(), err.Error()))
+		logger.Error(fmt.Sprintf("could not get pegged ETH Block for sidechain block %s: %s", plasmaBlockHeight, err))
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
@@ -186,8 +189,9 @@ func (plasma *Plasma) GetDeposit(plasmaBlock *big.Int, nonce *big.Int) (plasmaTy
 	}, threshold, true
 }
 
-// HasTXBeenExited indicates if the position has ever been exited
-func (plasma *Plasma) HasTxBeenExited(plasmaBlock *big.Int, position plasmaTypes.Position) bool {
+// HasTXBeenExited indicates if the position has ever been exited at a time less than or equal to
+// the time `plasmaBlockHeight` was submitted. If nil, it is checked against the latest state
+func (plasma *Plasma) HasTxBeenExited(plasmaBlockHeight *big.Int, position plasmaTypes.Position) (bool, error) {
 	type exit struct {
 		Amount       *big.Int
 		CommittedFee *big.Int
@@ -212,21 +216,30 @@ func (plasma *Plasma) HasTxBeenExited(plasmaBlock *big.Int, position plasmaTypes
 	// censor spends until the error is fixed
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to retrieve exit information about position %s { %s }", position, err))
-		return true
+		return true, err
 	}
 
-	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlock)
-	if err != nil {
-		logger.Error(fmt.Sprintf("could not get associated ETH Block for plasma block %d: %s", plasmaBlock.Int64(), err.Error()))
-		return true
+	// `Pending` or `Challenged` stateee
+	exited := e.State == 1 || e.State == 3
+
+	// synchronize with the correct ethereum state
+	if plasmaBlockHeight != nil {
+		ethBlockNum, err := plasma.ethBlockPeg(plasmaBlockHeight)
+		if err != nil {
+			// censore spends until the error is fixed
+			logger.Error(fmt.Sprintf("could not get associated ETH Block for plasma block %s: %s", plasmaBlockHeight, err))
+			return true, err
+		}
+
+		// exited AND the exit occured before or in the pegged ethereum block
+		return exited && e.EthBlockNum.Cmp(ethBlockNum) <= 0, nil
 	}
 
-	// Return true if exit is pending/finalized AND exit happened before the pegged ETH block
-	return (e.State == 1 || e.State == 3) && e.EthBlockNum.Cmp(ethBlockNum) <= 0
+	return exited, nil
 }
 
 // Return the Ethereum Block that sidechain should use to synchronize current block tx's with rootchain state
-func (plasma *Plasma) ethBlockPeg(plasmaBlock *big.Int) (*big.Int, error) {
+func (plasma *Plasma) ethBlockPeg(plasmaBlockHeight *big.Int) (*big.Int, error) {
 	lastCommittedBlock, err := plasma.LastCommittedBlock(nil)
 	if err != nil {
 		return nil, err
@@ -240,7 +253,7 @@ func (plasma *Plasma) ethBlockPeg(plasmaBlock *big.Int) (*big.Int, error) {
 		return latestBlock, nil
 	}
 	var blockIndex *big.Int
-	prevBlock := new(big.Int).Sub(plasmaBlock, big.NewInt(1))
+	prevBlock := new(big.Int).Sub(plasmaBlockHeight, big.NewInt(1))
 	// For syncing nodes, peg to EthBlock at plasmaBlock-1 submission
 	// For live nodes, peg to LastCommittedBlock
 	if lastCommittedBlock.Cmp(prevBlock) == 1 {

@@ -14,14 +14,16 @@ import (
 	"strconv"
 )
 
-func init() {
-	ethCmd.AddCommand(challengeCmd)
+func ChallengeCmd() *cobra.Command {
 	challengeCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
 	challengeCmd.Flags().String(ownerF, "", "owner of the challenging transaction, required if different from the specified account")
 	challengeCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	challengeCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the challenging transaction")
 	challengeCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	challengeCmd.Flags().StringP(txBytesF, "b", "", "bytes of the challenging transaction")
+	viper.BindPFlags(challengeCmd.Flags())
+
+	return challengeCmd
 }
 
 var challengeCmd = &cobra.Command{
@@ -79,7 +81,7 @@ Usage:
 			var result *tm.ResultTx
 			result, confirmSignatures, err = getProof(owner, challengingPos)
 			if err != nil {
-				fmt.Errorf("failed to retrieve exit information: { %s }", err)
+				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}
 
 			txBytes = result.Tx
@@ -104,7 +106,7 @@ Usage:
 
 		exitPos := [4]*big.Int{exitingPos.BlockNum, big.NewInt(int64(exitingPos.TxIndex)), big.NewInt(int64(exitingPos.OutputIndex)), exitingPos.DepositNonce}
 		challengePos := [2]*big.Int{challengingPos.BlockNum, big.NewInt(int64(challengingPos.TxIndex))}
-		tx, err := rc.contract.ChallengeExit(transactOpts, exitPos, challengePos, txBytes, proof, confirmSignatures)
+		tx, err := plasmaContract.ChallengeExit(transactOpts, exitPos, challengePos, txBytes, proof, confirmSignatures)
 		if err != nil {
 			return fmt.Errorf("failed to send challenge transaction: { %s }", err)
 		}

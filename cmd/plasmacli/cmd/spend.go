@@ -352,7 +352,7 @@ func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, ch
 			return nil, nil, err
 		}
 
-		exitted, err := eth.HasTxExitted(utxo0.Position)
+		exitted, err := eth.HasTxExited(utxo0.Position)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
 		}
@@ -374,7 +374,7 @@ func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, ch
 				return nil, nil, err
 			}
 
-			exitted, err := eth.HasTxExitted(utxo1.Position)
+			exitted, err := eth.HasTxExited(utxo1.Position)
 			if err != nil {
 				return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
 			}

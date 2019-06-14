@@ -1,4 +1,4 @@
-package eth
+package query
 
 import (
 	"fmt"
@@ -13,18 +13,18 @@ import (
 	"time"
 )
 
-func init() {
-	queryCmd.AddCommand(getExitsCmd)
-	getExitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account")
-	getExitsCmd.Flags().Bool(allF, false, "all pending exits will be displayed")
-	getExitsCmd.Flags().BoolP(depositsF, "D", false, "display deposit exits")
-	getExitsCmd.Flags().String(indexF, "0", "index to begin displaying exits from")
-	getExitsCmd.Flags().String(limitF, "1", "amount of exits to display")
-	getExitsCmd.Flags().StringP(positionF, "p", "", "display exit status for specified position")
+func ExitsCmd() *cobra.Command {
+	exitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account")
+	exitsCmd.Flags().Bool(allF, false, "all pending exits will be displayed")
+	exitsCmd.Flags().BoolP(depositsF, "D", false, "display deposit exits")
+	exitsCmd.Flags().String(indexF, "0", "index to begin displaying exits from")
+	exitsCmd.Flags().String(limitF, "1", "amount of exits to display")
+	exitsCmd.Flags().StringP(positionF, "p", "", "display exit status for specified position")
+	return exitsCmd
 }
 
-var getExitsCmd = &cobra.Command{
-	Use:   "exit",
+var exitsCmd = &cobra.Command{
+	Use:   "exits",
 	Short: "Display pending exits",
 	Long: `Display pending rootchain exits. Queries the rootchain exit queue.
 Use the deposit flag to display deposit exits.
@@ -63,9 +63,9 @@ Usage:
 		// parse queue length
 		var queueLength *big.Int
 		if viper.GetBool(depositsF) {
-			queueLength, err = rc.contract.DepositQueueLength(nil)
+			queueLength, err = plasmaContract.DepositQueueLength(nil)
 		} else {
-			queueLength, err = rc.contract.TxQueueLength(nil)
+			queueLength, err = plasmaContract.TxQueueLength(nil)
 		}
 
 		if err != nil {
@@ -109,9 +109,9 @@ func displayExits(curr, lim int64, addr ethcmn.Address, deposits bool) (err erro
 		var key *big.Int
 
 		if deposits {
-			key, err = rc.contract.DepositExitQueue(nil, big.NewInt(curr))
+			key, err = plasmaContract.DepositExitQueue(nil, big.NewInt(curr))
 		} else {
-			key, err = rc.contract.TxExitQueue(nil, big.NewInt(curr))
+			key, err = plasmaContract.TxExitQueue(nil, big.NewInt(curr))
 		}
 		if err != nil {
 			return err
@@ -144,9 +144,9 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 	position := plasma.FromExitKey(key, deposits)
 
 	if deposits {
-		exit, err = rc.contract.DepositExits(nil, key)
+		exit, err = plasmaContract.DepositExits(nil, key)
 	} else {
-		exit, err = rc.contract.TxExits(nil, key)
+		exit, err = plasmaContract.TxExits(nil, key)
 	}
 
 	if err != nil {
@@ -160,6 +160,7 @@ func displayExit(key *big.Int, addr ethcmn.Address, deposits bool) (err error) {
 	fmt.Printf("Owner: 0x%x\nAmount: %d\nState: %s\nCommitted Fee: %d\nCreated: %v\nEthBlockNum: %v\nPosition %s\n\n",
 		exit.Owner, exit.Amount, state, exit.CommittedFee, time.Unix(exit.CreatedAt.Int64(), 0), exit.EthBlockNum, position)
 	if state == "Pending" {
+		oneWeek := time.Duration(168) // 168 hours in one week
 		timeLeft := time.Until(time.Unix(exit.CreatedAt.Int64(), 0).Add(time.Hour * oneWeek))
 		if timeLeft > 0 {
 			fmt.Printf("Exit will be finalized in about: %v hours\n\n", timeLeft.Hours())

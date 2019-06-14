@@ -11,9 +11,9 @@ import (
 	"strconv"
 )
 
-func init() {
-	ethCmd.AddCommand(depositCmd)
+func DepositCmd() *cobra.Command {
 	depositCmd.Flags().StringP(gasLimitF, "g", "150000", "gas limit for ethereum transaction")
+	return depositCmd
 }
 
 var depositCmd = &cobra.Command{
@@ -51,7 +51,7 @@ Usage:
 			Value:    big.NewInt(amt),
 		}
 
-		tx, err := rc.contract.Deposit(transactOpts, crypto.PubkeyToAddress(key.PublicKey))
+		tx, err := plasmaContract.Deposit(transactOpts, crypto.PubkeyToAddress(key.PublicKey))
 		if err != nil {
 			return fmt.Errorf("failed to deposit: { %s }", err)
 		}

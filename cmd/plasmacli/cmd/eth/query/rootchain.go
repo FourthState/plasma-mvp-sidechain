@@ -1,12 +1,12 @@
-package eth
+package query
 
 import (
 	"fmt"
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	queryCmd.AddCommand(rootchainCmd)
+func RootchainCmd() *cobra.Command {
+	return rootchainCmd
 }
 
 var rootchainCmd = &cobra.Command{
@@ -16,27 +16,27 @@ var rootchainCmd = &cobra.Command{
 Total contract balance does not include total withdraw balance. The total withdraw balance are exits that have been finalized, but not transfered yet.`,
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, agrs []string) error {
-		lastCommittedBlock, err := rc.contract.LastCommittedBlock(nil)
+		lastCommittedBlock, err := plasmaContract.LastCommittedBlock(nil)
 		if err != nil {
 			return err
 		}
 
-		totalBalance, err := rc.contract.PlasmaChainBalance(nil)
+		totalBalance, err := plasmaContract.PlasmaChainBalance(nil)
 		if err != nil {
 			return err
 		}
 
-		withdrawBalance, err := rc.contract.TotalWithdrawBalance(nil)
+		withdrawBalance, err := plasmaContract.TotalWithdrawBalance(nil)
 		if err != nil {
 			return err
 		}
 
-		minExitBond, err := rc.contract.MinExitBond(nil)
+		minExitBond, err := plasmaContract.MinExitBond(nil)
 		if err != nil {
 			return err
 		}
 
-		operator, err := rc.contract.Operator(nil)
+		operator, err := plasmaContract.Operator(nil)
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-package eth
+package query
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-func init() {
-	queryCmd.AddCommand(blockCmd)
+func BlockCmd() *cobra.Command {
 	blockCmd.Flags().String(limitF, "1", "number of plasma blocks to be displayed")
+	return blockCmd
 }
 
 var blockCmd = &cobra.Command{
@@ -38,7 +38,7 @@ Usage:
 
 		end := curr + lim
 		for curr < end {
-			block, err := rc.contract.PlasmaChain(nil, big.NewInt(curr))
+			block, err := plasmaContract.PlasmaChain(nil, big.NewInt(curr))
 			if err != nil {
 				return fmt.Errorf("failed to retrieve block: { %s }", err)
 			}

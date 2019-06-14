@@ -89,8 +89,8 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	if app.IsOperator {
-		plasmaClient, err := plasmaClient.WithOperatorSession(app.operatorPrivateKey, app.blockCommitmentRate)
+	if app.isOperator {
+		plasmaClient, err = plasmaClient.WithOperatorSession(app.operatorPrivateKey, app.blockCommitmentRate)
 	}
 	if err != nil {
 		fmt.Println(err)

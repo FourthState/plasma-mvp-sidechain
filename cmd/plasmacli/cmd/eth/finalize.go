@@ -10,10 +10,12 @@ import (
 	"strconv"
 )
 
-func init() {
-	ethCmd.AddCommand(finalizeCmd)
+func FinalizeCmd() *cobra.Command {
 	finalizeCmd.Flags().BoolP(depositsF, "D", false, "indicate that deposit exits should be finalized")
 	finalizeCmd.Flags().StringP(gasLimitF, "g", "240000", "gas limit for ethereum transaction")
+	viper.BindPFlags(finalizeCmd.Flags())
+
+	return finalizeCmd
 }
 
 var finalizeCmd = &cobra.Command{
@@ -48,9 +50,9 @@ Usage:
 
 		var tx *eth.Transaction
 		if viper.GetBool(depositsF) {
-			tx, err = rc.contract.FinalizeDepositExits(transactOpts)
+			tx, err = plasmaContract.FinalizeDepositExits(transactOpts)
 		} else {
-			tx, err = rc.contract.FinalizeTransactionExits(transactOpts)
+			tx, err = plasmaContract.FinalizeTransactionExits(transactOpts)
 		}
 		if err != nil {
 			return fmt.Errorf("failed to finalize exits: { %s }", err)
