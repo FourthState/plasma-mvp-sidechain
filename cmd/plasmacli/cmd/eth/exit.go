@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -22,8 +23,6 @@ func ExitCmd() *cobra.Command {
 	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for exiting utxo")
 	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
-	viper.BindPFlags(exitCmd.Flags())
-
 	return exitCmd
 }
 
@@ -44,7 +43,7 @@ Transaction Exit Usage:
 	plasmacli exit <account> <position> -b <tx-bytes> --proof <merkle-proof> -S <confirmation-signatures> --fee <amount>`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		viper.BindPFlags(cmd.Flags())
+		ctx := context.NewCLIContext()
 		var tx *eth.Transaction
 
 		// parse position
@@ -103,7 +102,7 @@ Transaction Exit Usage:
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(trustNodeF) { // query full node
 			var result *tm.ResultTx
-			result, confirmSignatures, err = getProof(addr, position)
+			result, confirmSignatures, err = getProof(ctx, addr, position)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}

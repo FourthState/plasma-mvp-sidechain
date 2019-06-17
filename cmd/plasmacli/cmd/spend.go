@@ -9,9 +9,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/codec"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
@@ -26,8 +24,6 @@ func init() {
 	spendCmd.Flags().StringP(confirmSigs1F, "1", "", "Input Confirmation Signatures for second input to be spent (separated by commas)")
 
 	spendCmd.Flags().String(feeF, "0", "Fee to be spent")
-
-	spendCmd.Flags().String(client.FlagNode, "tcp://localhost:26657", "<host>:<port> to tendermint rpc interface for this chain")
 	spendCmd.Flags().Bool(asyncF, false, "broadcast transactions asynchronously")
 }
 
@@ -77,7 +73,7 @@ Usage:
 
 		change := new(big.Int)
 		if len(inputs) == 0 {
-			inputs, change, err = retrieveInputs(accs, total)
+			inputs, change, err = retrieveInputs(ctx, accs, total)
 			if err != nil {
 				return err
 			}
@@ -323,8 +319,7 @@ func parseToAddresses(addresses string) (toAddrs []ethcmn.Address, err error) {
 
 // attempt to retrieve inputs to generate a valid spend transaction
 // returns inputs and sum(inputs) - total
-func retrieveInputs(accs []string, total *big.Int) (inputs []plasma.Position, change *big.Int, err error) {
-	ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
+func retrieveInputs(ctx context.CLIContext, accs []string, total *big.Int) (inputs []plasma.Position, change *big.Int, err error) {
 	change = total
 	// must specifiy inputs if using two accounts
 	if len(accs) > 1 {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +16,7 @@ var balanceCmd = &cobra.Command{
 	Short: "Query account balance",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
+		ctx := context.NewCLIContext()
 		name := args[0]
 
 		// no more additional argument validation

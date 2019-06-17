@@ -5,9 +5,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var plasmaContract *eth.Plasma
+var plasmaContract eth.Plasma
 
 var (
+	// flags
 	addrF     = "address"
 	allF      = "all"
 	accountF  = "account"
@@ -18,7 +19,7 @@ var (
 )
 
 func QueryCmd(plasma *eth.Plasma) *cobra.Command {
-	plasmaContract = plasma
+	plasmaContract = *plasma
 	queryCmd.AddCommand(
 		BalanceCmd(),
 		BlockCmd(),

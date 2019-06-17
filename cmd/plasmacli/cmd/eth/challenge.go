@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -21,8 +22,6 @@ func ChallengeCmd() *cobra.Command {
 	challengeCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the challenging transaction")
 	challengeCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
 	challengeCmd.Flags().StringP(txBytesF, "b", "", "bytes of the challenging transaction")
-	viper.BindPFlags(challengeCmd.Flags())
-
 	return challengeCmd
 }
 
@@ -39,7 +38,8 @@ Usage:
 	plasmacli eth cahllenge <exiting position> <challenging position> <account> --proof <proof> --signatures <confirm signatures> --txBytes <challenge transaction bytes>`,
 	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		viper.BindPFlags(cmd.Flags())
+		ctx := context.NewCLIContext()
+
 		// parse positions
 		exitingPos, err := plasma.FromPositionString(args[0])
 		if err != nil {
@@ -79,7 +79,7 @@ Usage:
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(trustNodeF) {
 			var result *tm.ResultTx
-			result, confirmSignatures, err = getProof(owner, challengingPos)
+			result, confirmSignatures, err = getProof(ctx, owner, challengingPos)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}

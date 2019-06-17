@@ -8,7 +8,6 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/codec"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
@@ -37,7 +36,7 @@ Usage:
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
-		ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
+		ctx := context.NewCLIContext()
 
 		name := args[0]
 
