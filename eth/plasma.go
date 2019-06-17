@@ -69,7 +69,7 @@ func (plasma *Plasma) WithOperatorSession(operatorPrivkey *ecdsa.PrivateKey, com
 		return plasma, err
 	}
 	if !bytes.Equal(operator[:], addr[:]) {
-		return plasma, fmt.Errorf("provided private key does not match the contract's operator address")
+		return plasma, fmt.Errorf("operator address mismatch. Got 0x%x. Expected:0x%x", addr, operator)
 	}
 
 	auth := bind.NewKeyedTransactor(operatorPrivkey)
