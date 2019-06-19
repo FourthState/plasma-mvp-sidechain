@@ -5,6 +5,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func VersionCmd() *cobra.Command {
+	return versionCmd
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of the plasma client",

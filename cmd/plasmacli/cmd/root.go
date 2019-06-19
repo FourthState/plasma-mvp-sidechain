@@ -66,20 +66,20 @@ func RootCmd() *cobra.Command {
 	rootCmd.AddCommand(
 		eth.EthCmd(),
 		query.QueryCmd(),
-		includeCmd,
 		client.LineBreak,
 
 		RestServerCmd(),
 		client.LineBreak,
 
-		signCmd,
-		spendCmd,
+		SignCmd(),
+		SpendCmd(),
+		IncludeCmd(),
 		client.LineBreak,
 
 		keys.KeysCmd(),
 		client.LineBreak,
 
-		versionCmd,
+		VersionCmd(),
 	)
 
 	return rootCmd
