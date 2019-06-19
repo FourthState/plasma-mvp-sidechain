@@ -7,6 +7,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/query"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/app"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/lcd"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,20 +18,39 @@ import (
 	"github.com/tendermint/tendermint/types"
 	"math/big"
 	"net/http"
-	"os"
 )
 
-var serverCmd = lcd.ServeCommand(app.MakeCodec(), registerRoutes)
-
-func init() {
-	if err := viper.BindPFlags(serverCmd.Flags()); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+func RestServerCmd() *cobra.Command {
+	serverCmd.Flags().String(client.FlagListenAddr, "tcp://localhost:1317", "The address for the server to listen on")
+	serverCmd.Flags().Bool(client.FlagTLS, false, "Enable SSL/TLS layer")
+	serverCmd.Flags().String(client.FlagSSLHosts, "", "Comma-separated hostnames and IPs to generate a certificate for")
+	serverCmd.Flags().String(client.FlagSSLCertFile, "", "Path to a SSL certificate file. If not supplied, a self-signed certificate will be generated.")
+	serverCmd.Flags().String(client.FlagSSLKeyFile, "", "Path to a key file; ignored if a certificate file is not supplied.")
+	serverCmd.Flags().String(client.FlagCORS, "", "Set the domains that can make CORS requests (* for all)")
+	serverCmd.Flags().Int(client.FlagMaxOpenConnections, 1000, "The number of maximum open connections")
+	return serverCmd
 }
 
-func RestServerCmd() *cobra.Command {
-	return serverCmd
+var serverCmd = &cobra.Command{
+	Use:   "rest-server",
+	Short: "Start LCD (light-client daemon), a local REST server",
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		viper.BindPFlags(cmd.Flags())
+		rs := lcd.NewRestServer(app.MakeCodec())
+
+		registerRoutes(rs)
+
+		// Start the rest server and return error if one exists
+		err = rs.Start(
+			viper.GetString(client.FlagListenAddr),
+			viper.GetString(client.FlagSSLHosts),
+			viper.GetString(client.FlagSSLCertFile),
+			viper.GetString(client.FlagSSLKeyFile),
+			viper.GetInt(client.FlagMaxOpenConnections),
+			viper.GetBool(client.FlagTLS))
+
+		return err
+	},
 }
 
 func registerRoutes(rs *lcd.RestServer) {

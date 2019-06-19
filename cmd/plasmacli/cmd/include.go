@@ -14,10 +14,11 @@ import (
 	"strings"
 )
 
-func init() {
+func IncludeCmd() *cobra.Command {
 	includeCmd.Flags().Int64P(replayF, "r", 0, "Replay Nonce that can be incremented to allow for resubmissions of include deposit messages")
 	includeCmd.Flags().String(addressF, "", "address represented as hex string")
 	includeCmd.Flags().Bool(asyncF, false, "wait for transaction commitment synchronously")
+	return includeCmd
 }
 
 var includeCmd = &cobra.Command{
