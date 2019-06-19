@@ -11,11 +11,11 @@ import (
 
 // keys
 var (
-	walletKey   = []byte{0x0}
-	depositKey  = []byte{0x1}
-	feeKey      = []byte{0x2}
-	txKey     = []byte{0x3}
-	outputKey = []byte{0x4}
+	walletKey  = []byte{0x0}
+	depositKey = []byte{0x1}
+	feeKey     = []byte{0x2}
+	txKey      = []byte{0x3}
+	outputKey  = []byte{0x4}
 )
 
 /* Returns key to retrieve wallet for given address */

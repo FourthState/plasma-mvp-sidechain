@@ -91,7 +91,7 @@ func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
 	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
 		return &tm.ResultTx{}, nil, fmt.Errorf("Transaction decoding failed: %s", err.String())
 	}
-	
+
 	// query tm node for information about this tx
 	result, err := ctx.Client.Tx(tx.MerkleHash(), true)
 	if err != nil {
@@ -99,8 +99,9 @@ func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
 	}
 
 	// Look for confirmation signatures
+	// Ignore error if no confirm sig currently exists in store
 	key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
-	sigs, err := ctx.QueryStore(key, "plasma")
+	sigs, _ := ctx.QueryStore(key, "plasma")
 
-	return &tm.ResultTx{}, []byte{}, nil
+	return result, sigs, nil
 }
