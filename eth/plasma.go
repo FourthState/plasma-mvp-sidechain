@@ -156,7 +156,6 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.Pla
 func (plasma *Plasma) GetDeposit(plasmaBlockHeight *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
 	deposit, err := plasma.Deposits(nil, nonce)
 	if err != nil {
-		// TODO: log the error
 		logger.Error(fmt.Sprintf("failed deposit retrieval: %s", err))
 		return plasmaTypes.Deposit{}, nil, false
 	}
@@ -189,9 +188,9 @@ func (plasma *Plasma) GetDeposit(plasmaBlockHeight *big.Int, nonce *big.Int) (pl
 	}, threshold, true
 }
 
-// HasTXBeenExited indicates if the position has ever been exited at a time less than or equal to
+// HasTxExited indicates if the position has ever been exited at a time less than or equal to
 // the time `plasmaBlockHeight` was submitted. If nil, it is checked against the latest state
-func (plasma *Plasma) HasTxBeenExited(plasmaBlockHeight *big.Int, position plasmaTypes.Position) (bool, error) {
+func (plasma *Plasma) HasTxExited(plasmaBlockHeight *big.Int, position plasmaTypes.Position) (bool, error) {
 	type exit struct {
 		Amount       *big.Int
 		CommittedFee *big.Int
