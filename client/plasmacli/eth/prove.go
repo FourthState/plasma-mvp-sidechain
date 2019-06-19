@@ -4,7 +4,7 @@ import (
 	"fmt"
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	//	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
 	//	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	//	"github.com/ethereum/go-ethereum/rlp"
@@ -75,30 +75,32 @@ var proveCmd = &cobra.Command{
 // Trusts connected full node
 
 //TODO: REDO
-func getProof(addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, []byte, error) {
-	/*	ctx := context.NewCLIContext().WithTrustNode(true)
+func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
+	ctx := context.NewCLIContext().WithTrustNode(true)
 
-		// query for the output
-		key := append(store.Key, position.Bytes()...)
-		res, err := ctx.QueryStore(key, "outputs")
-		if err != nil {
-			return &tm.ResultTx{}, nil, err
-		}
+	key := store.GetOutputKey(pos)
+	hash, err := ctx.QueryStore(key, "outputs")
+	if err != nil {
+		return &tm.ResultTx{}, nil, err
+	}
 
-		utxo := store.Output{}
-		if err := rlp.DecodeBytes(res, &utxo); err != nil {
-			return &tm.ResultTx{}, nil, err
-		}
+	txKey := store.GetTxKey(hash)
+	txBytes, err := ctx.QueryStore(txKey, "outputs")
 
-		// query tm node for information about this tx
-		result, err := ctx.Client.Tx(utxo.MerkleHash, true)
-		if err != nil {
-			return &tm.ResultTx{}, nil, err
-		}
+	var tx Transaction
+	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
+		return &tm.ResultTx{}, nil, fmt.Errorf("Transaction decoding failed: %s", err.String())
+	}
+	
+	// query tm node for information about this tx
+	result, err := ctx.Client.Tx(tx.MerkleHash(), true)
+	if err != nil {
+		return &tm.ResultTx{}, nil, err
+	}
 
-		// Look for confirmation signatures
-		key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
-		sigs, err := ctx.QueryStore(key, "plasma")
-	*/
+	// Look for confirmation signatures
+	key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
+	sigs, err := ctx.QueryStore(key, "plasma")
+
 	return &tm.ResultTx{}, []byte{}, nil
 }

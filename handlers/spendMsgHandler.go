@@ -30,16 +30,6 @@ func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore,
 		header := ctx.BlockHeader().DataHash
 		confirmationHash := sha256.Sum256(append(merkleHash, header...))
 
-		/* Store Transaction */
-		tx := store.Transaction{
-			Transaction:      spendMsg.Transaction,
-			Spent:            make([]bool, len(spendMsg.Outputs)),
-			SpenderTxs:       make([][]byte, len(spendMsg.Outputs)),
-			ConfirmationHash: confirmationHash[:],
-			Position:         plasma.NewPosition(blockHeight, txIndex, 0, big.NewInt(0)),
-		}
-		outputStore.StoreTx(ctx, tx)
-
 		/* Spend Inputs */
 		for _, input := range spendMsg.Inputs {
 			var res sdk.Result
@@ -53,6 +43,17 @@ func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore,
 				return res
 			}
 		}
+
+		/* Store Transaction and create new outputs */
+		tx := store.Transaction{
+			Transaction:      spendMsg.Transaction,
+			Spent:            make([]bool, len(spendMsg.Outputs)),
+			SpenderTxs:       make([][]byte, len(spendMsg.Outputs)),
+			ConfirmationHash: confirmationHash[:],
+			Position:         plasma.NewPosition(blockHeight, txIndex, 0, big.NewInt(0)),
+		}
+		outputStore.StoreTx(ctx, tx)
+		outputStore.StoreOutputs(ctx, tx)
 
 		// update the aggregate fee amount for the block
 		if err := feeUpdater(spendMsg.Fee); err != nil {

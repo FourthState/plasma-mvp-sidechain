@@ -9,15 +9,6 @@ import (
 	"math/big"
 )
 
-// keys
-var (
-	walletKey   = []byte{0x0}
-	depositKey  = []byte{0x1}
-	feeKey      = []byte{0x2}
-	hashKey     = []byte{0x3}
-	positionKey = []byte{0x4}
-)
-
 /* Output Store */
 type OutputStore struct {
 	kvStore
@@ -34,7 +25,7 @@ func NewOutputStore(ctxKey sdk.StoreKey) OutputStore {
 
 // GetWallet returns the wallet at the associated address
 func (store OutputStore) GetWallet(ctx sdk.Context, addr common.Address) (Wallet, bool) {
-	key := prefixKey(walletKey, addr.Bytes())
+	key := GetWalletKey(addr)
 	data := store.Get(ctx, key)
 	if data == nil {
 		return Wallet{}, false
@@ -50,7 +41,7 @@ func (store OutputStore) GetWallet(ctx sdk.Context, addr common.Address) (Wallet
 
 // GetDeposit returns the deposit at the given nonce
 func (store OutputStore) GetDeposit(ctx sdk.Context, nonce *big.Int) (Deposit, bool) {
-	key := prefixKey(depositKey, nonce.Bytes())
+	key := GetDepositKey(nonce)
 	data := store.Get(ctx, key)
 	if data == nil {
 		return Deposit{}, false
@@ -66,7 +57,7 @@ func (store OutputStore) GetDeposit(ctx sdk.Context, nonce *big.Int) (Deposit, b
 
 // GetFee returns the fee at the given position
 func (store OutputStore) GetFee(ctx sdk.Context, pos plasma.Position) (Output, bool) {
-	key := prefixKey(feeKey, pos.Bytes())
+	key := GetFeeKey(pos)
 	data := store.Get(ctx, key)
 	if data == nil {
 		return Output{}, false
@@ -95,7 +86,7 @@ func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output
 		return fee, ok
 	}
 
-	key := prefixKey(positionKey, pos.Bytes())
+	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
 
 	tx, ok := store.GetTx(ctx, hash)
@@ -114,7 +105,7 @@ func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output
 
 // GetTx returns the transaction with the provided transaction hash
 func (store OutputStore) GetTx(ctx sdk.Context, hash []byte) (Transaction, bool) {
-	key := prefixKey(hashKey, hash)
+	key := GetTxKey(hash)
 	data := store.Get(ctx, key)
 	if data == nil {
 		return Transaction{}, false
@@ -130,9 +121,10 @@ func (store OutputStore) GetTx(ctx sdk.Context, hash []byte) (Transaction, bool)
 
 // GetTxWithPosition returns the transaction that contains the provided position as an output
 func (store OutputStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position) (Transaction, bool) {
-	key := prefixKey(positionKey, pos.Bytes())
+	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
-	return store.GetTx(ctx, hash)
+	txKey := GetTxKey(hash)
+	return store.GetTx(ctx, txKey)
 }
 
 // -----------------------------------------------------------------------------
@@ -140,25 +132,25 @@ func (store OutputStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position)
 
 // HasWallet returns whether an wallet at the given address exists
 func (store OutputStore) HasWallet(ctx sdk.Context, addr common.Address) bool {
-	key := prefixKey(walletKey, addr.Bytes())
+	key := GetWalletKey(addr)
 	return store.Has(ctx, key)
 }
 
 // HasDeposit returns whether a deposit with the given nonce exists
 func (store OutputStore) HasDeposit(ctx sdk.Context, nonce *big.Int) bool {
-	key := prefixKey(depositKey, nonce.Bytes())
+	key := GetDepositKey(nonce)
 	return store.Has(ctx, key)
 }
 
 // HasFee returns whether a fee with the given position exists
 func (store OutputStore) HasFee(ctx sdk.Context, pos plasma.Position) bool {
-	key := prefixKey(feeKey, pos.Bytes())
+	key := GetFeeKey(pos)
 	return store.Has(ctx, key)
 }
 
 // HasOutput returns whether an output with the given position exists
 func (store OutputStore) HasOutput(ctx sdk.Context, pos plasma.Position) bool {
-	key := prefixKey(positionKey, pos.Bytes())
+	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
 
 	return store.HasTx(ctx, hash)
@@ -166,7 +158,7 @@ func (store OutputStore) HasOutput(ctx sdk.Context, pos plasma.Position) bool {
 
 // HasTx returns whether a transaction with the given transaction hash exists
 func (store OutputStore) HasTx(ctx sdk.Context, hash []byte) bool {
-	key := prefixKey(hashKey, hash)
+	key := GetTxKey(hash)
 	return store.Has(ctx, key)
 }
 
@@ -175,7 +167,7 @@ func (store OutputStore) HasTx(ctx sdk.Context, hash []byte) bool {
 
 // SetWallet overwrites the wallet stored at the given address
 func (store OutputStore) setWallet(ctx sdk.Context, addr common.Address, wallet Wallet) {
-	key := prefixKey(walletKey, addr.Bytes())
+	key := GetWalletKey(addr)
 	data, err := rlp.EncodeToBytes(&wallet)
 	if err != nil {
 		panic(fmt.Sprintf("error marshaling transaction: %s", err))
@@ -191,7 +183,7 @@ func (store OutputStore) setDeposit(ctx sdk.Context, nonce *big.Int, deposit Dep
 		panic(fmt.Sprintf("error marshaling deposit with nonce %s: %s", nonce, err))
 	}
 
-	key := prefixKey(depositKey, nonce.Bytes())
+	key := GetDepositKey(nonce)
 	store.Set(ctx, key, data)
 }
 
@@ -202,13 +194,13 @@ func (store OutputStore) setFee(ctx sdk.Context, pos plasma.Position, fee Output
 		panic(fmt.Sprintf("error marshaling fee with position %s: %s", pos, err))
 	}
 
-	key := prefixKey(feeKey, pos.Bytes())
+	key := GetFeeKey(pos)
 	store.Set(ctx, key, data)
 }
 
 // SetOutput adds a mapping from position to transaction hash
 func (store OutputStore) setOutput(ctx sdk.Context, pos plasma.Position, hash []byte) {
-	key := prefixKey(positionKey, pos.Bytes())
+	key := GetOutputKey(pos)
 	store.Set(ctx, key, hash)
 }
 
@@ -219,7 +211,7 @@ func (store OutputStore) setTx(ctx sdk.Context, tx Transaction) {
 		panic(fmt.Sprintf("error marshaling transaction: %s", err))
 	}
 
-	key := prefixKey(hashKey, tx.Transaction.TxHash())
+	key := GetTxKey(tx.Transaction.TxHash())
 	store.Set(ctx, key, data)
 }
 
@@ -241,9 +233,12 @@ func (store OutputStore) StoreFee(ctx sdk.Context, pos plasma.Position, output p
 }
 
 // StoreTx adds the transaction
-// Updates the output owner's wallets
 func (store OutputStore) StoreTx(ctx sdk.Context, tx Transaction) {
 	store.setTx(ctx, tx)
+}
+
+// StoreOutputs adds new Output UTXO's to respective owner wallets
+func (store OutputStore) StoreOutputs(ctx sdk.Context, tx Transaction) {
 	for i, output := range tx.Transaction.Outputs {
 		store.addToWallet(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
 		store.setOutput(ctx, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)), tx.Transaction.TxHash())
@@ -294,7 +289,7 @@ func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderT
 // SpendOutput changes the output to be spent
 // Updates the wallet of the output owner
 func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
-	key := prefixKey(positionKey, pos.Bytes())
+	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
 
 	tx, ok := store.GetTx(ctx, hash)
