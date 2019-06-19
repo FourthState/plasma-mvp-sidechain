@@ -71,7 +71,7 @@ func displayDeposits(curr, lim int64) error {
 			break
 		}
 
-		fmt.Printf("Owner: 0x%x\nAmount: %d\nNonce: %d\nRootchain Block: %d\n\n", deposit.Owner, deposit.Amount, curr, deposit.EthBlockNum)
+		fmt.Printf("Owner: 0x%x\nAmount: %d\nNonce: %d\nEthereum Block: %d\n\n", deposit.Owner, deposit.Amount, curr, deposit.EthBlockNum)
 		curr++
 		lim--
 	}

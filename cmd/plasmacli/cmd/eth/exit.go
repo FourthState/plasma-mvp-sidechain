@@ -43,6 +43,7 @@ Transaction Exit Usage:
 	plasmacli exit <account> <position> -b <tx-bytes> --proof <merkle-proof> -S <confirmation-signatures> --fee <amount>`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		viper.BindPFlags(cmd.Flags())
 		ctx := context.NewCLIContext()
 		var tx *eth.Transaction
 

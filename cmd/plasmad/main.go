@@ -53,13 +53,10 @@ func persistentPreRunEFn(context *server.Context) func(*cobra.Command, []string)
 			config.WritePlasmaConfigFile(plasmaConfigFilePath, plasmaConfig)
 		}
 
-		// try read in plasma.toml from the config directory
+		// read in plasma.toml from the config directory
 		viper.SetConfigName("plasma")
-		if err := viper.MergeInConfig(); err != nil {
-			return err
-		}
-
-		return nil
+		err := viper.MergeInConfig()
+		return err
 	}
 }
 

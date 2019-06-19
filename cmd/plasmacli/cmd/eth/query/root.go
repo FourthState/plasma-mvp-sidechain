@@ -1,11 +1,12 @@
 package query
 
 import (
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/spf13/cobra"
 )
 
-var plasmaContract eth.Plasma
+var plasmaContract *eth.Plasma
 
 var (
 	// flags
@@ -18,8 +19,7 @@ var (
 	positionF = "position"
 )
 
-func QueryCmd(plasma *eth.Plasma) *cobra.Command {
-	plasmaContract = *plasma
+func QueryCmd() *cobra.Command {
 	queryCmd.AddCommand(
 		BalanceCmd(),
 		BlockCmd(),
@@ -34,4 +34,9 @@ func QueryCmd(plasma *eth.Plasma) *cobra.Command {
 var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Query for rootchain related information",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		plasma, err := config.GetContractConn()
+		plasmaContract = plasma
+		return err
+	},
 }
