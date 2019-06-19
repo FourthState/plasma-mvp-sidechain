@@ -123,8 +123,7 @@ func (store OutputStore) GetTx(ctx sdk.Context, hash []byte) (Transaction, bool)
 func (store OutputStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position) (Transaction, bool) {
 	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
-	txKey := GetTxKey(hash)
-	return store.GetTx(ctx, txKey)
+	return store.GetTx(ctx, hash)
 }
 
 // -----------------------------------------------------------------------------
