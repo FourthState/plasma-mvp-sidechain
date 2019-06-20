@@ -43,7 +43,7 @@ func (p conn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposit, *big
 	}
 	return dep, big.NewInt(-2), true
 }
-func (p conn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) (bool, error) { return false, nil }
+func (p conn) HasTxExited(tmBlock *big.Int, pos plasma.Position) (bool, error) { return false, nil }
 
 var _ plasmaConn = conn{}
 
@@ -59,7 +59,7 @@ func (p exitConn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposit, 
 	}
 	return dep, big.NewInt(-2), true
 }
-func (p exitConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) (bool, error) {
+func (p exitConn) HasTxExited(tmBlock *big.Int, pos plasma.Position) (bool, error) {
 	return true, nil
 }
 
@@ -430,7 +430,7 @@ func (u unfinalConn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposi
 	return dep, big.NewInt(10), false
 }
 
-func (u unfinalConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) (bool, error) {
+func (u unfinalConn) HasTxExited(tmBlock *big.Int, pos plasma.Position) (bool, error) {
 	return false, nil
 }
 
@@ -440,7 +440,7 @@ func (d dneConn) GetDeposit(tmBlock *big.Int, nonce *big.Int) (plasma.Deposit, *
 	return plasma.Deposit{}, nil, false
 }
 
-func (d dneConn) HasTxBeenExited(tmBlock *big.Int, pos plasma.Position) (bool, error) {
+func (d dneConn) HasTxExited(tmBlock *big.Int, pos plasma.Position) (bool, error) {
 	return false, nil
 }
 
