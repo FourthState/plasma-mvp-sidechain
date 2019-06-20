@@ -3,7 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/app"
+	"github.com/FourthState/plasma-mvp-sidechain/app"
 	pConfig "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/config"
 	gaiaInit "github.com/cosmos/cosmos-sdk/cmd/gaia/init"
 	"github.com/cosmos/cosmos-sdk/codec"

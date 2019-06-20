@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/app"
+	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/cmd"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/config"
 	"github.com/cosmos/cosmos-sdk/server"
