@@ -1,11 +1,11 @@
-package cmd
+package subcmd
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/app"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/query"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/query"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"

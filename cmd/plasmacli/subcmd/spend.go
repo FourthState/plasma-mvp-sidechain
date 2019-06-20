@@ -1,10 +1,10 @@
-package cmd
+package subcmd
 
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/eth"
 	clistore "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"

@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/app"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/cmd"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/config"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/subcmd"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,7 +26,7 @@ func main() {
 		Short:             "Plasma Daemon (server)",
 		PersistentPreRunE: persistentPreRunEFn(ctx),
 	}
-	rootCmd.AddCommand(cmd.InitCmd(ctx, cdc))
+	rootCmd.AddCommand(subcmd.InitCmd(ctx, cdc))
 	server.AddCommands(ctx, cdc, rootCmd, newApp, nil)
 
 	// HomeFlag in tendermint cli will be set to `~/.plasmad`

@@ -1,8 +1,8 @@
 package eth
 
 import (
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/eth/query"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/eth/query"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/cosmos/cosmos-sdk/client"

@@ -1,12 +1,12 @@
-package cmd
+package subcmd
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/eth"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/keys"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/cmd/query"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/eth"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/keys"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/query"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
