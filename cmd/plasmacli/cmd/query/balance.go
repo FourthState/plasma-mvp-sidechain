@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	queryCmd.AddCommand(balanceCmd)
+func BalanceCmd() *cobra.Command {
+	return balanceCmd
 }
 
 var balanceCmd = &cobra.Command{

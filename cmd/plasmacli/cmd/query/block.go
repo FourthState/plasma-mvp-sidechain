@@ -11,9 +11,12 @@ import (
 	"math/big"
 )
 
-func init() {
-	queryCmd.AddCommand(blockCmd)
-	queryCmd.AddCommand(blocksCmd)
+func BlockCmd() *cobra.Command {
+	return blockCmd
+}
+
+func BlocksCmd() *cobra.Command {
+	return blocksCmd
 }
 
 var blockCmd = &cobra.Command{

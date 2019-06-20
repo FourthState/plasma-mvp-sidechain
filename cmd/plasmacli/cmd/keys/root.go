@@ -5,6 +5,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// flags
+const (
+	nameF = "name"
+	fileF = "file"
+)
+
 var keysCmd = &cobra.Command{
 	Use:   "keys",
 	Short: "Manage local private keys",
@@ -13,5 +19,14 @@ var keysCmd = &cobra.Command{
 
 func KeysCmd() *cobra.Command {
 	store.InitKeystore()
+
+	keysCmd.AddCommand(
+		AddCmd(),
+		DeleteCmd(),
+		ImportCmd(),
+		ListCmd(),
+		UpdateCmd(),
+	)
+
 	return keysCmd
 }

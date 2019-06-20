@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	keysCmd.AddCommand(addCmd)
+func AddCmd() *cobra.Command {
+	return addCmd
 }
 
 var addCmd = &cobra.Command{

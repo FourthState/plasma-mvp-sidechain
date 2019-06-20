@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	queryCmd.AddCommand(infoCmd)
+func InfoCmd() *cobra.Command {
+	return infoCmd
 }
 
 var infoCmd = &cobra.Command{

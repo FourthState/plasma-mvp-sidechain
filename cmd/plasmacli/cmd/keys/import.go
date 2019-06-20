@@ -10,15 +10,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Flags
-const (
-	fileF = "file"
-)
-
-func init() {
-	keysCmd.AddCommand(importCmd)
+func ImportCmd() *cobra.Command {
 	importCmd.Flags().String(fileF, "", "read the private key from the specified keyfile (must be absolute path)")
-	viper.BindPFlags(importCmd.Flags())
+	return importCmd
 }
 
 var importCmd = &cobra.Command{
@@ -40,8 +34,9 @@ You must remember this passphrase to unlock your account in the future.
 `,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name := args[0]
+		viper.BindPFlags(cmd.Flags())
 
+		name := args[0]
 		var key *ecdsa.PrivateKey
 		var err error
 		file := viper.GetString(fileF)

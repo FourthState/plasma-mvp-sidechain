@@ -7,15 +7,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Flags
-const (
-	nameF = "name"
-)
-
-func init() {
-	keysCmd.AddCommand(updateCmd)
+func UpdateCmd() *cobra.Command {
 	updateCmd.Flags().String(nameF, "", "updated key name.")
-	viper.BindPFlags(updateCmd.Flags())
+	return updateCmd
 }
 
 var updateCmd = &cobra.Command{
@@ -29,8 +23,9 @@ Usage:
 	`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name := args[0]
+		viper.BindPFlags(cmd.Flags())
 
+		name := args[0]
 		updatedName := viper.GetString(nameF)
 		msg, err := store.UpdateAccount(name, updatedName)
 		if err != nil {

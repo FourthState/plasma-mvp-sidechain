@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	keysCmd.AddCommand(listCmd)
+func ListCmd() *cobra.Command {
+	return listCmd
 }
 
 var listCmd = &cobra.Command{
@@ -17,12 +17,12 @@ var listCmd = &cobra.Command{
 	Short: "List all accounts",
 	Long:  "Return a list of all account addresses stored by the local keystore",
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		iter, db := store.AccountIterator()
 		if iter == nil || db == nil {
 			return errors.New("unexpected error encountered when opening account data")
 		}
 		defer db.Close()
+
 		fmt.Printf("NAME:\t\tADDRESS:\n")
 		for iter.Next() {
 			fmt.Printf("%s\t\t0x%x\n", iter.Key(), ethcmn.BytesToAddress(iter.Value()))

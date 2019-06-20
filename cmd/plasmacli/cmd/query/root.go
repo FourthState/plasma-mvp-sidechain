@@ -10,5 +10,12 @@ var queryCmd = &cobra.Command{
 }
 
 func QueryCmd() *cobra.Command {
+	queryCmd.AddCommand(
+		BalanceCmd(),
+		BlockCmd(),
+		BlocksCmd(),
+		InfoCmd(),
+	)
+
 	return queryCmd
 }
