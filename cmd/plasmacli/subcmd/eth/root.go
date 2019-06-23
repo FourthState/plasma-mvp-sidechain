@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	// Flags
+	// flags
 	accountF   = "account"
 	addrF      = "address"
 	allF       = "all"
@@ -25,6 +25,8 @@ const (
 	sigsF      = "signatures"
 	trustNodeF = "trust-node"
 	txBytesF   = "tx-bytes"
+
+	mixExitBond = 200000
 )
 
 var plasmaContract *eth.Plasma

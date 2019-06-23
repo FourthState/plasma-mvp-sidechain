@@ -76,7 +76,7 @@ Transaction Exit Usage:
 			From:     auth.From,
 			Signer:   auth.Signer,
 			GasLimit: gasLimit,
-			Value:    big.NewInt(200000), // minExitBond
+			Value:    big.NewInt(minExitBond), // minExitBond
 		}
 
 		// send fee exit

@@ -38,6 +38,7 @@ Usage:
 	plasmacli eth cahllenge <exiting position> <challenging position> <account> --proof <proof> --signatures <confirm signatures> --txBytes <challenge transaction bytes>`,
 	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		viper.BindPFlags(cmd.Flags())
 		ctx := context.NewCLIContext()
 
 		// parse positions
