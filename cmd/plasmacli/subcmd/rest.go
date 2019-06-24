@@ -34,14 +34,14 @@ func RestServerCmd() *cobra.Command {
 var serverCmd = &cobra.Command{
 	Use:   "rest-server",
 	Short: "Start LCD (light-client daemon), a local REST server",
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 		rs := lcd.NewRestServer(app.MakeCodec())
 
 		registerRoutes(rs)
 
 		// Start the rest server and return error if one exists
-		err = rs.Start(
+		err := rs.Start(
 			viper.GetString(client.FlagListenAddr),
 			viper.GetString(client.FlagSSLHosts),
 			viper.GetString(client.FlagSSLCertFile),
@@ -81,6 +81,7 @@ func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
+			return
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -222,6 +223,7 @@ func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 			if !ok || blockNum.Sign() <= 0 {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte("number must be in decimal format starting from 1"))
+				return
 			}
 		}
 

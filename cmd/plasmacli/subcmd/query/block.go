@@ -107,7 +107,7 @@ func Block(ctx context.CLIContext, num *big.Int) (store.Block, error) {
 	return block, nil
 }
 
-// BlocksMetadata will query metadate about 10 plasma blocks starting from `startingBlockNum`.
+// BlocksMetadata will query metadata about 10 plasma blocks starting from `startingBlockNum`.
 // The latest 10 blocks will be retrieved if startingBlockNum is nil
 func BlocksMetadata(ctx context.CLIContext, startingBlockNum *big.Int) (query.BlocksResp, error) {
 	var queryPath string
