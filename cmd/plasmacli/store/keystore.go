@@ -2,7 +2,6 @@ package store
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/ethereum/go-ethereum/accounts"
@@ -46,7 +45,7 @@ func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		fmt.Printf("FAILURE: %s", err)
+		fmt.Printf("leveldb: %s", err)
 		return nil, nil
 	}
 
@@ -59,13 +58,13 @@ func AddAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
 	}
 	defer db.Close()
 
 	key := []byte(name)
 	if _, err = db.Get(key, nil); err == nil {
-		return ethcmn.Address{}, errors.New("you are trying to override an existing private key name. Please delete it first")
+		return ethcmn.Address{}, fmt.Errorf("you are trying to override an existing private key name. Please delete it first")
 	}
 
 	buf := cosmoscli.BufferStdin()
@@ -76,11 +75,11 @@ func AddAccount(name string) (ethcmn.Address, error) {
 
 	acc, err := ks.NewAccount(password)
 	if err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("keystore: %s", err)
 	}
 
 	if err = db.Put(key, acc.Address.Bytes(), nil); err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
 	}
 
 	return acc.Address, nil
@@ -91,13 +90,15 @@ func GetAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
 	}
 	defer db.Close()
 
 	addr, err := db.Get([]byte(name), nil)
-	if err != nil {
-		return ethcmn.Address{}, fmt.Errorf("failed to find account: %s", name)
+	if err == leveldb.ErrNotFound {
+		return ethcmn.Address{}, fmt.Errorf("account does not exist")
+	} else if err != nil {
+		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
 	}
 
 	return ethcmn.BytesToAddress(addr), nil
@@ -109,13 +110,15 @@ func DeleteAccount(name string) error {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("leveldb: %s", err)
 	}
 	defer db.Close()
 
 	addr, err := db.Get([]byte(name), nil)
-	if err != nil {
-		return err
+	if err == leveldb.ErrNotFound {
+		return fmt.Errorf("account does not exist")
+	} else if err != nil {
+		return fmt.Errorf("leveldb: %s", err)
 	}
 
 	buf := cosmoscli.BufferStdin()
@@ -128,33 +131,38 @@ func DeleteAccount(name string) error {
 		Address: ethcmn.BytesToAddress(addr),
 	}
 
-	return ks.Delete(acc, password)
+	if err = ks.Delete(acc, password); err != nil {
+		return fmt.Errorf("keystore: %s", err)
+	}
+
+	return nil
 }
 
-// Update either the name of an account
-// or the passphrase for an account
+// Update either the name of an account or the passphrase for an account
 func UpdateAccount(name string, updatedName string) (msg string, err error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return msg, err
+		return msg, fmt.Errorf("leveldb: %s", err)
 	}
 	defer db.Close()
 
 	key := []byte(name)
 	addr, err := db.Get(key, nil)
-	if err != nil {
-		return msg, err
+	if err == leveldb.ErrNotFound {
+		return msg, fmt.Errorf("account does not exist")
+	} else if err != nil {
+		return msg, fmt.Errorf("leveldb: %s", err)
 	}
 
 	if updatedName != "" {
 		// Update key name
 		if err = db.Delete(key, nil); err != nil {
-			return msg, err
+			return msg, fmt.Errorf("leveldb: %s", err)
 		}
 
 		if err = db.Put([]byte(updatedName), addr, nil); err != nil {
-			return msg, err
+			return msg, fmt.Errorf("leveldb: %s", err)
 		}
 		msg = "Account name has been updated."
 	} else {
@@ -169,9 +177,8 @@ func UpdateAccount(name string, updatedName string) (msg string, err error) {
 		acc := accounts.Account{
 			Address: ethcmn.BytesToAddress(addr),
 		}
-		err = ks.Update(acc, password, updatedPassword)
-		if err != nil {
-			return msg, err
+		if err = ks.Update(acc, password, updatedPassword); err != nil {
+			return msg, fmt.Errorf("keystore: %s", err)
 		}
 		msg = "Account passphrase has been updated."
 	}
@@ -184,7 +191,7 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
 	}
 	defer db.Close()
 
@@ -196,11 +203,11 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 
 	acct, err := ks.ImportECDSA(pk, password)
 	if err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("keystore: %s", err)
 	}
 
 	if err = db.Put([]byte(name), acct.Address.Bytes(), nil); err != nil {
-		return ethcmn.Address{}, err
+		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
 	}
 
 	return acct.Address, nil
@@ -223,20 +230,28 @@ func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return ks.SignHashWithPassphrase(acc, password, hash)
+	var sig []byte
+	sig, err = ks.SignHashWithPassphrase(acc, password, hash)
+	if err != nil {
+		return nil, fmt.Errorf("keystore: %s", err)
+	}
+
+	return sig, nil
 }
 
 func GetKey(name string) (*ecdsa.PrivateKey, error) {
 	dir := getDir(accountDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("leveldb: %s", err)
 	}
 	defer db.Close()
 
 	addr, err := db.Get([]byte(name), nil)
-	if err != nil {
-		return nil, err
+	if err == leveldb.ErrNotFound {
+		return nil, fmt.Errorf("account does not exist")
+	} else if err != nil {
+		return nil, fmt.Errorf("leveldb: %s", err)
 	}
 
 	acc, err := ks.Find(
@@ -245,12 +260,12 @@ func GetKey(name string) (*ecdsa.PrivateKey, error) {
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("keystore: %s", err)
 	}
 
 	bz, err := ioutil.ReadFile(acc.URL.Path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ioutil: %s", err)
 	}
 
 	buf := cosmoscli.BufferStdin()
@@ -261,7 +276,7 @@ func GetKey(name string) (*ecdsa.PrivateKey, error) {
 
 	key, err := keystore.DecryptKey(bz, pass)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("keystore: %s", err)
 	}
 	return key.PrivateKey, nil
 }
