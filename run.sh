@@ -19,7 +19,7 @@ nohup plasmacli rest-server >> nohup.out &
 
 if ! [ -z "$KUBERNETES_SERVICE_HOST" ] && ! [ -z "$KUBERNETES_SERVICE_PORT" ]; then
   echo "looks like we're running in kube, will tail nohup.out while waiting for any subprocess to finish"
-  cat nohup.out &
+  tail -f nohup.out &
   wait -n
 else
   echo "looks like we're not running in kube, exiting immediately"
