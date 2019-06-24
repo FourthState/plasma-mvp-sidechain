@@ -90,7 +90,7 @@ var blocksCmd = &cobra.Command{
 
 func Block(ctx context.CLIContext, num *big.Int) (store.Block, error) {
 	if num == nil || num.Sign() <= 0 {
-		return store.Block{}, ErrInvalidArg("block number starts at 1")
+		return store.Block{}, fmt.Errorf("block number starts at 1")
 	}
 
 	queryPath := fmt.Sprintf("custom/plasma/block/%s", num)
@@ -101,7 +101,7 @@ func Block(ctx context.CLIContext, num *big.Int) (store.Block, error) {
 
 	var block store.Block
 	if err := json.Unmarshal(data, &block); err != nil {
-		return store.Block{}, ErrSerialization("json unmarshal: %s", err)
+		return store.Block{}, fmt.Errorf("json unmarshal: %s", err)
 	}
 
 	return block, nil
@@ -114,7 +114,7 @@ func BlocksMetadata(ctx context.CLIContext, startingBlockNum *big.Int) (query.Bl
 	if startingBlockNum == nil {
 		queryPath = "custom/plasma/blocks"
 	} else if startingBlockNum.Sign() <= 0 {
-		return query.BlocksResp{}, ErrInvalidArg("block number starts at 1")
+		return query.BlocksResp{}, fmt.Errorf("block number starts at 1")
 	} else {
 		queryPath = fmt.Sprintf("custom/plasma/blocks/%s", startingBlockNum)
 	}
@@ -126,7 +126,7 @@ func BlocksMetadata(ctx context.CLIContext, startingBlockNum *big.Int) (query.Bl
 
 	var resp query.BlocksResp
 	if err := json.Unmarshal(data, &resp); err != nil {
-		return query.BlocksResp{}, ErrSerialization("json unmarshal: %s", err)
+		return query.BlocksResp{}, fmt.Errorf("json unmarshal: %s", err)
 	}
 
 	return resp, nil
