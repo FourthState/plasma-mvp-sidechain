@@ -30,11 +30,11 @@ var exitsCmd = &cobra.Command{
 Use the deposit flag to display deposit exits.
 
 Usage:
-	plasmacli eth query exit -a <account>
-	plasmacli eth query exit --deposits
-	plasmacli eth query exit --all
-	plasmacli eth query exit --index <number> --limit <number>
-	plasmacli eth query exit --position <position>`,
+	plasmacli eth query exits -a <account>
+	plasmacli eth query exits --deposits
+	plasmacli eth query exits --all
+	plasmacli eth query exits --index <number> --limit <number>
+	plasmacli eth query exits --position <position>`,
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
