@@ -2,7 +2,7 @@ package query
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
+	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -14,7 +14,7 @@ import (
 )
 
 func ExitsCmd() *cobra.Command {
-	exitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account")
+	exitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account or address")
 	exitsCmd.Flags().Bool(allF, false, "all pending exits will be displayed")
 	exitsCmd.Flags().BoolP(depositsF, "D", false, "display deposit exits")
 	exitsCmd.Flags().String(indexF, "0", "index to begin displaying exits from")
@@ -36,27 +36,32 @@ Usage:
 	plasmacli eth query exit --index <number> --limit <number>
 	plasmacli eth query exit --position <position>`,
 	Args: cobra.ExactArgs(0),
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
 
-		var curr int64
-		var addr ethcmn.Address
+		var (
+			curr int64
+			addr ethcmn.Address
+			err  error
+		)
 
 		// check if position specified
 		if viper.GetString(positionF) != "" {
 			pos, err := plasma.FromPositionString(viper.GetString(positionF))
 			if err != nil {
-				return fmt.Errorf("failed to parse position: { %s }", err)
+				return fmt.Errorf("failed to parse position: %s", err)
 			}
 			return displayExit(pos.Priority(), addr, pos.IsDeposit())
 		}
 
-		acc := viper.GetString(accountF)
-
-		if acc != "" {
-			addr, err = store.GetAccount(acc)
-			if err != nil {
-				return fmt.Errorf("failed to retrieve account: { %s }", err)
+		if viper.GetString(accountF) != "" {
+			str := viper.GetString(accountF)
+			if !ethcmn.IsHexAddress(str) {
+				if addr, err = ks.GetAccount(str); err != nil {
+					return fmt.Errorf("failed to retrieve local account: %s", err)
+				}
+			} else {
+				addr = ethcmn.HexToAddress(str)
 			}
 		}
 
@@ -69,12 +74,12 @@ Usage:
 		}
 
 		if err != nil {
-			return fmt.Errorf("failed to retrieve exit queue length: { %s }", err)
+			return fmt.Errorf("failed to retrieve exit queue length: %s", err)
 		}
 
 		lim, err := strconv.ParseInt(viper.GetString(limitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse limit: { %s }", err)
+			return fmt.Errorf("failed to parse limit: %s", err)
 		}
 
 		// adjust passed in limit to avoid error
@@ -97,7 +102,7 @@ Usage:
 		}
 
 		if err := displayExits(curr, lim, addr, viper.GetBool(depositsF)); err != nil {
-			return fmt.Errorf("failure occured while querying exits: { %s }", err)
+			return fmt.Errorf("failure occured while querying exits: %s ", err)
 		}
 
 		return nil

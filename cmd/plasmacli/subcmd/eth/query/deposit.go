@@ -29,12 +29,12 @@ Usage:
 		var curr, lim int64
 
 		if lim, err = strconv.ParseInt(viper.GetString(limitF), 10, 64); err != nil {
-			return fmt.Errorf("failed to parse limit - %s", err)
+			return fmt.Errorf("failed to parse limit:  %s", err)
 		}
 
 		lastNonce, err := plasmaContract.DepositNonce(nil)
 		if err != nil {
-			return fmt.Errorf("failed to trying to get last deposit nonce: { %s }", err)
+			return fmt.Errorf("failed to trying to get last deposit nonce: %s", err)
 		}
 
 		if viper.GetBool(allF) { // Print all deposits
@@ -53,7 +53,7 @@ Usage:
 		}
 
 		if err = displayDeposits(curr, lim); err != nil {
-			return fmt.Errorf("failed while displaying deposits - %s", err)
+			return fmt.Errorf("failed while displaying deposits: %s", err)
 		}
 
 		return err

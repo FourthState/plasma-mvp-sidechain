@@ -10,7 +10,6 @@ var plasmaContract *eth.Plasma
 
 var (
 	// flags
-	addrF     = "address"
 	allF      = "all"
 	accountF  = "account"
 	depositsF = "deposits"
