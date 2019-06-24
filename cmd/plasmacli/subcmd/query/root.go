@@ -4,10 +4,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var queryCmd = &cobra.Command{
-	Use:   "query",
-	Short: "Query information related to the sidechain",
-}
+const (
+	addrF = "address"
+)
 
 func QueryCmd() *cobra.Command {
 	queryCmd.AddCommand(
@@ -18,4 +17,9 @@ func QueryCmd() *cobra.Command {
 	)
 
 	return queryCmd
+}
+
+var queryCmd = &cobra.Command{
+	Use:   "query",
+	Short: "Query information related to the sidechain",
 }

@@ -1,4 +1,4 @@
-package subcmd
+package tx
 
 import (
 	"encoding/hex"

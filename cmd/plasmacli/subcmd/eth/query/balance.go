@@ -36,6 +36,8 @@ Usage:
 			return fmt.Errorf("please provide an account or use the address flag")
 		}
 
+		cmd.SilenceUsage = true
+
 		balance, err := plasmaContract.BalanceOf(nil, addr)
 
 		if err != nil {

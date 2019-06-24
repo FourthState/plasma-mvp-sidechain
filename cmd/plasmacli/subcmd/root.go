@@ -7,6 +7,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/keys"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/query"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/tx"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -18,18 +19,7 @@ import (
 var homeDir string = os.ExpandEnv("$HOME/.plasmacli/")
 
 // Flags
-const (
-	accountF      = "accounts"
-	addressF      = "address"
-	asyncF        = "async"
-	confirmSigs0F = "Input0ConfirmSigs"
-	confirmSigs1F = "Input1ConfirmSigs"
-	feeF          = "fee"
-	inputsF       = "inputValues"
-	ownerF        = "owner"
-	positionF     = "position"
-	replayF       = "replay"
-)
+const ()
 
 func init() {
 	// initConfig to be ran when Execute is called
@@ -39,12 +29,6 @@ func init() {
 // initConfig reads in config file and ENV variables if set
 func initConfig() {
 	viper.AutomaticEnv()
-}
-
-var rootCmd = &cobra.Command{
-	Use:           "plasmacli",
-	Short:         "Plasma Client",
-	SilenceErrors: true,
 }
 
 func RootCmd() *cobra.Command {
@@ -65,16 +49,12 @@ func RootCmd() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(
+		tx.TxCmd(),
 		eth.EthCmd(),
 		query.QueryCmd(),
 		client.LineBreak,
 
 		RestServerCmd(),
-		client.LineBreak,
-
-		SignCmd(),
-		SpendCmd(),
-		IncludeCmd(),
 		client.LineBreak,
 
 		keys.KeysCmd(),
@@ -84,4 +64,10 @@ func RootCmd() *cobra.Command {
 	)
 
 	return rootCmd
+}
+
+var rootCmd = &cobra.Command{
+	Use:           "plasmacli",
+	Short:         "Plasma Client",
+	SilenceErrors: true,
 }
