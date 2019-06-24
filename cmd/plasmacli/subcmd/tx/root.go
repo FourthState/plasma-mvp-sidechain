@@ -1,6 +1,7 @@
 package tx
 
 import (
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +19,7 @@ const (
 )
 
 func TxCmd() *cobra.Command {
+	config.AddPersistentTMFlags(txCmd)
 	txCmd.AddCommand(
 		IncludeCmd(),
 		SpendCmd(),

@@ -2,7 +2,8 @@ package eth
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
+	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -17,12 +18,13 @@ import (
 )
 
 func ExitCmd() *cobra.Command {
+	config.AddPersistentTMFlags(exitCmd)
 	exitCmd.Flags().String(feeF, "0", "fee committed in an unfinalized spend of the input")
 	exitCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
 	exitCmd.Flags().String(proofF, "", "merkle proof of inclusion")
-	exitCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for exiting utxo")
-	exitCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
-	exitCmd.Flags().StringP(txBytesF, "b", "", "bytes of the transaction that created the utxo ")
+	exitCmd.Flags().String(sigsF, "", "confirmation signatures for exiting utxo")
+	exitCmd.Flags().Bool(useNodeF, false, "retrieve information from connected full node")
+	exitCmd.Flags().String(txBytesF, "", "bytes of the transaction that created the utxo ")
 	return exitCmd
 }
 
@@ -64,7 +66,7 @@ Transaction Exit Usage:
 		}
 
 		// retrieve account key
-		key, err := store.GetKey(args[0])
+		key, err := ks.GetKey(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
@@ -101,7 +103,7 @@ Transaction Exit Usage:
 
 		// retrieve information necessary for transaction exit
 		var txBytes, proof, confirmSignatures []byte
-		if viper.GetBool(trustNodeF) { // query full node
+		if viper.GetBool(useNodeF) { // query full node
 			var result *tm.ResultTx
 			result, confirmSignatures, err = getProof(ctx, addr, position)
 			if err != nil {
@@ -117,7 +119,7 @@ Transaction Exit Usage:
 		}
 
 		if len(confirmSignatures) == 0 {
-			sigs, err := store.GetSig(position)
+			sigs, err := ks.GetSig(position)
 			if err == nil {
 				confirmSignatures = sigs
 			}

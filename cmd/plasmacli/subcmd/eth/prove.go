@@ -2,6 +2,7 @@ package eth
 
 import (
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
@@ -13,6 +14,7 @@ import (
 )
 
 func ProveCmd() *cobra.Command {
+	config.AddPersistentTMFlags(proveCmd)
 	return proveCmd
 }
 

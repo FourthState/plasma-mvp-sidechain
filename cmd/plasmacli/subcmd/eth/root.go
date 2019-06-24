@@ -11,19 +11,19 @@ import (
 
 const (
 	// flags
-	accountF   = "account"
-	allF       = "all"
-	depositsF  = "deposits"
-	feeF       = "fee"
-	gasLimitF  = "gas-limit"
-	indexF     = "index"
-	limitF     = "limit"
-	ownerF     = "owner"
-	positionF  = "position"
-	proofF     = "proof"
-	sigsF      = "signatures"
-	trustNodeF = "trust-node"
-	txBytesF   = "tx-bytes"
+	accountF  = "account"
+	allF      = "all"
+	depositsF = "deposits"
+	feeF      = "fee"
+	gasLimitF = "gas-limit"
+	indexF    = "index"
+	limitF    = "limit"
+	ownerF    = "owner"
+	positionF = "position"
+	proofF    = "proof"
+	sigsF     = "signatures"
+	useNodeF  = "use-node"
+	txBytesF  = "tx-bytes"
 
 	minExitBond = 200000
 )

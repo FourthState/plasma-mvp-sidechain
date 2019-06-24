@@ -2,7 +2,8 @@ package eth
 
 import (
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
+	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -16,12 +17,13 @@ import (
 )
 
 func ChallengeCmd() *cobra.Command {
+	config.AddPersistentTMFlags(challengeCmd)
 	challengeCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
 	challengeCmd.Flags().String(ownerF, "", "owner of the challenging transaction, required if different from the specified account")
 	challengeCmd.Flags().String(proofF, "", "merkle proof of inclusion")
-	challengeCmd.Flags().StringP(sigsF, "S", "", "confirmation signatures for the challenging transaction")
-	challengeCmd.Flags().BoolP(trustNodeF, "t", false, "trust connected full node")
-	challengeCmd.Flags().StringP(txBytesF, "b", "", "bytes of the challenging transaction")
+	challengeCmd.Flags().String(sigsF, "", "confirmation signatures for the challenging transaction")
+	challengeCmd.Flags().Bool(useNodeF, false, "trust connected full node")
+	challengeCmd.Flags().String(txBytesF, "", "bytes of the challenging transaction")
 	return challengeCmd
 }
 
@@ -57,7 +59,7 @@ Usage:
 			return fmt.Errorf("failed to parse gas limit: { %s }", err)
 		}
 
-		key, err := store.GetKey(args[2])
+		key, err := ks.GetKey(args[2])
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
@@ -78,7 +80,7 @@ Usage:
 		}
 
 		var txBytes, proof, confirmSignatures []byte
-		if viper.GetBool(trustNodeF) {
+		if viper.GetBool(useNodeF) {
 			var result *tm.ResultTx
 			result, confirmSignatures, err = getProof(ctx, owner, challengingPos)
 			if err != nil {
@@ -94,7 +96,7 @@ Usage:
 		}
 
 		if len(confirmSignatures) == 0 {
-			sigs, err := store.GetSig(challengingPos)
+			sigs, err := ks.GetSig(challengingPos)
 			if err == nil {
 				confirmSignatures = sigs
 			}
