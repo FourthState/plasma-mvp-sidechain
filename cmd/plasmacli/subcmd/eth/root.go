@@ -26,7 +26,7 @@ const (
 	trustNodeF = "trust-node"
 	txBytesF   = "tx-bytes"
 
-	mixExitBond = 200000
+	minExitBond = 200000
 )
 
 var plasmaContract *eth.Plasma
