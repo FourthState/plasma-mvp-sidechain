@@ -4,10 +4,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	addrF = "address"
-)
-
 func QueryCmd() *cobra.Command {
 	queryCmd.AddCommand(
 		BalanceCmd(),

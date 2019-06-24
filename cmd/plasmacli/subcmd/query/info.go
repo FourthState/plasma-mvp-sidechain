@@ -3,9 +3,10 @@ package query
 import (
 	"encoding/json"
 	"fmt"
+	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/ethereum/go-ethereum/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -14,18 +15,24 @@ func InfoCmd() *cobra.Command {
 }
 
 var infoCmd = &cobra.Command{
-	Use:   "info <address>",
-	Args:  cobra.ExactArgs(1),
-	Short: "Information on owned utxos valid and invalid",
+	Use:          "info <account/address>",
+	Short:        "Information on owned utxos valid and invalid",
+	SilenceUsage: true,
+	Args:         cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
-		addr := args[0]
-		if !common.IsHexAddress(addr) {
-			return fmt.Errorf("Invalid address provided. Please use hex format")
-		}
+		var (
+			addr ethcmn.Address
+			err  error
+		)
 
-		// valid arguments
-		cmd.SilenceUsage = true
+		if !ethcmn.IsHexAddress(args[0]) {
+			if addr, err = ks.GetAccount(args[0]); err != nil {
+				return fmt.Errorf("failed local account retrieval: %s", err)
+			}
+		} else {
+			addr = ethcmn.HexToAddress(args[0])
+		}
 
 		queryPath := fmt.Sprintf("custom/utxo/info/%s", addr)
 		data, err := ctx.Query(queryPath, nil)

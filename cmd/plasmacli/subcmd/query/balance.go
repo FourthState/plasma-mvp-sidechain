@@ -6,37 +6,30 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func BalanceCmd() *cobra.Command {
-	balanceCmd.Flags().StringP(addrF, "A", "", "query based on address")
 	return balanceCmd
 }
 
 var balanceCmd = &cobra.Command{
-	Use:   "balance <name>",
-	Short: "Query plasma chain balance",
-	Long: `Query for the total balance across utxos.
-	
-Usage: 
-	plasmacli eth query balance <account>
-	plasmacli eth query balance --address <address>`,
+	Use:          "balance <account/address>",
+	Short:        "Total plasma chain balance across utxos",
 	SilenceUsage: true,
-	Args:         cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		viper.BindPFlags(cmd.Flags())
+	Args:         cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
-		var addr ethcmn.Address
+		var (
+			addr ethcmn.Address
+			err  error
+		)
 
-		if viper.GetString(addrF) != "" {
-			addr = ethcmn.HexToAddress(viper.GetString(addrF))
-		} else if len(args) > 0 {
+		if !ethcmn.IsHexAddress(args[0]) {
 			if addr, err = ks.GetAccount(args[0]); err != nil {
-				return fmt.Errorf("failed to retrieve account: { %s }", err)
+				return fmt.Errorf("failed local account retrieval: %s", err)
 			}
 		} else {
-			return fmt.Errorf("please provide an account or use the address flag")
+			addr = ethcmn.HexToAddress(args[0])
 		}
 
 		queryPath := fmt.Sprintf("custom/utxo/balance/%s", addr.Hex())

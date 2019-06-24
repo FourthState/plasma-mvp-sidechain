@@ -12,7 +12,6 @@ import (
 const (
 	// flags
 	accountF   = "account"
-	addrF      = "address"
 	allF       = "all"
 	depositsF  = "deposits"
 	feeF       = "fee"
