@@ -1,12 +1,17 @@
 package store
 
 import (
-	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
+)
+
+const (
+	// QueryOutputStore is the route to the OutputStore
+	QueryOutputStore = "outputs" // TODO:
+
+	// QueryBlockStore is the route to the BlockStore
+	QueryBlockStore = "block"
 )
 
 // keys
@@ -18,31 +23,32 @@ var (
 	outputKey  = []byte{0x4}
 )
 
-/* Returns key to retrieve wallet for given address */
+// GetWalletKey returns the key to retrieve wallet for given address.
 func GetWalletKey(addr common.Address) []byte {
 	return prefixKey(walletKey, addr.Bytes())
 }
 
-/* Returns key to retrieve deposit for given nonce */
+// GetDepositKey returns the key to retrieve deposit for given nonce.
 func GetDepositKey(nonce *big.Int) []byte {
 	return prefixKey(depositKey, nonce.Bytes())
 }
 
-/* Returns key to retrieve fee for given position */
+// GetFeeKey returns the key to retrieve fee for given position.
 func GetFeeKey(pos plasma.Position) []byte {
 	return prefixKey(feeKey, pos.Bytes())
 }
 
-/* Returns key to retrieve UTXO for given position */
+// GetOutputKey returns key to retrieve UTXO for given position.
 func GetOutputKey(pos plasma.Position) []byte {
 	return prefixKey(outputKey, pos.Bytes())
 }
 
-/* Returns Transaction for given hash */
+// GetTxKey returns Transaction for given hash.
 func GetTxKey(hash []byte) []byte {
 	return prefixKey(txKey, hash)
 }
 
+// prefixes the key
 func prefixKey(prefix, key []byte) []byte {
 	return append(prefix, key...)
 }

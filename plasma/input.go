@@ -5,13 +5,14 @@ import (
 	"fmt"
 )
 
-// Input represents the input to a spend
+// Input represents the input to a spend transaction.
 type Input struct {
 	Position
 	Signature         [65]byte
 	ConfirmSignatures [][65]byte
 }
 
+// NewInput creates a Input object.
 func NewInput(position Position, sig [65]byte, confirmSigs [][65]byte) Input {
 	// nil != empty slice. avoid deserialization issues by forcing empty slices
 	if confirmSigs == nil {

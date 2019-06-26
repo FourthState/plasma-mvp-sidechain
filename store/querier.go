@@ -20,15 +20,16 @@ const (
 	// by the specified address
 	QueryInfo = "info"
 
-	// QueryTransactionOutput retrieves a single output at
+	// QueryTxnOutput retrieves a single output at
 	// the given position and returns it with transactional
 	// information
-	QueryTransactionOutput = "output"
+	QueryTxOutput = "output"
 
 	// QueryTx retrieves a transaction at the given hash
 	QueryTx = "tx"
 )
 
+// NewOutputQuerier creates a OutputQuerier object.
 func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
@@ -61,7 +62,7 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 				return nil, sdk.ErrInternal("serialization error")
 			}
 			return data, nil
-		case QueryTransactionOutput:
+		case QueryTxOutput:
 			if len(path) != 2 {
 				return nil, sdk.ErrUnknownRequest("expected txo/<position>")
 			}
@@ -69,11 +70,11 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 			if e != nil {
 				return nil, sdk.ErrInternal("position decoding error")
 			}
-			output, err := queryTransactionOutput(ctx, outputStore, pos)
+			output, err := queryTxOutput(ctx, outputStore, pos)
 			if err != nil {
 				return nil, err
 			}
-			txo := TransactionOutput{}
+			txo := TxOutput{}
 			data, e := json.Marshal(txo)
 			if e != nil {
 				return nil, sdk.ErrInternal("serialization error")
@@ -115,18 +116,18 @@ func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([
 	return outputStore.GetUnspentForWallet(ctx, acc), nil
 }
 
-func queryTransactionOutput(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) (TransactionOutput, sdk.Error) {
+func queryTxOutput(ctx sdk.Context, outputStore OutputStore, pos plasma.Position) (TxOutput, sdk.Error) {
 	output, ok := outputStore.GetOutput(ctx, pos)
 	if !ok {
-		return TransactionOutput{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
+		return TxOutput{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
 	}
 
 	tx, ok := outputStore.GetTxWithPosition(ctx, pos)
 	if !ok {
-		return TransactionOutput{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
+		return TxOutput{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
 	}
 
-	txo := NewTransactionOutput(output.Output, pos, output.Spent, output.SpenderTx, tx.InputAddress(), tx.InputPositions())
+	txo := NewTxOutput(output.Output, pos, output.Spent, output.SpenderTx, tx.InputAddress(), tx.InputPositions())
 
 	return output, nil
 }

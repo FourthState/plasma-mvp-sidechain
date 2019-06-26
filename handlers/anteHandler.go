@@ -20,6 +20,8 @@ type plasmaConn interface {
 	HasTxBeenExited(*big.Int, plasma.Position) bool
 }
 
+// NewAnteHandler returns an ante handler capable of handling include_deposit
+// and spend_utxo Msgs.
 func NewAnteHandler(outputStore store.OutputStore, blockStore store.BlockStore, client plasmaConn) sdk.AnteHandler {
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
 		msg := tx.GetMsgs()[0] // tx should only have one msg

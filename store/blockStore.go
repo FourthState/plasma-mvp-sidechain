@@ -6,40 +6,8 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"io"
 	"math/big"
 )
-
-type BlockStore struct {
-	kvStore
-}
-
-type Block struct {
-	plasma.Block
-	TMBlockHeight uint64
-}
-
-type block struct {
-	PlasmaBlock   plasma.Block
-	TMBlockHeight uint64
-}
-
-// EncodeRLP RLP encodes a Block struct
-func (b *Block) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &block{b.Block, b.TMBlockHeight})
-}
-
-// DecodeRLP decodes the byte stream into a Block
-func (b *Block) DecodeRLP(s *rlp.Stream) error {
-	var block block
-	if err := s.Decode(&block); err != nil {
-		return err
-	}
-
-	b.Block = block.PlasmaBlock
-	b.TMBlockHeight = block.TMBlockHeight
-	return nil
-}
 
 // keys
 var (
@@ -47,14 +15,19 @@ var (
 	plasmaBlockNumKey = []byte{0x1}
 )
 
-// NewBlockStore is a constructor function for BlockStore
+// BlockStore holds plamsa blocks.
+type BlockStore struct {
+	kvStore
+}
+
+// NewBlockStore is a constructor function for BlockStore.
 func NewBlockStore(ctxKey sdk.StoreKey) BlockStore {
 	return BlockStore{
 		kvStore: NewKVStore(ctxKey),
 	}
 }
 
-// GetBlock returns the plasma block at the provided height
+// GetBlock returns the plasma block at the provided height.
 func (store BlockStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
 	key := prefixKey(blockKey, blockHeight.Bytes())
 	data := store.Get(ctx, key)
@@ -70,7 +43,8 @@ func (store BlockStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, 
 	return block, true
 }
 
-// StoreBlock will store the plasma block and return the plasma block number in which it was stored under
+// StoreBlock will store the plasma block and return the plasma block number
+// in which it was stored at.
 func (store BlockStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
 	plasmaBlockNum := store.NextPlasmaBlockNum(ctx)
 
@@ -89,7 +63,7 @@ func (store BlockStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block 
 	return plasmaBlockNum
 }
 
-// PlasmaBlockHeight returns the current plasma block height
+// PlasmaBlockHeight returns the current plasma block height.
 func (store BlockStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, []byte(plasmaBlockNumKey))
@@ -102,7 +76,7 @@ func (store BlockStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	return plasmaBlockNum
 }
 
-// NextPlasmaBlockNum returns the next plasma block number to be used
+// NextPlasmaBlockNum returns the next plasma block number to be used.
 func (store BlockStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, []byte(plasmaBlockNumKey))

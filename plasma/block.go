@@ -6,7 +6,7 @@ import (
 	"math/big"
 )
 
-// Block represent one plasma block
+// Block represents a plasma block.
 type Block struct {
 	Header    [32]byte
 	TxnCount  uint16
@@ -19,19 +19,19 @@ type block struct {
 	FeeAmount []byte
 }
 
-// NewBlock is a constructor for Block
+// NewBlock creates a Block object.
 func NewBlock(header [32]byte, txnCount uint16, feeAmount *big.Int) Block {
 	return Block{header, txnCount, feeAmount}
 }
 
-// EncodeRLP satisfies the rlp interface for Block
+// EncodeRLP satisfies the rlp interface for Block.
 func (b *Block) EncodeRLP(w io.Writer) error {
 	blk := &block{b.Header, b.TxnCount, b.FeeAmount.Bytes()}
 
 	return rlp.Encode(w, blk)
 }
 
-// DecodeRLP satisfies the rlp interface for Block
+// DecodeRLP satisfies the rlp interface for Block.
 func (b *Block) DecodeRLP(s *rlp.Stream) error {
 	var blk block
 	if err := s.Decode(&blk); err != nil {
