@@ -7,7 +7,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func init() {
@@ -20,16 +19,25 @@ var infoCmd = &cobra.Command{
 	Short: "Information on owned utxos valid and invalid",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
-		addrStr := strings.TrimSpace(args[0])
-		if !common.IsHexAddress(addrStr) {
+		addr := args[0]
+		if !common.IsHexAddress(addr) {
 			return fmt.Errorf("Invalid address provided. Please use hex format")
 		}
 		addr := common.HexToAddress(addrStr)
 		fmt.Printf("Querying information for 0x%x\n\n", addr)
 
-		utxos, err := Info(ctx, addr)
+		// valid arguments
+		cmd.SilenceUsage = true
+
+		queryPath := fmt.Sprintf("custom/tx/info/%s", addr)
+		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return err
+		}
+
+		var utxos []store.OuptputInfo
+		if err := json.Unmarshal(data, &utxos); err != nil {
+			return fmt.Errorf("unmarshaling json query response: %s", err)
 		}
 
 		for i, utxo := range utxos {

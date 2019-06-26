@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client/plasmacli/query"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/server/app"
@@ -11,19 +12,29 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/gorilla/mux"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/types"
-	"io/ioutil"
+	"math/big"
 	"net/http"
+	"os"
 )
 
+var serverCmd = lcd.ServeCommand(app.MakeCodec(), registerRoutes)
+
 func init() {
-	cdc := app.MakeCodec()
-	rootCmd.AddCommand(lcd.ServeCommand(cdc, registerRoutes))
+	if err := viper.BindPFlags(serverCmd.Flags()); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
-// RegisterRoutes - Central function to define routes that get registered by the main application
+func RestServerCmd() *cobra.Command {
+	return serverCmd
+}
+
 func registerRoutes(rs *lcd.RestServer) {
-	ctx := rs.CliCtx.WithTrustNode(true)
+	ctx := rs.CliCtx
 	r := rs.Mux
 
 	r.HandleFunc("/balance/{address}", balanceHandler(ctx)).Methods("GET")
@@ -45,16 +56,15 @@ func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		total, err := query.Balance(ctx, common.HexToAddress(addr))
+		queryPath := fmt.Sprintf("custom/tx/balance/%s", addr)
+		total, err := ctx.Query(queryPath, nil)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
-			// Log the error
-			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(total))
+		w.Write(total)
 	}
 }
 
@@ -68,17 +78,11 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		utxos, err := query.Info(ctx, common.HexToAddress(addr))
+		queryPath := fmt.Sprintf("custom/tx/info/%s", addr)
+		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			// Log the error
-			return
-		}
-
-		data, err := json.Marshal(utxos)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			// log the error
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 			return
 		}
 
@@ -89,10 +93,29 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 
 func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		txBytes, err := ioutil.ReadAll(hex.NewDecoder(r.Body))
+		type reqBody struct {
+			Async   bool   `json:"async"`
+			TxBytes string `json:"txBytes"`
+		}
+
+		var body reqBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("unable to read request body: " + err.Error()))
+			return
+		}
+
+		// clean up txBytes string
+		if len(body.TxBytes) > 2 && body.TxBytes[:2] == "0x" || body.TxBytes[:2] == "0X" {
+			body.TxBytes = body.TxBytes[2:]
+		}
+		if len(body.TxBytes)%2 != 0 {
+			body.TxBytes = "0" + body.TxBytes
+		}
+		txBytes, err := hex.DecodeString(body.TxBytes)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("unable to read transaction bytes. Body must be in hex format"))
+			w.Write([]byte("tx bytes must be in hexadecimal format"))
 			return
 		}
 
@@ -110,7 +133,12 @@ func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 		}
 
 		// deliver the tx
-		_, err = ctx.BroadcastTxAndAwaitCommit(txBytes)
+		if body.Async {
+			_, err = ctx.BroadcastTxAsync(txBytes)
+		} else {
+			_, err = ctx.BroadcastTxAndAwaitCommit(txBytes)
+		}
+
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
@@ -124,20 +152,12 @@ func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 // retrieve full information about a block
 func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		num := mux.Vars(r)["num"]
-
-		if num == "0" || num == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("plasma blocks start at 1"))
-			return
-		}
+		num, _ := new(big.Int).SetString(mux.Vars(r)["num"], 10)
 
 		block, err := query.Block(ctx, num)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
-			// TODO: check the against the codespace type
-			// maybe the block does not exist?
 			return
 		}
 
@@ -175,18 +195,20 @@ func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 			num = ""
 		}
 
-		if num == "0" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("plasma blocks start at 1"))
-			return
+		var blockNum *big.Int
+		if num != "" {
+			var ok bool
+			blockNum, ok = new(big.Int).SetString(num, 10)
+			if !ok || blockNum.Sign() <= 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("number must be in decimal format starting from 1"))
+			}
 		}
 
-		blocksResp, err := query.BlocksMetadata(ctx, num)
+		blocksResp, err := query.BlocksMetadata(ctx, blockNum)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
-			// TODO: check the against the codespace type
-			// maybe the block does not exist?
 			return
 		}
 

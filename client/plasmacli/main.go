@@ -53,6 +53,7 @@ func main() {
 
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	viper.AddConfigPath(homeDir)
@@ -66,6 +67,9 @@ func main() {
 		query.QueryCmd(),
 		eth.ProveCmd(),
 		includeCmd,
+		client.LineBreak,
+
+		RestServerCmd(),
 		client.LineBreak,
 
 		signCmd,

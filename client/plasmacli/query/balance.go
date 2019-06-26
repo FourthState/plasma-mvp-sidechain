@@ -5,7 +5,6 @@ import (
 	ks "github.com/FourthState/plasma-mvp-sidechain/client/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -21,24 +20,28 @@ var balanceCmd = &cobra.Command{
 		ctx := context.NewCLIContext().WithCodec(codec.New()).WithTrustNode(true)
 		name := args[0]
 
+		// no more additional argument validation
+		cmd.SilenceUsage = true
+
 		addr, err := ks.GetAccount(name)
 		if err != nil {
 			return err
 		}
 
-		total, err := Balance(ctx, addr)
+		queryPath := fmt.Sprintf("custom/tx/balance/%s", addr.Hex())
+		total, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("Address: %0x\n", addr)
-		fmt.Printf("Total: %s\n", total)
+		fmt.Printf("Total: %s\n", string(total))
 		return nil
 	},
 }
 
 func Balance(ctx context.CLIContext, addr common.Address) (string, error) {
-	queryRoute := fmt.Sprintf("custom/utxo/balance/%s", addr.Hex())
+	queryRoute := fmt.Sprintf("custom/tx/balance/%s", addr.Hex())
 	data, err := ctx.Query(queryRoute, nil)
 	if err != nil {
 		return "", err

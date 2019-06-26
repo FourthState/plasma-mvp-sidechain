@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/store/query"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/spf13/cobra"
 	"math/big"
-	"strings"
 )
 
 func init() {
@@ -22,7 +22,11 @@ var blockCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
-		num := strings.TrimSpace(args[0])
+		num, ok := new(big.Int).SetString(args[0], 10)
+		if !ok {
+			return fmt.Errorf("number must be in decimal format")
+		}
+		cmd.SilenceUsage = true
 
 		block, err := Block(ctx, num)
 		if err != nil {
@@ -41,49 +45,38 @@ var blocksCmd = &cobra.Command{
 	Use:   "blocks <number>",
 	Short: "Query Metadata about blocks",
 	Long:  "Query Metadata about blocks. If no height is provided, the latest 10 blocks will be queried. Otherwise 10 starting from the specified height",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
-		if len(args) > 1 {
-			return fmt.Errorf("only maximum one argument")
+
+		var blockNum *big.Int
+		if len(args) > 0 {
+			var ok bool
+			blockNum, ok = new(big.Int).SetString(args[0], 10)
+			if !ok || blockNum.Sign() <= 0 {
+				return fmt.Errorf("number must be in decimal format starting from 1. Got: %s", args[0])
+			}
 		}
 
-		startingBlockNum := ""
-		if len(args) == 1 {
-			startingBlockNum = strings.TrimSpace(args[0])
-			if startingBlockNum == "0" {
-				return fmt.Errorf("plasma blocks start at height 1")
-			}
-
-			_, ok := new(big.Int).SetString(startingBlockNum, 10)
-			if !ok {
-				return fmt.Errorf("provided block height must be in decimal format")
-			}
-
-			fmt.Printf("Querying blocks from height %s...\n", startingBlockNum)
-		} else {
-			fmt.Printf("No height specified. Querying the latest 10 blocks..\n")
-		}
-
-		// finished argument checking
+		// done with argument checking
 		cmd.SilenceUsage = true
 
-		blocksResp, err := BlocksMetadata(ctx, startingBlockNum)
+		blocksResp, err := BlocksMetadata(ctx, blockNum)
 		if err != nil {
 			return err
 		}
 
 		if len(blocksResp.Blocks) == 0 {
-			fmt.Printf("no block starting at height %s\n", startingBlockNum)
+			fmt.Printf("no block starting at height %s\n", blocksResp.StartingBlockHeight)
 			return nil
 		}
 
 		blockHeight := blocksResp.StartingBlockHeight
 		for _, block := range blocksResp.Blocks {
-			fmt.Println("")
 			fmt.Printf("Block Height: %s\n", blockHeight)
 			fmt.Printf("Header: 0x%x\n", block.Header)
 			fmt.Printf("Transaction Count: %d\n", block.TxnCount)
-			fmt.Printf("Fee Amount: %s\n", block.FeeAmount)
+			fmt.Printf("Fee Amount: %s\n\n", block.FeeAmount)
 
 			blockHeight = blockHeight.Add(blockHeight, utils.Big1)
 		}
@@ -92,7 +85,11 @@ var blocksCmd = &cobra.Command{
 	},
 }
 
-func Block(ctx context.CLIContext, num string) (store.Block, error) {
+func Block(ctx context.CLIContext, num *big.Int) (store.Block, error) {
+	if num == nil || num.Sign() <= 0 {
+		return store.Block{}, ErrInvalidArg("block number starts at 1")
+	}
+
 	queryPath := fmt.Sprintf("custom/plasma/block/%s", num)
 	data, err := ctx.Query(queryPath, nil)
 	if err != nil {
@@ -101,28 +98,32 @@ func Block(ctx context.CLIContext, num string) (store.Block, error) {
 
 	var block store.Block
 	if err := json.Unmarshal(data, &block); err != nil {
-		return store.Block{}, err
+		return store.Block{}, ErrSerialization("json unmarshal: %s", err)
 	}
 
 	return block, nil
 }
 
-func BlocksMetadata(ctx context.CLIContext, startingBlockNum string) (store.BlocksResp, error) {
+// BlocksMetadata will query metadate about 10 plasma blocks starting from `startingBlockNum`.
+// The latest 10 blocks will be retrieved if startingBlockNum is nil
+func BlocksMetadata(ctx context.CLIContext, startingBlockNum *big.Int) (query.BlocksResp, error) {
 	var queryPath string
-	if startingBlockNum == "" {
+	if startingBlockNum == nil {
 		queryPath = "custom/plasma/blocks"
+	} else if startingBlockNum.Sign() <= 0 {
+		return query.BlocksResp{}, ErrInvalidArg("block number starts at 1")
 	} else {
 		queryPath = fmt.Sprintf("custom/plasma/blocks/%s", startingBlockNum)
 	}
 
 	data, err := ctx.Query(queryPath, nil)
 	if err != nil {
-		return store.BlocksResp{}, err
+		return query.BlocksResp{}, err
 	}
 
-	var resp store.BlocksResp
+	var resp query.BlocksResp
 	if err := json.Unmarshal(data, &resp); err != nil {
-		return store.BlocksResp{}, err
+		return query.BlocksResp{}, ErrSerialization("json unmarshal: %s", err)
 	}
 
 	return resp, nil
