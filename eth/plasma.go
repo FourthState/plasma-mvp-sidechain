@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	contracts "github.com/FourthState/plasma-mvp-sidechain/contracts/wrappers"
@@ -10,91 +11,108 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"math/big"
-	"sync"
 	"time"
 )
 
+var logger log.Logger = log.NewNopLogger()
+
+// SetLogger will adjust the logger used in the eth module
+func SetLogger(l log.Logger) {
+	logger = l
+}
+
 // Plasma holds related unexported members
 type Plasma struct {
-	*sync.Mutex
-	operatorSession *contracts.PlasmaMVPSession
-	contract        *contracts.PlasmaMVP
+	*contracts.PlasmaMVP // expose all the contract methods
+
+	client          Client
+	finalityBound   uint64
+	operatorSession *operatorSession
+}
+
+type operatorSession struct {
+	*contracts.PlasmaMVPSession
 
 	commitmentRate      time.Duration
 	lastBlockSubmission time.Time
-
-	client Client
-	logger log.Logger
-
-	finalityBound uint64
 }
 
-// TODO: synching issues when rebooting a full node that contains plasma headers that have not been committed
-
 // InitPlasma binds the go wrapper to the deployed contract. This private key provides authentication for the operator
-func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64, commitmentRate time.Duration, logger log.Logger, isOperator bool, operatorPrivKey *ecdsa.PrivateKey) (*Plasma, error) {
+func InitPlasma(contractAddr common.Address, client Client, finalityBound uint64) (*Plasma, error) {
 	logger.Info(fmt.Sprintf("binding to contract address 0x%x", contractAddr))
-	logger.Info(fmt.Sprintf("block commitment rate set to %s", commitmentRate))
 	plasmaContract, err := contracts.NewPlasmaMVP(contractAddr, client.ec)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a session with the contract and operator account
-	var operatorSession *contracts.PlasmaMVPSession = nil
-	if isOperator {
-		auth := bind.NewKeyedTransactor(operatorPrivKey)
-		operatorSession = &contracts.PlasmaMVPSession{
-			Contract: plasmaContract,
-			CallOpts: bind.CallOpts{
-				Pending: true,
-			},
-			TransactOpts: bind.TransactOpts{
-				From:     auth.From,
-				Signer:   auth.Signer,
-				GasLimit: 3141592, // aribitrary. TODO: check this
-			},
-		}
-
-		logger.Info("operator mode. authenticated contract session started")
-	}
-
 	plasma := &Plasma{
-		operatorSession: operatorSession,
-		contract:        plasmaContract,
-		client:          client,
-		logger:          logger,
-
-		commitmentRate:      commitmentRate,
-		lastBlockSubmission: time.Now(),
-
+		PlasmaMVP:     plasmaContract,
+		client:        client,
 		finalityBound: finalityBound,
-
-		Mutex: &sync.Mutex{},
 	}
 
 	return plasma, nil
 }
 
+// WithOperatorSession will set up an operators session with the smart contract. The contract's operator public key must
+// match the public key corresponding `operatorPrivKey`
+func (plasma *Plasma) WithOperatorSession(operatorPrivkey *ecdsa.PrivateKey, commitmentRate time.Duration) (*Plasma, error) {
+	logger.Info(fmt.Sprintf("block commitment rate set to %s", commitmentRate))
+
+	// check that the public key matches the address of the operator
+	addr := crypto.PubkeyToAddress(operatorPrivkey.PublicKey)
+	operator, err := plasma.OperatorAddress()
+	if err != nil {
+		return plasma, err
+	}
+	if !bytes.Equal(operator[:], addr[:]) {
+		return plasma, fmt.Errorf("operator address mismatch. Got 0x%x. Expected:0x%x", addr, operator)
+	}
+
+	auth := bind.NewKeyedTransactor(operatorPrivkey)
+	contractSession := &contracts.PlasmaMVPSession{
+		Contract: plasma.PlasmaMVP,
+		CallOpts: bind.CallOpts{
+			Pending: true,
+		},
+		TransactOpts: bind.TransactOpts{
+			From:     auth.From,
+			Signer:   auth.Signer,
+			GasLimit: 3141592, // aribitrary. TODO: check this
+		},
+	}
+
+	opSession := &operatorSession{
+		PlasmaMVPSession:    contractSession,
+		commitmentRate:      commitmentRate,
+		lastBlockSubmission: time.Now(),
+	}
+
+	plasma.operatorSession = opSession
+	return plasma, nil
+}
+
+// OperatorAddress will fetch the plasma operator address from the connected smart contract
 func (plasma *Plasma) OperatorAddress() (common.Address, error) {
-	return plasma.contract.Operator(nil)
+	return plasma.Operator(nil)
 }
 
 // CommitPlasmaHeaders will commit all new non-committed headers to the smart contract.
 // the commitmentRate interval must pass since the last commitment
 func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.PlasmaStore) error {
 	// only the contract operator can submit blocks. The commitment duration must also pass
-	if plasma.operatorSession == nil || time.Since(plasma.lastBlockSubmission).Seconds() < plasma.commitmentRate.Seconds() {
+	if plasma.operatorSession == nil || time.Since(plasma.operatorSession.lastBlockSubmission).Seconds() < plasma.operatorSession.commitmentRate.Seconds() {
 		return nil
 	}
 
-	plasma.logger.Info("attempting to commit plasma headers...")
+	logger.Info("attempting to commit plasma headers...")
 
-	lastCommittedBlock, err := plasma.contract.LastCommittedBlock(nil)
+	lastCommittedBlock, err := plasma.LastCommittedBlock(nil)
 	if err != nil {
-		plasma.logger.Error("error retrieving the last committed block number")
+		logger.Error("error retrieving the last committed block number")
 		return err
 	}
 
@@ -109,7 +127,7 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.Pla
 
 	block, ok := plasmaStore.GetBlock(ctx, blockNum)
 	if !ok { // no blocks to submit
-		plasma.logger.Info("no plasma blocks to commit")
+		logger.Info("no plasma blocks to commit")
 		return nil
 	}
 
@@ -122,22 +140,23 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, plasmaStore store.Pla
 		block, ok = plasmaStore.GetBlock(ctx, blockNum)
 	}
 
-	plasma.logger.Info(fmt.Sprintf("committing %d plasma blocks. first block num: %s", len(headers), firstBlockNum))
-	plasma.lastBlockSubmission = time.Now()
+	logger.Info(fmt.Sprintf("committing %d plasma blocks. first block num: %s", len(headers), firstBlockNum))
+	plasma.operatorSession.lastBlockSubmission = time.Now()
 	_, err = plasma.operatorSession.SubmitBlock(headers, txnsPerBlock, feesPerBlock, firstBlockNum)
 	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("error committing headers { %s }", err))
+		logger.Error(fmt.Sprintf("error committing headers { %s }", err))
 		return err
 	}
 
 	return err
 }
 
-// GetDeposit checks the existence of a deposit nonce
-func (plasma *Plasma) GetDeposit(plasmaBlock *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
-	deposit, err := plasma.contract.Deposits(nil, nonce)
+// GetDeposit checks the existence of a deposit nonce. The state is synchronized with the provided `plasmaBlockHeight. The deposit
+// must have occured before or at the same pegged ethereum block as `plasmaBlockHeight`.
+func (plasma *Plasma) GetDeposit(plasmaBlockHeight *big.Int, nonce *big.Int) (plasmaTypes.Deposit, *big.Int, bool) {
+	deposit, err := plasma.Deposits(nil, nonce)
 	if err != nil {
-		// TODO: log the error
+		logger.Error(fmt.Sprintf("failed deposit retrieval: %s", err))
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
@@ -146,9 +165,9 @@ func (plasma *Plasma) GetDeposit(plasmaBlock *big.Int, nonce *big.Int) (plasmaTy
 	}
 
 	// check the finality bound based off pegged ETH block
-	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlock)
+	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlockHeight)
 	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("could not get pegged ETH Block for sidechain block %d: %s", plasmaBlock.Int64(), err.Error()))
+		logger.Error(fmt.Sprintf("could not get pegged ETH Block for sidechain block %s: %s", plasmaBlockHeight, err))
 		return plasmaTypes.Deposit{}, nil, false
 	}
 
@@ -169,8 +188,9 @@ func (plasma *Plasma) GetDeposit(plasmaBlock *big.Int, nonce *big.Int) (plasmaTy
 	}, threshold, true
 }
 
-// HasTXBeenExited indicates if the position has ever been exited
-func (plasma *Plasma) HasTxBeenExited(plasmaBlock *big.Int, position plasmaTypes.Position) bool {
+// HasTxExited indicates if the position has ever been exited at a time less than or equal to
+// the time `plasmaBlockHeight` was submitted. If nil, it is checked against the latest state
+func (plasma *Plasma) HasTxExited(plasmaBlockHeight *big.Int, position plasmaTypes.Position) (bool, error) {
 	type exit struct {
 		Amount       *big.Int
 		CommittedFee *big.Int
@@ -187,30 +207,39 @@ func (plasma *Plasma) HasTxBeenExited(plasmaBlock *big.Int, position plasmaTypes
 
 	priority := position.Priority()
 	if position.IsDeposit() {
-		e, err = plasma.contract.DepositExits(nil, priority)
+		e, err = plasma.DepositExits(nil, priority)
 	} else {
-		e, err = plasma.contract.TxExits(nil, priority)
+		e, err = plasma.TxExits(nil, priority)
 	}
 
 	// censor spends until the error is fixed
 	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("failed to retrieve exit information about position %s { %s }", position, err))
-		return true
+		logger.Error(fmt.Sprintf("failed to retrieve exit information about position %s { %s }", position, err))
+		return true, err
 	}
 
-	ethBlockNum, err := plasma.ethBlockPeg(plasmaBlock)
-	if err != nil {
-		plasma.logger.Error(fmt.Sprintf("could not get associated ETH Block for plasma block %d: %s", plasmaBlock.Int64(), err.Error()))
-		return true
+	// `Pending` or `Challenged` stateee
+	exited := e.State == 1 || e.State == 3
+
+	// synchronize with the correct ethereum state
+	if plasmaBlockHeight != nil {
+		ethBlockNum, err := plasma.ethBlockPeg(plasmaBlockHeight)
+		if err != nil {
+			// censore spends until the error is fixed
+			logger.Error(fmt.Sprintf("could not get associated ETH Block for plasma block %s: %s", plasmaBlockHeight, err))
+			return true, err
+		}
+
+		// exited AND the exit occured before or in the pegged ethereum block
+		return exited && e.EthBlockNum.Cmp(ethBlockNum) <= 0, nil
 	}
 
-	// Return true if exit is pending/finalized AND exit happened before the pegged ETH block
-	return (e.State == 1 || e.State == 3) && e.EthBlockNum.Cmp(ethBlockNum) <= 0
+	return exited, nil
 }
 
 // Return the Ethereum Block that sidechain should use to synchronize current block tx's with rootchain state
-func (plasma *Plasma) ethBlockPeg(plasmaBlock *big.Int) (*big.Int, error) {
-	lastCommittedBlock, err := plasma.contract.LastCommittedBlock(nil)
+func (plasma *Plasma) ethBlockPeg(plasmaBlockHeight *big.Int) (*big.Int, error) {
+	lastCommittedBlock, err := plasma.LastCommittedBlock(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +252,7 @@ func (plasma *Plasma) ethBlockPeg(plasmaBlock *big.Int) (*big.Int, error) {
 		return latestBlock, nil
 	}
 	var blockIndex *big.Int
-	prevBlock := new(big.Int).Sub(plasmaBlock, big.NewInt(1))
+	prevBlock := new(big.Int).Sub(plasmaBlockHeight, big.NewInt(1))
 	// For syncing nodes, peg to EthBlock at plasmaBlock-1 submission
 	// For live nodes, peg to LastCommittedBlock
 	if lastCommittedBlock.Cmp(prevBlock) == 1 {
@@ -231,7 +260,7 @@ func (plasma *Plasma) ethBlockPeg(plasmaBlock *big.Int) (*big.Int, error) {
 	} else {
 		blockIndex = lastCommittedBlock
 	}
-	submittedBlock, err := plasma.contract.PlasmaChain(nil, blockIndex)
+	submittedBlock, err := plasma.PlasmaChain(nil, blockIndex)
 	if err != nil {
 		return nil, err
 	}

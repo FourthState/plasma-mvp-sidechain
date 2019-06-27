@@ -7,16 +7,16 @@ all: install test
 
 build: go.sum 
 ifeq ($(OS),Windows_NT)
-	go build -o -mod=readonly -o build/plasmad.exe ./server/plasmad
-	go build -o -mod=readonly -o build/plasmacli.exe ./client/plasmacli
+	go build -o -mod=readonly -o build/plasmad.exe ./cmd/plasmad
+	go build -o -mod=readonly -o build/plasmacli.exe ./cmd/plasmacli
 else
-	go build -o -mod=readonly -o build/plasmad ./server/plasmad
-	go build -o -mod=readonly -o build/plasmacli ./client/plasmacli
+	go build -o -mod=readonly -o build/plasmad ./cmd/plasmad
+	go build -o -mod=readonly -o build/plasmacli ./cmd/plasmacli
 endif
 
 install: go.sum
-	go install -mod=readonly ./server/plasmad
-	go install -mod=readonly ./client/plasmacli
+	go install -mod=readonly ./cmd/plasmad
+	go install -mod=readonly ./cmd/plasmacli
 
 ########################################
 ### Dependencies & Maintenance

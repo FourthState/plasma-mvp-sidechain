@@ -17,7 +17,7 @@ import (
 // to be cooked when testing the ante handler
 type plasmaConn interface {
 	GetDeposit(*big.Int, *big.Int) (plasma.Deposit, *big.Int, bool)
-	HasTxBeenExited(*big.Int, plasma.Position) bool
+	HasTxExited(*big.Int, plasma.Position) (bool, error)
 }
 
 func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) sdk.AnteHandler {
@@ -109,7 +109,10 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	if inputUTXO.Spent {
 		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, already spent", input.Position).Result()
 	}
-	if client.HasTxBeenExited(plasmaStore.CurrentPlasmaBlockNum(ctx), input.Position) {
+	exited, err := client.HasTxExited(plasmaStore.CurrentPlasmaBlockNum(ctx), input.Position)
+	if err != nil {
+		return nil, sdk.ErrInternal(fmt.Sprintf("geth endpoint failure: %s", err)).Result()
+	} else if exited {
 		return nil, ErrExitedInput(DefaultCodespace, "input, %v, utxo has exitted", input.Position).Result()
 	}
 
@@ -124,7 +127,10 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 	// check if the parent utxo has exited
 	for _, key := range inputUTXO.InputKeys {
 		utxo, _ := utxoStore.GetUTXOWithKey(ctx, key)
-		if client.HasTxBeenExited(plasmaStore.CurrentPlasmaBlockNum(ctx), utxo.Position) {
+		exited, err := client.HasTxExited(plasmaStore.CurrentPlasmaBlockNum(ctx), utxo.Position)
+		if err != nil {
+			return nil, sdk.ErrInternal(fmt.Sprintf("geth endpoint failure: %s", err)).Result()
+		} else if exited {
 			return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %v", utxo.Output.Owner, utxo.Position)).Result()
 		}
 	}
@@ -166,8 +172,10 @@ func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, plasm
 	if !ok {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), threshold.Int64()).Result(), true
 	}
-	exited := client.HasTxBeenExited(plasmaStore.CurrentPlasmaBlockNum(ctx), depositPosition)
-	if exited {
+	exited, err := client.HasTxExited(plasmaStore.CurrentPlasmaBlockNum(ctx), depositPosition)
+	if err != nil {
+		return ctx, sdk.ErrInternal(fmt.Sprintf("geth endpoint failure: %s", err)).Result(), true
+	} else if exited {
 		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
 	}
 	if !bytes.Equal(msg.Owner.Bytes(), deposit.Owner.Bytes()) {
