@@ -25,7 +25,7 @@ func RootCmd() *cobra.Command {
 	}
 
 	cobra.EnableCommandSorting = false
-	rootCmd.PersistentFlags().StringVar(&homeDir, tmcli.HomeFlag, homeDir, "home directory for plasmacli")
+	rootCmd.PersistentFlags().String(tmcli.HomeFlag, homeDir, "home directory for plasmacli")
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
