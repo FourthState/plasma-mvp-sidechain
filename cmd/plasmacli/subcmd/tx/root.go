@@ -25,6 +25,7 @@ func TxCmd() *cobra.Command {
 		SpendCmd(),
 		SignCmd(),
 	)
+
 	return txCmd
 }
 

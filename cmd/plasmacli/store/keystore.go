@@ -7,11 +7,9 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/spf13/viper"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 )
 
@@ -23,16 +21,19 @@ const (
 
 	PassphrasePrompt = "Enter passphrase:"
 
-	accountDir = "data/accounts.ldb"
-	keysDir    = "keys"
-
-	DirFlag = "directory"
+	accountsDir = "data/accounts.ldb"
+	keysDir     = "keys"
 )
 
-var ks *keystore.KeyStore
+var (
+	home string
+	ks   *keystore.KeyStore
+)
 
 // initialize a keystore in the specified directory
-func InitKeystore() {
+func InitKeystore(homeDir string) {
+	home = homeDir
+
 	dir := getDir(keysDir)
 	if ks == nil {
 		ks = keystore.NewKeyStore(dir, keystore.StandardScryptN, keystore.StandardScryptP)
@@ -42,7 +43,7 @@ func InitKeystore() {
 // Return iterator over accounts
 // returns db so db.close can be called
 func AccountIterator() (iterator.Iterator, *leveldb.DB) {
-	dir := getDir(accountDir)
+	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		fmt.Printf("leveldb: %s", err)
@@ -55,7 +56,7 @@ func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 // Add a new account to the keystore
 // Add account name and address to leveldb
 func AddAccount(name string) (ethcmn.Address, error) {
-	dir := getDir(accountDir)
+	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
@@ -87,7 +88,7 @@ func AddAccount(name string) (ethcmn.Address, error) {
 
 // Retrieve the address of an account
 func GetAccount(name string) (ethcmn.Address, error) {
-	dir := getDir(accountDir)
+	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
@@ -107,7 +108,7 @@ func GetAccount(name string) (ethcmn.Address, error) {
 // Remove an account from the local keystore
 // and the leveldb
 func DeleteAccount(name string) error {
-	dir := getDir(accountDir)
+	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		return fmt.Errorf("leveldb: %s", err)
@@ -140,7 +141,7 @@ func DeleteAccount(name string) error {
 
 // Update either the name of an account or the passphrase for an account
 func UpdateAccount(name string, updatedName string) (msg string, err error) {
-	dir := getDir(accountDir)
+	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		return msg, fmt.Errorf("leveldb: %s", err)
@@ -188,7 +189,7 @@ func UpdateAccount(name string, updatedName string) (msg string, err error) {
 
 // Import a private key with an account name
 func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
-	dir := getDir(accountDir)
+	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
@@ -240,7 +241,7 @@ func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
 }
 
 func GetKey(name string) (*ecdsa.PrivateKey, error) {
-	dir := getDir(accountDir)
+	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		return nil, fmt.Errorf("leveldb: %s", err)
@@ -284,9 +285,5 @@ func GetKey(name string) (*ecdsa.PrivateKey, error) {
 // Return the directory specified by the --directory flag
 // with the passed in string appended to the end
 func getDir(location string) string {
-	dir := viper.GetString(DirFlag)
-	if dir[len(dir)-1] != '/' {
-		dir = filepath.Join(dir, "/")
-	}
-	return os.ExpandEnv(filepath.Join(dir, location))
+	return filepath.Join(home, location)
 }

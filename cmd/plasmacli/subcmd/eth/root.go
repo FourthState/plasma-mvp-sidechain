@@ -51,7 +51,7 @@ var ethCmd = &cobra.Command{
 	Short: "Interact with the plasma smart contract",
 	Long: `Configurations for interacting with the rootchain contract can be specified in <dirpath>/plasma.toml.
 An eth node instance needs to be running for this command to work.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		plasma, err := config.GetContractConn()
 		plasmaContract = plasma
 		return err
