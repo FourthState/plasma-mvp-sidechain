@@ -8,7 +8,7 @@ import (
 
 const (
 	// QueryOutputStore is the route to the OutputStore
-	QueryOutputStore = "outputs" // TODO:
+	QueryOutputStore = "utxo" // TODO:
 
 	// QueryBlockStore is the route to the BlockStore
 	QueryBlockStore = "block"

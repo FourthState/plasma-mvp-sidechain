@@ -2,6 +2,8 @@ package query
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,9 +19,17 @@ const (
 	// QueryInfo retrieves the entire utxo set owned
 	// by the specified address
 	QueryInfo = "info"
+
+	// QueryTxnOutput retrieves a single output at
+	// the given position and returns it with transactional
+	// information
+	QueryTxOutput = "output"
+
+	// QueryTx retrieves a transaction at the given hash
+	QueryTx = "tx"
 )
 
-func NewUtxoQuerier(utxoStore store.UTXOStore) sdk.Querier {
+func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
 			return nil, ErrInvalidPath("path not specified")
@@ -28,28 +38,57 @@ func NewUtxoQuerier(utxoStore store.UTXOStore) sdk.Querier {
 		switch path[0] {
 		case QueryBalance:
 			if len(path) != 2 {
-				return nil, ErrInvalidPath("expected balance/<address>")
+				return nil, sdk.ErrUnknownRequest("exprected balance/<address>")
 			}
 			addr := common.HexToAddress(path[1])
-			utxos := utxoStore.GetUTXOSet(ctx, addr)
-
-			total := big.NewInt(0)
-			for _, utxo := range utxos {
-				if !utxo.Spent {
-					total = total.Add(total, utxo.Output.Amount)
-				}
+			total, err := queryBalance(ctx, outputStore, addr)
+			if err != nil {
+				return nil, sdk.ErrInternal("failed query balance")
 			}
 			return []byte(total.String()), nil
 
 		case QueryInfo:
 			if len(path) != 2 {
-				return nil, ErrInvalidPath("expected info/<address>")
+				return nil, sdk.ErrUnknownRequest("expected info/<address>")
 			}
 			addr := common.HexToAddress(path[1])
-			utxos := utxoStore.GetUTXOSet(ctx, addr)
-			data, err := json.Marshal(utxos)
+			utxos, err := queryInfo(ctx, outputStore, addr)
 			if err != nil {
-				return nil, ErrSerialization("json: %s", err)
+				return nil, err
+			}
+			data, e := json.Marshal(utxos)
+			if e != nil {
+				return nil, sdk.ErrInternal("serialization error")
+			}
+			return data, nil
+		case QueryTxOutput:
+			if len(path) != 2 {
+				return nil, sdk.ErrUnknownRequest("expected txo/<position>")
+			}
+			pos, e := plasma.FromPositionString(path[1])
+			if e != nil {
+				return nil, sdk.ErrInternal("position decoding error")
+			}
+			txo, err := queryTxOutput(ctx, outputStore, pos)
+			if err != nil {
+				return nil, err
+			}
+			data, e := json.Marshal(txo)
+			if e != nil {
+				return nil, sdk.ErrInternal("serialization error")
+			}
+			return data, nil
+		case QueryTx:
+			if len(path) != 2 {
+				return nil, sdk.ErrUnknownRequest("expected tx/<hash>")
+			}
+			tx, ok := outputStore.GetTx(ctx, []byte(path[1]))
+			if !ok {
+				return nil, ErrTxDNE(fmt.Sprintf("no transaction exists for the hash provided: %x", []byte(path[1])))
+			}
+			data, e := json.Marshal(tx)
+			if e != nil {
+				return nil, sdk.ErrInternal("serialization error")
 			}
 			return data, nil
 
@@ -57,4 +96,42 @@ func NewUtxoQuerier(utxoStore store.UTXOStore) sdk.Querier {
 			return nil, ErrInvalidPath("unregistered endpoint")
 		}
 	}
+}
+
+func queryBalance(ctx sdk.Context, outputStore store.OutputStore, addr common.Address) (*big.Int, sdk.Error) {
+	acc, ok := outputStore.GetWallet(ctx, addr)
+	if !ok {
+		return nil, ErrWalletDNE(fmt.Sprintf("no wallet exists for the address provided: 0x%x", addr))
+	}
+
+	return acc.Balance, nil
+}
+
+func queryInfo(ctx sdk.Context, outputStore store.OutputStore, addr common.Address) ([]store.TxOutput, sdk.Error) {
+	acc, ok := outputStore.GetWallet(ctx, addr)
+	if !ok {
+		return nil, ErrWalletDNE(fmt.Sprintf("no wallet exists for the address provided: 0x%x", addr))
+	}
+	return outputStore.GetUnspentForWallet(ctx, acc), nil
+}
+
+func queryTxOutput(ctx sdk.Context, outputStore store.OutputStore, pos plasma.Position) (store.TxOutput, sdk.Error) {
+	output, ok := outputStore.GetOutput(ctx, pos)
+	if !ok {
+		return store.TxOutput{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
+	}
+
+	tx, ok := outputStore.GetTxWithPosition(ctx, pos)
+	if !ok {
+		return store.TxOutput{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
+	}
+
+	inputTx, ok := outputStore.GetTx(ctx, output.InputTx)
+	if !ok {
+		return store.TxOutput{}, ErrTxDNE(fmt.Sprintf("no input transaction exists for the output with position: %s", pos))
+	}
+
+	txo := store.NewTxOutput(output.Output, pos, output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
+
+	return txo, nil
 }

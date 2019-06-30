@@ -1,7 +1,12 @@
 package query
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/spf13/cobra"
 )
 
@@ -22,21 +27,17 @@ var queryCmd = &cobra.Command{
 	Short: "Query information related to the sidechain",
 }
 
-func QueryCmd() *cobra.Command {
-	return queryCmd
-}
-
-func OutputInfo(ctx context.CLIContext, pos plasma.Position) (store.OutputInfo, error) {
+func TxOutput(ctx context.CLIContext, pos plasma.Position) (store.TxOutput, error) {
 	// query for an output for the given position
 	queryRoute := fmt.Sprintf("custom/utxo/output/%s", pos)
 	data, err := ctx.Query(queryRoute, nil)
 	if err != nil {
-		return store.OutputInfo{}, err
+		return store.TxOutput{}, err
 	}
 
-	var output store.OutputInfo
+	var output store.TxOutput
 	if err := json.Unmarshal(data, &output); err != nil {
-		return store.OutputInfo{}, err
+		return store.TxOutput{}, err
 	}
 
 	return output, nil

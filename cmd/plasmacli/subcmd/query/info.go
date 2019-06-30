@@ -34,21 +34,21 @@ var infoCmd = &cobra.Command{
 			addr = ethcmn.HexToAddress(args[0])
 		}
 
-		queryPath := fmt.Sprintf("custom/tx/info/%s", addr)
+		queryPath := fmt.Sprintf("custom/utxo/info/%s", addr)
 		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return err
 		}
 
-		var utxos []store.OuptputInfo
+		var utxos []store.TxOutput
 		if err := json.Unmarshal(data, &utxos); err != nil {
 			return fmt.Errorf("unmarshaling json query response: %s", err)
 		}
 
 		for i, utxo := range utxos {
 			fmt.Printf("UTXO %d\n", i)
-			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Tx.Position, utxo.Output.Output.Amount.String(), utxo.Output.Spent, utxo.Output.SpenderTx)
-			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.Tx.Transaction.TxHash(), utxo.Tx.ConfirmationHash)
+			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent, utxo.SpenderTx)
+			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.Transaction.TxHash(), utxo.Transaction.ConfirmationHash)
 			// print inputs if applicable
 			positions := utxo.Tx.Transaction.InputPositions()
 			for i, p := range positions {
@@ -66,7 +66,7 @@ var infoCmd = &cobra.Command{
 	},
 }
 
-func Info(ctx context.CLIContext, addr common.Address) ([]store.OutputInfo, error) {
+func Info(ctx context.CLIContext, addr ethcmn.Address) ([]store.TxOutput, error) {
 	// query for all utxos owned by this address
 	queryRoute := fmt.Sprintf("custom/utxo/info/%s", addr.Hex())
 	data, err := ctx.Query(queryRoute, nil)
@@ -74,7 +74,7 @@ func Info(ctx context.CLIContext, addr common.Address) ([]store.OutputInfo, erro
 		return nil, err
 	}
 
-	var utxos []store.OutputInfo
+	var utxos []store.TxOutput
 	if err := json.Unmarshal(data, &utxos); err != nil {
 		return nil, err
 	}

@@ -122,8 +122,8 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	// custom queriers
 	app.QueryRouter().
-		AddRoute(store.QueryOutputStore, store.NewOutputQuerier(outputStore)).
-		AddRoute(store.QueryBlockStore, store.NewBlockQuerier(blockStore))
+		AddRoute(store.QueryOutputStore, query.NewOutputQuerier(outputStore)).
+		AddRoute(store.QueryBlockStore, query.NewBlockQuerier(blockStore))
 
 	// Set the AnteHandler
 	app.SetAnteHandler(handlers.NewAnteHandler(app.outputStore, app.blockStore, plasmaClient))

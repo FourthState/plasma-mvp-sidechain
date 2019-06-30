@@ -42,6 +42,7 @@ type Transaction struct {
 }
 
 // TxOutput holds all transactional information related to an output.
+// TODO: add txhash and conf hash
 type TxOutput struct {
 	plasma.Output
 	Position       plasma.Position

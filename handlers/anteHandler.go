@@ -97,7 +97,11 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, o
 	if inputUTXO.Spent {
 		return nil, ErrInvalidInput("input, %v, already spent", input.Position).Result()
 	}
-	if client.HasTxBeenExited(blockStore.PlasmaBlockHeight(ctx), input.Position) {
+	exited, err := client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), input.Position)
+	if err != nil {
+		// TODO: add updated error
+		return nil, ErrExitedInput("failed to retrieve exit information on input, %v", input.Position).Result()
+	} else if exited {
 		return nil, ErrExitedInput("input, %v, utxo has exitted", input.Position).Result()
 	}
 
@@ -115,7 +119,11 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, o
 
 		// check if the parent utxo has exited
 		for _, in := range tx.Transaction.Inputs {
-			if client.HasTxBeenExited(blockStore.PlasmaBlockHeight(ctx), in.Position) {
+			exited, err = client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), in.Position)
+			if err != nil {
+				// TODO: update err
+				return nil, ErrExitedInput(fmt.Sprintf("failed to retrieve exit information on input, %v", in.Position)).Result()
+			} else if exited {
 				return nil, ErrExitedInput(fmt.Sprintf("a parent of the input has exited. Position: %v", in.Position)).Result()
 			}
 		}
@@ -164,8 +172,10 @@ func includeDepositAnteHandler(ctx sdk.Context, outputStore store.OutputStore, b
 	}
 
 	depositPosition := plasma.NewPosition(big.NewInt(0), 0, 0, msg.DepositNonce)
-	exited := client.HasTxBeenExited(blockStore.PlasmaBlockHeight(ctx), depositPosition)
-	if exited {
+	exited, err := client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), depositPosition)
+	if err != nil {
+		return ctx, ErrInvalidTransaction("failed to retrieve deposit information for deposit, %s", msg.DepositNonce.String()).Result(), true
+	} else if exited {
 		return ctx, ErrInvalidTransaction("deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
 	}
 	if !bytes.Equal(msg.Owner.Bytes(), deposit.Owner.Bytes()) {
