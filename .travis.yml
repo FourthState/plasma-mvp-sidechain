@@ -7,7 +7,7 @@ install:
   - make install 
 
 before_script:
-  - npm install -g truffle@5.0.2 ganache-cli@6.2.5
+  - npm install -g truffle@5.0.8 ganache-cli@6.4.1
 
 script:
   - ganache-cli -m=plasma > /dev/null &

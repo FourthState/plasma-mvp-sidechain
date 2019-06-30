@@ -1,4 +1,5 @@
 .DS_Store
+.gitignore
 vendor/
 contracts/abi
 contracts/node_modules

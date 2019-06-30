@@ -17,7 +17,7 @@ import (
 // to be cooked when testing the ante handler
 type plasmaConn interface {
 	GetDeposit(*big.Int, *big.Int) (plasma.Deposit, *big.Int, bool)
-	HasTxBeenExited(*big.Int, plasma.Position) bool
+	HasTxExited(*big.Int, plasma.Position) (bool, error)
 }
 
 // NewAnteHandler returns an ante handler capable of handling include_deposit
