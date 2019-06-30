@@ -70,11 +70,10 @@ func NewOutputQuerier(outputStore OutputStore) sdk.Querier {
 			if e != nil {
 				return nil, sdk.ErrInternal("position decoding error")
 			}
-			output, err := queryTxOutput(ctx, outputStore, pos)
+			txo, err := queryTxOutput(ctx, outputStore, pos)
 			if err != nil {
 				return nil, err
 			}
-			txo := TxOutput{}
 			data, e := json.Marshal(txo)
 			if e != nil {
 				return nil, sdk.ErrInternal("serialization error")
@@ -108,7 +107,7 @@ func queryBalance(ctx sdk.Context, outputStore OutputStore, addr common.Address)
 	return acc.Balance, nil
 }
 
-func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]OutputInfo, sdk.Error) {
+func queryInfo(ctx sdk.Context, outputStore OutputStore, addr common.Address) ([]TxOutput, sdk.Error) {
 	acc, ok := outputStore.GetWallet(ctx, addr)
 	if !ok {
 		return nil, ErrWalletDNE(fmt.Sprintf("no wallet exists for the address provided: 0x%x", addr))
@@ -127,9 +126,14 @@ func queryTxOutput(ctx sdk.Context, outputStore OutputStore, pos plasma.Position
 		return TxOutput{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
 	}
 
-	txo := NewTxOutput(output.Output, pos, output.Spent, output.SpenderTx, tx.InputAddress(), tx.InputPositions())
+	inputTx, ok := outputStore.GetTx(ctx, output.InputTx)
+	if !ok {
+		return TxOutput{}, ErrTxDNE(fmt.Sprintf("no input transaction exists for the output with position: %s", pos))
+	}
 
-	return output, nil
+	txo := NewTxOutput(output.Output, pos, output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
+
+	return txo, nil
 }
 
 const (

@@ -68,6 +68,7 @@ func TestTxSerialization(t *testing.T) {
 	}
 
 	tx := Transaction{
+		InputTxs:         [][]byte{},
 		Transaction:      transaction,
 		Spent:            []bool{false, false},
 		SpenderTxs:       [][]byte{},

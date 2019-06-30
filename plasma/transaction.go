@@ -137,9 +137,16 @@ func (tx Transaction) InputPositions() (positions []Position) {
 	for _, input := range tx.Inputs {
 		positions = append(positions, input.Position)
 	}
-	return positions
+	return
 }
 
+// OutputAddresses returns the output addresses for this transaction.
+func (tx Transaction) OutputAddresses() (addrs []common.Address) {
+	for _, output := range tx.Outputs {
+		addrs = append(addrs, output.Owner)
+	}
+	return
+}
 func (tx Transaction) String() (str string) {
 	for i, input := range tx.Inputs {
 		str += fmt.Sprintf("Input %d: %s\n", i, input)
