@@ -7,6 +7,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/config"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"os"
 	"strconv"
 	"time"
 )
@@ -15,8 +16,11 @@ func SetPlasmaOptionsFromConfig(conf config.PlasmaConfig) func(*PlasmaMVPChain) 
 	var privateKey *ecdsa.PrivateKey
 	var blockFinality uint64
 
+	fmt.Println(conf)
+	os.Exit(1)
+
 	if conf.IsOperator {
-		d, err := hex.DecodeString(conf.EthOperatorPrivateKey)
+		d, err := hex.DecodeString(conf.OperatorPrivateKey)
 
 		if err != nil {
 			errMsg := fmt.Sprintf("Could not parse private key: %v", err)
