@@ -104,7 +104,6 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 		if input != signerAddr {
 			continue
 		}
-		// TODO: fix to use correct position
 		// get confirmation to generate signature
 		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.Position, output.Output.Owner, output.Output.Amount)
 		buf := cosmoscli.BufferStdin()

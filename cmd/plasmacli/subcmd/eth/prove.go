@@ -69,8 +69,6 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
-
-//TODO: REDO
 func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
 	ctx := context.NewCLIContext().WithTrustNode(true)
 
