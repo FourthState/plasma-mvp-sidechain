@@ -5,11 +5,9 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
@@ -46,7 +44,6 @@ Transaction Exit Usage:
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		viper.BindPFlags(cmd.Flags())
-		ctx := context.NewCLIContext()
 		var tx *eth.Transaction
 
 		// parse position
@@ -70,7 +67,6 @@ Transaction Exit Usage:
 		if err != nil {
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
-		addr := crypto.PubkeyToAddress(key.PublicKey)
 
 		// bind key, generate transact opts
 		auth := bind.NewKeyedTransactor(key)
@@ -105,7 +101,7 @@ Transaction Exit Usage:
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(useNodeF) { // query full node
 			var result *tm.ResultTx
-			result, confirmSignatures, err = getProof(ctx, addr, position)
+			result, confirmSignatures, err = getProof(position)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}

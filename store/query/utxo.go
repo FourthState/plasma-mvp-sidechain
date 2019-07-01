@@ -131,7 +131,7 @@ func queryTxOutput(ctx sdk.Context, outputStore store.OutputStore, pos plasma.Po
 		return store.TxOutput{}, ErrTxDNE(fmt.Sprintf("no input transaction exists for the output with position: %s", pos))
 	}
 
-	txo := store.NewTxOutput(output.Output, pos, output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
+	txo := store.NewTxOutput(output.Output, pos, tx.ConfirmationHash, tx.Transaction.TxHash(), output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
 
 	return txo, nil
 }

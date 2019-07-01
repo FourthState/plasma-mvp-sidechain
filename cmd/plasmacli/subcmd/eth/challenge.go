@@ -5,10 +5,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
@@ -19,7 +16,6 @@ import (
 func ChallengeCmd() *cobra.Command {
 	config.AddPersistentTMFlags(challengeCmd)
 	challengeCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")
-	challengeCmd.Flags().String(ownerF, "", "owner of the challenging transaction, required if different from the specified account")
 	challengeCmd.Flags().String(proofF, "", "merkle proof of inclusion")
 	challengeCmd.Flags().String(sigsF, "", "confirmation signatures for the challenging transaction")
 	challengeCmd.Flags().Bool(useNodeF, false, "trust connected full node")
@@ -41,7 +37,6 @@ Usage:
 	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
-		ctx := context.NewCLIContext()
 
 		// parse positions
 		exitingPos, err := plasma.FromPositionString(args[0])
@@ -64,13 +59,6 @@ Usage:
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
 
-		var owner ethcmn.Address
-		if viper.GetString(ownerF) != "" {
-			owner = ethcmn.HexToAddress(viper.GetString(ownerF))
-		} else {
-			owner = crypto.PubkeyToAddress(key.PublicKey)
-		}
-
 		// bind key
 		auth := bind.NewKeyedTransactor(key)
 		transactOpts := &bind.TransactOpts{
@@ -82,7 +70,7 @@ Usage:
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(useNodeF) {
 			var result *tm.ResultTx
-			result, confirmSignatures, err = getProof(ctx, owner, challengingPos)
+			result, confirmSignatures, err = getProof(challengingPos)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}

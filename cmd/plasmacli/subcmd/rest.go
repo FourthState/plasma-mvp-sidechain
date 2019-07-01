@@ -76,7 +76,7 @@ func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		queryPath := fmt.Sprintf("custom/tx/balance/%s", addr)
+		queryPath := fmt.Sprintf("custom/utxo/balance/%s", addr)
 		total, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -99,7 +99,7 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		queryPath := fmt.Sprintf("custom/tx/info/%s", addr)
+		queryPath := fmt.Sprintf("custom/utxo/info/%s", addr)
 		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
