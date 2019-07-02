@@ -15,11 +15,11 @@ There exists the following mappings:
 - transaction hash to transaction
 - position to transaction hash
 - deposit nonce to deposit
-- fee position to fee
+- fee position to total fees collected in block
 - address to wallet 
 
 ## Wallet ##
-Wallets are a convience struct to maintain track of address balances, unspent outputs and spent outputs.
+Wallets are a convenience struct to maintain track of address balances, unspent outputs and spent outputs.
 
 
 
