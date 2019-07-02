@@ -76,7 +76,7 @@ func TestSubmitBlock(t *testing.T) {
 		blockStore.StoreBlock(ctx, uint64(i), block)
 	}
 
-	err := plasma.CommitPlasmaHeaders(ctx, blockStore)
+	err := plasmaContract.CommitPlasmaHeaders(ctx, blockStore)
 
 	require.NoError(t, err, "block submission error")
 
@@ -136,11 +136,11 @@ func TestDepositFinalityBound(t *testing.T) {
 		blockStore.StoreBlock(ctx, uint64(i), block)
 	}
 
-	err = plasma.CommitPlasmaHeaders(ctx, blockStore)
+	err = plasmaContract.CommitPlasmaHeaders(ctx, blockStore)
 
 	require.NoError(t, err, "block submission error")
 
-	err = plasma.CommitPlasmaHeaders(ctx, blockStore)
+	err = plasmaContract.CommitPlasmaHeaders(ctx, blockStore)
 	require.NoError(t, err, "block submission error")
 
 	// Try to retrieve deposit from before peg
@@ -164,7 +164,7 @@ func TestDepositFinalityBound(t *testing.T) {
 	}
 	blockStore.StoreBlock(ctx, uint64(4), block)
 
-	err = plasma.CommitPlasmaHeaders(ctx, blockStore)
+	err = plasmaContract.CommitPlasmaHeaders(ctx, blockStore)
 	require.NoError(t, err, "block submission error")
 
 	// Try to retrieve deposit once peg has advanced AND finality bound reached.

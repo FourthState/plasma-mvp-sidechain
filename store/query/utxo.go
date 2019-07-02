@@ -20,10 +20,14 @@ const (
 	// by the specified address
 	QueryInfo = "info"
 
-	// QueryTxnOutput retrieves a single output at
+	// QueryTxOutput retrieves a single output at
 	// the given position and returns it with transactional
 	// information
 	QueryTxOutput = "output"
+
+	// QueryTxInput retrieves basic transaction data at
+	// given position along with input information
+	QueryTxInput = "input"
 
 	// QueryTx retrieves a transaction at the given hash
 	QueryTx = "tx"
@@ -78,6 +82,23 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 				return nil, sdk.ErrInternal("serialization error")
 			}
 			return data, nil
+		case QueryTxInput:
+			if len(path) != 2 {
+				return nil, sdk.ErrUnknownRequest("expected input/<position>")
+			}
+			pos, e := plasma.FromPositionString(path[1])
+			if e != nil {
+				return nil, sdk.ErrInternal("position decoding error")
+			}
+			txInput, err := queryTxInput(ctx, outputStore, pos)
+			if err != nil {
+				return nil, err
+			}
+			data, e := json.Marshal(txInput)
+			if e != nil {
+				return nil, sdk.ErrInternal("serialization error")
+			}
+			return data, nil
 		case QueryTx:
 			if len(path) != 2 {
 				return nil, sdk.ErrUnknownRequest("expected tx/<hash>")
@@ -126,12 +147,31 @@ func queryTxOutput(ctx sdk.Context, outputStore store.OutputStore, pos plasma.Po
 		return store.TxOutput{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
 	}
 
-	inputTx, ok := outputStore.GetTx(ctx, output.InputTx)
-	if !ok {
-		return store.TxOutput{}, ErrTxDNE(fmt.Sprintf("no input transaction exists for the output with position: %s", pos))
-	}
-
-	txo := store.NewTxOutput(output.Output, pos, tx.ConfirmationHash, tx.Transaction.TxHash(), output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
+	txo := store.NewTxOutput(output.Output, pos, tx.ConfirmationHash, tx.Transaction.TxHash(), output.Spent, output.SpenderTx)
 
 	return txo, nil
+}
+
+func queryTxInput(ctx sdk.Context, outputStore store.OutputStore, pos plasma.Position) (store.TxInput, sdk.Error) {
+	output, ok := outputStore.GetOutput(ctx, pos)
+	if !ok {
+		return store.TxInput{}, ErrOutputDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
+	}
+
+	tx, ok := outputStore.GetTxWithPosition(ctx, pos)
+	if !ok {
+		return store.TxInput{}, ErrTxDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
+	}
+
+	inputPositions := tx.Transaction.InputPositions()
+	var inputAddresses []common.Address
+	for _, inPos := range inputPositions {
+		input, ok := outputStore.GetOutput(ctx, inPos)
+		if !ok {
+			panic(fmt.Sprintf("Corrupted store: input position for given transaction does not exist: %s", pos))
+		}
+		inputAddresses = append(inputAddresses, input.Output.Owner)
+	}
+
+	return store.NewTxInput(output.Output, pos, tx.Transaction.TxHash(), inputAddresses, inputPositions), nil
 }

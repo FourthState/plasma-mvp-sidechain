@@ -77,7 +77,7 @@ func TestFees(t *testing.T) {
 
 		// Create and store new fee
 		output := plasma.NewOutput(addr, big.NewInt(int64(1000*i)))
-		fee := Output{output, false, make([]byte, 0), make([]byte, 0)}
+		fee := Output{output, false, make([]byte, 0)}
 		outputStore.StoreFee(ctx, pos, output)
 
 		exists = outputStore.HasFee(ctx, pos)
@@ -178,10 +178,9 @@ func TestTransactions(t *testing.T) {
 		}
 
 		// Create and store new transaction
-		tx := Transaction{make([][]byte, len(plasmaTx.Transaction.Outputs)), plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs)), plasmaTx.Position}
+		tx := Transaction{plasmaTx.Transaction, confirmationHash, make([]bool, len(plasmaTx.Transaction.Outputs)), make([][]byte, len(plasmaTx.Transaction.Outputs)), plasmaTx.Position}
 		for i, _ := range tx.SpenderTxs {
 			tx.SpenderTxs[i] = []byte{}
-			tx.InputTxs[i] = []byte{}
 		}
 		outputStore.StoreTx(ctx, tx)
 		outputStore.StoreOutputs(ctx, tx)

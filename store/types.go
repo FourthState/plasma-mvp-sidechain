@@ -27,13 +27,11 @@ type Deposit struct {
 type Output struct {
 	Output    plasma.Output
 	Spent     bool
-	InputTx   []byte // transaction hash that created this output
-	SpenderTx []byte // transaction hash that spent this output
+	SpenderTx []byte   // transaction hash that spent this output
 }
 
 // Transaction wraps a plasma transaction with spend information.
 type Transaction struct {
-	InputTxs         [][]byte // transaction hashes the created the inputs of this transaction
 	Transaction      plasma.Transaction
 	ConfirmationHash []byte
 	Spent            []bool
@@ -42,7 +40,6 @@ type Transaction struct {
 }
 
 // TxOutput holds all transactional information related to an output.
-// TODO: add txhash and conf hash
 type TxOutput struct {
 	plasma.Output
 	Position         plasma.Position
@@ -50,13 +47,11 @@ type TxOutput struct {
 	TxHash           []byte
 	Spent            bool
 	SpenderTx        []byte
-	InputAddresses   []ethcmn.Address
-	InputPositions   []plasma.Position
 }
 
 // NewTxOutput creates a TxOutput object.
-func NewTxOutput(output plasma.Output, pos plasma.Position, confirmationHash, txHash []byte, spent bool, spenderTx []byte,
-	inputAddresses []ethcmn.Address, inputPositions []plasma.Position) TxOutput {
+func NewTxOutput(output plasma.Output, pos plasma.Position, confirmationHash, txHash []byte,
+	spent bool, spenderTx []byte) TxOutput {
 	return TxOutput{
 		Output:           output,
 		Position:         pos,
@@ -64,6 +59,25 @@ func NewTxOutput(output plasma.Output, pos plasma.Position, confirmationHash, tx
 		TxHash:           txHash,
 		Spent:            spent,
 		SpenderTx:        spenderTx,
+	}
+}
+
+// TxInput holds basic transactional data along with input information
+type TxInput struct {
+	plasma.Output
+	Position plasma.Position
+	TxHash   []byte
+	InputAddresses []ethcmn.Address
+	InputPositions []plasma.Position
+}
+
+// NewTxInput creates a TxInput object.
+func NewTxInput(output plasma.Output, pos plasma.Position, txHash []byte,
+    inputAddresses []ethcmn.Address, inputPositions []plasma.Position) TxInput {
+	return TxInput{
+		Output:           output,
+		Position:         pos,
+		TxHash:           txHash,
 		InputAddresses:   inputAddresses,
 		InputPositions:   inputPositions,
 	}

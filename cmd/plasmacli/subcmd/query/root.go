@@ -43,6 +43,22 @@ func TxOutput(ctx context.CLIContext, pos plasma.Position) (store.TxOutput, erro
 	return output, nil
 }
 
+func TxInput(ctx context.CLIContext, pos plasma.Position) (store.TxInput, error) {
+	// query for input info on the given position
+	queryRoute := fmt.Sprintf("custom/utxo/input/%s", pos)
+	data, err := ctx.Query(queryRoute, nil)
+	if err != nil {
+		return store.TxInput{}, err
+	}
+
+	var input store.TxInput
+	if err := json.Unmarshal(data, &input); err != nil {
+		return store.TxInput{}, err
+	}
+
+	return input, nil
+}
+
 func Tx(ctx context.CLIContext, hash []byte) (store.Transaction, error) {
 	// query for a transaction using the provided hash
 	queryRoute := fmt.Sprintf("custom/utxo/tx/%s", hash)

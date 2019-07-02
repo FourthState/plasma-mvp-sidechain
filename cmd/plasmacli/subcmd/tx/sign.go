@@ -92,9 +92,13 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 	if err != nil {
 		return err
 	}
+	inputInfo, err := query.TxInput(ctx, position)
+	if err != nil {
+		return err
+	}
 
 	sig, _ := clistore.GetSig(output.Position)
-	inputAddrs := output.InputAddresses
+	inputAddrs := inputInfo.InputAddresses
 
 	if len(sig) == 130 || (len(sig) == 65 && len(inputAddrs) == 1) {
 		return nil

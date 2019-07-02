@@ -103,7 +103,6 @@ func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output
 	output := Output{
 		Output:    tx.Transaction.Outputs[pos.OutputIndex],
 		Spent:     tx.Spent[pos.OutputIndex],
-		InputTx:   tx.InputTxs[pos.OutputIndex],
 		SpenderTx: tx.SpenderTxs[pos.OutputIndex],
 	}
 
@@ -235,7 +234,7 @@ func (store OutputStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit p
 
 // StoreFee adds an unspent fee and updates the fee owner's wallet.
 func (store OutputStore) StoreFee(ctx sdk.Context, pos plasma.Position, output plasma.Output) {
-	store.setFee(ctx, pos, Output{output, false, make([]byte, 0), make([]byte, 0)})
+	store.setFee(ctx, pos, Output{output, false, make([]byte, 0)})
 	store.addToWallet(ctx, output.Owner, output.Amount, pos)
 }
 
@@ -325,17 +324,14 @@ func (store OutputStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (ut
 	for _, p := range wallet.Unspent {
 		output, ok := store.GetOutput(ctx, p)
 		if !ok {
-			panic("") // TODO
+			panic(fmt.Sprintf("Corrupted store: Wallet contains unspent position (%v) that doesn't exist in store", p))
 		}
 		tx, ok := store.GetTxWithPosition(ctx, p)
 		if !ok {
-			panic("") // TODO
+			panic(fmt.Sprintf("Corrupted store: Wallet contains unspent position (%v) that doesn't have corresponding tx", p))
 		}
-		inputTx, ok := store.GetTx(ctx, output.InputTx)
-		if !ok {
-			panic("") // TODO
-		}
-		txo := NewTxOutput(output.Output, p, tx.ConfirmationHash, tx.Transaction.TxHash(), output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
+		
+		txo := NewTxOutput(output.Output, p, tx.ConfirmationHash, tx.Transaction.TxHash(), output.Spent, output.SpenderTx)
 		utxos = append(utxos, txo)
 	}
 	return utxos

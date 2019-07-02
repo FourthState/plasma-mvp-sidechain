@@ -349,7 +349,14 @@ func TestAnteValidTx(t *testing.T) {
 		Position:         getPosition("(1.0.0.0)"),
 	}
 	outputStore.StoreTx(ctx, tx)
+	outputStore.StoreOutputs(ctx, tx)
 	outputStore.SpendDeposit(ctx, big.NewInt(2), tx.Transaction.TxHash())
+
+	output, check := outputStore.GetOutput(ctx, getPosition("(1.0.0.0)"))
+	if !check {
+		fmt.Println("WHy?")
+	}
+	fmt.Printf("Output: %v\n", output)
 
 	// store confirm sig into correct format
 	var confirmSig [65]byte
