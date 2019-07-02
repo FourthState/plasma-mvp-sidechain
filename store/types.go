@@ -45,22 +45,27 @@ type Transaction struct {
 // TODO: add txhash and conf hash
 type TxOutput struct {
 	plasma.Output
-	Position       plasma.Position
-	Spent          bool
-	SpenderTx      []byte
-	InputAddresses []ethcmn.Address
-	InputPositions []plasma.Position
+	Position         plasma.Position
+	ConfirmationHash []byte
+	TxHash           []byte
+	Spent            bool
+	SpenderTx        []byte
+	InputAddresses   []ethcmn.Address
+	InputPositions   []plasma.Position
 }
 
 // NewTxOutput creates a TxOutput object.
-func NewTxOutput(output plasma.Output, pos plasma.Position, spent bool, spenderTx []byte, inputAddresses []ethcmn.Address, inputPositions []plasma.Position) TxOutput {
+func NewTxOutput(output plasma.Output, pos plasma.Position, confirmationHash, txHash []byte, spent bool, spenderTx []byte,
+	inputAddresses []ethcmn.Address, inputPositions []plasma.Position) TxOutput {
 	return TxOutput{
-		Output:         output,
-		Position:       pos,
-		Spent:          spent,
-		SpenderTx:      spenderTx,
-		InputAddresses: inputAddresses,
-		InputPositions: inputPositions,
+		Output:           output,
+		Position:         pos,
+		ConfirmationHash: confirmationHash,
+		TxHash:           txHash,
+		Spent:            spent,
+		SpenderTx:        spenderTx,
+		InputAddresses:   inputAddresses,
+		InputPositions:   inputPositions,
 	}
 }
 

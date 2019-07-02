@@ -3,8 +3,8 @@ package tx
 import (
 	"fmt"
 	clistore "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/query"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
-	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
@@ -63,13 +63,13 @@ Usage:
 
 		for _, output := range utxos {
 
-			if output.Output.Spent {
-				tx, err := query.Tx(ctx, output.Output.SpenderTx)
+			if output.Spent {
+				tx, err := query.Tx(ctx, output.SpenderTx)
 				if err != nil {
 					return err
 				}
 
-				for i, pos := range tx.InputPositions() {
+				for _, pos := range tx.Transaction.InputPositions() {
 					err = signSingleConfirmSig(ctx, pos, signerAddr, name)
 					if err != nil {
 						fmt.Println(err)
@@ -88,13 +88,13 @@ Usage:
 // generate confirmation signature for given utxo
 func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr ethcmn.Address, name string) error {
 	// query for output for the specified position
-	output, err := query.OutputInfo(ctx, position)
+	output, err := query.TxOutput(ctx, position)
 	if err != nil {
 		return err
 	}
 
-	sig, _ := clistore.GetSig(output.Tx.Position)
-	inputAddrs := output.Tx.InputAddresses()
+	sig, _ := clistore.GetSig(output.Position)
+	inputAddrs := output.InputAddresses
 
 	if len(sig) == 130 || (len(sig) == 65 && len(inputAddrs) == 1) {
 		return nil
@@ -104,9 +104,8 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 		if input != signerAddr {
 			continue
 		}
-		// TODO: fix to use correct position
 		// get confirmation to generate signature
-		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.Tx.Position, output.Output.Output.Owner, output.Output.Amount)
+		fmt.Printf("\nUTXO\nPosition: %s\nOwner: 0x%x\nValue: %d\n", output.Position, output.Output.Owner, output.Output.Amount)
 		buf := cosmoscli.BufferStdin()
 		auth, err := cosmoscli.GetString(signPrompt, buf)
 		if err != nil {
@@ -116,18 +115,18 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 			return nil
 		}
 
-		hash := utils.ToEthSignedMessageHash(output.Tx.ConfirmationHash)
+		hash := utils.ToEthSignedMessageHash(output.ConfirmationHash)
 		sig, err := clistore.SignHashWithPassphrase(name, hash)
 		if err != nil {
 			return fmt.Errorf("failed to generate confirmation signature: { %s }", err)
 		}
 
-		if err := clistore.SaveSig(output.Tx.Position, sig, i == 0); err != nil {
+		if err := clistore.SaveSig(output.Position, sig, i == 0); err != nil {
 			return err
 		}
 
 		// print the results
-		fmt.Printf("Confirmation Signature for output with position: %s\n", output.Tx.Position)
+		fmt.Printf("Confirmation Signature for output with position: %s\n", output.Position)
 		fmt.Printf("0x%x\n", sig)
 	}
 	return nil

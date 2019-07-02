@@ -48,9 +48,9 @@ var infoCmd = &cobra.Command{
 		for i, utxo := range utxos {
 			fmt.Printf("UTXO %d\n", i)
 			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent, utxo.SpenderTx)
-			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.Transaction.TxHash(), utxo.Transaction.ConfirmationHash)
+			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.TxHash, utxo.ConfirmationHash)
 			// print inputs if applicable
-			positions := utxo.Tx.Transaction.InputPositions()
+			positions := utxo.InputPositions
 			for i, p := range positions {
 				fmt.Printf("Input %d Position: %s\n", i, p)
 			}

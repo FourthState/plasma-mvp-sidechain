@@ -11,7 +11,7 @@ const (
 	QueryOutputStore = "utxo" // TODO:
 
 	// QueryBlockStore is the route to the BlockStore
-	QueryBlockStore = "block"
+	QueryBlockStore = "plasma"
 )
 
 // keys

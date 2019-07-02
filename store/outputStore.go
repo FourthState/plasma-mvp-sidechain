@@ -335,7 +335,7 @@ func (store OutputStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (ut
 		if !ok {
 			panic("") // TODO
 		}
-		txo := NewTxOutput(output.Output, p, output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
+		txo := NewTxOutput(output.Output, p, tx.ConfirmationHash, tx.Transaction.TxHash(), output.Spent, output.SpenderTx, inputTx.Transaction.OutputAddresses(), tx.Transaction.InputPositions())
 		utxos = append(utxos, txo)
 	}
 	return utxos
