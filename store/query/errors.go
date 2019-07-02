@@ -22,7 +22,6 @@ func ErrInvalidPath(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeInvalidPath, msg, args)
 }
 
-// TODO: refactor DNE errors into one
 func ErrOutputDNE(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeOutputDNE, msg, args)
 }

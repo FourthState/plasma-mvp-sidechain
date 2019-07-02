@@ -48,7 +48,7 @@ func (msg SpendMsg) GetSigners() []sdk.AccAddress {
 	return addrs
 }
 
-// GetSignBytes returns the sha256 hash of the transaction.
+// GetSignBytes returns the Keccak256 hash of the transaction.
 func (msg SpendMsg) GetSignBytes() []byte {
 	return msg.TxHash()
 }

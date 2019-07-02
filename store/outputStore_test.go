@@ -78,7 +78,7 @@ func TestFees(t *testing.T) {
 		// Create and store new fee
 		output := plasma.NewOutput(addr, big.NewInt(int64(1000*i)))
 		fee := Output{output, false, make([]byte, 0)}
-		outputStore.StoreFee(ctx, pos, output)
+		outputStore.StoreFee(ctx, pos.BlockNum, output)
 
 		exists = outputStore.HasFee(ctx, pos)
 		require.True(t, exists, "returned false for fee that was stored")

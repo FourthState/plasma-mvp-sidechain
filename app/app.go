@@ -174,8 +174,11 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 	copy(header[:], ctx.BlockHeader().DataHash)
 	block := plasma.NewBlock(header, app.txIndex, app.feeAmount)
 	app.blockStore.StoreBlock(ctx, tmBlockHeight, block)
-	// TODO verify
-	app.outputStore.StoreFee(ctx, plasma.NewPosition(app.blockStore.PlasmaBlockHeight(ctx), 1<<16-1, 0, big.NewInt(0)), plasma.NewOutput(app.operatorAddress, app.feeAmount))
+
+	if app.feeAmount.Sign() == 1 {
+		app.outputStore.StoreFee(ctx, app.blockStore.PlasmaBlockHeight(ctx), plasma.NewOutput(app.operatorAddress, app.feeAmount))
+	}
+
 	app.ethConnection.CommitPlasmaHeaders(ctx, app.blockStore)
 
 	app.txIndex = 0

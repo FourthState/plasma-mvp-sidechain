@@ -233,7 +233,8 @@ func (store OutputStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit p
 }
 
 // StoreFee adds an unspent fee and updates the fee owner's wallet.
-func (store OutputStore) StoreFee(ctx sdk.Context, pos plasma.Position, output plasma.Output) {
+func (store OutputStore) StoreFee(ctx sdk.Context, blockNum *big.Int, output plasma.Output) {
+	pos := plasma.NewPosition(blockNum, 1<<16-1, 0, big.NewInt(0))
 	store.setFee(ctx, pos, Output{output, false, make([]byte, 0)})
 	store.addToWallet(ctx, output.Owner, output.Amount, pos)
 }
@@ -330,7 +331,7 @@ func (store OutputStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (ut
 		if !ok {
 			panic(fmt.Sprintf("Corrupted store: Wallet contains unspent position (%v) that doesn't have corresponding tx", p))
 		}
-		
+
 		txo := NewTxOutput(output.Output, p, tx.ConfirmationHash, tx.Transaction.TxHash(), output.Spent, output.SpenderTx)
 		utxos = append(utxos, txo)
 	}

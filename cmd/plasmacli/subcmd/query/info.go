@@ -50,12 +50,12 @@ var infoCmd = &cobra.Command{
 			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent, utxo.SpenderTx)
 			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.TxHash, utxo.ConfirmationHash)
 			/*
-			// TODO: Add --verbose flag that if set will query TxInput and print InputAddresses and InputPositions as well
-			// print inputs if applicable
-			positions := utxo.InputPositions
-			for i, p := range positions {
-				fmt.Printf("Input %d Position: %s\n", i, p)
-			}
+				// TODO: Add --verbose flag that if set will query TxInput and print InputAddresses and InputPositions as well
+				// print inputs if applicable
+				positions := utxo.InputPositions
+				for i, p := range positions {
+					fmt.Printf("Input %d Position: %s\n", i, p)
+				}
 			*/
 
 			fmt.Printf("End UTXO %d info\n\n", i)
@@ -67,20 +67,4 @@ var infoCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-func Info(ctx context.CLIContext, addr ethcmn.Address) ([]store.TxOutput, error) {
-	// query for all utxos owned by this address
-	queryRoute := fmt.Sprintf("custom/utxo/info/%s", addr.Hex())
-	data, err := ctx.Query(queryRoute, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var utxos []store.TxOutput
-	if err := json.Unmarshal(data, &utxos); err != nil {
-		return nil, err
-	}
-
-	return utxos, nil
 }

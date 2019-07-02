@@ -38,12 +38,12 @@ func GetFeeKey(pos plasma.Position) []byte {
 	return prefixKey(feeKey, pos.Bytes())
 }
 
-// GetOutputKey returns key to retrieve UTXO for given position.
+// GetOutputKey returns key to retrieve Output for given position.
 func GetOutputKey(pos plasma.Position) []byte {
 	return prefixKey(outputKey, pos.Bytes())
 }
 
-// GetTxKey returns Transaction for given hash.
+// GetTxKey returns key to retrieve Transaction for given hash.
 func GetTxKey(hash []byte) []byte {
 	return prefixKey(txKey, hash)
 }
