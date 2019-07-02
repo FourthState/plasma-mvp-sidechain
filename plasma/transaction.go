@@ -76,6 +76,11 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 }
 
 func (tx Transaction) ValidateBasic() error {
+	// Error if more than 2 inputs or outputs. Will be allowed in future versions
+	if len(tx.Inputs) > 2 || len(tx.Outputs) > 2 {
+		return fmt.Errorf("invalid tx, maximum of 2 input/output allowed")
+	}
+
 	// validate inputs
 	for i, input := range tx.Inputs {
 		if err := input.ValidateBasic(); err != nil {
