@@ -3,6 +3,7 @@ package subcmd
 import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/flags"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/eth"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/keys"
@@ -11,7 +12,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	tmcli "github.com/tendermint/tendermint/libs/cli"
 	"os"
 	"path/filepath"
 )
@@ -20,12 +20,8 @@ import (
 var homeDir = os.ExpandEnv("$HOME/.plasmacli/")
 
 func RootCmd() *cobra.Command {
-	if tmcli.HomeFlag != "home" {
-		panic("tendermint home flag changed. adjust to the change")
-	}
-
 	cobra.EnableCommandSorting = false
-	rootCmd.PersistentFlags().String(tmcli.HomeFlag, homeDir, "home directory for plasmacli")
+	rootCmd.PersistentFlags().String(flags.Home, homeDir, "home directory for plasmacli")
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -55,7 +51,7 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		config.RegisterViperAndEnv()
-		homeDir := viper.GetString(tmcli.HomeFlag)
+		homeDir := viper.GetString(flags.Home)
 
 		store.InitKeystore(homeDir)
 

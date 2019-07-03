@@ -88,6 +88,9 @@ func RegisterViperAndEnv() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 
+	// The configuration files use underscores while the Cosmos SDK uses
+	// hypens. These aliases align `Viper.Get(..)` for both
+	// the SDK and the configuration file
 	viper.RegisterAlias("trust_node", "trust-node")
 	viper.RegisterAlias("chain_id", "chain-id")
 }
@@ -108,12 +111,12 @@ func WriteConfigFile(configFilePath string, config Config) error {
 	}
 
 	if err := cmn.EnsureDir(filepath.Dir(configFilePath), os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create directory: %s. error: %s", filepath.Dir(configFilePath), err)
+		return fmt.Errorf("ensuredir: %s", err)
 	}
 
 	// 0666 allows for read and write for any user
 	if err := cmn.WriteFile(configFilePath, buffer.Bytes(), 0666); err != nil {
-		return err
+		return fmt.Errorf("writefile: %s", err)
 	}
 
 	return nil

@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/flags"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/viper"
-	tmcli "github.com/tendermint/tendermint/libs/cli"
 )
 
 var plasmaContract *eth.Plasma
@@ -30,8 +30,11 @@ func setupContractConn() (*eth.Plasma, error) {
 		return nil, err
 	}
 
-	// Check to see if the eth connection params have changed
-	dir := viper.GetString(tmcli.HomeFlag)
+	dir := viper.GetString(flags.Home)
+	if dir[len(dir)-1] != '/' {
+		dir = dir + "/"
+	}
+
 	if conf.EthNodeURL == "" {
 		return nil, fmt.Errorf("please specify a node url for eth connection in %sconfig.toml", dir)
 	} else if conf.EthPlasmaContractAddr == "" || !ethcmn.IsHexAddress(conf.EthPlasmaContractAddr) {
