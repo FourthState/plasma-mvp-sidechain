@@ -497,7 +497,7 @@ func TestAnteDepositDNE(t *testing.T) {
 
 func setupFees(ctx sdk.Context, outputStore store.OutputStore, inputs ...Output) {
 	for _, output := range inputs {
-		outputStore.StoreFee(ctx, output.Position, output.Output)
+		outputStore.StoreFee(ctx, output.Position.BlockNum, output.Output)
 	}
 }
 
