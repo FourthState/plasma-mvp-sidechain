@@ -55,21 +55,6 @@ func init() {
 	if configTemplate, err = tmpl.Parse(defaultConfigTemplate); err != nil {
 		panic(err)
 	}
-
-	// ensure that none of the cosmos-cli flags have changed
-	var changed bool
-	if client.FlagNode != "node" {
-		changed = true
-	} else if client.FlagTrustNode != "trust-node" {
-		changed = true
-	} else if client.FlagChainID != "chain-id" {
-		changed = true
-	}
-
-	if changed {
-		panic("cosmos client flags have changed. adjust the config file")
-	}
-
 }
 
 func DefaultConfig() Config {
