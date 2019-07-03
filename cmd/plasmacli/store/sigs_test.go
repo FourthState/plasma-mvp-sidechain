@@ -13,7 +13,7 @@ import (
 func TestSavSig(t *testing.T) {
 	// setup testing env
 	os.Mkdir("testing", os.ModePerm)
-	viper.Set(DirFlag, os.ExpandEnv("./testing"))
+	os.Setenv("PCLI_HOME", "./testing")
 
 	// cleanup
 	defer func() {
@@ -66,7 +66,7 @@ func TestSavSig(t *testing.T) {
 func TestBadSigs(t *testing.T) {
 	// setup testing env
 	os.Mkdir("testing", os.ModePerm)
-	viper.Set(DirFlag, os.ExpandEnv("./testing"))
+	os.Setenv("PCLI_HOME", "./testing")
 
 	// cleanup
 	defer func() {
@@ -89,7 +89,7 @@ func TestBadSigs(t *testing.T) {
 func TestMultiConfirmSig(t *testing.T) {
 	// setup testing env
 	os.Mkdir("testing", os.ModePerm)
-	viper.Set(DirFlag, os.ExpandEnv("./testing"))
+	os.Setenv("PCLI_HOME", "./testing")
 
 	// cleanup
 	defer func() {
