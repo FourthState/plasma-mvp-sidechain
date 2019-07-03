@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/viper"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"os"
