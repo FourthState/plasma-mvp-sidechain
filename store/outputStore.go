@@ -373,7 +373,7 @@ func (store OutputStore) addToWallet(ctx sdk.Context, addr common.Address, amoun
 func (store OutputStore) subtractFromWallet(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
 	wallet, ok := store.GetWallet(ctx, addr)
 	if !ok {
-		panic(fmt.Sprintf("transaction store has been corrupted"))
+		panic(fmt.Sprintf("output store has been corrupted"))
 	}
 
 	// Update Wallet
