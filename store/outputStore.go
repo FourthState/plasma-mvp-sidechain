@@ -172,18 +172,18 @@ func (store OutputStore) HasTx(ctx sdk.Context, hash []byte) bool {
 // -----------------------------------------------------------------------------
 /* Set */
 
-// SetWallet overwrites the wallet stored at the given address.
+// setWallet overwrites the wallet stored at the given address.
 func (store OutputStore) setWallet(ctx sdk.Context, addr common.Address, wallet Wallet) {
 	key := GetWalletKey(addr)
 	data, err := rlp.EncodeToBytes(&wallet)
 	if err != nil {
-		panic(fmt.Sprintf("error marshaling transaction: %s", err))
+		panic(fmt.Sprintf("error marshaling wallet with address %s: %s", addr, err))
 	}
 
 	store.Set(ctx, key, data)
 }
 
-// SetDeposit overwrites the deposit stored at the given nonce.
+// setDeposit overwrites the deposit stored at the given nonce.
 func (store OutputStore) setDeposit(ctx sdk.Context, nonce *big.Int, deposit Deposit) {
 	data, err := rlp.EncodeToBytes(&deposit)
 	if err != nil {
@@ -205,13 +205,13 @@ func (store OutputStore) setFee(ctx sdk.Context, pos plasma.Position, fee Output
 	store.Set(ctx, key, data)
 }
 
-// SetOutput adds a mapping from position to transaction hash.
+// setOutput adds a mapping from position to transaction hash.
 func (store OutputStore) setOutput(ctx sdk.Context, pos plasma.Position, hash []byte) {
 	key := GetOutputKey(pos)
 	store.Set(ctx, key, hash)
 }
 
-// SetTx overwrites the mapping from transaction hash to transaction.
+// setTx overwrites the mapping from transaction hash to transaction.
 func (store OutputStore) setTx(ctx sdk.Context, tx Transaction) {
 	data, err := rlp.EncodeToBytes(&tx)
 	if err != nil {

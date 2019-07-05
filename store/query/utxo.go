@@ -42,12 +42,12 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 		switch path[0] {
 		case QueryBalance:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("exprected balance/<address>")
+				return nil, sdk.ErrUnknownRequest("expected balance/<address>")
 			}
 			addr := common.HexToAddress(path[1])
 			total, err := queryBalance(ctx, outputStore, addr)
 			if err != nil {
-				return nil, sdk.ErrInternal("failed query balance")
+				return nil, sdk.ErrInternal(fmt.Sprintf("failed query balance for 0x%x", addr))
 			}
 			return []byte(total.String()), nil
 

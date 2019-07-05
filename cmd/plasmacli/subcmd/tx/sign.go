@@ -82,10 +82,9 @@ Usage:
 	},
 }
 
-// generate confirmation signature for specified owner and position
-// verify that the inputs provided are correct
-// signing address should match one of the input addresses
-// generate confirmation signature for given utxo
+// generate confirmation signature for specified position and verify that
+// the inputs provided are correct. Signing address should match one of
+// the input addresses. Generate confirmation signature for given output.
 func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr ethcmn.Address, name string) error {
 	// query for output for the specified position
 	output, err := query.TxOutput(ctx, position)

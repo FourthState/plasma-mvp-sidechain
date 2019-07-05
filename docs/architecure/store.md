@@ -1,6 +1,6 @@
 # Store Design #
 
-The store package provides the backend to storage of all information necessary for the sidechain to function.
+The store package provides the backend storage for all information necessary for the sidechain to function.
 There are 2 stores, the block store and output store.
 
 ## Block Store ##
