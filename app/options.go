@@ -16,7 +16,7 @@ func SetPlasmaOptionsFromConfig(conf config.PlasmaConfig) func(*PlasmaMVPChain) 
 	var blockFinality uint64
 
 	if conf.IsOperator {
-		d, err := hex.DecodeString(conf.EthOperatorPrivateKey)
+		d, err := hex.DecodeString(conf.OperatorPrivateKey)
 
 		if err != nil {
 			errMsg := fmt.Sprintf("Could not parse private key: %v", err)

@@ -15,15 +15,13 @@ import (
 func TestAccounts(t *testing.T) {
 	// setup testing env
 	os.Mkdir("testing", os.ModePerm)
-	viper.Set(DirFlag, os.ExpandEnv("./testing"))
+	InitKeystore("./testing")
 
 	// cleanup
 	defer func() {
 		viper.Reset()
 		os.RemoveAll("testing")
 	}()
-
-	InitKeystore()
 
 	cases := []string{
 		"mykey",

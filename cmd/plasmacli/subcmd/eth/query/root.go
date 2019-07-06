@@ -33,7 +33,7 @@ func QueryCmd() *cobra.Command {
 var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Query for rootchain related information",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		plasma, err := config.GetContractConn()
 		plasmaContract = plasma
 		return err

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/flags"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/viper"
@@ -13,7 +14,7 @@ import (
 func TestSavSig(t *testing.T) {
 	// setup testing env
 	os.Mkdir("testing", os.ModePerm)
-	viper.Set(DirFlag, os.ExpandEnv("./testing"))
+	viper.Set(flags.Home, "./testing")
 
 	// cleanup
 	defer func() {
@@ -66,7 +67,7 @@ func TestSavSig(t *testing.T) {
 func TestBadSigs(t *testing.T) {
 	// setup testing env
 	os.Mkdir("testing", os.ModePerm)
-	viper.Set(DirFlag, os.ExpandEnv("./testing"))
+	viper.Set(flags.Home, "./testing")
 
 	// cleanup
 	defer func() {
@@ -89,7 +90,7 @@ func TestBadSigs(t *testing.T) {
 func TestMultiConfirmSig(t *testing.T) {
 	// setup testing env
 	os.Mkdir("testing", os.ModePerm)
-	viper.Set(DirFlag, os.ExpandEnv("./testing"))
+	viper.Set(flags.Home, "./testing")
 
 	// cleanup
 	defer func() {
