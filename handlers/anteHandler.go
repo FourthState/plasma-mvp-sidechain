@@ -99,8 +99,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, o
 	}
 	exited, err := client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), input.Position)
 	if err != nil {
-		// TODO: add updated error
-		return nil, ErrExitedInput("failed to retrieve exit information on input, %v", input.Position).Result()
+		return nil, ErrInvalidInput("failed to retrieve exit information on input, %v", input.Position).Result()
 	} else if exited {
 		return nil, ErrExitedInput("input, %v, utxo has exitted", input.Position).Result()
 	}
@@ -121,8 +120,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, o
 		for _, in := range tx.Transaction.Inputs {
 			exited, err = client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), in.Position)
 			if err != nil {
-				// TODO: update err
-				return nil, ErrExitedInput(fmt.Sprintf("failed to retrieve exit information on input, %v", in.Position)).Result()
+				return nil, ErrInvalidInput(fmt.Sprintf("failed to retrieve exit information on input, %v", in.Position)).Result()
 			} else if exited {
 				return nil, ErrExitedInput(fmt.Sprintf("a parent of the input has exited. Position: %v", in.Position)).Result()
 			}

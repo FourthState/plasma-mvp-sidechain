@@ -20,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Plasma configuration file
 - Added IncludeDepositMsg with handling to allow explicit deposit inclusion into sidechain
 ### Changed
+- [\#153](https://github.com/FourthState/plasma-mvp-sidechain/pull/153) Major refactor of store/, can query with position, transaction hash, or address. REST Supported.
 - [\#141](https://github.com/FourthState/plasma-mvp-sidechain/pull/141) Dependency management is now handled by go modules instead of Dep
 - [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated sign command to iterate over an account to finalize transactions
 - [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated spend to auto generate transaction for users based on the utxos they own
