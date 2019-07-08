@@ -23,13 +23,15 @@ var proveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.NewCLIContext()
+
 		// parse position
 		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
 			return err
 		}
 
-		result, sigs, err := getProof(position)
+		result, sigs, err := getProof(ctx, position)
 		if err != nil {
 			return err
 		}
@@ -69,9 +71,7 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
-func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
-	ctx := context.NewCLIContext().WithTrustNode(true)
-
+func getProof(ctx context.CLIContext, position plasma.Position) (*tm.ResultTx, []byte, error) {
 	key := store.GetOutputKey(position)
 	hash, err := ctx.QueryStore(key, "outputs")
 	if err != nil {
