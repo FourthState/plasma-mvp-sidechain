@@ -58,9 +58,9 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	cdc := MakeCodec()
 	baseApp.SetCommitMultiStoreTracer(traceStore)
 
-	outputStoreKey := sdk.NewKVStoreKey("outputs")
+	outputStoreKey := sdk.NewKVStoreKey(store.OutputStoreName)
 	outputStore := store.NewOutputStore(outputStoreKey)
-	blockStoreKey := sdk.NewKVStoreKey("block")
+	blockStoreKey := sdk.NewKVStoreKey(store.BlockStoreName)
 	blockStore := store.NewBlockStore(blockStoreKey)
 
 	app := &PlasmaMVPChain{

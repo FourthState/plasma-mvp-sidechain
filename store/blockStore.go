@@ -9,6 +9,10 @@ import (
 	"math/big"
 )
 
+const (
+	BlockStoreName = "block"
+)
+
 // keys
 var (
 	blockKey          = []byte{0x0}
