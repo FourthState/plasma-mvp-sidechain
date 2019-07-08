@@ -67,7 +67,7 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 			return data, nil
 		case QueryTxOutput:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("expected txo/<position>")
+				return nil, sdk.ErrUnknownRequest("expected utxo/<position>")
 			}
 			pos, e := plasma.FromPositionString(path[1])
 			if e != nil {
