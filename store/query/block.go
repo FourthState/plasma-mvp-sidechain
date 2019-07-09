@@ -2,6 +2,7 @@ package query
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
@@ -35,7 +36,7 @@ func NewBlockQuerier(blockStore store.BlockStore) sdk.Querier {
 		switch path[0] {
 		case QueryBlock:
 			if len(path) != 2 {
-				return nil, ErrInvalidPath("expected block/<number>")
+				return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<number>", QueryBlock))
 			}
 			blockNum, ok := new(big.Int).SetString(path[1], 10)
 			if !ok {
@@ -54,7 +55,7 @@ func NewBlockQuerier(blockStore store.BlockStore) sdk.Querier {
 			return data, nil
 		case QueryBlocks:
 			if len(path) > 2 {
-				return nil, ErrInvalidPath("expected /blocks or /blocks/<number>")
+				return nil, ErrInvalidPath(fmt.Sprintf("expected /%s or /%s/<number>", QueryBlocks, QueryBlocks))
 			}
 
 			var blockNum *big.Int
