@@ -19,7 +19,7 @@ const (
 	// the set of owned by the specified address
 	QueryBalance = "balance"
 
-	// QueryInfo retrieves the entire utxo set owned
+	// QueryInfo retrieves the entire output set owned
 	// by the specified address
 	QueryInfo = "info"
 
@@ -76,11 +76,11 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 			if e != nil {
 				return nil, sdk.ErrInternal("position decoding error")
 			}
-			txo, err := queryTxOutput(ctx, outputStore, pos)
+			output, err := queryTxOutput(ctx, outputStore, pos)
 			if err != nil {
 				return nil, err
 			}
-			data, e := json.Marshal(txo)
+			data, e := json.Marshal(output)
 			if e != nil {
 				return nil, sdk.ErrInternal("serialization error")
 			}
