@@ -79,7 +79,7 @@ func getProof(ctx context.CLIContext, position plasma.Position) (*tm.ResultTx, [
 	}
 
 	txKey := store.GetTxKey(hash)
-	txBytes, err := ctx.QueryStore(txKey, "outputs")
+	txBytes, err := ctx.QueryStore(txKey, store.OutputStoreName)
 
 	var tx store.Transaction
 	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
@@ -96,7 +96,7 @@ func getProof(ctx context.CLIContext, position plasma.Position) (*tm.ResultTx, [
 	// Ignore error if no confirm sig currently exists in store
 	var sigs []byte
 	if len(tx.SpenderTxs[position.OutputIndex]) > 0 {
-		queryPath := fmt.Sprintf("custom/utxo/tx/%s", tx.SpenderTxs[position.OutputIndex])
+		queryPath := fmt.Sprintf("custom/data/tx/%s", tx.SpenderTxs[position.OutputIndex])
 		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return &tm.ResultTx{}, nil, err
