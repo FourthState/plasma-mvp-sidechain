@@ -26,7 +26,7 @@ type BlocksResp struct {
 	Blocks              []plasma.Block
 }
 
-func NewPlasmaQuerier(plasmaStore store.PlasmaStore) sdk.Querier {
+func NewBlockQuerier(blockStore store.BlockStore) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) {
 		if len(path) == 0 {
 			return nil, ErrInvalidPath("path not specified")
@@ -43,7 +43,7 @@ func NewPlasmaQuerier(plasmaStore store.PlasmaStore) sdk.Querier {
 			} else if blockNum.Sign() < 0 {
 				return nil, ErrInvalidPath("block number must be positive")
 			}
-			block, ok := plasmaStore.GetBlock(ctx, blockNum)
+			block, ok := blockStore.GetBlock(ctx, blockNum)
 			if !ok {
 				return nil, ErrInvalidPath("nonexistent plasma block")
 			}
@@ -60,7 +60,7 @@ func NewPlasmaQuerier(plasmaStore store.PlasmaStore) sdk.Querier {
 			var blockNum *big.Int
 			if len(path) == 1 {
 				// latest 10 blocks
-				blockNum = plasmaStore.PlasmaBlockHeight(ctx)
+				blockNum = blockStore.PlasmaBlockHeight(ctx)
 				bigNine := big.NewInt(9)
 				if blockNum.Cmp(bigNine) <= 0 {
 					blockNum = big.NewInt(1)
@@ -76,7 +76,7 @@ func NewPlasmaQuerier(plasmaStore store.PlasmaStore) sdk.Querier {
 				}
 			}
 
-			blocks := queryBlocks(ctx, plasmaStore, blockNum)
+			blocks := queryBlocks(ctx, blockStore, blockNum)
 			data, err := json.Marshal(blocks)
 			if err != nil {
 				return nil, ErrSerialization("json: %s", err)
@@ -89,13 +89,13 @@ func NewPlasmaQuerier(plasmaStore store.PlasmaStore) sdk.Querier {
 }
 
 // queryBlocks will return an empty list of blocks if none are present
-func queryBlocks(ctx sdk.Context, plasmaStore store.PlasmaStore, startPoint *big.Int) BlocksResp {
+func queryBlocks(ctx sdk.Context, blockStore store.BlockStore, startPoint *big.Int) BlocksResp {
 	resp := BlocksResp{startPoint, []plasma.Block{}}
 
 	// want `startPoint` to remain the same
 	blockHeight := new(big.Int).Add(startPoint, utils.Big0)
 	for i := 0; i < 10; i++ {
-		block, ok := plasmaStore.GetBlock(ctx, blockHeight)
+		block, ok := blockStore.GetBlock(ctx, blockHeight)
 		if !ok {
 			return resp
 		}

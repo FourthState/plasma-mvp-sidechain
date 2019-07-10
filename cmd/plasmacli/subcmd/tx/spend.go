@@ -2,6 +2,7 @@ package tx
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	clistore "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/eth"
@@ -95,19 +96,19 @@ Usage:
 		// build transaction
 		// create the inputs without signatures
 		tx := plasma.Transaction{}
-		tx.Input0 = plasma.NewInput(inputs[0], [65]byte{}, confirmSignatures[0])
+		tx.Inputs = append(tx.Inputs, plasma.NewInput(inputs[0], [65]byte{}, confirmSignatures[0]))
 		if len(inputs) > 1 {
-			tx.Input1 = plasma.NewInput(inputs[1], [65]byte{}, confirmSignatures[1])
+			tx.Inputs = append(tx.Inputs, plasma.NewInput(inputs[1], [65]byte{}, confirmSignatures[1]))
 		} else {
-			tx.Input1 = plasma.NewInput(plasma.NewPosition(nil, 0, 0, nil), [65]byte{}, nil)
+			tx.Inputs = append(tx.Inputs, plasma.NewInput(plasma.NewPosition(nil, 0, 0, nil), [65]byte{}, nil))
 		}
 
 		// generate outputs
 		// use change to determine outcome of second output
-		tx.Output0 = plasma.NewOutput(toAddrs[0], amounts[0])
+		tx.Outputs = append(tx.Outputs, plasma.NewOutput(toAddrs[0], amounts[0]))
 		if len(toAddrs) > 1 {
 			if change.Sign() == 0 {
-				tx.Output1 = plasma.NewOutput(toAddrs[1], amounts[1])
+				tx.Outputs = append(tx.Outputs, plasma.NewOutput(toAddrs[1], amounts[1]))
 			} else {
 				return fmt.Errorf("cannot spend to two addresses since exact utxo inputs could not be found")
 			}
@@ -116,9 +117,9 @@ Usage:
 			if err != nil {
 				return err
 			}
-			tx.Output1 = plasma.NewOutput(addr, change)
+			tx.Outputs = append(tx.Outputs, plasma.NewOutput(addr, change))
 		} else {
-			tx.Output1 = plasma.NewOutput(ethcmn.Address{}, nil)
+			tx.Outputs = append(tx.Outputs, plasma.NewOutput(ethcmn.Address{}, nil))
 		}
 		tx.Fee = fee
 
@@ -131,7 +132,7 @@ Usage:
 			return err
 		}
 		copy(signature[:], sig)
-		tx.Input0.Signature = signature
+		tx.Inputs[0].Signature = signature
 		if len(inputs) > 1 {
 			if len(accs) > 2 {
 				signer = accs[1]
@@ -141,7 +142,7 @@ Usage:
 				return err
 			}
 			copy(signature[:], sig)
-			tx.Input1.Signature = signature
+			tx.Inputs[1].Signature = signature
 		}
 
 		// create SpendMsg and txBytes
@@ -331,8 +332,14 @@ func retrieveInputs(ctx context.CLIContext, accs []string, total *big.Int) (inpu
 		return inputs, change, err
 	}
 
-	res, err := ctx.QuerySubspace(addr.Bytes(), "utxo")
+	queryPath := fmt.Sprintf("custom/utxo/info/%s", addr)
+	res, err := ctx.Query(queryPath, nil)
 	if err != nil {
+		return inputs, change, err
+	}
+
+	var utxos []store.TxOutput
+	if err := json.Unmarshal(res, &utxos); err != nil {
 		return inputs, change, err
 	}
 
@@ -340,13 +347,7 @@ func retrieveInputs(ctx context.CLIContext, accs []string, total *big.Int) (inpu
 	var position0, position1 plasma.Position
 	// iterate through utxo's looking for optimal input pairing
 	// return input pairing if input + input == total
-	utxo0 := store.UTXO{}
-	utxo1 := store.UTXO{}
-	for i, outer := range res {
-		if err := rlp.DecodeBytes(outer.Value, &utxo0); err != nil {
-			return nil, nil, err
-		}
-
+	for i, utxo0 := range utxos {
 		exitted, err := eth.HasTxExited(utxo0.Position)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
@@ -359,14 +360,10 @@ func retrieveInputs(ctx context.CLIContext, accs []string, total *big.Int) (inpu
 			inputs = append(inputs, utxo0.Position)
 			return inputs, big.NewInt(0), nil
 		}
-		for k, inner := range res {
+		for k, utxo1 := range utxos {
 			// do not pair an input with itself
 			if i == k {
 				continue
-			}
-
-			if err := rlp.DecodeBytes(inner.Value, &utxo1); err != nil {
-				return nil, nil, err
 			}
 
 			exitted, err := eth.HasTxExited(utxo1.Position)

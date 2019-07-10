@@ -40,28 +40,23 @@ var infoCmd = &cobra.Command{
 			return err
 		}
 
-		var utxos []store.UTXO
+		var utxos []store.TxOutput
 		if err := json.Unmarshal(data, &utxos); err != nil {
 			return fmt.Errorf("unmarshaling json query response: %s", err)
 		}
 
 		for i, utxo := range utxos {
 			fmt.Printf("UTXO %d\n", i)
-			fmt.Printf("Position: %s, Amount: %s, Spent: %t\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent)
-
-			// print inputs if applicable
-			inputAddresses := utxo.InputAddresses()
-			positions := utxo.InputPositions()
-			for i, _ := range inputAddresses {
-				fmt.Printf("Input Owner %d, Position: %s\n", i, positions[i])
-			}
-
-			// print spenders if applicable
-			spenderAddresses := utxo.SpenderAddresses()
-			positions = utxo.SpenderPositions()
-			for i, _ := range spenderAddresses {
-				fmt.Printf("Spender Owner %d, Position: %s\n", i, positions[i])
-			}
+			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent, utxo.SpenderTx)
+			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.TxHash, utxo.ConfirmationHash)
+			/*
+				// TODO: Add --verbose flag that if set will query TxInput and print InputAddresses and InputPositions as well
+				// print inputs if applicable
+				positions := utxo.InputPositions
+				for i, p := range positions {
+					fmt.Printf("Input %d Position: %s\n", i, p)
+				}
+			*/
 
 			fmt.Printf("End UTXO %d info\n\n", i)
 		}

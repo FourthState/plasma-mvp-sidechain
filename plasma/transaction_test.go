@@ -13,22 +13,20 @@ import (
 
 func TestTransactionSerialization(t *testing.T) {
 	one := big.NewInt(1)
-	zero := big.NewInt(0)
 
 	// contstruct a transaction
 	tx := &Transaction{}
 	pos, _ := FromPositionString("(1.10000.1.0)")
 	confirmSig0 := make([][65]byte, 1)
 	copy(confirmSig0[0][65-len([]byte("confirm sig")):], []byte("confirm sig"))
-	tx.Input0 = NewInput(pos, [65]byte{}, confirmSig0)
-	tx.Input0.Signature[1] = byte(1)
+	tx.Inputs = append(tx.Inputs, NewInput(pos, [65]byte{}, confirmSig0))
+	tx.Inputs[0].Signature[1] = byte(1)
 	pos, _ = FromPositionString("(0.0.0.1)")
 	confirmSig1 := make([][65]byte, 2)
 	copy(confirmSig1[0][65-len([]byte("the second confirm sig")):], []byte("the second confirm sig"))
 	copy(confirmSig1[1][65-len([]byte("a very long string turned into bytes")):], []byte("a very long string turned into bytes"))
-	tx.Input1 = NewInput(pos, [65]byte{}, confirmSig1)
-	tx.Output0 = NewOutput(common.HexToAddress("1"), one)
-	tx.Output1 = NewOutput(common.HexToAddress("0"), zero)
+	tx.Inputs = append(tx.Inputs, NewInput(pos, [65]byte{}, confirmSig1))
+	tx.Outputs = append(tx.Outputs, NewOutput(common.HexToAddress("1"), one))
 	tx.Fee = big.NewInt(1)
 
 	bytes, err := rlp.EncodeToBytes(tx)
@@ -67,40 +65,32 @@ func TestTransactionValidation(t *testing.T) {
 		validationCase{
 			reason: "tx with an empty first input",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
-				Input1:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
-				Output0: NewOutput(utils.ZeroAddress, utils.Big0),
-				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.0)"), emptySig, nil)},
+				Outputs: []Output{NewOutput(utils.ZeroAddress, utils.Big0)},
 				Fee:     utils.Big0,
 			},
 		},
 		validationCase{
 			reason: "tx with no recipient",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig),
-				Input1:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
-				Output0: NewOutput(utils.ZeroAddress, utils.Big1),
-				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig)},
+				Outputs: []Output{NewOutput(utils.ZeroAddress, utils.Big1)},
 				Fee:     utils.Big0,
 			},
 		},
 		validationCase{
 			reason: "tx with no output amount",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig),
-				Input1:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
-				Output0: NewOutput(addr, utils.Big0),
-				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig)},
+				Outputs: []Output{NewOutput(addr, utils.Big0)},
 				Fee:     utils.Big0,
 			},
 		},
 		validationCase{
 			reason: "tx with the same position for both inputs",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig),
-				Input1:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig),
-				Output0: NewOutput(addr, utils.Big0),
-				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig), NewInput(GetPosition("(0.0.0.1)"), sampleSig, sampleConfirmSig)},
+				Outputs: []Output{NewOutput(addr, utils.Big0)},
 				Fee:     utils.Big0,
 			},
 		},
@@ -115,40 +105,32 @@ func TestTransactionValidation(t *testing.T) {
 		validationCase{
 			reason: "tx with one input and one output",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
-				Input1:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
-				Output0: NewOutput(addr, utils.Big1),
-				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil)},
+				Outputs: []Output{NewOutput(addr, utils.Big1)},
 				Fee:     utils.Big0,
 			},
 		},
 		validationCase{
 			reason: "tx with one input and two output",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
-				Input1:  NewInput(GetPosition("(0.0.0.0)"), emptySig, nil),
-				Output0: NewOutput(addr, utils.Big1),
-				Output1: NewOutput(addr, utils.Big1),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil)},
+				Outputs: []Output{NewOutput(addr, utils.Big1), NewOutput(addr, utils.Big1)},
 				Fee:     utils.Big0,
 			},
 		},
 		validationCase{
 			reason: "tx with two input and one output",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
-				Input1:  NewInput(GetPosition("(1.0.1.0)"), sampleSig, sampleConfirmSig),
-				Output0: NewOutput(addr, utils.Big1),
-				Output1: NewOutput(utils.ZeroAddress, utils.Big0),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil), NewInput(GetPosition("(1.0.1.0)"), sampleSig, sampleConfirmSig)},
+				Outputs: []Output{NewOutput(addr, utils.Big1)},
 				Fee:     utils.Big0,
 			},
 		},
 		validationCase{
 			reason: "tx with two input and two outputs",
 			Transaction: Transaction{
-				Input0:  NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil),
-				Input1:  NewInput(GetPosition("(1.0.1.0)"), sampleSig, sampleConfirmSig),
-				Output0: NewOutput(addr, utils.Big1),
-				Output1: NewOutput(addr, utils.Big1),
+				Inputs:  []Input{NewInput(GetPosition("(0.0.0.1)"), sampleSig, nil), NewInput(GetPosition("(1.0.1.0)"), sampleSig, sampleConfirmSig)},
+				Outputs: []Output{NewOutput(addr, utils.Big1), NewOutput(addr, utils.Big1)},
 				Fee:     utils.Big0,
 			},
 		},

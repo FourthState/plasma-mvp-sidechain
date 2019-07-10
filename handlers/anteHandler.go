@@ -20,118 +20,110 @@ type plasmaConn interface {
 	HasTxExited(*big.Int, plasma.Position) (bool, error)
 }
 
-func NewAnteHandler(utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) sdk.AnteHandler {
+// NewAnteHandler returns an ante handler capable of handling include_deposit
+// and spend_utxo Msgs.
+func NewAnteHandler(outputStore store.OutputStore, blockStore store.BlockStore, client plasmaConn) sdk.AnteHandler {
 	return func(ctx sdk.Context, tx sdk.Tx, simulate bool) (newCtx sdk.Context, res sdk.Result, abort bool) {
 		msg := tx.GetMsgs()[0] // tx should only have one msg
 		switch mtype := msg.Type(); mtype {
 		case "include_deposit":
 			depositMsg := msg.(msgs.IncludeDepositMsg)
-			return includeDepositAnteHandler(ctx, utxoStore, plasmaStore, depositMsg, client)
+			return includeDepositAnteHandler(ctx, outputStore, blockStore, depositMsg, client)
 		case "spend_utxo":
 			spendMsg := msg.(msgs.SpendMsg)
-			return spendMsgAnteHandler(ctx, spendMsg, utxoStore, plasmaStore, client)
+			return spendMsgAnteHandler(ctx, spendMsg, outputStore, blockStore, client)
 		default:
-			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "Msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
+			return ctx, ErrInvalidTransaction("msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
 	}
 }
 
-func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, outputStore store.OutputStore, blockStore store.BlockStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	var totalInputAmt, totalOutputAmt *big.Int
+	totalInputAmt = big.NewInt(0)
+	totalOutputAmt = big.NewInt(0)
 
 	// attempt to recover signers
 	signers := spendMsg.GetSigners()
 	if len(signers) == 0 {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "failed recovering signers").Result(), true
+		return ctx, ErrInvalidTransaction("failed recovering signers").Result(), true
 	}
 
-	/* validate the first input */
-	amt, res := validateInput(ctx, spendMsg.Input0, common.BytesToAddress(signers[0]), utxoStore, plasmaStore, client)
-	if !res.IsOK() {
-		return ctx, res, true
+	if len(signers) != len(spendMsg.Inputs) {
+		return ctx, ErrInvalidSignature("number of signers does not equal number of signatures").Result(), true
 	}
 
-	// must cover the fee
-	if amt.Cmp(spendMsg.Fee) < 0 {
-		return ctx, ErrInsufficientFee(DefaultCodespace, "first input has an insufficient amount to pay the fee").Result(), true
-	}
-
-	totalInputAmt = amt
-
-	// store confirm signatures
-	if !spendMsg.Input0.Position.IsDeposit() && spendMsg.Input0.TxIndex < 1<<16-1 {
-		plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input0.Position, spendMsg.Input0.ConfirmSignatures)
-	}
-
-	/* validate second input if applicable */
-	if spendMsg.HasSecondInput() {
-		if len(signers) != 2 {
-			return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "second signature not present").Result(), true
-		}
-		amt, res = validateInput(ctx, spendMsg.Input1, common.BytesToAddress(signers[1]), utxoStore, plasmaStore, client)
+	/* validate inputs */
+	for i, signer := range signers {
+		amt, res := validateInput(ctx, spendMsg.Inputs[i], common.BytesToAddress(signer), outputStore, blockStore, client)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
 
-		// store confirm signature
-		if !spendMsg.Input1.Position.IsDeposit() && spendMsg.Input1.TxIndex < 1<<16-1 {
-			plasmaStore.StoreConfirmSignatures(ctx, spendMsg.Input1.Position, spendMsg.Input1.ConfirmSignatures)
+		// first input must cover the fee
+		if i == 0 && amt.Cmp(spendMsg.Fee) < 0 {
+			return ctx, ErrInsufficientFee("first input has an insufficient amount to pay the fee").Result(), true
 		}
 
 		totalInputAmt = totalInputAmt.Add(totalInputAmt, amt)
 	}
 
 	// input0 + input1 (totalInputAmt) == output0 + output1 + Fee (totalOutputAmt)
-	totalOutputAmt = spendMsg.Output0.Amount
-	if spendMsg.HasSecondOutput() {
-		totalOutputAmt = new(big.Int).Add(new(big.Int).Add(totalOutputAmt, spendMsg.Output1.Amount), spendMsg.Fee)
-	} else {
-		totalOutputAmt = new(big.Int).Add(totalOutputAmt, spendMsg.Fee)
+	for _, output := range spendMsg.Outputs {
+		totalOutputAmt = new(big.Int).Add(totalOutputAmt, output.Amount)
 	}
+	totalOutputAmt = new(big.Int).Add(totalOutputAmt, spendMsg.Fee)
 
 	if totalInputAmt.Cmp(totalOutputAmt) != 0 {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "inputs do not equal Outputs (+ fee)").Result(), true
+		return ctx, ErrInvalidTransaction("inputs do not equal Outputs (+ fee)").Result(), true
 	}
 
 	return ctx, sdk.Result{}, false
 }
 
-// validates the inputs against the utxo store and returns the amount of the respective input
-func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, client plasmaConn) (*big.Int, sdk.Result) {
+// validates the inputs against the output store and returns the amount of the respective input
+func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, outputStore store.OutputStore, blockStore store.BlockStore, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
 
 	// inputUTXO must be owned by the signer due to the prefix so we do not need to
 	// check the owner of the position
-	inputUTXO, ok := utxoStore.GetUTXO(ctx, signer, input.Position)
+	inputUTXO, ok := outputStore.GetOutput(ctx, input.Position)
 	if !ok {
-		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, does not exist by owner %x", input.Position, signer).Result()
+		return nil, ErrInvalidInput("input, %v, does not exist", input.Position).Result()
+	}
+	if !bytes.Equal(inputUTXO.Output.Owner[:], signer[:]) {
+		return nil, ErrSignatureVerificationFailure(fmt.Sprintf("transaction was not signed by correct address. Got: 0x%x. Expected: 0x%x", signer, inputUTXO.Output.Owner)).Result()
 	}
 	if inputUTXO.Spent {
-		return nil, msgs.ErrInvalidTransaction(DefaultCodespace, "input, %v, already spent", input.Position).Result()
+		return nil, ErrInvalidInput("input, %v, already spent", input.Position).Result()
 	}
-	exited, err := client.HasTxExited(plasmaStore.CurrentPlasmaBlockNum(ctx), input.Position)
+	exited, err := client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), input.Position)
 	if err != nil {
-		return nil, sdk.ErrInternal(fmt.Sprintf("geth endpoint failure: %s", err)).Result()
+		return nil, ErrInvalidInput("failed to retrieve exit information on input, %v", input.Position).Result()
 	} else if exited {
-		return nil, ErrExitedInput(DefaultCodespace, "input, %v, utxo has exitted", input.Position).Result()
+		return nil, ErrExitedInput("input, %v, utxo has exitted", input.Position).Result()
 	}
 
-	// validate confirm signatures if not a fee utxo or deposit utxo
-	if input.TxIndex < 1<<16-1 && input.DepositNonce.Sign() == 0 {
-		res := validateConfirmSignatures(ctx, input, inputUTXO)
+	// validate inputs/confirmation signatures if not a fee utxo or deposit utxo
+	if !input.IsDeposit() && !input.IsFee() {
+		tx, ok := outputStore.GetTxWithPosition(ctx, input.Position)
+		if !ok {
+			return nil, sdk.ErrInternal(fmt.Sprintf("failed to retrieve the transaction that input with position %s belongs to", input.Position)).Result()
+		}
+
+		res := validateConfirmSignatures(ctx, input, tx, outputStore)
 		if !res.IsOK() {
 			return nil, res
 		}
-	}
 
-	// check if the parent utxo has exited
-	for _, key := range inputUTXO.InputKeys {
-		utxo, _ := utxoStore.GetUTXOWithKey(ctx, key)
-		exited, err := client.HasTxExited(plasmaStore.CurrentPlasmaBlockNum(ctx), utxo.Position)
-		if err != nil {
-			return nil, sdk.ErrInternal(fmt.Sprintf("geth endpoint failure: %s", err)).Result()
-		} else if exited {
-			return nil, sdk.ErrUnauthorized(fmt.Sprintf("a parent of the input has exited. Owner: %x, Position: %v", utxo.Output.Owner, utxo.Position)).Result()
+		// check if the parent utxo has exited
+		for _, in := range tx.Transaction.Inputs {
+			exited, err = client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), in.Position)
+			if err != nil {
+				return nil, ErrInvalidInput(fmt.Sprintf("failed to retrieve exit information on input, %v", in.Position)).Result()
+			} else if exited {
+				return nil, ErrExitedInput(fmt.Sprintf("a parent of the input has exited. Position: %v", in.Position)).Result()
+			}
 		}
 	}
 
@@ -141,45 +133,51 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, u
 }
 
 // validates the input's confirm signatures
-func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputUTXO store.UTXO) sdk.Result {
-	if len(inputUTXO.InputKeys) != len(input.ConfirmSignatures) {
-		return msgs.ErrInvalidTransaction(DefaultCodespace, "incorrect number of confirm signatures").Result()
+func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputTx store.Transaction, outputStore store.OutputStore) sdk.Result {
+	if len(input.ConfirmSignatures) > 0 && len(inputTx.Transaction.Inputs) != len(input.ConfirmSignatures) {
+		return ErrInvalidTransaction("incorrect number of confirm signatures").Result()
 	}
-
-	confirmationHash := utils.ToEthSignedMessageHash(inputUTXO.ConfirmationHash[:])[:]
-	for i, key := range inputUTXO.InputKeys {
-		address := key[:common.AddressLength]
+	confirmationHash := utils.ToEthSignedMessageHash(inputTx.ConfirmationHash[:])[:]
+	for i, in := range inputTx.Transaction.Inputs {
+		utxo, ok := outputStore.GetOutput(ctx, in.Position)
+		if !ok {
+			return ErrInvalidInput(fmt.Sprintf("failed to retrieve input utxo with position %s", in.Position)).Result()
+		}
 
 		pubKey, _ := crypto.SigToPub(confirmationHash, input.ConfirmSignatures[i][:])
 		signer := crypto.PubkeyToAddress(*pubKey)
-		if !bytes.Equal(signer[:], address) {
-			return sdk.ErrUnauthorized(fmt.Sprintf("confirm signature not signed by the correct address. Got: %x. Expected %x", signer, address)).Result()
+		if !bytes.Equal(signer[:], utxo.Output.Owner[:]) {
+			return ErrSignatureVerificationFailure(fmt.Sprintf("confirm signature not signed by the correct address. Got: %x. Expected: %x", signer, utxo.Output.Owner)).Result()
 		}
 	}
 
 	return sdk.Result{}
 }
 
-func includeDepositAnteHandler(ctx sdk.Context, utxoStore store.UTXOStore, plasmaStore store.PlasmaStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
-	depositPosition := plasma.NewPosition(big.NewInt(0), 0, 0, msg.DepositNonce)
-	if utxoStore.HasUTXO(ctx, msg.Owner, depositPosition) {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
+func includeDepositAnteHandler(ctx sdk.Context, outputStore store.OutputStore, blockStore store.BlockStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+	if outputStore.HasDeposit(ctx, msg.DepositNonce) {
+		return ctx, ErrInvalidTransaction("deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
 	}
-	deposit, threshold, ok := client.GetDeposit(plasmaStore.CurrentPlasmaBlockNum(ctx), msg.DepositNonce)
+	deposit, threshold, ok := client.GetDeposit(blockStore.PlasmaBlockHeight(ctx), msg.DepositNonce)
 	if !ok && threshold == nil {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, does not exist.", msg.DepositNonce.String()).Result(), true
+		return ctx, ErrInvalidTransaction("deposit, %s, does not exist.", msg.DepositNonce.String()).Result(), true
 	}
 	if !ok {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), threshold.Int64()).Result(), true
+		return ctx, ErrInvalidTransaction("deposit, %s, has not finalized yet. Please wait at least %d blocks before resubmitting", msg.DepositNonce.String(), threshold.Int64()).Result(), true
 	}
-	exited, err := client.HasTxExited(plasmaStore.CurrentPlasmaBlockNum(ctx), depositPosition)
+	if !bytes.Equal(deposit.Owner[:], msg.Owner[:]) {
+		return ctx, ErrInvalidTransaction("deposit, %s, does not equal the owner specified in the include-deposit Msg", msg.DepositNonce).Result(), true
+	}
+
+	depositPosition := plasma.NewPosition(big.NewInt(0), 0, 0, msg.DepositNonce)
+	exited, err := client.HasTxExited(blockStore.PlasmaBlockHeight(ctx), depositPosition)
 	if err != nil {
-		return ctx, sdk.ErrInternal(fmt.Sprintf("geth endpoint failure: %s", err)).Result(), true
+		return ctx, ErrInvalidTransaction("failed to retrieve deposit information for deposit, %s", msg.DepositNonce.String()).Result(), true
 	} else if exited {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, "deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
+		return ctx, ErrInvalidTransaction("deposit, %s, has already exitted from rootchain", msg.DepositNonce.String()).Result(), true
 	}
 	if !bytes.Equal(msg.Owner.Bytes(), deposit.Owner.Bytes()) {
-		return ctx, msgs.ErrInvalidTransaction(DefaultCodespace, fmt.Sprintf("msg has the wrong owner field for given deposit. Resubmit with correct deposit owner: %s", deposit.Owner.String())).Result(), true
+		return ctx, ErrInvalidTransaction(fmt.Sprintf("msg has the wrong owner field for given deposit. Resubmit with correct deposit owner: %s", deposit.Owner.String())).Result(), true
 	}
 	return ctx, sdk.Result{}, false
 }

@@ -1,13 +1,12 @@
 package eth
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
-	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
-	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	tm "github.com/tendermint/tendermint/rpc/core/types"
@@ -19,24 +18,18 @@ func ProveCmd() *cobra.Command {
 }
 
 var proveCmd = &cobra.Command{
-	Use:   "prove <account> <position>",
+	Use:   "prove <position>",
 	Short: "Prove transaction inclusion: prove <account> <position>",
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.NewCLIContext()
-		addr, err := ks.GetAccount(args[0])
-		if err != nil {
-			return fmt.Errorf("failed to retrieve account: { %s }", err)
-		}
-
 		// parse position
 		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
 			return err
 		}
 
-		result, sigs, err := getProof(ctx, addr, position)
+		result, sigs, err := getProof(position)
 		if err != nil {
 			return err
 		}
@@ -76,28 +69,51 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
-func getProof(ctx context.CLIContext, addr ethcmn.Address, position plasma.Position) (*tm.ResultTx, []byte, error) {
-	// query for the output
-	key := append(addr.Bytes(), position.Bytes()...)
-	res, err := ctx.QueryStore(key, "utxo")
+func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
+	ctx := context.NewCLIContext().WithTrustNode(true)
+
+	key := store.GetOutputKey(position)
+	hash, err := ctx.QueryStore(key, "outputs")
 	if err != nil {
 		return &tm.ResultTx{}, nil, err
 	}
 
-	utxo := store.UTXO{}
-	if err := rlp.DecodeBytes(res, &utxo); err != nil {
-		return &tm.ResultTx{}, nil, err
+	txKey := store.GetTxKey(hash)
+	txBytes, err := ctx.QueryStore(txKey, "outputs")
+
+	var tx store.Transaction
+	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
+		return &tm.ResultTx{}, nil, fmt.Errorf("Transaction decoding failed: %s", err.Error())
 	}
 
 	// query tm node for information about this tx
-	result, err := ctx.Client.Tx(utxo.MerkleHash, true)
+	result, err := ctx.Client.Tx(tx.Transaction.MerkleHash(), true)
 	if err != nil {
 		return &tm.ResultTx{}, nil, err
 	}
 
 	// Look for confirmation signatures
-	key = append([]byte("confirmSignature"), utxo.Position.Bytes()...)
-	sigs, err := ctx.QueryStore(key, "plasma")
+	// Ignore error if no confirm sig currently exists in store
+	var sigs []byte
+	if len(tx.SpenderTxs[position.OutputIndex]) > 0 {
+		queryPath := fmt.Sprintf("custom/utxo/tx/%s", tx.SpenderTxs[position.OutputIndex])
+		data, err := ctx.Query(queryPath, nil)
+		if err != nil {
+			return &tm.ResultTx{}, nil, err
+		}
+
+		var spenderTx store.Transaction
+		if err := json.Unmarshal(data, &spenderTx); err != nil {
+			return &tm.ResultTx{}, nil, fmt.Errorf("unmarshaling json query response: %s", err)
+		}
+		for _, input := range spenderTx.Transaction.Inputs {
+			if input.Position.String() == position.String() {
+				for _, sig := range input.ConfirmSignatures {
+					sigs = append(sigs, sig[:]...)
+				}
+			}
+		}
+	}
 
 	return result, sigs, nil
 }

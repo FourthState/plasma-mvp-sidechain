@@ -20,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Plasma configuration file
 - Added IncludeDepositMsg with handling to allow explicit deposit inclusion into sidechain
 ### Changed
+- [\#153](https://github.com/FourthState/plasma-mvp-sidechain/pull/153) Major refactor of store/, [Store architecture details](https://github.com/FourthState/plasma-mvp-sidechain/tree/develop/docs/architecure/store.md). REST Supported.
 - [\#141](https://github.com/FourthState/plasma-mvp-sidechain/pull/141) Dependency management is now handled by go modules instead of Dep
 - [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated sign command to iterate over an account to finalize transactions
 - [\#129](https://github.com/FourthState/plasma-mvp-sidechain/pull/129) Updated spend to auto generate transaction for users based on the utxos they own
@@ -36,7 +37,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - [\#147](https://github.com/FourthState/plasma-mvp-sidechain/pull/147) Fix Syncing bug where syncing nodes would panic after processing exitted inputs/deposits. Bug is explained in detail here: [\#143](https://github.com/FourthState/plasma-mvp-sidechain/issues/143)
 - [\#154](https://github.com/FourthState/plasma-mvp-sidechain/pull/154) Fixes issue where include-Deposit msg.Owner == deposit.Owner not enforced. This is necessary to prevent malicious users from rewriting an already included UTXO in store.
 ### Deprecated 
-- Dep is no longer be supported
+- Dep is no longer supported
 
 ## PreHistory
 

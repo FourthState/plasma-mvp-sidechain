@@ -5,13 +5,14 @@ import (
 	"fmt"
 )
 
-// Input represents the input to a spend
+// Input represents the input to a spend transaction.
 type Input struct {
 	Position
 	Signature         [65]byte
 	ConfirmSignatures [][65]byte
 }
 
+// NewInput creates a Input object.
 func NewInput(position Position, sig [65]byte, confirmSigs [][65]byte) Input {
 	// nil != empty slice. avoid deserialization issues by forcing empty slices
 	if confirmSigs == nil {
@@ -35,7 +36,7 @@ func (i Input) ValidateBasic() error {
 	var emptySig [65]byte
 	if i.Position.IsNilPosition() {
 		if !bytes.Equal(i.Signature[:], emptySig[:]) || len(i.ConfirmSignatures) > 0 {
-			return fmt.Errorf("nil input should not specifiy a signature nor confirm signatures")
+			return fmt.Errorf("nil input should not specify a signature nor confirm signatures")
 		}
 	} else {
 		if err := i.Position.ValidateBasic(); err != nil {

@@ -7,6 +7,7 @@ import (
 	"math/big"
 )
 
+// Deposit represents a deposit that occured on the ethereum plasma smart contract.
 type Deposit struct {
 	Owner       common.Address `json:"Owner"`
 	Amount      *big.Int       `json:"Amount"`
@@ -19,6 +20,7 @@ type deposit struct {
 	EthBlockNum []byte
 }
 
+// NewDeposit creates a Deposit object.
 func NewDeposit(owner common.Address, amount *big.Int, ethBlockNum *big.Int) Deposit {
 	return Deposit{
 		Owner:       owner,
@@ -27,12 +29,14 @@ func NewDeposit(owner common.Address, amount *big.Int, ethBlockNum *big.Int) Dep
 	}
 }
 
+// EncodeRLP satisfies the rlp interface for Deposit.
 func (d *Deposit) EncodeRLP(w io.Writer) error {
 	deposit := &deposit{d.Owner, d.Amount.Bytes(), d.EthBlockNum.Bytes()}
 
 	return rlp.Encode(w, deposit)
 }
 
+// DecodeRLP satisfies the rlp interface for Deposit.
 func (d *Deposit) DecodeRLP(s *rlp.Stream) error {
 	var dep deposit
 	if err := s.Decode(&dep); err != nil {
