@@ -12,11 +12,14 @@ import (
 )
 
 const (
+	// RouteName is the name used to access the following queries
+	RouteName = "data"
+
 	// QueryBalance retrieves the aggregate value of
 	// the set of owned by the specified address
 	QueryBalance = "balance"
 
-	// QueryInfo retrieves the entire utxo set owned
+	// QueryInfo retrieves the entire output set owned
 	// by the specified address
 	QueryInfo = "info"
 
@@ -42,7 +45,7 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 		switch path[0] {
 		case QueryBalance:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("expected balance/<address>")
+				return nil, sdk.ErrUnknownRequest(fmt.Sprintf("expected %s/<address>", QueryBalance))
 			}
 			addr := common.HexToAddress(path[1])
 			total, err := queryBalance(ctx, outputStore, addr)
@@ -53,7 +56,7 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 
 		case QueryInfo:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("expected info/<address>")
+				return nil, sdk.ErrUnknownRequest(fmt.Sprintf("expected %s/<address>", QueryInfo))
 			}
 			addr := common.HexToAddress(path[1])
 			utxos, err := queryInfo(ctx, outputStore, addr)
@@ -67,24 +70,24 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 			return data, nil
 		case QueryTxOutput:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("expected txo/<position>")
+				return nil, sdk.ErrUnknownRequest(fmt.Sprintf("expected %s/<position>", QueryTxOutput))
 			}
 			pos, e := plasma.FromPositionString(path[1])
 			if e != nil {
 				return nil, sdk.ErrInternal("position decoding error")
 			}
-			txo, err := queryTxOutput(ctx, outputStore, pos)
+			output, err := queryTxOutput(ctx, outputStore, pos)
 			if err != nil {
 				return nil, err
 			}
-			data, e := json.Marshal(txo)
+			data, e := json.Marshal(output)
 			if e != nil {
 				return nil, sdk.ErrInternal("serialization error")
 			}
 			return data, nil
 		case QueryTxInput:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("expected input/<position>")
+				return nil, sdk.ErrUnknownRequest(fmt.Sprintf("expected %s/<position>", QueryTxInput))
 			}
 			pos, e := plasma.FromPositionString(path[1])
 			if e != nil {
@@ -101,7 +104,7 @@ func NewOutputQuerier(outputStore store.OutputStore) sdk.Querier {
 			return data, nil
 		case QueryTx:
 			if len(path) != 2 {
-				return nil, sdk.ErrUnknownRequest("expected tx/<hash>")
+				return nil, sdk.ErrUnknownRequest(fmt.Sprintf("expected %s/<hash>", QueryTx))
 			}
 			tx, ok := outputStore.GetTx(ctx, []byte(path[1]))
 			if !ok {

@@ -332,7 +332,7 @@ func retrieveInputs(ctx context.CLIContext, accs []string, total *big.Int) (inpu
 		return inputs, change, err
 	}
 
-	queryPath := fmt.Sprintf("custom/utxo/info/%s", addr)
+	queryPath := fmt.Sprintf("custom/data/info/%s", addr)
 	res, err := ctx.Query(queryPath, nil)
 	if err != nil {
 		return inputs, change, err

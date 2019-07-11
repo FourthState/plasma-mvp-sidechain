@@ -23,13 +23,15 @@ var proveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Long:  "Returns proof for transaction inclusion. Use to exit transactions in the smart contract",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.NewCLIContext()
+
 		// parse position
 		position, err := plasma.FromPositionString(args[1])
 		if err != nil {
 			return err
 		}
 
-		result, sigs, err := getProof(position)
+		result, sigs, err := getProof(ctx, position)
 		if err != nil {
 			return err
 		}
@@ -69,17 +71,15 @@ var proveCmd = &cobra.Command{
 
 // Returns transaction results for given position
 // Trusts connected full node
-func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
-	ctx := context.NewCLIContext().WithTrustNode(true)
-
+func getProof(ctx context.CLIContext, position plasma.Position) (*tm.ResultTx, []byte, error) {
 	key := store.GetOutputKey(position)
-	hash, err := ctx.QueryStore(key, "outputs")
+	hash, err := ctx.QueryStore(key, store.OutputStoreName)
 	if err != nil {
 		return &tm.ResultTx{}, nil, err
 	}
 
 	txKey := store.GetTxKey(hash)
-	txBytes, err := ctx.QueryStore(txKey, "outputs")
+	txBytes, err := ctx.QueryStore(txKey, store.OutputStoreName)
 
 	var tx store.Transaction
 	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
@@ -96,7 +96,7 @@ func getProof(position plasma.Position) (*tm.ResultTx, []byte, error) {
 	// Ignore error if no confirm sig currently exists in store
 	var sigs []byte
 	if len(tx.SpenderTxs[position.OutputIndex]) > 0 {
-		queryPath := fmt.Sprintf("custom/utxo/tx/%s", tx.SpenderTxs[position.OutputIndex])
+		queryPath := fmt.Sprintf("custom/data/tx/%s", tx.SpenderTxs[position.OutputIndex])
 		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return &tm.ResultTx{}, nil, err

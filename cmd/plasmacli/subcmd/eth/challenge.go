@@ -5,6 +5,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -70,7 +71,8 @@ Usage:
 		var txBytes, proof, confirmSignatures []byte
 		if viper.GetBool(useNodeF) {
 			var result *tm.ResultTx
-			result, confirmSignatures, err = getProof(challengingPos)
+			ctx := context.NewCLIContext()
+			result, confirmSignatures, err = getProof(ctx, challengingPos)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
 			}

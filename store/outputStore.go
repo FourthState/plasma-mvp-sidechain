@@ -9,6 +9,10 @@ import (
 	"math/big"
 )
 
+const (
+	OutputStoreName = "output"
+)
+
 // Output Store stores deposits, fee, and regular ouputs. It contains the
 // following mappings:
 // - position to transaction hash

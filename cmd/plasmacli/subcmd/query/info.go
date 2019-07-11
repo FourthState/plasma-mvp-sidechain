@@ -34,7 +34,7 @@ var infoCmd = &cobra.Command{
 			addr = ethcmn.HexToAddress(args[0])
 		}
 
-		queryPath := fmt.Sprintf("custom/utxo/info/%s", addr)
+		queryPath := fmt.Sprintf("custom/data/info/%s", addr)
 		data, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return err

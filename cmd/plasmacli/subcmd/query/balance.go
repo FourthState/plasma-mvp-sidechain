@@ -32,7 +32,7 @@ var balanceCmd = &cobra.Command{
 			addr = ethcmn.HexToAddress(args[0])
 		}
 
-		queryPath := fmt.Sprintf("custom/utxo/balance/%s", addr.Hex())
+		queryPath := fmt.Sprintf("custom/data/balance/%s", addr.Hex())
 		total, err := ctx.Query(queryPath, nil)
 		if err != nil {
 			return err

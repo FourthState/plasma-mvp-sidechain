@@ -3,8 +3,6 @@ package store
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	ethcmn "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
-	"io"
 	"math/big"
 )
 
@@ -27,7 +25,7 @@ type Deposit struct {
 type Output struct {
 	Output    plasma.Output
 	Spent     bool
-	SpenderTx []byte   // transaction hash that spent this output
+	SpenderTx []byte // transaction hash that spent this output
 }
 
 // Transaction wraps a plasma transaction with spend information.
@@ -65,21 +63,21 @@ func NewTxOutput(output plasma.Output, pos plasma.Position, confirmationHash, tx
 // TxInput holds basic transactional data along with input information
 type TxInput struct {
 	plasma.Output
-	Position plasma.Position
-	TxHash   []byte
+	Position       plasma.Position
+	TxHash         []byte
 	InputAddresses []ethcmn.Address
 	InputPositions []plasma.Position
 }
 
 // NewTxInput creates a TxInput object.
 func NewTxInput(output plasma.Output, pos plasma.Position, txHash []byte,
-    inputAddresses []ethcmn.Address, inputPositions []plasma.Position) TxInput {
+	inputAddresses []ethcmn.Address, inputPositions []plasma.Position) TxInput {
 	return TxInput{
-		Output:           output,
-		Position:         pos,
-		TxHash:           txHash,
-		InputAddresses:   inputAddresses,
-		InputPositions:   inputPositions,
+		Output:         output,
+		Position:       pos,
+		TxHash:         txHash,
+		InputAddresses: inputAddresses,
+		InputPositions: inputPositions,
 	}
 }
 
@@ -87,26 +85,4 @@ func NewTxInput(output plasma.Output, pos plasma.Position, txHash []byte,
 type Block struct {
 	plasma.Block
 	TMBlockHeight uint64
-}
-
-type block struct {
-	PlasmaBlock   plasma.Block
-	TMBlockHeight uint64
-}
-
-// EncodeRLP RLP encodes a Block struct.
-func (b *Block) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &block{b.Block, b.TMBlockHeight})
-}
-
-// DecodeRLP decodes the byte stream into a Block.
-func (b *Block) DecodeRLP(s *rlp.Stream) error {
-	var block block
-	if err := s.Decode(&block); err != nil {
-		return err
-	}
-
-	b.Block = block.PlasmaBlock
-	b.TMBlockHeight = block.TMBlockHeight
-	return nil
 }
