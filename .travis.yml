@@ -53,4 +53,4 @@ deploy:
   provider: script
   script: bash docker-push.sh
   on:
-    branch: http-server
+    branch: develop
