@@ -51,7 +51,7 @@ func PostLogsHandler(claimStore store.PresenceClaimStore, utxoStore store.UTXOSt
 		//	pubKey, _ := crypto.SigToPub(txHash, postLogsMsg.Signature)
 
 		recipient := postLogsMsg.Beacons[0]
-		fmt.Printf("Recipient ", recipient.Hex())
+		fmt.Printf("Recipient %v", recipient.Hex())
 		spenderKeys := [][]byte{append(recipient[:], claim.UTXOPosition.Bytes()...)}
 		output := plasma.Output{
 			Owner:  recipient,

@@ -11,10 +11,12 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "ethereumjs-util": "^6.1.0",
-    "rlp": "^2.2.2"
+    "rlp": "^2.2.2",
+    "ganache-cli": "6.2.5"
   },
   "dependencies": {
     "shelljs": "^0.8.3",
-    "solidity-rlp": "^2.0.0"
+    "solidity-rlp": "^2.0.0",
+    "truffle": "^5.0.27"
   }
 }

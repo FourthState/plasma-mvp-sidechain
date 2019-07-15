@@ -52,8 +52,8 @@ func (p exitConn) HasTxBeenExited(pos plasma.Position) bool { return true }
 
 func TestAnteChecks(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
-	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, conn{})
 
 	// cook up some input UTXOs to start in UTXO store
 	inputs := []inputUTXO{
@@ -199,8 +199,8 @@ func TestAnteChecks(t *testing.T) {
 
 func TestAnteExitedInput(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
-	handler := NewAnteHandler(utxoStore, plasmaStore, exitConn{})
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, exitConn{})
 
 	// place input in store
 	input := inputUTXO{
@@ -238,8 +238,8 @@ func TestAnteExitedInput(t *testing.T) {
 
 func TestAnteInvalidConfirmSig(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
-	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, conn{})
 
 	// place input in store
 	inputs := []inputUTXO{
@@ -306,8 +306,8 @@ func TestAnteInvalidConfirmSig(t *testing.T) {
 
 func TestAnteValidTx(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
-	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, conn{})
 
 	// place input in store
 	inputs := []inputUTXO{
@@ -377,8 +377,8 @@ func TestAnteValidTx(t *testing.T) {
 
 func TestAnteDeposit(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
-	handler := NewAnteHandler(utxoStore, plasmaStore, conn{})
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, conn{})
 
 	// place input in store
 	inputs := []inputUTXO{
@@ -429,9 +429,9 @@ func (d dneConn) HasTxBeenExited(pos plasma.Position) bool { return false }
 
 func TestAnteDepositUnfinal(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
 	// connection always returns unfinalized deposits
-	handler := NewAnteHandler(utxoStore, plasmaStore, unfinalConn{})
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, unfinalConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -447,9 +447,9 @@ func TestAnteDepositUnfinal(t *testing.T) {
 
 func TestAnteDepositExitted(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
 	// connection always returns exitted deposits
-	handler := NewAnteHandler(utxoStore, plasmaStore, exitConn{})
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, exitConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -465,9 +465,9 @@ func TestAnteDepositExitted(t *testing.T) {
 
 func TestAnteDepositDNE(t *testing.T) {
 	// setup
-	ctx, utxoStore, plasmaStore := setup()
+	ctx, utxoStore, plasmaStore, presenceClaimStore := setup()
 	// connection always returns exitted deposits
-	handler := NewAnteHandler(utxoStore, plasmaStore, dneConn{})
+	handler := NewAnteHandler(utxoStore, plasmaStore, presenceClaimStore, dneConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),

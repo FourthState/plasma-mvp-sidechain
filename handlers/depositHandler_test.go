@@ -10,7 +10,7 @@ import (
 
 func TestIncludeDeposit(t *testing.T) {
 	// plasmaStore is at next block height 1
-	ctx, utxoStore, _ := setup()
+	ctx, utxoStore, _, _ := setup()
 
 	// Give deposit a cooked connection that will always provide deposit with given position
 	depositHandler := NewDepositHandler(utxoStore, nextTxIndex, conn{})

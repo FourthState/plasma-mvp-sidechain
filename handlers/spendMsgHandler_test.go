@@ -18,7 +18,7 @@ var feeUpdater = func(num *big.Int) sdk.Error { return nil }
 
 func TestSpend(t *testing.T) {
 	// plasmaStore is at next block height 1
-	ctx, utxoStore, plasmaStore := setup()
+	ctx, utxoStore, plasmaStore, _ := setup()
 	privKey, _ := crypto.GenerateKey()
 	addr := crypto.PubkeyToAddress(privKey.PublicKey)
 
