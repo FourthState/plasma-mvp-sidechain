@@ -6,18 +6,15 @@ import (
 	"math/big"
 )
 
-const (
-	// QueryBlockStore is the route to the BlockStore
-	QueryBlockStore = "plasma"
-)
-
 // keys
 var (
-	walletKey  = []byte{0x0}
-	depositKey = []byte{0x1}
-	feeKey     = []byte{0x2}
-	txKey      = []byte{0x3}
-	outputKey  = []byte{0x4}
+	walletKey      = []byte{0x0}
+	depositKey     = []byte{0x1}
+	feeKey         = []byte{0x2}
+	txKey          = []byte{0x3}
+	outputKey      = []byte{0x4}
+	blockKey       = []byte{0x5}
+	blockHeightKey = []byte{0x6}
 )
 
 // GetWalletKey returns the key to retrieve wallet for given address.
@@ -43,6 +40,14 @@ func GetOutputKey(pos plasma.Position) []byte {
 // GetTxKey returns key to retrieve Transaction for given hash.
 func GetTxKey(hash []byte) []byte {
 	return prefixKey(txKey, hash)
+}
+
+func GetBlockKey(height *big.Int) []byte {
+	return prefixKey(blockKey, height.Bytes())
+}
+
+func GetBlockHeightKey() []byte {
+	return blockHeightKey
 }
 
 // prefixes the key

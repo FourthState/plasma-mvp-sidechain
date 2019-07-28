@@ -9,31 +9,9 @@ import (
 	"math/big"
 )
 
-const (
-	BlockStoreName = "block"
-)
-
-// keys
-var (
-	blockKey          = []byte{0x0}
-	plasmaBlockNumKey = []byte{0x1}
-)
-
-// BlockStore holds plamsa blocks.
-type BlockStore struct {
-	kvStore
-}
-
-// NewBlockStore is a constructor function for BlockStore.
-func NewBlockStore(ctxKey sdk.StoreKey) BlockStore {
-	return BlockStore{
-		kvStore: NewKVStore(ctxKey),
-	}
-}
-
-// GetBlock returns the plasma block at the provided height.
-func (store BlockStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
-	key := prefixKey(blockKey, blockHeight.Bytes())
+// GetBlock - retrive a block at the specified height
+func (store DataStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
+	key := GetBlockKey(blockHeight)
 	data := store.Get(ctx, key)
 	if data == nil {
 		return Block{}, false
@@ -49,48 +27,31 @@ func (store BlockStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, 
 
 // StoreBlock will store the plasma block and return the plasma block number
 // in which it was stored at.
-func (store BlockStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
-	plasmaBlockNum := store.NextPlasmaBlockNum(ctx)
+func (store DataStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
+	blockHeight := store.PlasmaBlockHeight(ctx)
+	blockHeight = blockHeight.Add(blockHeight, utils.Big1)
 
-	plasmaBlockKey := prefixKey(blockKey, plasmaBlockNum.Bytes())
-	plasmaBlockData, err := rlp.EncodeToBytes(&Block{block, tmBlockHeight})
+	blockKey := GetBlockKey(blockHeight)
+	blockData, err := rlp.EncodeToBytes(&Block{block, tmBlockHeight})
 	if err != nil {
 		panic(fmt.Sprintf("error rlp encoding block: %s", err))
 	}
 
-	// store the block
-	store.Set(ctx, plasmaBlockKey, plasmaBlockData)
+	// store the block and updated the height counter
+	store.Set(ctx, blockKey, blockData)
+	store.Set(ctx, GetBlockHeightKey(), plasmaBlockNum.Bytes())
 
-	// latest plasma block number
-	store.Set(ctx, []byte(plasmaBlockNumKey), plasmaBlockNum.Bytes())
-
-	return plasmaBlockNum
+	return blockHeight
 }
 
 // PlasmaBlockHeight returns the current plasma block height.
-func (store BlockStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
+func (store DataStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
-	data := store.Get(ctx, []byte(plasmaBlockNumKey))
+	data := store.Get(ctx, GetBlockHeightKey())
 	if data == nil {
 		plasmaBlockNum = big.NewInt(1)
 	} else {
 		plasmaBlockNum = new(big.Int).SetBytes(data)
-	}
-
-	return plasmaBlockNum
-}
-
-// NextPlasmaBlockNum returns the next plasma block number to be used.
-func (store BlockStore) NextPlasmaBlockNum(ctx sdk.Context) *big.Int {
-	var plasmaBlockNum *big.Int
-	data := store.Get(ctx, []byte(plasmaBlockNumKey))
-	if data == nil {
-		plasmaBlockNum = big.NewInt(1)
-	} else {
-		plasmaBlockNum = new(big.Int).SetBytes(data)
-
-		// increment the block number
-		plasmaBlockNum = plasmaBlockNum.Add(plasmaBlockNum, utils.Big1)
 	}
 
 	return plasmaBlockNum
