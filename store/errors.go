@@ -7,14 +7,19 @@ import (
 const (
 	DefaultCodespace sdk.CodespaceType = "store"
 
-	CodeOutputDNE   sdk.CodeType = 1
+	CodeDNE         sdk.CodeType = 1
 	CodeOutputSpent sdk.CodeType = 2
+	CodeInvalidPath sdk.CodeType = 3
 )
+
+func ErrDNE(msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(DefaultCodespace, CodeDNE, msg, args)
+}
 
 func ErrOutputSpent(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeOutputSpent, msg, args)
 }
 
-func ErrOutputDNE(msg string, args ...interface{}) sdk.Error {
-	return sdk.NewError(DefaultCodespace, CodeOutputDNE, msg, args)
+func ErrInvalidPath(msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(DefaultCodespace, CodeInvalidPath, msg, args)
 }

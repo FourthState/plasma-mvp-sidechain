@@ -102,7 +102,7 @@ func (plasma *Plasma) OperatorAddress() (common.Address, error) {
 
 // CommitPlasmaHeaders will commit all new non-committed headers to the smart contract.
 // the commitmentRate interval must pass since the last commitment
-func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, blockStore store.BlockStore) error {
+func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, ds store.DataStore) error {
 	// only the contract operator can submit blocks. The commitment duration must also pass
 	if plasma.operatorSession == nil || time.Since(plasma.operatorSession.lastBlockSubmission).Seconds() < plasma.operatorSession.commitmentRate.Seconds() {
 		return nil
@@ -125,7 +125,7 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, blockStore store.Bloc
 		feesPerBlock []*big.Int
 	)
 
-	block, ok := blockStore.GetBlock(ctx, blockNum)
+	block, ok := ds.GetBlock(ctx, blockNum)
 	if !ok { // no blocks to submit
 		logger.Info("no plasma blocks to commit")
 		return nil
@@ -137,7 +137,7 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, blockStore store.Bloc
 		feesPerBlock = append(feesPerBlock, block.FeeAmount)
 
 		blockNum = blockNum.Add(blockNum, utils.Big1)
-		block, ok = blockStore.GetBlock(ctx, blockNum)
+		block, ok = ds.GetBlock(ctx, blockNum)
 	}
 
 	logger.Info(fmt.Sprintf("committing %d plasma blocks. first block num: %s", len(headers), firstBlockNum))

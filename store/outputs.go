@@ -243,7 +243,7 @@ func (store DataStore) StoreOutputs(ctx sdk.Context, tx Transaction) {
 func (store DataStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx []byte) sdk.Result {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
-		return ErrOutputDNE(fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()
+		return ErrDNE(fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()
 	} else if deposit.Spent {
 		return ErrOutputSpent(fmt.Sprintf("deposit with nonce %s is already spent", nonce)).Result()
 	}
@@ -262,7 +262,7 @@ func (store DataStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx [
 func (store DataStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
 	fee, ok := store.GetFee(ctx, pos)
 	if !ok {
-		return ErrOutputDNE(fmt.Sprintf("fee with position %s does not exist", pos)).Result()
+		return ErrDNE(fmt.Sprintf("fee with position %s does not exist", pos)).Result()
 	} else if fee.Spent {
 		return ErrOutputSpent(fmt.Sprintf("fee with position %s is already spent", pos)).Result()
 	}
@@ -284,7 +284,7 @@ func (store DataStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spender
 
 	tx, ok := store.GetTx(ctx, hash)
 	if !ok {
-		return ErrOutputDNE(fmt.Sprintf("output with index %x and transaction hash 0x%x does not exist", pos.OutputIndex, hash)).Result()
+		return ErrDNE(fmt.Sprintf("output with index %x and transaction hash 0x%x does not exist", pos.OutputIndex, hash)).Result()
 	} else if tx.Spent[pos.OutputIndex] {
 		return ErrOutputSpent(fmt.Sprintf("output with index %x and transaction hash 0x%x is already spent", pos.OutputIndex, hash)).Result()
 	}
