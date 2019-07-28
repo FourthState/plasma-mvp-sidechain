@@ -9,32 +9,11 @@ import (
 	"math/big"
 )
 
-const (
-	OutputStoreName = "output"
-)
-
-// Output Store stores deposits, fee, and regular ouputs. It contains the
-// following mappings:
-// - position to transaction hash
-// - transaction hash to transaction
-// - deposit nonce to deposit
-// - fee position to fee
-type OutputStore struct {
-	kvStore
-}
-
-// NewOutputStore creates a new OutputStore object.
-func NewOutputStore(ctxKey sdk.StoreKey) OutputStore {
-	return OutputStore{
-		kvStore: NewKVStore(ctxKey),
-	}
-}
-
 // -----------------------------------------------------------------------------
 /* Getters */
 
 // GetWallet returns the wallet at the associated address.
-func (store OutputStore) GetWallet(ctx sdk.Context, addr common.Address) (Wallet, bool) {
+func (store DataStore) GetWallet(ctx sdk.Context, addr common.Address) (Wallet, bool) {
 	key := GetWalletKey(addr)
 	data := store.Get(ctx, key)
 	if data == nil {
@@ -50,7 +29,7 @@ func (store OutputStore) GetWallet(ctx sdk.Context, addr common.Address) (Wallet
 }
 
 // GetDeposit returns the deposit at the given nonce.
-func (store OutputStore) GetDeposit(ctx sdk.Context, nonce *big.Int) (Deposit, bool) {
+func (store DataStore) GetDeposit(ctx sdk.Context, nonce *big.Int) (Deposit, bool) {
 	key := GetDepositKey(nonce)
 	data := store.Get(ctx, key)
 	if data == nil {
@@ -66,7 +45,7 @@ func (store OutputStore) GetDeposit(ctx sdk.Context, nonce *big.Int) (Deposit, b
 }
 
 // GetFee returns the fee at the given position.
-func (store OutputStore) GetFee(ctx sdk.Context, pos plasma.Position) (Output, bool) {
+func (store DataStore) GetFee(ctx sdk.Context, pos plasma.Position) (Output, bool) {
 	key := GetFeeKey(pos)
 	data := store.Get(ctx, key)
 	if data == nil {
@@ -82,7 +61,7 @@ func (store OutputStore) GetFee(ctx sdk.Context, pos plasma.Position) (Output, b
 }
 
 // GetOutput returns the output at the given position.
-func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output, bool) {
+func (store DataStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output, bool) {
 	// allow deposits/fees to returned as an output
 	if pos.IsDeposit() {
 		return store.depositToOutput(ctx, pos.DepositNonce)
@@ -114,7 +93,7 @@ func (store OutputStore) GetOutput(ctx sdk.Context, pos plasma.Position) (Output
 }
 
 // GetTx returns the transaction with the provided transaction hash.
-func (store OutputStore) GetTx(ctx sdk.Context, hash []byte) (Transaction, bool) {
+func (store DataStore) GetTx(ctx sdk.Context, hash []byte) (Transaction, bool) {
 	key := GetTxKey(hash)
 	data := store.Get(ctx, key)
 	if data == nil {
@@ -131,7 +110,7 @@ func (store OutputStore) GetTx(ctx sdk.Context, hash []byte) (Transaction, bool)
 
 // GetTxWithPosition returns the transaction that contains the provided
 // position as an output.
-func (store OutputStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position) (Transaction, bool) {
+func (store DataStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position) (Transaction, bool) {
 	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
 	return store.GetTx(ctx, hash)
@@ -141,25 +120,25 @@ func (store OutputStore) GetTxWithPosition(ctx sdk.Context, pos plasma.Position)
 /* Has */
 
 // HasWallet returns whether an wallet at the given address exists.
-func (store OutputStore) HasWallet(ctx sdk.Context, addr common.Address) bool {
+func (store DataStore) HasWallet(ctx sdk.Context, addr common.Address) bool {
 	key := GetWalletKey(addr)
 	return store.Has(ctx, key)
 }
 
 // HasDeposit returns whether a deposit with the given nonce exists.
-func (store OutputStore) HasDeposit(ctx sdk.Context, nonce *big.Int) bool {
+func (store DataStore) HasDeposit(ctx sdk.Context, nonce *big.Int) bool {
 	key := GetDepositKey(nonce)
 	return store.Has(ctx, key)
 }
 
 // HasFee returns whether a fee with the given position exists.
-func (store OutputStore) HasFee(ctx sdk.Context, pos plasma.Position) bool {
+func (store DataStore) HasFee(ctx sdk.Context, pos plasma.Position) bool {
 	key := GetFeeKey(pos)
 	return store.Has(ctx, key)
 }
 
 // HasOutput returns whether an output with the given position exists.
-func (store OutputStore) HasOutput(ctx sdk.Context, pos plasma.Position) bool {
+func (store DataStore) HasOutput(ctx sdk.Context, pos plasma.Position) bool {
 	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
 
@@ -168,7 +147,7 @@ func (store OutputStore) HasOutput(ctx sdk.Context, pos plasma.Position) bool {
 
 // HasTx returns whether a transaction with the given transaction hash
 // exists.
-func (store OutputStore) HasTx(ctx sdk.Context, hash []byte) bool {
+func (store DataStore) HasTx(ctx sdk.Context, hash []byte) bool {
 	key := GetTxKey(hash)
 	return store.Has(ctx, key)
 }
@@ -177,7 +156,7 @@ func (store OutputStore) HasTx(ctx sdk.Context, hash []byte) bool {
 /* Set */
 
 // setWallet overwrites the wallet stored at the given address.
-func (store OutputStore) setWallet(ctx sdk.Context, addr common.Address, wallet Wallet) {
+func (store DataStore) setWallet(ctx sdk.Context, addr common.Address, wallet Wallet) {
 	key := GetWalletKey(addr)
 	data, err := rlp.EncodeToBytes(&wallet)
 	if err != nil {
@@ -188,7 +167,7 @@ func (store OutputStore) setWallet(ctx sdk.Context, addr common.Address, wallet 
 }
 
 // setDeposit overwrites the deposit stored at the given nonce.
-func (store OutputStore) setDeposit(ctx sdk.Context, nonce *big.Int, deposit Deposit) {
+func (store DataStore) setDeposit(ctx sdk.Context, nonce *big.Int, deposit Deposit) {
 	data, err := rlp.EncodeToBytes(&deposit)
 	if err != nil {
 		panic(fmt.Sprintf("error marshaling deposit with nonce %s: %s", nonce, err))
@@ -199,7 +178,7 @@ func (store OutputStore) setDeposit(ctx sdk.Context, nonce *big.Int, deposit Dep
 }
 
 // setFee overwrites the fee stored at the given position.
-func (store OutputStore) setFee(ctx sdk.Context, pos plasma.Position, fee Output) {
+func (store DataStore) setFee(ctx sdk.Context, pos plasma.Position, fee Output) {
 	data, err := rlp.EncodeToBytes(&fee)
 	if err != nil {
 		panic(fmt.Sprintf("error marshaling fee with position %s: %s", pos, err))
@@ -210,13 +189,13 @@ func (store OutputStore) setFee(ctx sdk.Context, pos plasma.Position, fee Output
 }
 
 // setOutput adds a mapping from position to transaction hash.
-func (store OutputStore) setOutput(ctx sdk.Context, pos plasma.Position, hash []byte) {
+func (store DataStore) setOutput(ctx sdk.Context, pos plasma.Position, hash []byte) {
 	key := GetOutputKey(pos)
 	store.Set(ctx, key, hash)
 }
 
 // setTx overwrites the mapping from transaction hash to transaction.
-func (store OutputStore) setTx(ctx sdk.Context, tx Transaction) {
+func (store DataStore) setTx(ctx sdk.Context, tx Transaction) {
 	data, err := rlp.EncodeToBytes(&tx)
 	if err != nil {
 		panic(fmt.Sprintf("error marshaling transaction: %s", err))
@@ -231,25 +210,25 @@ func (store OutputStore) setTx(ctx sdk.Context, tx Transaction) {
 
 // StoreDeposit adds an unspent deposit and updates the deposit owner's
 // wallet.
-func (store OutputStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
+func (store DataStore) StoreDeposit(ctx sdk.Context, nonce *big.Int, deposit plasma.Deposit) {
 	store.setDeposit(ctx, nonce, Deposit{deposit, false, make([]byte, 0)})
 	store.addToWallet(ctx, deposit.Owner, deposit.Amount, plasma.NewPosition(big.NewInt(0), 0, 0, nonce))
 }
 
 // StoreFee adds an unspent fee and updates the fee owner's wallet.
-func (store OutputStore) StoreFee(ctx sdk.Context, blockNum *big.Int, output plasma.Output) {
+func (store DataStore) StoreFee(ctx sdk.Context, blockNum *big.Int, output plasma.Output) {
 	pos := plasma.NewPosition(blockNum, 1<<16-1, 0, big.NewInt(0))
 	store.setFee(ctx, pos, Output{output, false, make([]byte, 0)})
 	store.addToWallet(ctx, output.Owner, output.Amount, pos)
 }
 
 // StoreTx adds the transaction.
-func (store OutputStore) StoreTx(ctx sdk.Context, tx Transaction) {
+func (store DataStore) StoreTx(ctx sdk.Context, tx Transaction) {
 	store.setTx(ctx, tx)
 }
 
 // StoreOutputs adds new Output UTXO's to respective owner wallets.
-func (store OutputStore) StoreOutputs(ctx sdk.Context, tx Transaction) {
+func (store DataStore) StoreOutputs(ctx sdk.Context, tx Transaction) {
 	for i, output := range tx.Transaction.Outputs {
 		store.addToWallet(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
 		store.setOutput(ctx, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)), tx.Transaction.TxHash())
@@ -261,7 +240,7 @@ func (store OutputStore) StoreOutputs(ctx sdk.Context, tx Transaction) {
 
 // SpendDeposit changes the deposit to be spent and updates the wallet of
 // the deposit owner.
-func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx []byte) sdk.Result {
+func (store DataStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx []byte) sdk.Result {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
 		return ErrOutputDNE(fmt.Sprintf("deposit with nonce %s does not exist", nonce)).Result()
@@ -280,7 +259,7 @@ func (store OutputStore) SpendDeposit(ctx sdk.Context, nonce *big.Int, spenderTx
 
 // SpendFee changes the fee to be spent and updates the wallet of the fee
 // owner.
-func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
+func (store DataStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
 	fee, ok := store.GetFee(ctx, pos)
 	if !ok {
 		return ErrOutputDNE(fmt.Sprintf("fee with position %s does not exist", pos)).Result()
@@ -299,7 +278,7 @@ func (store OutputStore) SpendFee(ctx sdk.Context, pos plasma.Position, spenderT
 
 // SpendOutput changes the output to be spent and updates the wallet of the
 // output owner.
-func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
+func (store DataStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spenderTx []byte) sdk.Result {
 	key := GetOutputKey(pos)
 	hash := store.Get(ctx, key)
 
@@ -325,7 +304,7 @@ func (store OutputStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spend
 // GetUnspentForWallet returns the unspent outputs that belong to the given
 // wallet. Returns the struct TxOutput so user has access to the
 // transactional information related to the output.
-func (store OutputStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (utxos []TxOutput) {
+func (store DataStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (utxos []TxOutput) {
 	for _, p := range wallet.Unspent {
 		output, ok := store.GetOutput(ctx, p)
 		if !ok {
@@ -344,7 +323,7 @@ func (store OutputStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (ut
 
 // depositToOutput retrieves the deposit with the given nonce, and returns
 // it as an output.
-func (store OutputStore) depositToOutput(ctx sdk.Context, nonce *big.Int) (Output, bool) {
+func (store DataStore) depositToOutput(ctx sdk.Context, nonce *big.Int) (Output, bool) {
 	deposit, ok := store.GetDeposit(ctx, nonce)
 	if !ok {
 		return Output{}, ok
@@ -360,7 +339,7 @@ func (store OutputStore) depositToOutput(ctx sdk.Context, nonce *big.Int) (Outpu
 // addToWallet adds the passed in amount to the wallet with the given
 // address and adds the position provided to the list of unspent positions
 // within the wallet.
-func (store OutputStore) addToWallet(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
+func (store DataStore) addToWallet(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
 	wallet, ok := store.GetWallet(ctx, addr)
 	if !ok {
 		wallet = Wallet{big.NewInt(0), make([]plasma.Position, 0), make([]plasma.Position, 0)}
@@ -374,7 +353,7 @@ func (store OutputStore) addToWallet(ctx sdk.Context, addr common.Address, amoun
 // subtractFromWallet subtracts the passed in amount from the wallet with
 // the given address and moves the provided position from the unspent list
 // to the spent list.
-func (store OutputStore) subtractFromWallet(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
+func (store DataStore) subtractFromWallet(ctx sdk.Context, addr common.Address, amount *big.Int, pos plasma.Position) {
 	wallet, ok := store.GetWallet(ctx, addr)
 	if !ok {
 		panic(fmt.Sprintf("output store has been corrupted"))

@@ -42,15 +42,16 @@ func GetTxKey(hash []byte) []byte {
 	return prefixKey(txKey, hash)
 }
 
+// GetBlockKey returns the key for the specified height
 func GetBlockKey(height *big.Int) []byte {
 	return prefixKey(blockKey, height.Bytes())
 }
 
+// GetBlockHeightKey returns the key for the height counter
 func GetBlockHeightKey() []byte {
 	return blockHeightKey
 }
 
-// prefixes the key
 func prefixKey(prefix, key []byte) []byte {
 	return append(prefix, key...)
 }

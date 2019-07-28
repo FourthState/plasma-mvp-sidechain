@@ -29,7 +29,13 @@ func (store DataStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, b
 // in which it was stored at.
 func (store DataStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
 	blockHeight := store.PlasmaBlockHeight(ctx)
-	blockHeight = blockHeight.Add(blockHeight, utils.Big1)
+	if blockHeight == nil {
+		// first block to store
+		blockHeight = big.NewInt(1)
+	} else {
+		// increment the height counter
+		blockHeight = blockHeight.Add(blockHeight, utils.Big1)
+	}
 
 	blockKey := GetBlockKey(blockHeight)
 	blockData, err := rlp.EncodeToBytes(&Block{block, tmBlockHeight})
@@ -39,7 +45,7 @@ func (store DataStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block p
 
 	// store the block and updated the height counter
 	store.Set(ctx, blockKey, blockData)
-	store.Set(ctx, GetBlockHeightKey(), plasmaBlockNum.Bytes())
+	store.Set(ctx, GetBlockHeightKey(), blockHeight.Bytes())
 
 	return blockHeight
 }
@@ -49,7 +55,7 @@ func (store DataStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, GetBlockHeightKey())
 	if data == nil {
-		plasmaBlockNum = big.NewInt(1)
+		return nil
 	} else {
 		plasmaBlockNum = new(big.Int).SetBytes(data)
 	}

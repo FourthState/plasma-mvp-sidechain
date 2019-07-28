@@ -15,7 +15,7 @@ import (
 // Test Get, Has, Store, Spend functions for deposits
 func TestDeposits(t *testing.T) {
 	ctx, key := setup()
-	outputStore := NewOutputStore(key)
+	outputStore := NewDataStore(key)
 
 	addr := common.BytesToAddress([]byte("asdfasdf"))
 	for i := int64(1); i <= 15; i++ {
@@ -59,7 +59,7 @@ func TestDeposits(t *testing.T) {
 // Test Get, Has, Store, Spend functions for fees
 func TestFees(t *testing.T) {
 	ctx, key := setup()
-	outputStore := NewOutputStore(key)
+	outputStore := NewDataStore(key)
 
 	addr := common.BytesToAddress([]byte("asdfasdf"))
 	for i := int64(1); i <= 15; i++ {
@@ -104,7 +104,7 @@ func TestFees(t *testing.T) {
 func TestTransactions(t *testing.T) {
 	// Setup
 	ctx, key := setup()
-	outputStore := NewOutputStore(key)
+	outputStore := NewDataStore(key)
 
 	privKey, _ := crypto.GenerateKey()
 	addr := crypto.PubkeyToAddress(privKey.PublicKey)
