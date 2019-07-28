@@ -12,23 +12,19 @@ import (
 
 /* This file contains helper functions for testing */
 
-func setup() (sdk.Context, store.OutputStore, store.BlockStore) {
+func setup() (sdk.Context, store.DataStore) {
 	db := db.NewMemDB()
 	ms := cosmosStore.NewCommitMultiStore(db)
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 
-	blockStoreKey := sdk.NewKVStoreKey("block")
-	outputStoreKey := sdk.NewKVStoreKey("output")
+	dataStoreKey := sdk.NewKVStoreKey("data")
 
-	ms.MountStoreWithDB(blockStoreKey, sdk.StoreTypeIAVL, db)
-	ms.MountStoreWithDB(outputStoreKey, sdk.StoreTypeIAVL, db)
+	ms.MountStoreWithDB(dataStoreKey, sdk.StoreTypeIAVL, db)
 	ms.LoadLatestVersion()
 
-	blockStore := store.NewBlockStore(blockStoreKey)
-	outputStore := store.NewOutputStore(outputStoreKey)
-
-	return ctx, outputStore, blockStore
+	dataStore := store.NewDataStore(dataStoreKey)
+	return ctx, dataStore
 }
 
 func getPosition(posStr string) plasma.Position {

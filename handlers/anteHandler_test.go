@@ -77,8 +77,8 @@ func (p exitConn) HasTxExited(tmBlock *big.Int, pos plasma.Position) (bool, erro
 
 func TestAnteChecks(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
-	handler := NewAnteHandler(outputStore, blockStore, conn{})
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
 
 	feePosition := getPosition("(100.65535.0.0)")
 	// cook up some input deposits
@@ -92,10 +92,10 @@ func TestAnteChecks(t *testing.T) {
 		Position: feePosition,
 	}
 
-	setupDeposits(ctx, outputStore, inputs...)
-	setupFees(ctx, outputStore, fee)
+	setupDeposits(ctx, ds, inputs...)
+	setupFees(ctx, ds, fee)
 
-	outputStore.SpendFee(ctx, feePosition, []byte("spender hash"))
+	ds.SpendFee(ctx, feePosition, []byte("spender hash"))
 
 	type validationCase struct {
 		reason string
@@ -217,8 +217,8 @@ func TestAnteChecks(t *testing.T) {
 
 func TestAnteExitedInputs(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
-	handler := NewAnteHandler(outputStore, blockStore, exitConn{})
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, exitConn{})
 
 	// place inputs in store
 	inputs := Tx{
@@ -228,7 +228,7 @@ func TestAnteExitedInputs(t *testing.T) {
 		SpenderTxs:       [][]byte{},
 		Position:         getPosition("(1.0.0.0)"),
 	}
-	setupTxs(ctx, outputStore, inputs)
+	setupTxs(ctx, ds, inputs)
 
 	// create msg
 	spendMsg := msgs.SpendMsg{
@@ -253,15 +253,15 @@ func TestAnteExitedInputs(t *testing.T) {
 
 func TestAnteInvalidConfirmSig(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
-	handler := NewAnteHandler(outputStore, blockStore, conn{})
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
 
 	// place inputs in store
 	inputs := []Deposit{
 		{addr, utils.Big1, big.NewInt(50), big.NewInt(10)},
 		{addr, utils.Big2, big.NewInt(55), big.NewInt(10)},
 	}
-	setupDeposits(ctx, outputStore, inputs...)
+	setupDeposits(ctx, ds, inputs...)
 
 	parentTx := msgs.SpendMsg{
 		Transaction: plasma.Transaction{
@@ -286,7 +286,7 @@ func TestAnteInvalidConfirmSig(t *testing.T) {
 		SpenderTxs:       make([][]byte, len(parentTx.Transaction.Outputs)),
 		Position:         getPosition("(1.0.0.0)"),
 	}
-	outputStore.StoreTx(ctx, tx)
+	ds.StoreTx(ctx, tx)
 
 	// store confirm sig into correct format
 	var invalidConfirmSig [65]byte
@@ -315,15 +315,15 @@ func TestAnteInvalidConfirmSig(t *testing.T) {
 
 func TestAnteValidTx(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
-	handler := NewAnteHandler(outputStore, blockStore, conn{})
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
 
 	// place inputs in store
 	inputs := []Deposit{
 		{addr, utils.Big1, big.NewInt(1000), big.NewInt(10)},
 		{addr, utils.Big2, big.NewInt(1200), big.NewInt(10)},
 	}
-	setupDeposits(ctx, outputStore, inputs...)
+	setupDeposits(ctx, ds, inputs...)
 
 	parentTx := msgs.SpendMsg{
 		Transaction: plasma.Transaction{
@@ -348,11 +348,11 @@ func TestAnteValidTx(t *testing.T) {
 		SpenderTxs:       make([][]byte, len(parentTx.Transaction.Outputs)),
 		Position:         getPosition("(1.0.0.0)"),
 	}
-	outputStore.StoreTx(ctx, tx)
-	outputStore.StoreOutputs(ctx, tx)
-	outputStore.SpendDeposit(ctx, big.NewInt(2), tx.Transaction.TxHash())
+	ds.StoreTx(ctx, tx)
+	ds.StoreOutputs(ctx, tx)
+	ds.SpendDeposit(ctx, big.NewInt(2), tx.Transaction.TxHash())
 
-	output, check := outputStore.GetOutput(ctx, getPosition("(1.0.0.0)"))
+	output, check := ds.GetOutput(ctx, getPosition("(1.0.0.0)"))
 	if !check {
 		fmt.Println("WHy?")
 	}
@@ -387,15 +387,15 @@ func TestAnteValidTx(t *testing.T) {
 
 func TestAnteDeposit(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
-	handler := NewAnteHandler(outputStore, blockStore, conn{})
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
 
 	// place input in store
 	inputs := []Deposit{
 		{addr, utils.Big1, big.NewInt(150), big.NewInt(10)},
 		{addr, utils.Big2, big.NewInt(200), big.NewInt(10)},
 	}
-	setupDeposits(ctx, outputStore, inputs...)
+	setupDeposits(ctx, ds, inputs...)
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -443,9 +443,9 @@ func (d dneConn) HasTxExited(tmBlock *big.Int, pos plasma.Position) (bool, error
 
 func TestAnteDepositUnfinal(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
+	ctx, ds := setup()
 	// connection always returns unfinalized deposits
-	handler := NewAnteHandler(outputStore, blockStore, unfinalConn{})
+	handler := NewAnteHandler(ds, unfinalConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -461,9 +461,9 @@ func TestAnteDepositUnfinal(t *testing.T) {
 
 func TestAnteDepositExitted(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
+	ctx, ds := setup()
 	// connection always returns exitted deposits
-	handler := NewAnteHandler(outputStore, blockStore, exitConn{})
+	handler := NewAnteHandler(ds, exitConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -479,9 +479,9 @@ func TestAnteDepositExitted(t *testing.T) {
 
 func TestAnteDepositDNE(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
+	ctx, ds := setup()
 	// connection always returns exitted deposits
-	handler := NewAnteHandler(outputStore, blockStore, dneConn{})
+	handler := NewAnteHandler(ds, dneConn{})
 
 	msg := msgs.IncludeDepositMsg{
 		DepositNonce: big.NewInt(3),
@@ -495,17 +495,17 @@ func TestAnteDepositDNE(t *testing.T) {
 
 }
 
-func setupFees(ctx sdk.Context, outputStore store.OutputStore, inputs ...Output) {
+func setupFees(ctx sdk.Context, ds store.DataStore, inputs ...Output) {
 	for _, output := range inputs {
-		outputStore.StoreFee(ctx, output.Position.BlockNum, output.Output)
+		ds.StoreFee(ctx, output.Position.BlockNum, output.Output)
 	}
 }
 
 func TestAnteDepositWrongOwner(t *testing.T) {
 	// setup
-	ctx, outputStore, blockStore := setup()
+	ctx, ds := setup()
 	// connection always returns valid deposits
-	handler := NewAnteHandler(outputStore, blockStore, conn{})
+	handler := NewAnteHandler(ds, conn{})
 
 	// Try to include with wrong owner
 	msg := msgs.IncludeDepositMsg{
@@ -519,18 +519,18 @@ func TestAnteDepositWrongOwner(t *testing.T) {
 	require.True(t, abort, "Wrong owner deposit inclusion did not abort")
 }
 
-func setupDeposits(ctx sdk.Context, outputStore store.OutputStore, inputs ...Deposit) {
+func setupDeposits(ctx sdk.Context, ds store.DataStore, inputs ...Deposit) {
 	for _, i := range inputs {
 		deposit := plasma.Deposit{
 			Owner:       i.Owner,
 			Amount:      i.Amount,
 			EthBlockNum: i.EthBlockNum,
 		}
-		outputStore.StoreDeposit(ctx, i.Nonce, deposit)
+		ds.StoreDeposit(ctx, i.Nonce, deposit)
 	}
 }
 
-func setupTxs(ctx sdk.Context, outputStore store.OutputStore, inputs ...Tx) {
+func setupTxs(ctx sdk.Context, ds store.DataStore, inputs ...Tx) {
 	for _, i := range inputs {
 		tx := store.Transaction{
 			Transaction:      i.Transaction,
@@ -539,6 +539,6 @@ func setupTxs(ctx sdk.Context, outputStore store.OutputStore, inputs ...Tx) {
 			SpenderTxs:       i.SpenderTxs,
 			Position:         i.Position,
 		}
-		outputStore.StoreTx(ctx, tx)
+		ds.StoreTx(ctx, tx)
 	}
 }

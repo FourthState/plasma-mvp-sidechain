@@ -15,7 +15,7 @@ type NextTxIndex func() uint16
 // FeeUpdater updates the aggregate fee amount in a block
 type FeeUpdater func(amt *big.Int) sdk.Error
 
-func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore, nextTxIndex NextTxIndex, feeUpdater FeeUpdater) sdk.Handler {
+func NewSpendHandler(ds store.DataStore, nextTxIndex NextTxIndex, feeUpdater FeeUpdater) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		spendMsg, ok := msg.(msgs.SpendMsg)
 		if !ok {
@@ -23,7 +23,7 @@ func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore,
 		}
 
 		txIndex := nextTxIndex()
-		blockHeight := blockStore.NextPlasmaBlockNum(ctx)
+		nextBlockHeight := ds.NextPlasmaBlockHeight(ctx)
 
 		// construct the confirmation hash
 		merkleHash := spendMsg.MerkleHash()
@@ -34,9 +34,9 @@ func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore,
 		for _, input := range spendMsg.Inputs {
 			var res sdk.Result
 			if input.Position.IsDeposit() {
-				res = outputStore.SpendDeposit(ctx, input.Position.DepositNonce, spendMsg.TxHash())
+				res = ds.SpendDeposit(ctx, input.Position.DepositNonce, spendMsg.TxHash())
 			} else {
-				res = outputStore.SpendOutput(ctx, input.Position, spendMsg.TxHash())
+				res = ds.SpendOutput(ctx, input.Position, spendMsg.TxHash())
 			}
 
 			if !res.IsOK() {
@@ -50,10 +50,10 @@ func NewSpendHandler(outputStore store.OutputStore, blockStore store.BlockStore,
 			Spent:            make([]bool, len(spendMsg.Outputs)),
 			SpenderTxs:       make([][]byte, len(spendMsg.Outputs)),
 			ConfirmationHash: confirmationHash[:],
-			Position:         plasma.NewPosition(blockHeight, txIndex, 0, big.NewInt(0)),
+			Position:         plasma.NewPosition(nextBlockHeight, txIndex, 0, big.NewInt(0)),
 		}
-		outputStore.StoreTx(ctx, tx)
-		outputStore.StoreOutputs(ctx, tx)
+		ds.StoreTx(ctx, tx)
+		ds.StoreOutputs(ctx, tx)
 
 		// update the aggregate fee amount for the block
 		if err := feeUpdater(spendMsg.Fee); err != nil {
