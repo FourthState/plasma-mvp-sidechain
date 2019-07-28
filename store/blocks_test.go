@@ -40,16 +40,19 @@ func TestBlockSerialization(t *testing.T) {
 // test that the plasma block number increments correctly
 func TestPlasmaBlockStorage(t *testing.T) {
 	ctx, key := setup()
-	blockStore := NewDataStore(key)
+	store := NewDataStore(key)
 
-	height := blockStore.PlasmaBlockHeight(ctx)
+	height := store.PlasmaBlockHeight(ctx)
 	require.Nil(t, height, "non nil height with an empty block store")
 
 	for i := int64(1); i <= 10; i++ {
 		// Retrieve nonexistent blocks
-		recoveredBlock, ok := blockStore.GetBlock(ctx, big.NewInt(i))
+		recoveredBlock, ok := store.GetBlock(ctx, big.NewInt(i))
 		require.Empty(t, recoveredBlock, "did not return empty struct for nonexistent block")
 		require.False(t, ok, "did not return error on nonexistent block")
+
+		nextHeight := store.NextPlasmaBlockHeight(ctx)
+		require.Equal(t, nextHeight, big.NewInt(i), "next block height calculated incorrectly")
 
 		// Create and store new block
 		var header [32]byte
@@ -58,13 +61,13 @@ func TestPlasmaBlockStorage(t *testing.T) {
 
 		plasmaBlock := plasma.NewBlock(header, uint16(i*13), big.NewInt(i*123))
 		block := Block{plasmaBlock, uint64(i * 1123)}
-		blockNum := blockStore.StoreBlock(ctx, uint64(i*1123), plasmaBlock)
+		blockNum := store.StoreBlock(ctx, uint64(i*1123), plasmaBlock)
 
 		// check the height
-		height := blockStore.PlasmaBlockHeight(ctx)
+		height := store.PlasmaBlockHeight(ctx)
 		require.Equal(t, height, blockNum, "block height does not reflect the changes")
 
-		recoveredBlock, ok = blockStore.GetBlock(ctx, blockNum)
+		recoveredBlock, ok = store.GetBlock(ctx, blockNum)
 		require.True(t, ok, "error when retrieving block")
 		require.True(t, reflect.DeepEqual(block, recoveredBlock), fmt.Sprintf("mismatch in stored block and retrieved block, iteration %d", i))
 	}

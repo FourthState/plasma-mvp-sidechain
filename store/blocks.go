@@ -9,7 +9,7 @@ import (
 	"math/big"
 )
 
-// GetBlock - retrive a block at the specified height
+// GetBlock returns a block at the specified height
 func (store DataStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, bool) {
 	key := GetBlockKey(blockHeight)
 	data := store.Get(ctx, key)
@@ -28,14 +28,7 @@ func (store DataStore) GetBlock(ctx sdk.Context, blockHeight *big.Int) (Block, b
 // StoreBlock will store the plasma block and return the plasma block number
 // in which it was stored at.
 func (store DataStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block plasma.Block) *big.Int {
-	blockHeight := store.PlasmaBlockHeight(ctx)
-	if blockHeight == nil {
-		// first block to store
-		blockHeight = big.NewInt(1)
-	} else {
-		// increment the height counter
-		blockHeight = blockHeight.Add(blockHeight, utils.Big1)
-	}
+	blockHeight := store.NextPlasmaBlockHeight(ctx)
 
 	blockKey := GetBlockKey(blockHeight)
 	blockData, err := rlp.EncodeToBytes(&Block{block, tmBlockHeight})
@@ -50,7 +43,7 @@ func (store DataStore) StoreBlock(ctx sdk.Context, tmBlockHeight uint64, block p
 	return blockHeight
 }
 
-// PlasmaBlockHeight returns the current plasma block height.
+// PlasmaBlockHeight returns the current plasma block height. nil if no blocks exist
 func (store DataStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	var plasmaBlockNum *big.Int
 	data := store.Get(ctx, GetBlockHeightKey())
@@ -61,4 +54,13 @@ func (store DataStore) PlasmaBlockHeight(ctx sdk.Context) *big.Int {
 	}
 
 	return plasmaBlockNum
+}
+
+func (store DataStore) NextPlasmaBlockHeight(ctx sdk.Context) *big.Int {
+	height := store.PlasmaBlockHeight(ctx)
+	if height == nil {
+		return big.NewInt(1)
+	}
+
+	return height.Add(height, utils.Big1)
 }
