@@ -13,7 +13,7 @@ import (
 
 const (
 	// RouteName to mount the querier
-	RouteName = "data"
+	QuerierRouteName = "data"
 
 	/*** block routes ***/
 

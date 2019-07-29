@@ -116,7 +116,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.dataStore, nextTxIndex, plasmaClient))
 
 	// custom queriers
-	app.QueryRouter().AddRoute(store.RouteName, store.NewQuerier(app.dataStore))
+	app.QueryRouter().AddRoute(store.QuerierRouteName, store.NewQuerier(app.dataStore))
 
 	// Set the AnteHandler
 	app.SetAnteHandler(handlers.NewAnteHandler(app.dataStore, plasmaClient))
@@ -128,7 +128,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	// mount and load stores
 	// IAVL store used by default. `fauxMerkleMode` defaults to false
 	app.MountStores(dataStoreKey)
-	if err := app.LoadLatestVersion(outputStoreKey); err != nil {
+	if err := app.LoadLatestVersion(dataStoreKey); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -154,25 +154,28 @@ func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChai
 
 // Reset state at the end of each block
 func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+	ds := app.dataStore
+
 	// skip if the block is empty
 	if app.txIndex == 0 {
 		// try to commit any headers in the store
-		app.ethConnection.CommitPlasmaHeaders(ctx, app.blockStore)
+		app.ethConnection.CommitPlasmaHeaders(ctx, ds)
 		return abci.ResponseEndBlock{}
 	}
 
 	tmBlockHeight := uint64(ctx.BlockHeight())
+	plasmaBlockHeight := ds.NextPlasmaBlockHeight(ctx)
 
 	var header [32]byte
 	copy(header[:], ctx.BlockHeader().DataHash)
-	block := plasma.NewBlock(header, app.txIndex, app.feeAmount)
-	app.blockStore.StoreBlock(ctx, tmBlockHeight, block)
+	block := plasma.NewBlock(header, app.txIndex, app.feeAmount, plasmaBlockHeight)
+	ds.StoreBlock(ctx, tmBlockHeight, block)
 
 	if app.feeAmount.Sign() == 1 {
-		app.outputStore.StoreFee(ctx, app.blockStore.PlasmaBlockHeight(ctx), plasma.NewOutput(app.operatorAddress, app.feeAmount))
+		ds.StoreFee(ctx, plasmaBlockHeight, plasma.NewOutput(app.operatorAddress, app.feeAmount))
 	}
 
-	app.ethConnection.CommitPlasmaHeaders(ctx, app.blockStore)
+	app.ethConnection.CommitPlasmaHeaders(ctx, ds)
 
 	app.txIndex = 0
 	app.feeAmount = big.NewInt(0)
