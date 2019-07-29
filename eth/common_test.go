@@ -9,18 +9,18 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-func setup() (sdk.Context, store.BlockStore) {
+func setup() (sdk.Context, store.DataStore) {
 	db := db.NewMemDB()
 	ms := cosmosStore.NewCommitMultiStore(db)
 
 	ctx := sdk.NewContext(ms, abci.Header{}, false, log.NewNopLogger())
 
-	blockStoreKey := sdk.NewKVStoreKey("block")
+	dsKey := sdk.NewKVStoreKey(store.DataStoreName)
 
-	ms.MountStoreWithDB(blockStoreKey, sdk.StoreTypeIAVL, db)
+	ms.MountStoreWithDB(dsKey, sdk.StoreTypeIAVL, db)
 	ms.LoadLatestVersion()
 
-	blockStore := store.NewBlockStore(blockStoreKey)
+	ds := store.NewDataStore(dsKey)
 
-	return ctx, blockStore
+	return ctx, ds
 }

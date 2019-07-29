@@ -19,6 +19,7 @@ func TestBlockSerialization(t *testing.T) {
 	plasmaBlock.Header[0] = byte(10)
 	plasmaBlock.TxnCount = 3
 	plasmaBlock.FeeAmount = utils.Big2
+	plasmaBlock.Height = utils.Big2
 
 	block := Block{
 		Block:         plasmaBlock,
@@ -59,7 +60,7 @@ func TestPlasmaBlockStorage(t *testing.T) {
 		hash := crypto.Keccak256([]byte("a plasma block header"))
 		copy(header[:], hash[:])
 
-		plasmaBlock := plasma.NewBlock(header, uint16(i*13), big.NewInt(i*123))
+		plasmaBlock := plasma.NewBlock(header, uint16(i*13), big.NewInt(i*123), big.NewInt(1337))
 		block := Block{plasmaBlock, uint64(i * 1123)}
 		blockNum := store.StoreBlock(ctx, uint64(i*1123), plasmaBlock)
 
