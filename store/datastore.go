@@ -4,7 +4,12 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// DataSTo
+const (
+	// Name - store name
+	DataStoreName = "data"
+)
+
+// DataStore
 type DataStore struct {
 	contextStoreKey sdk.StoreKey
 }
