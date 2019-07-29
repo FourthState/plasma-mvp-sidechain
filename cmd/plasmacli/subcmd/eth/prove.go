@@ -73,13 +73,13 @@ var proveCmd = &cobra.Command{
 // Trusts connected full node
 func getProof(ctx context.CLIContext, position plasma.Position) (*tm.ResultTx, []byte, error) {
 	key := store.GetOutputKey(position)
-	hash, err := ctx.QueryStore(key, store.OutputStoreName)
+	hash, err := ctx.QueryStore(key, store.DataStoreName)
 	if err != nil {
 		return &tm.ResultTx{}, nil, err
 	}
 
 	txKey := store.GetTxKey(hash)
-	txBytes, err := ctx.QueryStore(txKey, store.OutputStoreName)
+	txBytes, err := ctx.QueryStore(txKey, store.DataStoreName)
 
 	var tx store.Transaction
 	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
