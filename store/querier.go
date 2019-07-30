@@ -89,7 +89,7 @@ func queryBlock(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error
 
 	block, ok := ds.GetBlock(ctx, height)
 	if !ok {
-		return nil, ErrInvalidPath("nonexistent plasma block")
+		return nil, ErrDNE("plasma block %s does not exists", height)
 	}
 
 	return marshalResponse(block)
@@ -254,7 +254,7 @@ func marshalResponse(resp interface{}) ([]byte, sdk.Error) {
 
 func parseHeight(height string) (*big.Int, sdk.Error) {
 	h, ok := new(big.Int).SetString(height, 10)
-	if !ok || h.Sign() < 0 {
+	if !ok || h.Sign() <= 0 {
 		return nil, ErrInvalidPath("block height must start from 1 in decimal format")
 	}
 

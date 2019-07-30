@@ -28,17 +28,17 @@ func NewAnteHandler(ds store.DataStore, client plasmaConn) sdk.AnteHandler {
 		switch mtype := msg.Type(); mtype {
 		case "include_deposit":
 			depositMsg := msg.(msgs.IncludeDepositMsg)
-			return includeDepositAnteHandler(ctx, depositMsg, ds, client)
+			return includeDepositAnteHandler(ctx, ds, depositMsg, client)
 		case "spend_utxo":
 			spendMsg := msg.(msgs.SpendMsg)
-			return spendMsgAnteHandler(ctx, spendMsg, ds, client)
+			return spendMsgAnteHandler(ctx, ds, spendMsg, client)
 		default:
 			return ctx, ErrInvalidTransaction("msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
 	}
 }
 
-func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, ds store.DataStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+func spendMsgAnteHandler(ctx sdk.Context, ds store.DataStore, spendMsg msgs.SpendMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	var totalInputAmt, totalOutputAmt *big.Int
 	totalInputAmt = big.NewInt(0)
 	totalOutputAmt = big.NewInt(0)
@@ -55,7 +55,7 @@ func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, ds store.DataS
 
 	/* validate inputs */
 	for i, signer := range signers {
-		amt, res := validateInput(ctx, spendMsg.Inputs[i], common.BytesToAddress(signer), ds, client)
+		amt, res := validateInput(ctx, ds, spendMsg.Inputs[i], common.BytesToAddress(signer), client)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -82,7 +82,7 @@ func spendMsgAnteHandler(ctx sdk.Context, spendMsg msgs.SpendMsg, ds store.DataS
 }
 
 // validates the inputs against the output store and returns the amount of the respective input
-func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, ds store.DataStore, client plasmaConn) (*big.Int, sdk.Result) {
+func validateInput(ctx sdk.Context, ds store.DataStore, input plasma.Input, signer common.Address, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
 
 	// inputUTXO must be owned by the signer due to the prefix so we do not need to
@@ -111,7 +111,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, d
 			return nil, sdk.ErrInternal(fmt.Sprintf("failed to retrieve the transaction that input with position %s belongs to", input.Position)).Result()
 		}
 
-		res := validateConfirmSignatures(ctx, input, tx, ds)
+		res := validateConfirmSignatures(ctx, ds, input, tx)
 		if !res.IsOK() {
 			return nil, res
 		}
@@ -133,7 +133,7 @@ func validateInput(ctx sdk.Context, input plasma.Input, signer common.Address, d
 }
 
 // validates the input's confirm signatures
-func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputTx store.Transaction, ds store.DataStore) sdk.Result {
+func validateConfirmSignatures(ctx sdk.Context, ds store.DataStore, input plasma.Input, inputTx store.Transaction) sdk.Result {
 	if len(input.ConfirmSignatures) > 0 && len(inputTx.Transaction.Inputs) != len(input.ConfirmSignatures) {
 		return ErrInvalidTransaction("incorrect number of confirm signatures").Result()
 	}
@@ -154,7 +154,7 @@ func validateConfirmSignatures(ctx sdk.Context, input plasma.Input, inputTx stor
 	return sdk.Result{}
 }
 
-func includeDepositAnteHandler(ctx sdk.Context, msg msgs.IncludeDepositMsg, ds store.DataStore, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+func includeDepositAnteHandler(ctx sdk.Context, ds store.DataStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	if ds.HasDeposit(ctx, msg.DepositNonce) {
 		return ctx, ErrInvalidTransaction("deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true
 	}
