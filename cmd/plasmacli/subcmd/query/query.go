@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/FourthState/plasma-mvp-sidechain/store/query"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 )
 
 func TxOutput(ctx context.CLIContext, pos plasma.Position) (store.TxOutput, error) {
 	// query for an output for the given position
-	queryRoute := fmt.Sprintf("custom/%s/output/%s", query.RouteName, pos)
+	queryRoute := fmt.Sprintf("custom/%s/output/%s", store.QuerierRouteName, pos)
 	data, err := ctx.Query(queryRoute, nil)
 	if err != nil {
 		return store.TxOutput{}, err
@@ -28,7 +27,7 @@ func TxOutput(ctx context.CLIContext, pos plasma.Position) (store.TxOutput, erro
 
 func TxInput(ctx context.CLIContext, pos plasma.Position) (store.TxInput, error) {
 	// query for input info on the given position
-	queryRoute := fmt.Sprintf("custom/%s/input/%s", query.RouteName, pos)
+	queryRoute := fmt.Sprintf("custom/%s/input/%s", store.QuerierRouteName, pos)
 	data, err := ctx.Query(queryRoute, nil)
 	if err != nil {
 		return store.TxInput{}, err
@@ -44,7 +43,7 @@ func TxInput(ctx context.CLIContext, pos plasma.Position) (store.TxInput, error)
 
 func Tx(ctx context.CLIContext, hash []byte) (store.Transaction, error) {
 	// query for a transaction using the provided hash
-	queryRoute := fmt.Sprintf("custom/%s/tx/%s", query.RouteName, hash)
+	queryRoute := fmt.Sprintf("custom/%s/tx/%s", store.QuerierRouteName, hash)
 	data, err := ctx.Query(queryRoute, nil)
 	if err != nil {
 		return store.Transaction{}, err
@@ -60,7 +59,7 @@ func Tx(ctx context.CLIContext, hash []byte) (store.Transaction, error) {
 
 func Info(ctx context.CLIContext, addr ethcmn.Address) ([]store.TxOutput, error) {
 	// query for all utxos owned by this address
-	queryRoute := fmt.Sprintf("custom/%s/info/%s", query.RouteName, addr.Hex())
+	queryRoute := fmt.Sprintf("custom/%s/info/%s", store.QuerierRouteName, addr.Hex())
 	data, err := ctx.Query(queryRoute, nil)
 	if err != nil {
 		return nil, err

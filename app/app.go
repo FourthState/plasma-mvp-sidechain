@@ -9,7 +9,6 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
-	"github.com/FourthState/plasma-mvp-sidechain/store/query"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -37,8 +36,7 @@ type PlasmaMVPChain struct {
 	feeAmount *big.Int
 
 	// persistent stores
-	outputStore store.OutputStore
-	blockStore  store.BlockStore
+	dataStore store.DataStore
 
 	// smart contract connection
 	ethConnection *eth.Plasma
@@ -58,10 +56,8 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	cdc := MakeCodec()
 	baseApp.SetCommitMultiStoreTracer(traceStore)
 
-	outputStoreKey := sdk.NewKVStoreKey(store.OutputStoreName)
-	outputStore := store.NewOutputStore(outputStoreKey)
-	blockStoreKey := sdk.NewKVStoreKey(store.BlockStoreName)
-	blockStore := store.NewBlockStore(blockStoreKey)
+	dataStoreKey := sdk.NewKVStoreKey(store.DataStoreName)
+	dataStore := store.NewDataStore(dataStoreKey)
 
 	app := &PlasmaMVPChain{
 		BaseApp:   baseApp,
@@ -69,8 +65,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		txIndex:   0,
 		feeAmount: big.NewInt(0), // we do not use `utils.BigZero` because the feeAmount is going to be updated
 
-		blockStore:  blockStore,
-		outputStore: outputStore,
+		dataStore: dataStore,
 	}
 
 	// set configs
@@ -117,16 +112,14 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 		app.feeAmount = app.feeAmount.Add(app.feeAmount, amt)
 		return nil
 	}
-	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.outputStore, app.blockStore, nextTxIndex, feeUpdater))
-	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.outputStore, app.blockStore, nextTxIndex, plasmaClient))
+	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.dataStore, nextTxIndex, feeUpdater))
+	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.dataStore, nextTxIndex, plasmaClient))
 
 	// custom queriers
-	app.QueryRouter().
-		AddRoute(query.RouteName, query.NewOutputQuerier(outputStore)).
-		AddRoute(store.QueryBlockStore, query.NewBlockQuerier(blockStore))
+	app.QueryRouter().AddRoute(store.QuerierRouteName, store.NewQuerier(app.dataStore))
 
 	// Set the AnteHandler
-	app.SetAnteHandler(handlers.NewAnteHandler(app.outputStore, app.blockStore, plasmaClient))
+	app.SetAnteHandler(handlers.NewAnteHandler(app.dataStore, plasmaClient))
 
 	// set the rest of the chain flow
 	app.SetEndBlocker(app.endBlocker)
@@ -134,8 +127,8 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 
 	// mount and load stores
 	// IAVL store used by default. `fauxMerkleMode` defaults to false
-	app.MountStores(outputStoreKey, blockStoreKey)
-	if err := app.LoadLatestVersion(outputStoreKey); err != nil {
+	app.MountStores(dataStoreKey)
+	if err := app.LoadLatestVersion(dataStoreKey); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -161,25 +154,28 @@ func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChai
 
 // Reset state at the end of each block
 func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+	ds := app.dataStore
+
 	// skip if the block is empty
 	if app.txIndex == 0 {
 		// try to commit any headers in the store
-		app.ethConnection.CommitPlasmaHeaders(ctx, app.blockStore)
+		app.ethConnection.CommitPlasmaHeaders(ctx, ds)
 		return abci.ResponseEndBlock{}
 	}
 
 	tmBlockHeight := uint64(ctx.BlockHeight())
+	plasmaBlockHeight := ds.NextPlasmaBlockHeight(ctx)
 
 	var header [32]byte
 	copy(header[:], ctx.BlockHeader().DataHash)
-	block := plasma.NewBlock(header, app.txIndex, app.feeAmount)
-	app.blockStore.StoreBlock(ctx, tmBlockHeight, block)
+	block := plasma.NewBlock(header, app.txIndex, app.feeAmount, plasmaBlockHeight)
+	ds.StoreBlock(ctx, tmBlockHeight, block)
 
 	if app.feeAmount.Sign() == 1 {
-		app.outputStore.StoreFee(ctx, app.blockStore.PlasmaBlockHeight(ctx), plasma.NewOutput(app.operatorAddress, app.feeAmount))
+		ds.StoreFee(ctx, plasmaBlockHeight, plasma.NewOutput(app.operatorAddress, app.feeAmount))
 	}
 
-	app.ethConnection.CommitPlasmaHeaders(ctx, app.blockStore)
+	app.ethConnection.CommitPlasmaHeaders(ctx, ds)
 
 	app.txIndex = 0
 	app.feeAmount = big.NewInt(0)

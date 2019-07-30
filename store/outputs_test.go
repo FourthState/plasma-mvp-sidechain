@@ -15,7 +15,7 @@ import (
 // Test Get, Has, Store, Spend functions for deposits
 func TestDeposits(t *testing.T) {
 	ctx, key := setup()
-	outputStore := NewOutputStore(key)
+	outputStore := NewDataStore(key)
 
 	addr := common.BytesToAddress([]byte("asdfasdf"))
 	for i := int64(1); i <= 15; i++ {
@@ -29,7 +29,7 @@ func TestDeposits(t *testing.T) {
 		require.Empty(t, recoveredDeposit, "did not return empty struct for nonexistent deposit")
 		require.False(t, ok, "did not return error on nonexistent deposit")
 		res := outputStore.SpendDeposit(ctx, nonce, hash)
-		require.Equal(t, res.Code, CodeOutputDNE, "did not return that deposit does not exist")
+		require.Equal(t, res.Code, CodeDNE, "did not return that deposit does not exist")
 
 		// Create and store new deposit
 		plasmaDeposit := plasma.NewDeposit(addr, big.NewInt(i*4123), big.NewInt(i*123))
@@ -59,7 +59,7 @@ func TestDeposits(t *testing.T) {
 // Test Get, Has, Store, Spend functions for fees
 func TestFees(t *testing.T) {
 	ctx, key := setup()
-	outputStore := NewOutputStore(key)
+	outputStore := NewDataStore(key)
 
 	addr := common.BytesToAddress([]byte("asdfasdf"))
 	for i := int64(1); i <= 15; i++ {
@@ -73,7 +73,7 @@ func TestFees(t *testing.T) {
 		require.Empty(t, recoveredFee, "did not return empty struct for nonexistent fee")
 		require.False(t, ok, "did not return error on nonexistent fee")
 		res := outputStore.SpendFee(ctx, pos, hash)
-		require.Equal(t, res.Code, CodeOutputDNE, "did not return that fee does not exist")
+		require.Equal(t, res.Code, CodeDNE, "did not return that fee does not exist")
 
 		// Create and store new fee
 		output := plasma.NewOutput(addr, big.NewInt(int64(1000*i)))
@@ -104,7 +104,7 @@ func TestFees(t *testing.T) {
 func TestTransactions(t *testing.T) {
 	// Setup
 	ctx, key := setup()
-	outputStore := NewOutputStore(key)
+	outputStore := NewDataStore(key)
 
 	privKey, _ := crypto.GenerateKey()
 	addr := crypto.PubkeyToAddress(privKey.PublicKey)
@@ -174,7 +174,7 @@ func TestTransactions(t *testing.T) {
 			exists = outputStore.HasOutput(ctx, p)
 			require.False(t, exists, "returned true for nonexistent output")
 			res := outputStore.SpendOutput(ctx, p, plasmaTx.Transaction.MerkleHash())
-			require.Equal(t, res.Code, CodeOutputDNE, "did not return that Output does not exist")
+			require.Equal(t, res.Code, CodeDNE, "did not return that Output does not exist")
 		}
 
 		// Create and store new transaction

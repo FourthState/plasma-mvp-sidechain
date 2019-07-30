@@ -9,10 +9,10 @@ import (
 
 func TestIncludeDeposit(t *testing.T) {
 	// blockStore is at next block height 1
-	ctx, outputStore, blockStore := setup()
+	ctx, ds := setup()
 
 	// Give deposit a cooked connection that will always provide deposit with given position
-	depositHandler := NewDepositHandler(outputStore, blockStore, nextTxIndex, conn{})
+	depositHandler := NewDepositHandler(ds, nextTxIndex, conn{})
 
 	// create a msg that spends the first input and creates two outputs
 	msg := msgs.IncludeDepositMsg{
@@ -21,8 +21,7 @@ func TestIncludeDeposit(t *testing.T) {
 	}
 
 	depositHandler(ctx, msg)
-
-	deposit, ok := outputStore.GetDeposit(ctx, big.NewInt(5))
+	deposit, ok := ds.GetDeposit(ctx, big.NewInt(5))
 
 	require.True(t, ok, "deposit does not exist in store")
 	require.Equal(t, addr, deposit.Deposit.Owner, "deposit has wrong owner")

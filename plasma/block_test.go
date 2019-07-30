@@ -11,7 +11,7 @@ import (
 
 func TestBlockSerialization(t *testing.T) {
 	header := sha256.Sum256([]byte("header"))
-	block := NewBlock(header, 10, big.NewInt(1))
+	block := NewBlock(header, 10, big.NewInt(1), big.NewInt(1337))
 
 	bytes, err := rlp.EncodeToBytes(&block)
 	require.NoError(t, err, "Error serializing block")
