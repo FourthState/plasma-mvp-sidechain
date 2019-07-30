@@ -89,7 +89,7 @@ func queryBlock(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error
 
 	block, ok := ds.GetBlock(ctx, height)
 	if !ok {
-		return nil, ErrDNE("plasma block %s does not exists", height)
+		return nil, ErrDNE("plasma block %s does not exist", height)
 	}
 
 	return marshalResponse(block)
