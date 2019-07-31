@@ -235,11 +235,17 @@ func queryTx(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
 		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<txhash>", QueryTx))
 	}
+	txHash := path[0]
+	if len(txHash) >= 2 && txHash[:2] == "0x" || txHash[:2] == "0X" {
+		txHash = txHash[2:]
+	}
+	if _, ok := new(big.Int).SetString(txHash, 16); !ok || len(txHash) != 64 {
+		return nil, ErrInvalidPath("txHash must be a 32-byte (64 character) hexadecimal string")
+	}
 
-	txHash := []byte(path[0])
-	tx, ok := ds.GetTx(ctx, txHash)
+	tx, ok := ds.GetTx(ctx, []byte(txHash))
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no transaction exists for the hash provided: %x", txHash))
+		return nil, ErrDNE(fmt.Sprintf("no transaction exists for the hash provided: %s", txHash))
 	}
 
 	return marshalResponse(tx)

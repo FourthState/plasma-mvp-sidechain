@@ -17,9 +17,11 @@ import (
 
 func RegisterRoutes(ctx context.CLIContext, r *mux.Router) {
 	r.HandleFunc("/balance/{address}", balanceHandler(ctx)).Methods("GET")
-	r.HandleFunc("/block/{num}", blockHandler(ctx)).Methods("GET")
-	r.HandleFunc("/blocks/{num}", blocksHandler(ctx)).Methods("GET")
 	r.HandleFunc("/info/{address}", infoHandler(ctx)).Methods("GET")
+	r.HandleFunc("/block/{height}", blockHandler(ctx)).Methods("GET")
+	r.HandleFunc("/blocks/{height}", blocksHandler(ctx)).Methods("GET")
+	r.HandleFunc("/tx/{hash}", txHandler(ctx)).Methods("GET")
+	r.HandleFunc("/output/{position}", outputHandler(ctx)).Methods("GET")
 	r.HandleFunc("/submit", submitHandler(ctx)).Methods("POST")
 }
 
@@ -88,7 +90,7 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 
 func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		num, ok := new(big.Int).SetString(mux.Vars(r)["num"], 10)
+		num, ok := new(big.Int).SetString(mux.Vars(r)["height"], 10)
 		if !ok || num.Sign() <= 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("block height must be in decimal format starting from 1"))
@@ -154,7 +156,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var blockHeight *big.Int
-		arg := mux.Vars(r)["num"]
+		arg := mux.Vars(r)["height"]
 		if arg != "latest" {
 			var ok bool
 			if blockHeight, ok = new(big.Int).SetString(arg, 10); !ok || blockHeight.Sign() <= 0 {
@@ -187,6 +189,17 @@ func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 		w.Write(data)
 	}
 }
+
+func txHandler(ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+	}
+}
+
+func outputHandler(ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+	}
+}
+
 func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type reqBody struct {
