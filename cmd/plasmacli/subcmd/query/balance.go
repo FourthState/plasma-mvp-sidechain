@@ -2,6 +2,7 @@ package query
 
 import (
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/client"
 	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -32,8 +33,7 @@ var balanceCmd = &cobra.Command{
 			addr = ethcmn.HexToAddress(args[0])
 		}
 
-		queryPath := fmt.Sprintf("custom/data/balance/%s", addr.Hex())
-		total, err := ctx.Query(queryPath, nil)
+		total, err := client.Balance(ctx, addr)
 		if err != nil {
 			return err
 		}

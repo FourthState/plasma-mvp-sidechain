@@ -129,6 +129,10 @@ func queryBlocks(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Erro
 		height = height.Add(height, utils.Big1)
 	}
 
+	if len(blocks) != 0 {
+		return nil, ErrDNE("no blocks")
+	}
+
 	return marshalResponse(blocks)
 }
 

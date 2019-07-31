@@ -2,8 +2,8 @@ package tx
 
 import (
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/client"
 	clistore "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
-	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/query"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	cosmoscli "github.com/cosmos/cosmos-sdk/client"
@@ -56,7 +56,7 @@ Usage:
 			return err
 		}
 
-		utxos, err := query.Info(ctx, signerAddr)
+		utxos, err := client.Info(ctx, signerAddr)
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ Usage:
 		for _, output := range utxos {
 
 			if output.Spent {
-				tx, err := query.Tx(ctx, output.SpenderTx)
+				tx, err := client.Tx(ctx, output.SpenderTx)
 				if err != nil {
 					return err
 				}
@@ -87,11 +87,11 @@ Usage:
 // the input addresses. Generate confirmation signature for given output.
 func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, signerAddr ethcmn.Address, name string) error {
 	// query for output for the specified position
-	output, err := query.TxOutput(ctx, position)
+	output, err := client.TxOutput(ctx, position)
 	if err != nil {
 		return err
 	}
-	inputInfo, err := query.TxInput(ctx, position)
+	inputInfo, err := client.TxInput(ctx, position)
 	if err != nil {
 		return err
 	}
