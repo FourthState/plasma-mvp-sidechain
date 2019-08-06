@@ -25,5 +25,10 @@ func RemoveHexPrefix(hexStr string) string {
 		return hexStr[2:]
 	}
 
+	// make hex string even length
+	if len(hexStr)%2 != 0 {
+		hexStr = "0" + hexStr
+	}
+
 	return hexStr
 }
