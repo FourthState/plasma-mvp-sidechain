@@ -39,7 +39,7 @@ func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
 		if err != nil {
 			sdkerr, ok := err.(sdk.Error)
 			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusBadRequest)
+				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusOK)
 			}
@@ -67,7 +67,7 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 		if err != nil {
 			sdkerr, ok := err.(sdk.Error)
 			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusBadRequest)
+				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusOK)
 			}
@@ -101,7 +101,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 		if err != nil {
 			sdkerr, ok := err.(sdk.Error)
 			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusBadRequest)
+				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusOK)
 			}
@@ -169,7 +169,7 @@ func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 		if err != nil {
 			sdkerr, ok := err.(sdk.Error)
 			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusBadRequest)
+				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusOK)
 			}
