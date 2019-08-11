@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
@@ -235,15 +236,14 @@ func queryTx(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
 		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<txhash>", QueryTx))
 	}
-	txHash := path[0]
-	if len(txHash) >= 2 && txHash[:2] == "0x" || txHash[:2] == "0X" {
-		txHash = txHash[2:]
-	}
-	if _, ok := new(big.Int).SetString(txHash, 16); !ok || len(txHash) != 64 {
-		return nil, ErrInvalidPath("txHash must be a 32-byte (64 character) hexadecimal string")
+	txHash, err := hex.DecodeString(utils.RemoveHexPrefix(path[0]))
+	if err != nil {
+		return nil, ErrInvalidPath(fmt.Sprintf("tx hash expected in hexadecimal format. hex: %s", err))
+	} else if len(txHash) != 32 {
+		return nil, ErrInvalidPath("tx hash expected to be 32 bytes in length")
 	}
 
-	tx, ok := ds.GetTx(ctx, []byte(txHash))
+	tx, ok := ds.GetTx(ctx, txHash)
 	if !ok {
 		return nil, ErrDNE(fmt.Sprintf("no transaction exists for the hash provided: %s", txHash))
 	}
@@ -271,17 +271,12 @@ func parseHeight(height string) (*big.Int, sdk.Error) {
 	return h, nil
 }
 
-func parseAddress(addrString string) (ethcmn.Address, sdk.Error) {
-	if len(addrString) > 2 && addrString[:2] == "0x" {
-		addrString = addrString[2:]
-	}
-	if len(addrString)%2 != 0 {
-		addrString = "0" + addrString
+func parseAddress(addr string) (ethcmn.Address, sdk.Error) {
+	addr = utils.RemoveHexPrefix(addr)
+
+	if !ethcmn.IsHexAddress(addr) {
+		return utils.ZeroAddress, ErrInvalidPath("address expected to be a valid 20-byte ethereum address")
 	}
 
-	if !ethcmn.IsHexAddress(addrString) {
-		return utils.ZeroAddress, ErrInvalidPath(fmt.Sprintf("%s/<address> must be a valid ethereum address", QueryBalance))
-	}
-
-	return ethcmn.HexToAddress(addrString), nil
+	return ethcmn.HexToAddress(addr), nil
 }

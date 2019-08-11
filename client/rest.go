@@ -4,8 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -16,12 +18,15 @@ import (
 )
 
 func RegisterRoutes(ctx context.CLIContext, r *mux.Router) {
+	// Getters
 	r.HandleFunc("/balance/{address}", balanceHandler(ctx)).Methods("GET")
 	r.HandleFunc("/info/{address}", infoHandler(ctx)).Methods("GET")
 	r.HandleFunc("/block/{height}", blockHandler(ctx)).Methods("GET")
 	r.HandleFunc("/blocks/{height}", blocksHandler(ctx)).Methods("GET")
 	r.HandleFunc("/tx/{hash}", txHandler(ctx)).Methods("GET")
 	r.HandleFunc("/output/{position}", outputHandler(ctx)).Methods("GET")
+
+	// Post
 	r.HandleFunc("/submit", submitHandler(ctx)).Methods("POST")
 }
 
@@ -37,14 +42,7 @@ func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
 
 		total, err := Balance(ctx, ethcmn.HexToAddress(addr))
 		if err != nil {
-			sdkerr, ok := err.(sdk.Error)
-			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusNotFound)
-			} else {
-				w.WriteHeader(http.StatusOK)
-			}
-
-			w.Write([]byte(err.Error()))
+			writeClientRetrievalErr(w, err)
 			return
 		}
 
@@ -65,26 +63,11 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 
 		txo, err := Info(ctx, ethcmn.HexToAddress(addr))
 		if err != nil {
-			sdkerr, ok := err.(sdk.Error)
-			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusNotFound)
-			} else {
-				w.WriteHeader(http.StatusOK)
-			}
-
-			w.Write([]byte(err.Error()))
+			writeClientRetrievalErr(w, err)
 			return
 		}
 
-		data, err := json.Marshal(txo)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		writeJSONResponse(txo, w)
 	}
 }
 
@@ -99,14 +82,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 
 		block, err := Block(ctx, num)
 		if err != nil {
-			sdkerr, ok := err.(sdk.Error)
-			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusNotFound)
-			} else {
-				w.WriteHeader(http.StatusOK)
-			}
-
-			w.Write([]byte(err.Error()))
+			writeClientRetrievalErr(w, err)
 			return
 		}
 
@@ -121,7 +97,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 		// Query the tendermint block.
 		// Tendermint stores transactions in base64 format
 		//
-		// Transcode base64 encoded into hex format
+		// Transcode base64 to hex
 		height := int64(block.TMBlockHeight)
 		tmBlock, err := ctx.Client.Block(&height)
 		if err != nil {
@@ -141,15 +117,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 			resp.Txs = append(resp.Txs, hexFormat)
 		}
 
-		data, err := json.Marshal(resp)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		writeJSONResponse(resp, w)
 	}
 }
 
@@ -167,36 +135,43 @@ func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 
 		blocks, err := Blocks(ctx, blockHeight)
 		if err != nil {
-			sdkerr, ok := err.(sdk.Error)
-			if !ok || sdkerr.Code() != store.CodeDNE {
-				w.WriteHeader(http.StatusNotFound)
-			} else {
-				w.WriteHeader(http.StatusOK)
-			}
-
-			w.Write([]byte(err.Error()))
+			writeClientRetrievalErr(w, err)
 			return
 		}
 
-		data, err := json.Marshal(blocks)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		writeJSONResponse(blocks, w)
 	}
 }
 
 func txHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		txHash := utils.RemoveHexPrefix(mux.Vars(r)["hash"])
+
+		// validation
+		_, err := hex.DecodeString(txHash)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("tx hash expected in hexadecimal format")))
+			return
+		} else if len(txHash) != 64 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("tx hash expected to be 32 bytes in length"))
+			return
+		}
+
+		tx, err := Tx(ctx, txHash)
+		if err != nil {
+			writeClientRetrievalErr(w, err)
+			return
+		}
+
+		writeJSONResponse(tx, w)
 	}
 }
 
 func outputHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		//pos := mux.Vars(r)["position"]
 	}
 }
 
@@ -256,4 +231,33 @@ func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusOK)
 	}
+}
+
+/****  Helpers ****/
+
+func writeJSONResponse(obj interface{}, w http.ResponseWriter) {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("json:" + err.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
+func writeClientRetrievalErr(w http.ResponseWriter, err error) {
+	// If the client request (GET) could not be fulfilled for some
+	// other reason than the requested information not existing (DNE), the request
+	// must have been malformed or an internal server error must have occured
+	sdkerr, ok := err.(sdk.Error)
+	if !ok || sdkerr.Code() != store.CodeDNE {
+		w.WriteHeader(http.StatusBadRequest)
+		// TODO: log the error
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+
+	w.Write([]byte(err.Error()))
 }

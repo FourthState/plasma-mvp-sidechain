@@ -45,7 +45,8 @@ func TxInput(ctx context.CLIContext, pos plasma.Position) (store.TxInput, error)
 }
 
 // Tx locates a transaction and given it's hash
-func Tx(ctx context.CLIContext, hash []byte) (store.Transaction, error) {
+// @param hash 32-byte hexadecimal string
+func Tx(ctx context.CLIContext, hash string) (store.Transaction, error) {
 	queryRoute := fmt.Sprintf("custom/%s/%s/%s",
 		store.QuerierRouteName, store.QueryTx, hash)
 	data, err := ctx.Query(queryRoute, nil)
