@@ -18,6 +18,7 @@ var (
 	positionF = "position"
 )
 
+// QueryCmd returns the eth query command
 func QueryCmd() *cobra.Command {
 	queryCmd.AddCommand(
 		BalanceCmd(),

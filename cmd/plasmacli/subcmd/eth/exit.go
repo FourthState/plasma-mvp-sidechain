@@ -16,6 +16,7 @@ import (
 	"strconv"
 )
 
+// ExitCmd returns the eth exit command
 func ExitCmd() *cobra.Command {
 	config.AddPersistentTMFlags(exitCmd)
 	exitCmd.Flags().String(feeF, "0", "fee committed in an unfinalized spend of the input")

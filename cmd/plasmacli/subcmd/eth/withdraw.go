@@ -9,6 +9,7 @@ import (
 	"strconv"
 )
 
+// WithdrawCmd returns the eth withdraw command
 func WithdrawCmd() *cobra.Command {
 	withdrawCmd.Flags().StringP(gasLimitF, "g", "150000", "gas limit for ethereum transaction")
 	return withdrawCmd

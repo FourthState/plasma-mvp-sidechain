@@ -6,6 +6,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
+// TxDecoder attempts to RLP decode the transaction bytes into a SpendMsg or
+// IncludeDepositMsg otherwise returns an error.
 func TxDecoder(txBytes []byte) (sdk.Tx, sdk.Error) {
 	var spendMsg SpendMsg
 	if err := rlp.DecodeBytes(txBytes, &spendMsg); err != nil {

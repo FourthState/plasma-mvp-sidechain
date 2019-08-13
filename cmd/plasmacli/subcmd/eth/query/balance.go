@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// BalanceCmd returns the eth query balance command
 func BalanceCmd() *cobra.Command {
 	return balanceCmd
 }

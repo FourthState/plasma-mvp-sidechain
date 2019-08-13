@@ -10,11 +10,10 @@ const (
 	signatureDir = "data/signatures.ldb"
 )
 
-// Saves confirmation signatures
-// If prepend is set to true, sig will be prepended to the currently stored signatures
-// Otherwise it will be appended
-// This ordering should be determined by input order in the transaction
-// If the length of the currently stored signatures is 130 an error is returned
+// SaveSig saves the confirmation signatures.If prepend is set to true, sig
+// will be prepended to the currently stored signatures. Otherwise it will be appended
+// This ordering should be determined by input order in the transaction. If
+// the length of the currently stored signatures is 130 an error is returned.
 func SaveSig(position plasma.Position, sig []byte, prepend bool) error {
 	if len(sig) != 65 {
 		return fmt.Errorf("signature must have a length of 65 bytes")
@@ -46,7 +45,7 @@ func SaveSig(position plasma.Position, sig []byte, prepend bool) error {
 	return nil
 }
 
-// Retrieves confirmation signautres
+// GetSig retrieves the confirmation signatures.
 func GetSig(position plasma.Position) ([]byte, error) {
 	dir := getDir(signatureDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -63,7 +62,7 @@ func GetSig(position plasma.Position) ([]byte, error) {
 	}
 }
 
-// return key used for confirm signature mapping
+// returns the key used for confirm signature mapping
 func getSigKey(pos plasma.Position) []byte {
 	return append(pos.BlockNum.Bytes(), []byte(string(pos.TxIndex))...)
 }

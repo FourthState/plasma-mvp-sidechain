@@ -15,6 +15,8 @@ type NextTxIndex func() uint16
 // FeeUpdater updates the aggregate fee amount in a block
 type FeeUpdater func(amt *big.Int) sdk.Error
 
+// NewSpendHandler sets the inputs of a spend msg to spent and creates new
+// outputs that are added to the data store.
 func NewSpendHandler(ds store.DataStore, nextTxIndex NextTxIndex, feeUpdater FeeUpdater) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		spendMsg, ok := msg.(msgs.SpendMsg)

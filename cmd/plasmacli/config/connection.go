@@ -10,6 +10,7 @@ import (
 
 var plasmaContract *eth.Plasma
 
+// GetContractConn returns the eth plasma contract connection
 func GetContractConn() (*eth.Plasma, error) {
 	if plasmaContract != nil {
 		return plasmaContract, nil

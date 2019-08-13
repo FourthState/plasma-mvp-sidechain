@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// UpdateCmd returns the keys update command
 func UpdateCmd() *cobra.Command {
 	updateCmd.Flags().String(nameF, "", "updated key name.")
 	return updateCmd

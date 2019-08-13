@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// ImportCmd returns the keys import command
 func ImportCmd() *cobra.Command {
 	importCmd.Flags().String(fileF, "", "read the private key from the specified keyfile (must be absolute path)")
 	return importCmd

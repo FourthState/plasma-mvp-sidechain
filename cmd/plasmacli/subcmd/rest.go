@@ -20,6 +20,7 @@ import (
 	"net/http"
 )
 
+// RestServerCmd adds the flags for the rest server cmd
 func RestServerCmd() *cobra.Command {
 	serverCmd.Flags().String(client.FlagListenAddr, "tcp://localhost:1317", "The address for the server to listen on")
 	serverCmd.Flags().Bool(client.FlagTLS, false, "Enable SSL/TLS layer")
@@ -53,6 +54,7 @@ var serverCmd = &cobra.Command{
 	},
 }
 
+// registers rest routes
 func registerRoutes(rs *lcd.RestServer) {
 	ctx := rs.CliCtx
 	r := rs.Mux

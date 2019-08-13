@@ -9,10 +9,12 @@ import (
 	"math/big"
 )
 
+// BlockCmd returns the query block command
 func BlockCmd() *cobra.Command {
 	return blockCmd
 }
 
+// BlocksCmd returns the query blocks command
 func BlocksCmd() *cobra.Command {
 	return blocksCmd
 }
@@ -80,6 +82,7 @@ var blocksCmd = &cobra.Command{
 	},
 }
 
+// Block makes a query to the data store for a plasma block.
 func Block(ctx context.CLIContext, num *big.Int) (store.Block, error) {
 	if num == nil || num.Sign() <= 0 {
 		return store.Block{}, fmt.Errorf("block number starts at 1")

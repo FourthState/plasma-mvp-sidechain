@@ -34,7 +34,8 @@ trust_node = {{ .PlasmadTrustNode }}
 # Chain identifier. Must be set if trust-node == false
 chain_id = "{{ .PlasmadChainID }}"`
 
-// Must match the above defaultConfigTemplate
+// Config is the struct representation of the toml file. Must match the
+// above defaultConfigTemplate
 type Config struct {
 	// Ethereum config
 	EthPlasmaContractAddr string `mapstructure:"ethereum_contract_address"`
@@ -56,6 +57,7 @@ func init() {
 	}
 }
 
+// DefaultConfig returns the default configuration for the Plasma CLI
 func DefaultConfig() Config {
 	return Config{
 		EthPlasmaContractAddr: "",
@@ -79,7 +81,8 @@ func RegisterViperAndEnv() {
 	viper.RegisterAlias("chain_id", "chain-id")
 }
 
-// parses the plasma.toml file and unmarshals it into a Config struct
+// ParseConfigFromViper parses the plasma.toml file and unmarshals it into a
+// Config struct
 func ParseConfigFromViper() (Config, error) {
 	config := Config{}
 	err := viper.Unmarshal(&config)

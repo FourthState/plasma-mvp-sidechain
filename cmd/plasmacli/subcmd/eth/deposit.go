@@ -11,6 +11,7 @@ import (
 	"strconv"
 )
 
+// DepositCmd returns the eth deposit command
 func DepositCmd() *cobra.Command {
 	depositCmd.Flags().StringP(gasLimitF, "g", "150000", "gas limit for ethereum transaction")
 	return depositCmd
