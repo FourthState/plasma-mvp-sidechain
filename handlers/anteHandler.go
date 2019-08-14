@@ -1,3 +1,5 @@
+// Package handlers provides the ante handler and message handlers for verifying
+// transactions and updating state.
 package handlers
 
 import (

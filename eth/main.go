@@ -1,3 +1,5 @@
+// Package eth provides the connection of the plasma chain to the ethereum
+// chain.
 package eth
 
 import (

@@ -1,3 +1,4 @@
+// Package app provides the construction and execution of the plasma chain
 package app
 
 import (

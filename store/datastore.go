@@ -1,3 +1,5 @@
+// Package store implements a Cosmos-SDK KVStore that is capable of storing
+// plasma blocks, transactions, and outputs.
 package store
 
 import (
