@@ -32,8 +32,7 @@ type chainInfo struct {
 	AppMessage json.RawMessage `json:"app_message"`
 }
 
-// get cmd to initialize all files for tendermint and application
-// nolint
+// InitCmd initializes all files for tendermint and application.
 func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",

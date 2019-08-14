@@ -16,8 +16,9 @@ type Client struct {
 	ec  *ethclient.Client
 }
 
-// Instantiate a connection and bind the go plasma contract wrapper with this client.
-// Will return an error if the ethereum client is not fully sycned
+// InitEthConn will instantiate a connection and bind the go plasma contract
+// wrapper with this client. Will return an error if the ethereum client is
+// not fully sycned.
 func InitEthConn(nodeUrl string) (Client, error) {
 	// Connect to a remote etheruem client
 	//
