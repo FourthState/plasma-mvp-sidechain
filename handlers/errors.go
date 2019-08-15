@@ -37,7 +37,7 @@ func ErrInvalidTransaction(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeInvalidTransaction, msg, args)
 }
 
-// ErrInvalidSignture error for an incorrect signture
+// ErrInvalidSignature error for an incorrect signature
 func ErrInvalidSignature(msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(DefaultCodespace, CodeInvalidSignature, msg, args)
 }
