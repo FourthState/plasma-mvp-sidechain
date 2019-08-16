@@ -40,8 +40,8 @@ func InitKeystore(homeDir string) {
 	}
 }
 
-// AccountIterator returns an iterator for accounts. It returns db so
-// db.close can be called.
+// AccountIterator returns an iterator for accounts. CONTRACT: Caller is responsible
+// for closing db after use.
 func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)

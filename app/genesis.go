@@ -10,7 +10,7 @@ type GenesisState struct {
 }
 
 // GenesisValidator holds the consensus public key and fee address of
-// the validator.
+// the validator. ConsPubKey is tendermint Ed25119 public key.
 type GenesisValidator struct {
 	ConsPubKey crypto.PubKey `json:"validator_pubkey"`
 	Address    string        `json:"fee_address"`
