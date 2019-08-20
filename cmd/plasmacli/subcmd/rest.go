@@ -3,20 +3,20 @@ package subcmd
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
-	sdkClient "github.com/cosmos/cosmos-sdk/client"
+	sdkCli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/lcd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func RestServerCmd() *cobra.Command {
-	serverCmd.Flags().String(sdkClient.FlagListenAddr, "tcp://localhost:1317", "The address for the server to listen on")
-	serverCmd.Flags().Bool(sdkClient.FlagTLS, false, "Enable SSL/TLS layer")
-	serverCmd.Flags().String(sdkClient.FlagSSLHosts, "", "Comma-separated hostnames and IPs to generate a certificate for")
-	serverCmd.Flags().String(sdkClient.FlagSSLCertFile, "", "Path to a SSL certificate file. If not supplied, a self-signed certificate will be generated.")
-	serverCmd.Flags().String(sdkClient.FlagSSLKeyFile, "", "Path to a key file; ignored if a certificate file is not supplied.")
-	serverCmd.Flags().String(sdkClient.FlagCORS, "", "Set the domains that can make CORS requests (* for all)")
-	serverCmd.Flags().Int(sdkClient.FlagMaxOpenConnections, 1000, "The number of maximum open connections")
+	serverCmd.Flags().String(sdkCli.FlagListenAddr, "tcp://localhost:1317", "The address for the server to listen on")
+	serverCmd.Flags().Bool(sdkCli.FlagTLS, false, "Enable SSL/TLS layer")
+	serverCmd.Flags().String(sdkCli.FlagSSLHosts, "", "Comma-separated hostnames and IPs to generate a certificate for")
+	serverCmd.Flags().String(sdkCli.FlagSSLCertFile, "", "Path to a SSL certificate file. If not supplied, a self-signed certificate will be generated.")
+	serverCmd.Flags().String(sdkCli.FlagSSLKeyFile, "", "Path to a key file; ignored if a certificate file is not supplied.")
+	serverCmd.Flags().String(sdkCli.FlagCORS, "", "Set the domains that can make CORS requests (* for all)")
+	serverCmd.Flags().Int(sdkCli.FlagMaxOpenConnections, 1000, "The number of maximum open connections")
 	return serverCmd
 }
 
@@ -30,12 +30,12 @@ var serverCmd = &cobra.Command{
 
 		// Start the rest server and return error if one exists
 		err := rs.Start(
-			viper.GetString(sdkClient.FlagListenAddr),
-			viper.GetString(sdkClient.FlagSSLHosts),
-			viper.GetString(sdkClient.FlagSSLCertFile),
-			viper.GetString(sdkClient.FlagSSLKeyFile),
-			viper.GetInt(sdkClient.FlagMaxOpenConnections),
-			viper.GetBool(sdkClient.FlagTLS))
+			viper.GetString(sdkCli.FlagListenAddr),
+			viper.GetString(sdkCli.FlagSSLHosts),
+			viper.GetString(sdkCli.FlagSSLCertFile),
+			viper.GetString(sdkCli.FlagSSLKeyFile),
+			viper.GetInt(sdkCli.FlagMaxOpenConnections),
+			viper.GetBool(sdkCli.FlagTLS))
 
 		return err
 	},
