@@ -67,7 +67,7 @@ func infoHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		writeJSONResponse(txo, w)
+		writeJSONResponse(w, txo)
 	}
 }
 
@@ -117,7 +117,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 			resp.Txs = append(resp.Txs, hexFormat)
 		}
 
-		writeJSONResponse(resp, w)
+		writeJSONResponse(w, resp)
 	}
 }
 
@@ -139,7 +139,7 @@ func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		writeJSONResponse(blocks, w)
+		writeJSONResponse(w, blocks)
 	}
 }
 
@@ -165,13 +165,25 @@ func txHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		writeJSONResponse(tx, w)
+		writeJSONResponse(w, tx)
 	}
 }
 
 func outputHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//pos := mux.Vars(r)["position"]
+		pos, err := plasma.FromPositionString(mux.Vars(r)["position"])
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		txo, err := TxOutput(ctx, pos)
+		if err != nil {
+			writeClientRetrievalErr(w, err)
+		}
+
+		writeJSONResponse(w, txo)
 	}
 }
 
@@ -235,7 +247,7 @@ func submitHandler(ctx context.CLIContext) http.HandlerFunc {
 
 /****  Helpers ****/
 
-func writeJSONResponse(obj interface{}, w http.ResponseWriter) {
+func writeJSONResponse(w http.ResponseWriter, obj interface{}) {
 	data, err := json.Marshal(obj)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
