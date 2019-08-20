@@ -116,17 +116,17 @@ func (tx Transaction) TxBytes() []byte {
 }
 
 // TxHash returns the bytes the signatures are signed over
-func (tx Transaction) TxHash() [32]byte {
+func (tx Transaction) TxHash() []byte {
 	txList := tx.toTxList()
 	bytes, _ := rlp.EncodeToBytes(&txList)
 
-	return crypto.Keccak256Hash(bytes)
+	return crypto.Keccak256(bytes)
 }
 
 // MerkleHash returns the bytes that is included in the merkle tree
-func (tx Transaction) MerkleHash() [32]byte {
+func (tx Transaction) MerkleHash() []byte {
 	hash := sha256.Sum256(tx.TxBytes())
-	return hash
+	return hash[:]
 }
 
 // Sigs returns the signatures that signed over this transaction
