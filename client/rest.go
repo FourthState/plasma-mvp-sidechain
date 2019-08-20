@@ -148,7 +148,7 @@ func txHandler(ctx context.CLIContext) http.HandlerFunc {
 		txHash := utils.RemoveHexPrefix(mux.Vars(r)["hash"])
 
 		// validation
-		_, err := hex.DecodeString(txHash)
+		bytes, err := hex.DecodeString(txHash)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(fmt.Sprintf("tx hash expected in hexadecimal format")))
@@ -159,7 +159,7 @@ func txHandler(ctx context.CLIContext) http.HandlerFunc {
 			return
 		}
 
-		tx, err := Tx(ctx, txHash)
+		tx, err := Tx(ctx, bytes)
 		if err != nil {
 			writeClientRetrievalErr(w, err)
 			return
