@@ -264,11 +264,11 @@ func writeClientRetrievalErr(w http.ResponseWriter, err error) {
 	// other reason than the requested information not existing (DNE), the request
 	// must have been malformed or an internal server error must have occured
 	sdkerr, ok := err.(sdk.Error)
-	if !ok || sdkerr.Code() != store.CodeDNE {
+	if ok && sdkerr.Code() == store.CodeDNE {
+		w.WriteHeader(http.StatusNotFound)
+	} else {
 		w.WriteHeader(http.StatusBadRequest)
 		// TODO: log the error
-	} else {
-		w.WriteHeader(http.StatusNotFound)
 	}
 
 	w.Write([]byte(err.Error()))
