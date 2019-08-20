@@ -89,10 +89,7 @@ func blockHandler(ctx context.CLIContext) http.HandlerFunc {
 		resp := struct {
 			store.Block
 			Txs [][]byte
-		}{
-			Block: block,
-			Txs:   [][]byte{},
-		}
+		}{}
 
 		// Query the tendermint block.
 		// Tendermint stores transactions in base64 format
