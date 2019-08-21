@@ -3,6 +3,7 @@ package subcmd
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
+	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	sdkCli "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/lcd"
 	"github.com/spf13/cobra"
@@ -17,6 +18,8 @@ func RestServerCmd() *cobra.Command {
 	serverCmd.Flags().String(sdkCli.FlagSSLKeyFile, "", "Path to a key file; ignored if a certificate file is not supplied.")
 	serverCmd.Flags().String(sdkCli.FlagCORS, "", "Set the domains that can make CORS requests (* for all)")
 	serverCmd.Flags().Int(sdkCli.FlagMaxOpenConnections, 1000, "The number of maximum open connections")
+
+	config.AddPersistentTMFlags(serverCmd)
 	return serverCmd
 }
 
