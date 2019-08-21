@@ -298,9 +298,6 @@ func (store DataStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spender
 	return sdk.Result{}
 }
 
-// -----------------------------------------------------------------------------
-/* Helpers */
-
 // GetUnspentForWallet returns the unspent outputs that belong to the given
 // wallet. Returns the struct TxOutput so user has access to the
 // transactional information related to the output.
@@ -320,6 +317,9 @@ func (store DataStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (utxo
 	}
 	return utxos
 }
+
+// -----------------------------------------------------------------------------
+/* Helpers */
 
 // depositToOutput retrieves the deposit with the given nonce, and returns
 // it as an output.
