@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/config"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/subcmd/eth/query"
 	"github.com/FourthState/plasma-mvp-sidechain/eth"
@@ -52,6 +53,7 @@ var ethCmd = &cobra.Command{
 	Long: `Configurations for interacting with the rootchain contract can be specified in <dirpath>/plasma.toml.
 An eth node instance needs to be running for this command to work.`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("setting up eth connection")
 		plasma, err := config.GetContractConn()
 		plasmaContract = plasma
 		return err

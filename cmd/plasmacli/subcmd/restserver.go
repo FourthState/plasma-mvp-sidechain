@@ -28,6 +28,7 @@ var serverCmd = &cobra.Command{
 	Short: "Start LCD (light-client daemon), a local REST server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
+
 		rs := lcd.NewRestServer(app.MakeCodec())
 		client.RegisterRoutes(rs.CliCtx, rs.Mux)
 
