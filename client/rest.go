@@ -19,10 +19,13 @@ import (
 
 func RegisterRoutes(ctx context.CLIContext, r *mux.Router) {
 	// Getters
-	r.HandleFunc("/balance/{address}", balanceHandler(ctx)).Methods("GET")
-	r.HandleFunc("/info/{address}", infoHandler(ctx)).Methods("GET")
+	r.HandleFunc("/height", heightHandler(ctx)).Methods("GET")
 	r.HandleFunc("/block/{height}", blockHandler(ctx)).Methods("GET")
 	r.HandleFunc("/blocks/{height}", blocksHandler(ctx)).Methods("GET")
+
+	r.HandleFunc("/info/{address}", infoHandler(ctx)).Methods("GET")
+	r.HandleFunc("/balance/{address}", balanceHandler(ctx)).Methods("GET")
+
 	r.HandleFunc("/tx/{hash}", txHandler(ctx)).Methods("GET")
 	r.HandleFunc("/output/{position}", outputHandler(ctx)).Methods("GET")
 
@@ -30,44 +33,15 @@ func RegisterRoutes(ctx context.CLIContext, r *mux.Router) {
 	r.HandleFunc("/submit", submitHandler(ctx)).Methods("POST")
 }
 
-func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
+func heightHandler(ctx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		addr := vars["address"]
-		if !ethcmn.IsHexAddress(addr) {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("address must be an ethereum 20-byte hex string"))
-			return
-		}
-
-		total, err := Balance(ctx, ethcmn.HexToAddress(addr))
+		height, err := Height(ctx)
 		if err != nil {
 			writeClientRetrievalErr(w, err)
-			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(total))
-	}
-}
-
-func infoHandler(ctx context.CLIContext) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		addr := vars["address"]
-		if !ethcmn.IsHexAddress(addr) {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("address must be an ethereum 20-byte hex string"))
-			return
-		}
-
-		txo, err := Info(ctx, ethcmn.HexToAddress(addr))
-		if err != nil {
-			writeClientRetrievalErr(w, err)
-			return
-		}
-
-		writeJSONResponse(w, txo)
+		w.Write([]byte(height))
 	}
 }
 
@@ -137,6 +111,47 @@ func blocksHandler(ctx context.CLIContext) http.HandlerFunc {
 		}
 
 		writeJSONResponse(w, blocks)
+	}
+}
+
+func infoHandler(ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		addr := vars["address"]
+		if !ethcmn.IsHexAddress(addr) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("address must be an ethereum 20-byte hex string"))
+			return
+		}
+
+		txo, err := Info(ctx, ethcmn.HexToAddress(addr))
+		if err != nil {
+			writeClientRetrievalErr(w, err)
+			return
+		}
+
+		writeJSONResponse(w, txo)
+	}
+}
+
+func balanceHandler(ctx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		addr := vars["address"]
+		if !ethcmn.IsHexAddress(addr) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("address must be an ethereum 20-byte hex string"))
+			return
+		}
+
+		total, err := Balance(ctx, ethcmn.HexToAddress(addr))
+		if err != nil {
+			writeClientRetrievalErr(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(total))
 	}
 }
 

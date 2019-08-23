@@ -18,11 +18,14 @@ const (
 
 	/*** block routes ***/
 
+	// QueryHeight retrieves the current block height
+	QueryHeight = "height"
+
 	// QueryBlocks retrieves full information about a
 	// speficied block
 	QueryBlock = "block"
 
-	// QueryBlocs retrieves metadata about 10 blocks from
+	// QueryBlocks retrieves metadata about 10 blocks from
 	// a specified start point or the last 10 from the latest
 	// block
 	QueryBlocks = "blocks"
@@ -58,6 +61,8 @@ func NewQuerier(ds DataStore) sdk.Querier {
 		}
 
 		switch path[0] {
+		case QueryHeight:
+			return queryHeight(ctx, ds)
 		case QueryBlock:
 			return queryBlock(ctx, ds, path[1:])
 		case QueryBlocks:
@@ -76,6 +81,15 @@ func NewQuerier(ds DataStore) sdk.Querier {
 			return nil, ErrInvalidPath("unregistered query path")
 		}
 	}
+}
+
+func queryHeight(ctx sdk.Context, ds DataStore) ([]byte, sdk.Error) {
+	height := ds.PlasmaBlockHeight(ctx)
+	if height == nil {
+		height = utils.Big0
+	}
+
+	return []byte(height.String()), nil
 }
 
 func queryBlock(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
@@ -105,6 +119,10 @@ func queryBlocks(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Erro
 	if path[0] == "latest" {
 		// latest 10 blocks
 		height = ds.PlasmaBlockHeight(ctx)
+		if height == nil {
+			return nil, ErrDNE("no blocks")
+		}
+
 		bigNine := big.NewInt(9)
 		if height.Cmp(bigNine) <= 0 {
 			height = big.NewInt(1)

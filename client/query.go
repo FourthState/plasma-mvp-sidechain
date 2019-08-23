@@ -92,6 +92,19 @@ func Balance(ctx context.CLIContext, addr ethcmn.Address) (string, error) {
 	return string(data), err
 }
 
+// Height retrieves the current plasma block height
+func Height(ctx context.CLIContext) (string, error) {
+	queryRoute := fmt.Sprintf("custom/%s/%s",
+		store.QuerierRouteName, store.QueryHeight)
+	data, err := ctx.Query(queryRoute, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// data returned in stirng format
+	return string(data), nil
+}
+
 // Block retrieves block information specified at `height`
 func Block(ctx context.CLIContext, height *big.Int) (store.Block, error) {
 	if height == nil || height.Sign() <= 0 {
