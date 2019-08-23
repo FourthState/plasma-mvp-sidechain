@@ -84,7 +84,7 @@ func TestPlasmaConfig() PlasmaConfig {
 }
 
 // ParsePlasmaConfigFromViper parses the plasma.toml file and unmarshals it
-// into a Config struct.
+// into a PlasmaConfig struct.
 func ParsePlasmaConfigFromViper() (PlasmaConfig, error) {
 	config := DefaultPlasmaConfig()
 	err := viper.Unmarshal(&config)

@@ -10,7 +10,7 @@ const (
 	signatureDir = "data/signatures.ldb"
 )
 
-// SaveSig saves the confirmation signatures.If prepend is set to true, sig
+// SaveSig saves the confirmation signatures. If prepend is set to true, sig
 // will be prepended to the currently stored signatures. Otherwise it will be appended
 // This ordering should be determined by input order in the transaction. If
 // the length of the currently stored signatures is 130 an error is returned.

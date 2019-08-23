@@ -227,7 +227,7 @@ func (ds DataStore) StoreTx(ctx sdk.Context, tx Transaction) {
 	ds.setTx(ctx, tx)
 }
 
-// StoreOutputs adds new Output UTXO's to respective owner wallets.
+// StoreOutputs adds new Output UTXO's to respective owner's wallets.
 func (ds DataStore) StoreOutputs(ctx sdk.Context, tx Transaction) {
 	for i, output := range tx.Transaction.Outputs {
 		ds.addToWallet(ctx, output.Owner, output.Amount, plasma.NewPosition(tx.Position.BlockNum, tx.Position.TxIndex, uint8(i), big.NewInt(0)))
@@ -302,7 +302,7 @@ func (ds DataStore) SpendOutput(ctx sdk.Context, pos plasma.Position, spenderTx 
 /* Helpers */
 
 // GetUnspentForWallet returns the unspent outputs that belong to the given
-// wallet. Returns the struct TxOutput so user has access to the
+// wallet. Returns the struct TxOutput so the user has access to the
 // transactional information related to the output.
 func (ds DataStore) GetUnspentForWallet(ctx sdk.Context, wallet Wallet) (utxos []TxOutput) {
 	for _, p := range wallet.Unspent {

@@ -40,8 +40,8 @@ func InitKeystore(homeDir string) {
 	}
 }
 
-// AccountIterator returns an iterator for accounts. CONTRACT: Caller is responsible
-// for closing db after use.
+// AccountIterator returns an iterator for accounts.
+// CONTRACT: Caller is responsible for closing db after use.
 func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -53,8 +53,7 @@ func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	return db.NewIterator(nil, nil), db
 }
 
-// AddAccount adds a new account to the keystore. It adds the account name
-// and address to leveldb.
+// AddAccount adds a new account to the keystore
 func AddAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -105,7 +104,7 @@ func GetAccount(name string) (ethcmn.Address, error) {
 	return ethcmn.BytesToAddress(addr), nil
 }
 
-// DeleteAccount removes an account from the local keystore and the leveldb.
+// DeleteAccount removes an account from keystore
 func DeleteAccount(name string) error {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -187,7 +186,7 @@ func UpdateAccount(name string, updatedName string) (msg string, err error) {
 	return msg, nil
 }
 
-// ImportECDSA imports a private key with an account name.
+// ImportECDSA imports a private key with associated an account name.
 func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
