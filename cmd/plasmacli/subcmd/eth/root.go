@@ -30,6 +30,7 @@ const (
 
 var plasmaContract *eth.Plasma
 
+// EthCmd returns the eth command
 func EthCmd() *cobra.Command {
 	ethCmd.AddCommand(
 		ProveCmd(),

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// BalanceCmd returns the query balance command
 func BalanceCmd() *cobra.Command {
 	return balanceCmd
 }

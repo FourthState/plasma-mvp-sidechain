@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// DepositCmd returns the eth query deposit command
 func DepositCmd() *cobra.Command {
 	depositCmd.Flags().Bool(allF, false, "all deposits will be displayed")
 	depositCmd.Flags().String(limitF, "1", "amount of deposits to be displayed")

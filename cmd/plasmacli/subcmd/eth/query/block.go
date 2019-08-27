@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// BlockCmd returns the eth query block command
 func BlockCmd() *cobra.Command {
 	blockCmd.Flags().String(limitF, "1", "number of plasma blocks to be displayed")
 	return blockCmd

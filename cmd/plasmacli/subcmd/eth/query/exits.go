@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// ExitsCmd returns the eth exit command
 func ExitsCmd() *cobra.Command {
 	exitsCmd.Flags().StringP(accountF, "a", "", "display exits for given account or address")
 	exitsCmd.Flags().Bool(allF, false, "all pending exits will be displayed")

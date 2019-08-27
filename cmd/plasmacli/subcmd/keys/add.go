@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// AddCmd returns the keys add command
 func AddCmd() *cobra.Command {
 	return addCmd
 }

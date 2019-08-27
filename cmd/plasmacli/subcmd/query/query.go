@@ -9,6 +9,7 @@ import (
 	ethcmn "github.com/ethereum/go-ethereum/common"
 )
 
+// TxOutput executes a query to the data store for a transaction output
 func TxOutput(ctx context.CLIContext, pos plasma.Position) (store.TxOutput, error) {
 	// query for an output for the given position
 	queryRoute := fmt.Sprintf("custom/%s/output/%s", store.QuerierRouteName, pos)
@@ -25,6 +26,7 @@ func TxOutput(ctx context.CLIContext, pos plasma.Position) (store.TxOutput, erro
 	return output, nil
 }
 
+// TxInput executes a query to the data store for a transaction input
 func TxInput(ctx context.CLIContext, pos plasma.Position) (store.TxInput, error) {
 	// query for input info on the given position
 	queryRoute := fmt.Sprintf("custom/%s/input/%s", store.QuerierRouteName, pos)
@@ -41,6 +43,7 @@ func TxInput(ctx context.CLIContext, pos plasma.Position) (store.TxInput, error)
 	return input, nil
 }
 
+// Tx executes a query to the data store for a transaction with the provided hash.
 func Tx(ctx context.CLIContext, hash []byte) (store.Transaction, error) {
 	// query for a transaction using the provided hash
 	queryRoute := fmt.Sprintf("custom/%s/tx/%s", store.QuerierRouteName, hash)
@@ -57,6 +60,7 @@ func Tx(ctx context.CLIContext, hash []byte) (store.Transaction, error) {
 	return tx, nil
 }
 
+// Info executes a query to the data store for the information on an address
 func Info(ctx context.CLIContext, addr ethcmn.Address) ([]store.TxOutput, error) {
 	// query for all utxos owned by this address
 	queryRoute := fmt.Sprintf("custom/%s/info/%s", store.QuerierRouteName, addr.Hex())

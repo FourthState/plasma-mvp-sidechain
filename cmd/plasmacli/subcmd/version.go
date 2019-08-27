@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// VersionCmd returns the version cmd for plasmacli
 func VersionCmd() *cobra.Command {
 	return versionCmd
 }

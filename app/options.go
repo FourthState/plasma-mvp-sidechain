@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+// SetPlasmaOptionsFromConfig sets the plasma specific configurations into
+// app state. The parameters are passed from the plasmad config file.
 func SetPlasmaOptionsFromConfig(conf config.PlasmaConfig) func(*PlasmaMVPChain) {
 	var privateKey *ecdsa.PrivateKey
 	var blockFinality uint64

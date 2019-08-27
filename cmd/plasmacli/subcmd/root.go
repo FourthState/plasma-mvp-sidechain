@@ -19,6 +19,7 @@ import (
 // default home directory
 var homeDir = os.ExpandEnv("$HOME/.plasmacli/")
 
+// RootCmd returns the initialized root cmd for plasmacli
 func RootCmd() *cobra.Command {
 	cobra.EnableCommandSorting = false
 	rootCmd.PersistentFlags().String(flags.Home, homeDir, "home directory for plasmacli")

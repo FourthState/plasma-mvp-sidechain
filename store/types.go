@@ -9,7 +9,7 @@ import (
 // Wallet holds reference to the total balance, unspent, and spent outputs
 // at a given address
 type Wallet struct {
-	Balance *big.Int          // total amount avaliable to be spent
+	Balance *big.Int          // total amount available to be spent
 	Unspent []plasma.Position // position of unspent transaction outputs
 	Spent   []plasma.Position // position of spent transaction outputs
 }

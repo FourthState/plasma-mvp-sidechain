@@ -14,6 +14,7 @@ import (
 	"strconv"
 )
 
+// ChallengeCmd returns the eth challenge command
 func ChallengeCmd() *cobra.Command {
 	config.AddPersistentTMFlags(challengeCmd)
 	challengeCmd.Flags().StringP(gasLimitF, "g", "300000", "gas limit for ethereum transaction")

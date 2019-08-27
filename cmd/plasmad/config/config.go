@@ -33,7 +33,8 @@ is_operator = "{{ .IsOperator }}"
 # Used to sign eth transactions interacting with the contract
 operator_privatekey = "{{ .OperatorPrivateKey }}"`
 
-// Must match the above defaultConfigTemplate
+// PlasmaConfig is the object representation of config file. It must match
+// the above defaultConfigTemplate.
 type PlasmaConfig struct {
 	EthPlasmaContractAddr string `mapstructure:"ethereum_plasma_contract_address"`
 	EthNodeURL            string `mapstructure:"ethereum_nodeurl"`
@@ -54,6 +55,7 @@ func init() {
 	}
 }
 
+// DefaultPlasmaConfig returns the default plasma daemon configuration
 func DefaultPlasmaConfig() PlasmaConfig {
 	return PlasmaConfig{
 		EthPlasmaContractAddr: "",
@@ -66,9 +68,9 @@ func DefaultPlasmaConfig() PlasmaConfig {
 	}
 }
 
-// TestPlasmaConfig writes the plasma.toml file used for testing
-// NodeURL powered by ganache locally
-// Contract address and private key generated deterministically using the "plasma" moniker with ganache
+// TestPlasmaConfig writes the plasma.toml file used for testing. NodeURL is
+// powered by ganache locally. Contract address and private key generated
+// deterministically using the "plasma" moniker with ganache.
 func TestPlasmaConfig() PlasmaConfig {
 	return PlasmaConfig{
 		EthPlasmaContractAddr: "31E491FC70cDb231774c61B7F46d94699dacE664",
@@ -81,14 +83,16 @@ func TestPlasmaConfig() PlasmaConfig {
 	}
 }
 
-// parses the plasma.toml file and unmarshals it into a Config struct
+// ParsePlasmaConfigFromViper parses the plasma.toml file and unmarshals it
+// into a PlasmaConfig struct.
 func ParsePlasmaConfigFromViper() (PlasmaConfig, error) {
 	config := DefaultPlasmaConfig()
 	err := viper.Unmarshal(&config)
 	return config, err
 }
 
-// WriteConfigFile renders config using the template and writes it to configFilePath.
+// WritePlasmaConfigFile renders config using the template and writes it to
+// configFilePath.
 func WritePlasmaConfigFile(configFilePath string, config PlasmaConfig) {
 	var buffer bytes.Buffer
 

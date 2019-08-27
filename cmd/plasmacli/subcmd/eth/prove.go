@@ -12,6 +12,7 @@ import (
 	tm "github.com/tendermint/tendermint/rpc/core/types"
 )
 
+// ProveCmd returns the eth prove command
 func ProveCmd() *cobra.Command {
 	config.AddPersistentTMFlags(proveCmd)
 	return proveCmd

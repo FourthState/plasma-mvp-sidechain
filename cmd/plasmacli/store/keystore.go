@@ -30,7 +30,7 @@ var (
 	ks   *keystore.KeyStore
 )
 
-// initialize a keystore in the specified directory
+// InitKeystore initializes a keystore in the specified directory
 func InitKeystore(homeDir string) {
 	home = homeDir
 
@@ -40,8 +40,8 @@ func InitKeystore(homeDir string) {
 	}
 }
 
-// Return iterator over accounts
-// returns db so db.close can be called
+// AccountIterator returns an iterator for accounts.
+// CONTRACT: Caller is responsible for closing db after use.
 func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -53,8 +53,7 @@ func AccountIterator() (iterator.Iterator, *leveldb.DB) {
 	return db.NewIterator(nil, nil), db
 }
 
-// Add a new account to the keystore
-// Add account name and address to leveldb
+// AddAccount adds a new account to the keystore
 func AddAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -86,7 +85,7 @@ func AddAccount(name string) (ethcmn.Address, error) {
 	return acc.Address, nil
 }
 
-// Retrieve the address of an account
+// GetAccount retrieves the address of an account.
 func GetAccount(name string) (ethcmn.Address, error) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -105,8 +104,7 @@ func GetAccount(name string) (ethcmn.Address, error) {
 	return ethcmn.BytesToAddress(addr), nil
 }
 
-// Remove an account from the local keystore
-// and the leveldb
+// DeleteAccount removes an account from keystore
 func DeleteAccount(name string) error {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -139,7 +137,8 @@ func DeleteAccount(name string) error {
 	return nil
 }
 
-// Update either the name of an account or the passphrase for an account
+// UpdateAccount updates either the name of an account or the passphrase for
+// an account.
 func UpdateAccount(name string, updatedName string) (msg string, err error) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -187,7 +186,7 @@ func UpdateAccount(name string, updatedName string) (msg string, err error) {
 	return msg, nil
 }
 
-// Import a private key with an account name
+// ImportECDSA imports a private key with associated an account name.
 func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -215,6 +214,8 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 
 }
 
+// SignHashWithPassphrase will sign over the provided hash if the the passphrase
+// provided through user interaction is correct.
 func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
 	addr, err := GetAccount(signer)
 	if err != nil {
@@ -240,6 +241,7 @@ func SignHashWithPassphrase(signer string, hash []byte) ([]byte, error) {
 	return sig, nil
 }
 
+// GetKey returns the private key mapped to the provided key name.
 func GetKey(name string) (*ecdsa.PrivateKey, error) {
 	dir := getDir(accountsDir)
 	db, err := leveldb.OpenFile(dir, nil)
@@ -282,7 +284,7 @@ func GetKey(name string) (*ecdsa.PrivateKey, error) {
 	return key.PrivateKey, nil
 }
 
-// Return the directory specified by the --directory flag
+// returns the directory specified by the --directory flag
 // with the passed in string appended to the end
 func getDir(location string) string {
 	return filepath.Join(home, location)
