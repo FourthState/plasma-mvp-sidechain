@@ -18,8 +18,8 @@ var (
 	positionF = "position"
 )
 
-// QueryCmd returns the eth query command
-func QueryCmd() *cobra.Command {
+// RootCmd returns the eth query command
+func RootCmd() *cobra.Command {
 	queryCmd.AddCommand(
 		BalanceCmd(),
 		BlockCmd(),

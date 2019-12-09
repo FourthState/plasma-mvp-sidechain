@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// RestServerCmd creates the cobra command that starts the rest server
 func RestServerCmd() *cobra.Command {
 	serverCmd.Flags().String(sdkCli.FlagListenAddr, "tcp://localhost:1317", "The address for the server to listen on")
 	serverCmd.Flags().Bool(sdkCli.FlagTLS, false, "Enable SSL/TLS layer")

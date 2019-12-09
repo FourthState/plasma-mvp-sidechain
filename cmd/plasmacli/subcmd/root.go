@@ -29,15 +29,15 @@ func RootCmd() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(
-		tx.TxCmd(),
-		eth.EthCmd(),
-		query.QueryCmd(),
+		tx.RootCmd(),
+		eth.RootCmd(),
+		query.RootCmd(),
 		client.LineBreak,
 
 		RestServerCmd(),
 		client.LineBreak,
 
-		keys.KeysCmd(),
+		keys.RootCmd(),
 		client.LineBreak,
 
 		VersionCmd(),

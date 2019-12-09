@@ -31,8 +31,8 @@ const (
 
 var plasmaContract *eth.Plasma
 
-// EthCmd returns the eth command
-func EthCmd() *cobra.Command {
+// RootCmd returns root eth command
+func RootCmd() *cobra.Command {
 	ethCmd.AddCommand(
 		ProveCmd(),
 		ChallengeCmd(),
@@ -42,7 +42,7 @@ func EthCmd() *cobra.Command {
 		WithdrawCmd(),
 		client.LineBreak,
 
-		query.QueryCmd(),
+		query.RootCmd(),
 	)
 
 	return ethCmd
