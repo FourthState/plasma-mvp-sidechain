@@ -7,6 +7,11 @@
 
 Implementation of [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain)  
 
+## Project Status
+There is very little development occuring for this project.
+We will continue to maintain this repository by thoroughly reviewing any open source contributions. 
+We will provide support and guidance for anyone looking to continue development. 
+
 ## What is Plasma?
 Plasma has two major components: verification and computation. 
 Verification is handled by the rootchain contract, which resolves any disputes and distributes funds accordingly.
