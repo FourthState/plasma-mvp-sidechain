@@ -10,6 +10,7 @@ import (
 	"strconv"
 )
 
+// FinalizeCmd returns the eth finalize command
 func FinalizeCmd() *cobra.Command {
 	finalizeCmd.Flags().BoolP(depositsF, "D", false, "indicate that deposit exits should be finalized")
 	finalizeCmd.Flags().StringP(gasLimitF, "g", "240000", "gas limit for ethereum transaction")

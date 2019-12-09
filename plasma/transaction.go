@@ -1,3 +1,5 @@
+// Package plasma declares and implements all plasma types used by the plasma
+// chain.
 package plasma
 
 import (

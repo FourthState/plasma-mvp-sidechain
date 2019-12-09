@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// DeleteCmd returns the keys delete command
 func DeleteCmd() *cobra.Command {
 	return deleteCmd
 }

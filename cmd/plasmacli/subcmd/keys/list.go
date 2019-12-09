@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ListCmd returns the keys list command
 func ListCmd() *cobra.Command {
 	return listCmd
 }

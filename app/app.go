@@ -1,3 +1,4 @@
+// Package app provides the construction and execution of the plasma chain
 package app
 
 import (
@@ -27,7 +28,7 @@ const (
 	appName = "plasmaMVP"
 )
 
-// Extended ABCI application
+// PlasmaMVPChain is an extended ABCI application
 type PlasmaMVPChain struct {
 	*baseapp.BaseApp
 	cdc *codec.Codec
@@ -51,6 +52,7 @@ type PlasmaMVPChain struct {
 	blockFinality         uint64 // presumed finality bound for the ethereum network
 }
 
+// NewPlasmaMVPChain creates a PlasmaMVPChain instance
 func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, options ...func(*PlasmaMVPChain)) *PlasmaMVPChain {
 	baseApp := baseapp.NewBaseApp(appName, logger, db, msgs.TxDecoder)
 	cdc := MakeCodec()
@@ -136,6 +138,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	return app
 }
 
+// initChainer initializes genesis state before the chain begins
 func (app *PlasmaMVPChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	stateJSON := req.AppStateBytes
 
@@ -183,6 +186,7 @@ func (app *PlasmaMVPChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock)
 	return abci.ResponseEndBlock{}
 }
 
+// ExportAppStateJSON exports the current applicatoin state into JSON.
 func (app *PlasmaMVPChain) ExportAppStateJSON() (appState json.RawMessage, validators []tmtypes.GenesisValidator, err error) {
 	// TODO: Implement
 	// Currently non-functional, just enough to compile
@@ -192,6 +196,7 @@ func (app *PlasmaMVPChain) ExportAppStateJSON() (appState json.RawMessage, valid
 	return appState, validators, err
 }
 
+// MakeCodec returns a new codec with registered sdk and crypto types
 func MakeCodec() *codec.Codec {
 	cdc := codec.New()
 	sdk.RegisterCodec(cdc)

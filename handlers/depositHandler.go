@@ -6,6 +6,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+// NewDepositHandler adds the rootchain deposit to the data store
 func NewDepositHandler(ds store.DataStore, nextTxIndex NextTxIndex, client plasmaConn) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		depositMsg, ok := msg.(msgs.IncludeDepositMsg)

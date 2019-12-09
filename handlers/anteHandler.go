@@ -1,3 +1,5 @@
+// Package handlers provides the ante handler and message handlers for verifying
+// transactions and updating state.
 package handlers
 
 import (
@@ -38,6 +40,7 @@ func NewAnteHandler(ds store.DataStore, client plasmaConn) sdk.AnteHandler {
 	}
 }
 
+// validates that the spend msg is valid given the current plasma sidechain state
 func spendMsgAnteHandler(ctx sdk.Context, ds store.DataStore, spendMsg msgs.SpendMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	var totalInputAmt, totalOutputAmt *big.Int
 	totalInputAmt = big.NewInt(0)
@@ -154,6 +157,7 @@ func validateConfirmSignatures(ctx sdk.Context, ds store.DataStore, input plasma
 	return sdk.Result{}
 }
 
+// validates the the include deposit msg corresponds to an existing deposit
 func includeDepositAnteHandler(ctx sdk.Context, ds store.DataStore, msg msgs.IncludeDepositMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 	if ds.HasDeposit(ctx, msg.DepositNonce) {
 		return ctx, ErrInvalidTransaction("deposit, %s, already exists in store", msg.DepositNonce.String()).Result(), true

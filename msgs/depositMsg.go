@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	// Msg route
 	IncludeDepositMsgRoute = "include"
 )
 

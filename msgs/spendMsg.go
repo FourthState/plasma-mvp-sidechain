@@ -1,3 +1,5 @@
+// Package msgs provides the messages that indicate either a spend of utxos or
+// a deposit on the rootchain contract.
 package msgs
 
 import (

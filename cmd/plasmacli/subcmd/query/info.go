@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// InfoCmd returns the query information command
 func InfoCmd() *cobra.Command {
 	return infoCmd
 }

@@ -8,10 +8,12 @@ import (
 	"math/big"
 )
 
+// BlockCmd returns the query block command
 func BlockCmd() *cobra.Command {
 	return blockCmd
 }
 
+// BlocksCmd returns the query blocks command
 func BlocksCmd() *cobra.Command {
 	return blocksCmd
 }

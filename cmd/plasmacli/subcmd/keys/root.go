@@ -10,6 +10,7 @@ const (
 	fileF = "file"
 )
 
+// KeysCmd returns the keys command
 func KeysCmd() *cobra.Command {
 	keysCmd.AddCommand(
 		AddCmd(),

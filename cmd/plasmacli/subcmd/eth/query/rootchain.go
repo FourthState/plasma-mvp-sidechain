@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// RootchainCmd returns the eth query rootchain command
 func RootchainCmd() *cobra.Command {
 	return rootchainCmd
 }
