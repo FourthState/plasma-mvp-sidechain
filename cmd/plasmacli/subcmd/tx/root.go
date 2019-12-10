@@ -18,7 +18,8 @@ const (
 	replayF       = "replay"
 )
 
-func TxCmd() *cobra.Command {
+// RootCmd returns the root tx command
+func RootCmd() *cobra.Command {
 	config.AddPersistentTMFlags(txCmd)
 	txCmd.AddCommand(
 		IncludeCmd(),
