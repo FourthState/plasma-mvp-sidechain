@@ -1,0 +1,24 @@
+# This is a TOML config file.
+# For more information, see https://github.com/toml-lang/toml
+
+##### ethereum config options #####
+# Boolean specifying if this node is the operator of the plasma contract
+is_operator = "true"
+
+# Hex encoded private key
+# Used to sign eth transactions interacting with the contract
+ethereum_operator_privatekey = "3cf72c162c8ba0348abecab744f9f1abf6d9bbf95ae33f7d2384ac9784dc1910"
+
+# Ethereum plasma contract address
+ethereum_plasma_contract_address = "0x9c36F39E87f3EA5283e186b385232044dC2f8c30"
+
+
+# Plasma block commitment rate. i.e 1m30s, 1m, 1h, etc.
+plasma_block_commitment_rate = "1m"
+
+# Node URL for eth client
+ethereum_nodeurl = "http://localhost:8545"
+
+# Number of Ethereum blocks until a submitted block header is considered final
+ethereum_finality = "30"
+

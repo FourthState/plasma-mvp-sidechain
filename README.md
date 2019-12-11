@@ -1,70 +1,60 @@
 # Plasma MVP Sidechain
-
+[![Go Report](https://goreportcard.com/badge/github.com/FourthState/plasma-mvp-sidechain)](https://goreportcard.com/report/github.com/FourthState/plasma-mvp-sidechain)
+[![Build Status](https://travis-ci.org/FourthState/plasma-mvp-sidechain.svg?branch=develop)](https://travis-ci.org/FourthState/plasma-mvp-sidechain)
+[![codecov](https://codecov.io/gh/FourthState/plasma-mvp-sidechain/branch/develop/graph/badge.svg)](https://codecov.io/gh/FourthState/plasma-mvp-sidechain)
+[![Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/YTB5A4P)
 [![license](https://img.shields.io/github/license/FourthState/plasma-mvp-rootchain.svg)](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/LICENSE)
 
-Branch    | Tests | Coverage
-----------|-------|----------
-develop   | [![Build Status](https://travis-ci.org/FourthState/plasma-mvp-sidechain.svg?branch=develop)](https://travis-ci.org/FourthState/plasma-mvp-sidechain) | [![codecov](https://codecov.io/gh/FourthState/plasma-mvp-sidechain/branch/develop/graph/badge.svg)](https://codecov.io/gh/FourthState/plasma-mvp-sidechain)
-master	  | [![Build Status](https://travis-ci.org/FourthState/plasma-mvp-sidechain.svg?branch=master)](https://travis-ci.org/FourthState/plasma-mvp-sidechain) | [![codecov](https://codecov.io/gh/FourthState/plasma-mvp-sidechain/branch/master/graph/badge.svg)](https://codecov.io/gh/FourthState/plasma-mvp-sidechain)
+Implementation of [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain)  
 
-This is the latest [Minimum Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426) version.  
+## Project Status
+There is very little development occuring for this project.
+We will continue to maintain this repository by thoroughly reviewing any open source contributions. 
+We will provide support and guidance for anyone looking to continue development. 
 
-**Note**: This sidechain is being constructed to be compatible with our [rootchain contract](https://github.com/FourthState/plasma-mvp-rootchain)  
+## What is Plasma?
+Plasma has two major components: verification and computation. 
+Verification is handled by the rootchain contract, which resolves any disputes and distributes funds accordingly.
+Computation is handled separately by a sidechain, which maintains its security through reporting proofs via merkle roots to the rootchain contract. 
 
-## Overview
-As a layer 2 scaling solution, Plasma has two major components: verification and computation. Verification is handled by the rootchain contract which resolves any disputes and distributes funds accordingly. 
+Plasma MVP utilizes a UTXO model, which allows for secure and compact proofs. Learn more about plasma on [learnplasma.org](https://www.learnplasma.org/en/)!
 
-Computation is handled separately by a sidechain. This sidechain leverages the Cosmos SDK to create a scalable and flexible blockchain, that can maintain it's security through reporting merkle roots to the root chain. We will be using [Tendermint](https://github.com/tendermint/tendermint) for consensus on this blockchain. 
+We are using [Tendermint](https://github.com/tendermint/tendermint) for our consensus protocol.
+This sidechain currently supports a single validator, but will be updated in the future to support multiple validators.
 
-We are using a UTXO model for this blockchain. This allows us to do secure and compact proofs when interacting with the rootchain contract. 
+## Quick Start
 
-## Starting a sidechain
+### Install using a script
 
-In order to run a sidechain with tendermint consensus and a client to form transaction, a plasma node and light client will need to be initialized. 
+This script can be used on a fresh server that has no dependencies installed.
 
-**Note**: The following assumes you have [golang](https://golang.org/) properly setup and all dependecies have already been installed. See [Contribution Guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md) for more information.
+```
+curl https://raw.githubusercontent.com/FourthState/plasma-mvp-sidechain/develop/scripts/plasma_install.sh > install.sh
+chmod +x install.sh
+./install.sh
+```
 
-Plasma Node:
+### Manual Install
 
-- Navigate to `client/plasmad/` directory
-- Run `go install` via command line
+**Requirements**: 
+- [golang v1.11+](https://golang.org/)
 
-The plasma node (plasmad) is now installed and can be called from any directory with `plasmad`
+Pull the latest version of the develop branch.
 
-Run `plasmad init` via command line to start an instance of a plasma node with a connection to a tendermint validator.
+`make install`
 
-Run `plasmad start` via command line to begin running the plasma node. You should see empty blocks being proposed and committed.
+***Plasma Node:***
 
-Plasma Light Client:
+Run `plasmad init` to start an instance of a plasma node.
+Use the `--home <dirpath>` to specify a location where you want your plasma node to exist.
 
-- Navigate to `client/plasmacli/` directory
-- Run `go install` via command line
+Navigate to `<dirpath>/config/` (default is `$HOME/.plasmad/config`), set configuration parameters in config.toml and plasma.toml.
+Run `plasmad start` to begin running the plasma node. 
 
+***Plasma Client:***
+
+Navigate to `$HOME/.plasmacli`, set ethereum client configuration parameters in plasma.toml.
 Use `plasmacli` to run any of the commands for this light client
-
-The light client uses the Ethereum keystore to create and store passphrase encrypted keys in `$HOME/.plasmacli/keys/`
-
-### dep ensure 
-When building the sidechain, go dep is used to manage dependencies. 
-Running `dep ensure` followed by `go build` will result in the following output:
-
-```
-# github.com/FourthState/plasma-mvp-sidechain/vendor/github.com/ethereum/go-ethereum/crypto/secp256k1
-../vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/curve.go:42:44: fatal error: libsecp256k1/include/secp256k1.h: No such file or directory
-```
-This is caused by a go dep issue outlined [here](https://github.com/tools/godep/issues/422).
-To fix this locally, add the following in Gopkg.lock under `crypto/secp256k1` and above `crypto/sha3`:
-
-```
-"crypto/secp256k1/libsecp256k1",
-"crypto/secp256k1/libsecp256k1/include",
-"crypto/secp256k1/libsecp256k1/src",
-"crypto/secp256k1/libsecp256k1/src/modules/recovery",
-```
-
-Run `dep ensure -vendor-only`
-
-Your vendor folder should now contain all the necessary dependencies, there is no need to run `dep ensure` again. 
   
 ### Plasma Architecture 
 See our [research repository](https://github.com/FourthState/plasma-research) for architectural explanations of our Plasma implementation. 
@@ -73,4 +63,4 @@ See our [research repository](https://github.com/FourthState/plasma-research) fo
 See our [documentation](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/docs/overview.md)
 
 ### Contributing
-See our [contributing guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/CONTRIBUTING.md)
+See our [contributing guidelines](https://github.com/FourthState/plasma-mvp-sidechain/blob/master/.github/CONTRIBUTING.md). Join our [Discord Server](https://discord.gg/YTB5A4P).
