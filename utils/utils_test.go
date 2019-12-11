@@ -15,11 +15,17 @@ func TestNilAddressDetector(t *testing.T) {
 }
 
 func TestHexPrefixRemoval(t *testing.T) {
-	hexStrWithPrefix := "0x123"
-	require.Equal(t, hexStrWithPrefix[2:], RemoveHexPrefix(hexStrWithPrefix))
+	str := "0x0123"
+	require.Equal(t, "0123", RemoveHexPrefix(str))
 
-	hexStrWithoutPrefix := hexStrWithPrefix[2:]
-	require.Equal(t, hexStrWithoutPrefix, RemoveHexPrefix(hexStrWithoutPrefix))
+	str = "0x123"
+	require.Equal(t, "0123", RemoveHexPrefix(str))
+
+	str = "0123"
+	require.Equal(t, "0123", RemoveHexPrefix(str))
+
+	str = "123"
+	require.Equal(t, "0123", RemoveHexPrefix(str))
 
 	require.Equal(t, "", RemoveHexPrefix(""))
 }

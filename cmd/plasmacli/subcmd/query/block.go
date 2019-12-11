@@ -1,9 +1,8 @@
 package query
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/FourthState/plasma-mvp-sidechain/store"
+	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/spf13/cobra"
 	"math/big"
@@ -31,7 +30,7 @@ var blockCmd = &cobra.Command{
 		}
 		cmd.SilenceUsage = true
 
-		block, err := Block(ctx, num)
+		block, err := client.Block(ctx, num)
 		if err != nil {
 			return err
 		}
@@ -52,16 +51,16 @@ var blocksCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
 
-		var blockNum *big.Int
+		var startingHeight *big.Int
 		if len(args) > 0 {
 			var ok bool
-			blockNum, ok = new(big.Int).SetString(args[0], 10)
+			startingHeight, ok = new(big.Int).SetString(args[0], 10)
 			if !ok {
 				return fmt.Errorf("block number must be in decimal format")
 			}
 		}
 
-		blocks, err := BlocksMetadata(ctx, blockNum)
+		blocks, err := client.Blocks(ctx, startingHeight)
 		if err != nil {
 			return err
 		}
@@ -80,49 +79,4 @@ var blocksCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-// Block makes a query to the data store for a plasma block.
-func Block(ctx context.CLIContext, num *big.Int) (store.Block, error) {
-	if num == nil || num.Sign() <= 0 {
-		return store.Block{}, fmt.Errorf("block number starts at 1")
-	}
-
-	queryPath := fmt.Sprintf("custom/data/block/%s", num)
-	data, err := ctx.Query(queryPath, nil)
-	if err != nil {
-		return store.Block{}, err
-	}
-
-	var block store.Block
-	if err := json.Unmarshal(data, &block); err != nil {
-		return store.Block{}, fmt.Errorf("json unmarshal: %s", err)
-	}
-
-	return block, nil
-}
-
-// BlocksMetadata will query metadata about 10 plasma blocks starting from `startingBlockNum`.
-// The latest 10 blocks will be retrieved if startingBlockNum is nil
-func BlocksMetadata(ctx context.CLIContext, startingBlockNum *big.Int) ([]store.Block, error) {
-	var queryPath string
-	if startingBlockNum == nil {
-		queryPath = "custom/data/blocks/latest"
-	} else if startingBlockNum.Sign() <= 0 {
-		return nil, fmt.Errorf("block number starts at 1")
-	} else {
-		queryPath = fmt.Sprintf("custom/data/blocks/%s", startingBlockNum)
-	}
-
-	data, err := ctx.Query(queryPath, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp []store.Block
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, fmt.Errorf("json unmarshal: %s", err)
-	}
-
-	return resp, nil
 }

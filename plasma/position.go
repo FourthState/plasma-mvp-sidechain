@@ -3,25 +3,16 @@ package plasma
 import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/rlp"
-	"io"
 	"math/big"
 	"strconv"
 	"strings"
 )
 
-// Position for an input/output
 type Position struct {
 	BlockNum     *big.Int
 	TxIndex      uint16
 	OutputIndex  uint8
 	DepositNonce *big.Int
-}
-
-type position struct {
-	BlockNum     []byte
-	TxIndex      uint16
-	OutputIndex  uint8
-	DepositNonce []byte
 }
 
 const (
@@ -43,32 +34,6 @@ func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *bi
 		OutputIndex:  oIndex,
 		DepositNonce: depositNonce,
 	}
-}
-
-func (p *Position) EncodeRLP(w io.Writer) error {
-	if p.BlockNum == nil {
-		p.BlockNum = big.NewInt(0)
-	}
-	if p.DepositNonce == nil {
-		p.DepositNonce = big.NewInt(0)
-	}
-	pos := position{p.BlockNum.Bytes(), p.TxIndex, p.OutputIndex, p.DepositNonce.Bytes()}
-
-	return rlp.Encode(w, pos)
-}
-
-func (p *Position) DecodeRLP(s *rlp.Stream) error {
-	var pos position
-	if err := s.Decode(&pos); err != nil {
-		return err
-	}
-
-	p.BlockNum = new(big.Int).SetBytes(pos.BlockNum)
-	p.TxIndex = pos.TxIndex
-	p.OutputIndex = pos.OutputIndex
-	p.DepositNonce = new(big.Int).SetBytes(pos.DepositNonce)
-
-	return nil
 }
 
 func (p Position) Bytes() []byte {

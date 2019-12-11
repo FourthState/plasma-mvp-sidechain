@@ -10,8 +10,8 @@ const (
 	fileF = "file"
 )
 
-// KeysCmd returns the keys command
-func KeysCmd() *cobra.Command {
+// RootCmd returns the keys command
+func RootCmd() *cobra.Command {
 	keysCmd.AddCommand(
 		AddCmd(),
 		DeleteCmd(),

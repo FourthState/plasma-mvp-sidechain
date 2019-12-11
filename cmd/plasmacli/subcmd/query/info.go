@@ -1,10 +1,9 @@
 package query
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/FourthState/plasma-mvp-sidechain/client"
 	ks "github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
-	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
@@ -35,15 +34,9 @@ var infoCmd = &cobra.Command{
 			addr = ethcmn.HexToAddress(args[0])
 		}
 
-		queryPath := fmt.Sprintf("custom/data/info/%s", addr)
-		data, err := ctx.Query(queryPath, nil)
+		utxos, err := client.Info(ctx, addr)
 		if err != nil {
 			return err
-		}
-
-		var utxos []store.TxOutput
-		if err := json.Unmarshal(data, &utxos); err != nil {
-			return fmt.Errorf("unmarshaling json query response: %s", err)
 		}
 
 		for i, utxo := range utxos {

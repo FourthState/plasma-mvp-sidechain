@@ -5,8 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// QueryCmd returns the query command for plasmacli
-func QueryCmd() *cobra.Command {
+// RootCmd returns the query command for plasmacli
+func RootCmd() *cobra.Command {
 	config.AddPersistentTMFlags(queryCmd)
 	queryCmd.AddCommand(
 		BalanceCmd(),

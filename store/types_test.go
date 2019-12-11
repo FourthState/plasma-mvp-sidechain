@@ -17,7 +17,7 @@ func TestWalletSerialization(t *testing.T) {
 	acc := Wallet{
 		Balance: big.NewInt(234578),
 		Unspent: []plasma.Position{getPosition("(8745.1239.1.0)"), getPosition("(23409.12456.0.0)"), getPosition("(894301.1.1.0)"), getPosition("(0.0.0.540124)")},
-		Spent:   []plasma.Position{getPosition("0.0.0.3"), getPosition("7.734.1.3")},
+		Spent:   []plasma.Position{getPosition("(0.0.0.3)"), getPosition("(7.734.1.3)")},
 	}
 
 	bytes, err := rlp.EncodeToBytes(&acc)
@@ -67,11 +67,14 @@ func TestTxSerialization(t *testing.T) {
 		Fee:     utils.Big1,
 	}
 
+	pos := getPosition("(0.1.1.1)")
+
 	tx := Transaction{
 		Transaction:      transaction,
 		Spent:            []bool{false, false},
 		SpenderTxs:       [][]byte{},
 		ConfirmationHash: hashes,
+		Position:         pos,
 	}
 
 	bytes, err := rlp.EncodeToBytes(&tx)

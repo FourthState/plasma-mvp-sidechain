@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
@@ -17,11 +18,14 @@ const (
 
 	/*** block routes ***/
 
+	// QueryHeight retrieves the current block height
+	QueryHeight = "height"
+
 	// QueryBlocks retrieves full information about a
 	// speficied block
 	QueryBlock = "block"
 
-	// QueryBlocs retrieves metadata about 10 blocks from
+	// QueryBlocks retrieves metadata about 10 blocks from
 	// a specified start point or the last 10 from the latest
 	// block
 	QueryBlocks = "blocks"
@@ -57,6 +61,8 @@ func NewQuerier(ds DataStore) sdk.Querier {
 		}
 
 		switch path[0] {
+		case QueryHeight:
+			return queryHeight(ctx, ds)
 		case QueryBlock:
 			return queryBlock(ctx, ds, path[1:])
 		case QueryBlocks:
@@ -77,9 +83,18 @@ func NewQuerier(ds DataStore) sdk.Querier {
 	}
 }
 
+func queryHeight(ctx sdk.Context, ds DataStore) ([]byte, sdk.Error) {
+	height := ds.PlasmaBlockHeight(ctx)
+	if height == nil {
+		height = utils.Big0
+	}
+
+	return []byte(height.String()), nil
+}
+
 func queryBlock(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
-		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<height>", QueryBlock))
+		return nil, ErrInvalidPath("expected %s/<height>", QueryBlock)
 	}
 
 	height, err := parseHeight(path[0])
@@ -97,13 +112,17 @@ func queryBlock(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error
 
 func queryBlocks(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
-		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<height> or %s/latest", QueryBlocks, QueryBlocks))
+		return nil, ErrInvalidPath("expected %s/<height> or %s/latest", QueryBlocks, QueryBlocks)
 	}
 
 	var height *big.Int
 	if path[0] == "latest" {
 		// latest 10 blocks
 		height = ds.PlasmaBlockHeight(ctx)
+		if height == nil {
+			return nil, ErrDNE("no blocks")
+		}
+
 		bigNine := big.NewInt(9)
 		if height.Cmp(bigNine) <= 0 {
 			height = big.NewInt(1)
@@ -129,12 +148,16 @@ func queryBlocks(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Erro
 		height = height.Add(height, utils.Big1)
 	}
 
+	if len(blocks) != 0 {
+		return nil, ErrDNE("no blocks")
+	}
+
 	return marshalResponse(blocks)
 }
 
 func queryBalance(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
-		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<address>", QueryBalance))
+		return nil, ErrInvalidPath("expected %s/<address>", QueryBalance)
 	}
 
 	addr, err := parseAddress(path[0])
@@ -144,7 +167,7 @@ func queryBalance(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Err
 
 	acc, ok := ds.GetWallet(ctx, addr)
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no wallet exists for the address provided: 0x%x", addr))
+		return nil, ErrDNE("no wallet exists for the address provided: 0x%x", addr)
 	}
 
 	return []byte(acc.Balance.String()), nil
@@ -152,7 +175,7 @@ func queryBalance(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Err
 
 func queryInfo(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
-		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<address>", QueryInfo))
+		return nil, ErrInvalidPath("expected %s/<address>", QueryInfo)
 	}
 
 	addr, err := parseAddress(path[0])
@@ -162,7 +185,7 @@ func queryInfo(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error)
 
 	acc, ok := ds.GetWallet(ctx, addr)
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no wallet exists for the address provided: 0x%x", addr))
+		return nil, ErrDNE("no wallet exists for the address provided: 0x%x", addr)
 	}
 
 	outputs := ds.GetUnspentForWallet(ctx, acc)
@@ -171,7 +194,7 @@ func queryInfo(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error)
 
 func queryTxOutput(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
-		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<position>", QueryTxOutput))
+		return nil, ErrInvalidPath("expected %s/<position>", QueryTxOutput)
 	}
 
 	pos, err := plasma.FromPositionString(path[0])
@@ -181,12 +204,12 @@ func queryTxOutput(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Er
 
 	o, ok := ds.GetOutput(ctx, pos)
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
+		return nil, ErrDNE("no output exists for the position provided: %s", pos)
 	}
 
 	tx, ok := ds.GetTxWithPosition(ctx, pos)
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
+		return nil, ErrDNE("no transaction exists for the position provided: %s", pos)
 	}
 
 	txo := NewTxOutput(o.Output, pos, tx.ConfirmationHash, tx.Transaction.TxHash(), o.Spent, o.SpenderTx)
@@ -195,7 +218,7 @@ func queryTxOutput(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Er
 
 func queryTxInput(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
-		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<position>", QueryTxInput))
+		return nil, ErrInvalidPath("expected %s/<position>", QueryTxInput)
 	}
 
 	pos, err := plasma.FromPositionString(path[0])
@@ -205,12 +228,12 @@ func queryTxInput(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Err
 
 	tx, ok := ds.GetTxWithPosition(ctx, pos)
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no transaction exists for the position provided: %s", pos))
+		return nil, ErrDNE("no transaction exists for the position provided: %s", pos)
 	}
 
 	o, ok := ds.GetOutput(ctx, pos)
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no output exists for the position provided: %s", pos))
+		return nil, ErrDNE("no output exists for the position provided: %s", pos)
 	}
 
 	inputPositions := tx.Transaction.InputPositions()
@@ -229,13 +252,18 @@ func queryTxInput(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Err
 
 func queryTx(ctx sdk.Context, ds DataStore, path []string) ([]byte, sdk.Error) {
 	if len(path) != 1 {
-		return nil, ErrInvalidPath(fmt.Sprintf("expected %s/<txhash>", QueryTx))
+		return nil, ErrInvalidPath("expected %s/<txhash>", QueryTx)
+	}
+	txHash, err := hex.DecodeString(utils.RemoveHexPrefix(path[0]))
+	if err != nil {
+		return nil, ErrInvalidPath("tx hash expected in hexadecimal format. hex: %s", err)
+	} else if len(txHash) != 32 {
+		return nil, ErrInvalidPath("tx hash expected to be 32 bytes in length")
 	}
 
-	txHash := []byte(path[0])
 	tx, ok := ds.GetTx(ctx, txHash)
 	if !ok {
-		return nil, ErrDNE(fmt.Sprintf("no transaction exists for the hash provided: %x", txHash))
+		return nil, ErrDNE("no transaction exists for the hash provided: %s", txHash)
 	}
 
 	return marshalResponse(tx)
@@ -261,17 +289,12 @@ func parseHeight(height string) (*big.Int, sdk.Error) {
 	return h, nil
 }
 
-func parseAddress(addrString string) (ethcmn.Address, sdk.Error) {
-	if len(addrString) > 2 && addrString[:2] == "0x" {
-		addrString = addrString[2:]
-	}
-	if len(addrString)%2 != 0 {
-		addrString = "0" + addrString
+func parseAddress(addr string) (ethcmn.Address, sdk.Error) {
+	addr = utils.RemoveHexPrefix(addr)
+
+	if !ethcmn.IsHexAddress(addr) {
+		return utils.ZeroAddress, ErrInvalidPath("address expected to be a valid 20-byte ethereum address")
 	}
 
-	if !ethcmn.IsHexAddress(addrString) {
-		return utils.ZeroAddress, ErrInvalidPath(fmt.Sprintf("%s/<address> must be a valid ethereum address", QueryBalance))
-	}
-
-	return ethcmn.HexToAddress(addrString), nil
+	return ethcmn.HexToAddress(addr), nil
 }
