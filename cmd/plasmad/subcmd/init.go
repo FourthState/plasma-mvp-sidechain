@@ -64,9 +64,9 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 			if tmCommon.FileExists(genFile) {
 				if !overwrite {
 					return fmt.Errorf("genesis.json file already exists: %v", genFile)
-				} else {
-					fmt.Printf("overwriting genesis.json...\n")
 				}
+
+				fmt.Printf("overwriting genesis.json...\n")
 			}
 			// read of create the private key file for this config
 			var privValidator *privval.FilePV
@@ -104,9 +104,9 @@ func InitCmd(ctx *server.Context, cdc *codec.Codec) *cobra.Command {
 			if tmCommon.FileExists(plasmaPath) {
 				if !overwrite {
 					return fmt.Errorf("plasma.toml already exists at '%s'. Use -o flag to overwrite", plasmaPath)
-				} else {
-					fmt.Println("overwriting plasma.toml...")
 				}
+
+				fmt.Println("overwriting plasma.toml...")
 			}
 			pConfig.WritePlasmaConfigFile(plasmaPath, plasmaConfig)
 
