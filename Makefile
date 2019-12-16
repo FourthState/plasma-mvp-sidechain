@@ -1,5 +1,17 @@
 export GO111MODULE=on
 
+#######################
+### Current Build Properties
+VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
+COMMIT := $(shell git log -1 --format='%H')
+BUILD_TAGS = netgo
+
+
+BUILD_FLAGS = -tags "$(BUILD_TAGS)" -ldflags \
+    '-X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
+    -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
+    -X "github.com/cosmos/cosmos-sdk/version.BuildTags=$(BUILD_TAGS)"'
+
 all: install test
 
 ########################################
@@ -7,16 +19,16 @@ all: install test
 
 build: go.sum 
 ifeq ($(OS),Windows_NT)
-	go build -o -mod=readonly -o build/plasmad.exe ./cmd/plasmad
-	go build -o -mod=readonly -o build/plasmacli.exe ./cmd/plasmacli
+	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmad.exe ./cmd/plasmad
+	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmacli.exe ./cmd/plasmacli
 else
-	go build -o -mod=readonly -o build/plasmad ./cmd/plasmad
-	go build -o -mod=readonly -o build/plasmacli ./cmd/plasmacli
+	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmad ./cmd/plasmad
+	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmacli ./cmd/plasmacli
 endif
 
 install: go.sum
-	go install -mod=readonly ./cmd/plasmad
-	go install -mod=readonly ./cmd/plasmacli
+	go install $(BUILD_FLAGS) -mod=readonly ./cmd/plasmad
+	go install $(BUILD_FLAGS) -mod=readonly ./cmd/plasmacli
 
 ########################################
 ### Dependencies & Maintenance
