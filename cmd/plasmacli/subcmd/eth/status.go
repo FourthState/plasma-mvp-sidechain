@@ -36,9 +36,10 @@ var statuscmd = &cobra.Command {
 			return fmt.Errorf("error checking synced status: { %s }", err)
 		}
 		if synced {
-			return fmt.Errorf("synced with ethNode: { %s }", conf.EthNodeURL)
+			fmt.Printf("synced with eth node: { %s }", conf.EthNodeURL)
 		} else {
-			return fmt.Errorf("could not sync with ethNode: { %s }", conf.EthNodeURL)
+			fmt.Printf("could not sync with eth node: { %s }", conf.EthNodeURL)
 		}
+		return nil
 	},
 }
