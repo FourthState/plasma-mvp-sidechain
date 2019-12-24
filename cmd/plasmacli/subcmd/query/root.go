@@ -13,6 +13,7 @@ func RootCmd() *cobra.Command {
 		BlockCmd(),
 		BlocksCmd(),
 		InfoCmd(),
+		//StatusCmd(),
 	)
 
 	return queryCmd

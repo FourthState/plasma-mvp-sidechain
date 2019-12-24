@@ -40,6 +40,7 @@ func RootCmd() *cobra.Command {
 		FinalizeCmd(),
 		DepositCmd(),
 		WithdrawCmd(),
+		StatusCmd(),
 		client.LineBreak,
 
 		query.RootCmd(),
