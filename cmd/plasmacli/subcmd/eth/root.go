@@ -61,6 +61,7 @@ An eth node instance needs to be running for this command to work.`,
 	},
 }
 
+// HasTxExited -
 func HasTxExited(pos plasma.Position) (bool, error) {
 	conn, err := config.GetContractConn()
 	if err != nil {

@@ -68,7 +68,7 @@ func DefaultConfig() Config {
 	}
 }
 
-// RegisterViper will match client flags with config and register env
+// RegisterViperAndEnv will match client flags with config and register env
 func RegisterViperAndEnv() {
 	viper.SetEnvPrefix("PCLI")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))

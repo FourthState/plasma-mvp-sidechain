@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/config"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/subcmd"
@@ -16,10 +17,13 @@ import (
 	"path/filepath"
 )
 
+var rootDir string = os.ExpandEnv("$HOME/.plasmad")
+
 func main() {
 	// codec only used for server.AddCommand
 	cdc := app.MakeCodec()
 	ctx := server.NewDefaultContext()
+	ctx.Config.SetRoot(rootDir)
 
 	rootCmd := &cobra.Command{
 		Use:               "plasmad",
@@ -29,11 +33,10 @@ func main() {
 	rootCmd.AddCommand(subcmd.InitCmd(ctx, cdc))
 	server.AddCommands(ctx, cdc, rootCmd, newApp, nil)
 
-	// HomeFlag in tendermint cli will be set to `~/.plasmad`
-	rootDir := os.ExpandEnv("$HOME/.plasmad")
 	executor := cli.PrepareBaseCmd(rootCmd, "PD", rootDir)
 	if err := executor.Execute(); err != nil {
-		panic(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 

@@ -1,19 +1,15 @@
 package subcmd
 
 import (
-	"fmt"
+	"github.com/cosmos/cosmos-sdk/version"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-// VersionCmd returns the version cmd for plasmacli
-func VersionCmd() *cobra.Command {
-	return versionCmd
-}
+var versionCmd = version.VersionCmd
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number of the plasma client",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Plasma Client v0.3.0")
-	},
+// VersionCmd -
+func VersionCmd() *cobra.Command {
+	viper.BindPFlags(versionCmd.LocalFlags())
+	return versionCmd
 }
