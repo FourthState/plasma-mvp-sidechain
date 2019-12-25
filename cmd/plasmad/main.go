@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/app"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/config"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmad/subcmd"
@@ -34,7 +35,8 @@ func main() {
 
 	executor := cli.PrepareBaseCmd(rootCmd, "PD", rootDir)
 	if err := executor.Execute(); err != nil {
-		panic(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 

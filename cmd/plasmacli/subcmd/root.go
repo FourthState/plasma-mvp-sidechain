@@ -52,8 +52,8 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		config.RegisterViperAndEnv()
-		homeDir := viper.GetString(flags.Home)
 
+		homeDir := viper.GetString(flags.Home)
 		store.InitKeystore(homeDir)
 
 		configFilepath := filepath.Join(homeDir, "config.toml")
