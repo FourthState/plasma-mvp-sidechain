@@ -6,7 +6,6 @@ VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
 COMMIT := $(shell git log -1 --format='%H')
 BUILD_TAGS = netgo
 
-
 BUILD_FLAGS = -tags "$(BUILD_TAGS)" -ldflags \
     '-X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
     -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
@@ -60,4 +59,4 @@ test-unit:
 	go test -mod=readonly -race -coverprofile=coverage.txt -covermode=atomic -v ./...
 
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: all build install go.sum test test-unit
+.PHONY: all build build-plasmad build-plasmacli install install-plasmad install-plasmacli go.sum test test-unit
