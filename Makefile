@@ -17,17 +17,28 @@ all: install test
 ########################################
 ### Install & Build
 
-build: go.sum 
+build: go.sum build-plasmad build-plasmacli
+
+build-plasmad: go.sum
 ifeq ($(OS),Windows_NT)
 	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmad.exe ./cmd/plasmad
-	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmacli.exe ./cmd/plasmacli
 else
 	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmad ./cmd/plasmad
+endif
+
+build-plasmacli: go.sum
+ifeq ($(OS),Windows_NT)
+	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmacli.exe ./cmd/plasmacli
+else
 	go build $(BUILD_FLAGS) -o -mod=readonly -o build/plasmacli ./cmd/plasmacli
 endif
 
-install: go.sum
+install: go.sum install-plasmad install-plasmacli
+
+install-plasmad: go.sum
 	go install $(BUILD_FLAGS) -mod=readonly ./cmd/plasmad
+
+install-plasmacli: go.sum
 	go install $(BUILD_FLAGS) -mod=readonly ./cmd/plasmacli
 
 ########################################
