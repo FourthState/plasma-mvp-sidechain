@@ -19,6 +19,7 @@ import (
 	"strings"
 )
 
+// SpendCmd -
 func SpendCmd() *cobra.Command {
 	spendCmd.Flags().String(positionF, "", "UTXO Positions to be spent, format: (blknum0.txindex0.oindex0.depositnonce0)::(blknum1.txindex1.oindex1.depositnonce1)")
 	spendCmd.Flags().StringP(confirmSigs0F, "0", "", "Input Confirmation Signatures for first input to be spent (separated by commas)")

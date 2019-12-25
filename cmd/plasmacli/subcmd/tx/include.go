@@ -14,6 +14,7 @@ import (
 	"strings"
 )
 
+// IncludeCmd -
 func IncludeCmd() *cobra.Command {
 	includeCmd.Flags().Int64P(replayF, "r", 0, "Replay Nonce that can be incremented to allow for resubmissions of include deposit messages")
 	includeCmd.Flags().String(addressF, "", "address represented as hex string")
@@ -82,6 +83,7 @@ var includeCmd = &cobra.Command{
 			if _, err := ctx.BroadcastTxAsync(txBytes); err != nil {
 				return err
 			}
+			fmt.Println("Transaction submitted")
 		} else {
 			res, err := ctx.BroadcastTxAndAwaitCommit(txBytes)
 			if err != nil {

@@ -23,6 +23,7 @@ var homeDir = os.ExpandEnv("$HOME/.plasmacli/")
 func RootCmd() *cobra.Command {
 	cobra.EnableCommandSorting = false
 	rootCmd.PersistentFlags().String(flags.Home, homeDir, "home directory for plasmacli")
+	rootCmd.PersistentFlags().Bool(flags.Verbose, false, "additional output (if applicable)")
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

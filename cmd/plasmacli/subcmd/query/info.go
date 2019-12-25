@@ -43,20 +43,11 @@ var infoCmd = &cobra.Command{
 			fmt.Printf("UTXO %d\n", i)
 			fmt.Printf("Position: %s, Amount: %s, Spent: %t\nSpender Hash: %s\n", utxo.Position, utxo.Output.Amount.String(), utxo.Spent, utxo.SpenderTx)
 			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.TxHash, utxo.ConfirmationHash)
-			/*
-				// TODO: Add --verbose flag that if set will query TxInput and print InputAddresses and InputPositions as well
-				// print inputs if applicable
-				positions := utxo.InputPositions
-				for i, p := range positions {
-					fmt.Printf("Input %d Position: %s\n", i, p)
-				}
-			*/
-
 			fmt.Printf("End UTXO %d info\n\n", i)
 		}
 
 		if len(utxos) == 0 {
-			fmt.Println("no information available for this address")
+			fmt.Println("No information available for this address")
 		}
 
 		return nil
