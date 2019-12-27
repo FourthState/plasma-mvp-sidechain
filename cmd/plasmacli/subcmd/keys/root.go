@@ -15,9 +15,10 @@ func RootCmd() *cobra.Command {
 	keysCmd.AddCommand(
 		AddCmd(),
 		DeleteCmd(),
-		ImportCmd(),
 		ListCmd(),
 		UpdateCmd(),
+		ImportCmd(),
+		ExportCmd(),
 	)
 
 	return keysCmd

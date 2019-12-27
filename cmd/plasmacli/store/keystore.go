@@ -18,6 +18,7 @@ const (
 
 	NewPassphrasePrompt       = "Enter new passphrase for your key:"
 	NewPassphrasePromptRepeat = "Repeat passphrase:"
+	ExportPassphrasePrompt    = "Enter passphrase for exported key:"
 
 	PassphrasePrompt = "Enter passphrase:"
 
@@ -212,6 +213,45 @@ func ImportECDSA(name string, pk *ecdsa.PrivateKey) (ethcmn.Address, error) {
 
 	return acct.Address, nil
 
+}
+// Export exports as a JSON key, encrypted with newPassphrase
+func Export(name string) (keyJSON []byte, err error) {
+	// Get Account from Keystore
+	dir := getDir(accountsDir)
+	db, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		return nil, fmt.Errorf("leveldb: %s", err)
+	}
+	defer db.Close()
+
+	key := []byte(name)
+	addr, err := db.Get(key, nil)
+	if err == leveldb.ErrNotFound {
+		return nil, fmt.Errorf("account does not exist")
+	} else if err != nil {
+		return nil, fmt.Errorf("leveldb: %s", err)
+	}
+
+	acc := accounts.Account{
+		Address: ethcmn.BytesToAddress(addr),
+	}
+
+	buf := cosmoscli.BufferStdin()
+	pass, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
+	if err != nil {
+		return nil, fmt.Errorf("error checking password: %s", err)
+	}
+	newpass, err := cosmoscli.GetCheckPassword(ExportPassphrasePrompt, ExportPassphrasePrompt, buf)
+	if err != nil {
+		return nil, fmt.Errorf("error with new password: %s", err)
+	}
+
+	accJSON, err := ks.Export(acc, pass, newpass)
+	if err != nil {
+		return nil, fmt.Errorf("error exporting account: %s", err)
+	}
+
+	return accJSON, nil
 }
 
 // SignHashWithPassphrase will sign over the provided hash if the the passphrase
