@@ -1,7 +1,8 @@
 .DS_Store
-vendor/
+/build
 contracts/abi
 contracts/node_modules
 cmd/plasmad/plasmad
 cmd/plasmacli/plasmacli
 ./idea
+vendor/
