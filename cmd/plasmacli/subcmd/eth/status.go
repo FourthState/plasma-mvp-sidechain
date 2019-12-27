@@ -13,8 +13,8 @@ func StatusCmd() *cobra.Command {
 
 var statuscmd = &cobra.Command {
 	Use:   "status",
-	Short: "check state of eth connection",
-	Long: "returns current state of eth connection (syncing, crashed, etc)",
+	Short: "Check state of eth connection",
+	Long: "Returns current state of eth connection (syncing, crashed, etc)",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 

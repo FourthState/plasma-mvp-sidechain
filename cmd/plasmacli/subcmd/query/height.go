@@ -14,8 +14,8 @@ func HeightCmd() *cobra.Command {
 
 var heightcmd = &cobra.Command {
 	Use:   "height",
-	Short: "check current block height",
-	Long: "returns current block height of plasmad connection",
+	Short: "Check current block height",
+	Long: "Returns current block height of plasmad connection",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -23,9 +23,8 @@ var heightcmd = &cobra.Command {
 		height, err := client.Height(ctx)
 		if err != nil {
 			return fmt.Errorf("error retrieving current block height: %s", err)
-		} else {
-			fmt.Printf("current plasma block height: %s", height)
 		}
+		fmt.Printf("current plasma block height: %s", height)
 		return nil
 	},
 }
