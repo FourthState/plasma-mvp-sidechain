@@ -16,7 +16,6 @@ var exportcmd = &cobra.Command{
 	Use:   "export <name> <location>",
 	Short: "Export a private key",
 	Long: `Exports a private key to a specified location (must be absolute path).
-Prints the address. 
 
 Usage:
 	plasmacli export <name> <location>
@@ -24,7 +23,7 @@ Usage:
 The account is saved in encrypted format, you are prompted for a passphrase.
 You must remember this passphrase to unlock your account to export.
 `,
-	Args: cobra.MinimumNArgs(2),
+	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		location := args[1]
@@ -37,18 +36,11 @@ You must remember this passphrase to unlock your account to export.
 
 		accountjson, err := store.Export(name)
 
-		// Confirm write succeeds
-		bytestowrite := len(accountjson)
-		for bytestowrite > 0 {
-			numwritten, err := fd.Write(accountjson)
-			if err != nil {
-				return fmt.Errorf("error writing to file: %s", err)
-			}
-			bytestowrite -= numwritten
+		if numwritten, err := fd.Write(accountjson); err != nil {
+			return fmt.Errorf("error writing to file: %s, bytes written: %s, total bytes to write: %s", err, numwritten, len(accountjson))
 		}
 
-		// Return Success
-		fmt.Println("Successfully exported.")
+		fmt.Printf("Successfully exported %s to %s", name, location)
 		return nil
 	},
 }
