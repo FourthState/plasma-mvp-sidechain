@@ -6,7 +6,6 @@ import (
 	"os"
 )
 
-
 func main() {
 	rootCmd := subcmd.RootCmd()
 	if err := rootCmd.Execute(); err != nil {
