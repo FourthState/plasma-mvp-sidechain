@@ -222,6 +222,7 @@ func Import(name string, keyJSON []byte) (ethcmn.Address, error) {
 	if err != nil {
 		return ethcmn.Address{}, fmt.Errorf("leveldb: %s", err)
 	}
+	defer db.Close()
 
 	buf := cosmoscli.BufferStdin()
 	pass, err := cosmoscli.GetPassword(ImportPassphrasePrompt, buf)
@@ -245,7 +246,6 @@ func Import(name string, keyJSON []byte) (ethcmn.Address, error) {
 
 	return acc.Address, nil
 }
-
 
 // Export exports as a JSON key, encrypted with newPassphrase
 func Export(name string) (keyJSON []byte, err error) {
