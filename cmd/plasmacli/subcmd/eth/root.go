@@ -42,6 +42,9 @@ func RootCmd() *cobra.Command {
 		WithdrawCmd(),
 		client.LineBreak,
 
+		StatusCmd(),
+		client.LineBreak,
+
 		query.RootCmd(),
 	)
 
