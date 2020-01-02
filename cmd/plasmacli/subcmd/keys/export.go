@@ -15,7 +15,7 @@ func ExportCmd() *cobra.Command {
 var exportcmd = &cobra.Command{
 	Use:   "export <name> <location>",
 	Short: "Export a private key",
-	Long: `Exports a private key to a specified location (must be absolute path).
+	Long: `Exports a private key to a specified location.
 
 Usage:
 	plasmacli export <name> <location>

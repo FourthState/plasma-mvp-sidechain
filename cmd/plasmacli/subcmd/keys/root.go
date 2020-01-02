@@ -8,7 +8,7 @@ import (
 const (
 	nameF = "name"
 	fileF = "file"
-	encryptF = "encrypted-file"
+	encryptF = "encrypted"
 )
 
 // RootCmd returns the keys command
