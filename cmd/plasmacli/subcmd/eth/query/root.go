@@ -16,6 +16,7 @@ var (
 	indexF    = "index"
 	limitF    = "limit"
 	positionF = "position"
+	useNodeF  = "use-node"
 )
 
 // RootCmd returns the eth query command
@@ -25,6 +26,7 @@ func RootCmd() *cobra.Command {
 		BlockCmd(),
 		DepositCmd(),
 		ExitsCmd(),
+		SigCmd(),
 		RootchainCmd(),
 	)
 
