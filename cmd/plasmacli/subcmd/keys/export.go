@@ -35,6 +35,9 @@ You must remember this passphrase to unlock your account to export.
 		defer fd.Close()
 
 		accountjson, err := store.Export(name)
+		if err != nil {
+			return fmt.Errorf("error exporting key: %s", err.Error())
+		}
 
 		if numwritten, err := fd.Write(accountjson); err != nil {
 			return fmt.Errorf("error writing to file: %s, bytes written: %d, total bytes to write: %d", err, numwritten, len(accountjson))

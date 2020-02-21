@@ -19,7 +19,7 @@ const (
 	NewPassphrasePrompt       = "Enter new passphrase for your key:"
 	NewPassphrasePromptRepeat = "Repeat passphrase:"
 	ImportPassphrasePrompt    = "Enter passphrase for imported key:"
-	ExportPassphrasePrompt    = "Enter passphrase for exported key:"
+	ExportPassphrasePrompt    = "Enter new passphrase for exported key:"
 
 	PassphrasePrompt = "Enter passphrase:"
 
@@ -75,6 +75,7 @@ func AddAccount(name string) (ethcmn.Address, error) {
 		return ethcmn.Address{}, err
 	}
 
+	// We add a new account to the keystore, then put the key (name of the account) and the address of the account into the db
 	acc, err := ks.NewAccount(password)
 	if err != nil {
 		return ethcmn.Address{}, fmt.Errorf("keystore: %s", err)
@@ -274,11 +275,10 @@ func Export(name string) (keyJSON []byte, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("error checking password: %s", err)
 	}
-	newpass, err := cosmoscli.GetCheckPassword(ExportPassphrasePrompt, ExportPassphrasePrompt, buf)
+	newpass, err := cosmoscli.GetCheckPassword(ExportPassphrasePrompt, NewPassphrasePromptRepeat, buf)
 	if err != nil {
 		return nil, fmt.Errorf("error with new password: %s", err)
 	}
-
 	accJSON, err := ks.Export(acc, pass, newpass)
 	if err != nil {
 		return nil, fmt.Errorf("error exporting account: %s", err)
