@@ -69,7 +69,7 @@ func TestAccounts(t *testing.T) {
 		"plasma",
 	}
 
-	// Update Account name and password then Delete Accounts
+	// Update Account name and password, exports keys, imports them, then Delete Accounts
 	for i, n := range cases {
 		_, err := UpdateAccount(cases[i], updatedNames[i])
 		require.NoError(t, err, "case %d: failed to update account name { %s }", i, n)
@@ -79,7 +79,26 @@ func TestAccounts(t *testing.T) {
 		_, err = GetAccount(updatedNames[i])
 		require.NoError(t, err, "case %d: failed to retrieve account after updating, account { %s }", i, updatedNames[i])
 
-		cleanUp := cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\nnewpass1234\n")))
+		// Export
+		cleanUp := cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\ntest1234\n")))
+		defer cleanUp()
+		accjson, err := Export(updatedNames[i])
+		require.NoError(t, err, "case %d: failed to export account for account { %s }", i, updatedNames[i])
+
+		// Delete
+		cleanUp = cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\n")))
+		defer cleanUp()
+		err = DeleteAccount(updatedNames[i])
+		require.NoError(t, err, "case %d: failed to delete account { %s }", i, updatedNames[i])
+
+		// Import
+		cleanUp = cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\ntest1234\n")))
+		defer cleanUp()
+		_, err = Import(updatedNames[i], accjson)
+		require.NoError(t, err, "case %d: failed to import account for account { %s }", i, updatedNames[i])
+
+		// Update
+		cleanUp = cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\nnewpass1234\n")))
 		defer cleanUp()
 		_, err = UpdateAccount(updatedNames[i], "")
 		require.NoError(t, err, "case %d: failed to update account passphrase for account { %s }", i, updatedNames[i])
@@ -89,4 +108,6 @@ func TestAccounts(t *testing.T) {
 		err = DeleteAccount(updatedNames[i])
 		require.NoError(t, err, "case %d: failed to delete account { %s }", i, updatedNames[i])
 	}
+
+
 }
