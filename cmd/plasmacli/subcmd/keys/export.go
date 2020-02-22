@@ -27,6 +27,7 @@ You must remember this passphrase to unlock your account to export.
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		location := args[1]
+		cmd.SilenceUsage = true
 
 		fd, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0755)
 		if err != nil {

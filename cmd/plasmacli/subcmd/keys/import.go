@@ -42,6 +42,7 @@ You must remember this passphrase to unlock your account in the future.
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
+		cmd.SilenceUsage = true
 
 		name := args[0]
 		var key *ecdsa.PrivateKey
