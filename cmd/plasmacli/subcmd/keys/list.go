@@ -6,6 +6,8 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/store"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
+	"os"
+	"text/tabwriter"
 )
 
 // ListCmd returns the keys list command
@@ -24,10 +26,14 @@ var listCmd = &cobra.Command{
 		}
 		defer db.Close()
 
-		fmt.Printf("NAME:\t\tADDRESS:\n")
+		w := new(tabwriter.Writer)
+		w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+		fmt.Fprintln(w, "NAME:\tADDRESS:\t")
 		for iter.Next() {
-			fmt.Printf("%s\t\t0x%x\n", iter.Key(), ethcmn.BytesToAddress(iter.Value()))
+			fmt.Fprintln(w, fmt.Sprintf("%s\t0x%x\t", iter.Key(), ethcmn.BytesToAddress(iter.Value())))
 		}
+		fmt.Fprintln(w)
+		w.Flush()
 		iter.Release()
 
 		return nil
