@@ -29,16 +29,16 @@ You must remember this passphrase to unlock your account to export.
 		location := args[1]
 		cmd.SilenceUsage = true
 
+		accountjson, err := store.Export(name)
+		if err != nil {
+			return fmt.Errorf("error exporting key: %s", err.Error())
+		}
+
 		fd, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0755)
 		if err != nil {
 			return fmt.Errorf("error opening file: %s", err)
 		}
 		defer fd.Close()
-
-		accountjson, err := store.Export(name)
-		if err != nil {
-			return fmt.Errorf("error exporting key: %s", err.Error())
-		}
 
 		if numwritten, err := fd.Write(accountjson); err != nil {
 			return fmt.Errorf("error writing to file: %s, bytes written: %d, total bytes to write: %d", err, numwritten, len(accountjson))

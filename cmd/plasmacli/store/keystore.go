@@ -273,11 +273,11 @@ func Export(name string) (keyJSON []byte, err error) {
 	buf := cosmoscli.BufferStdin()
 	pass, err := cosmoscli.GetPassword(PassphrasePrompt, buf)
 	if err != nil {
-		return nil, fmt.Errorf("error checking password: %s", err)
+		return nil, fmt.Errorf("error with password: %s", err)
 	}
 	newpass, err := cosmoscli.GetCheckPassword(ExportPassphrasePrompt, NewPassphrasePromptRepeat, buf)
 	if err != nil {
-		return nil, fmt.Errorf("error with new password: %s", err)
+		return nil, fmt.Errorf("error with password: %s", err)
 	}
 	accJSON, err := ks.Export(acc, pass, newpass)
 	if err != nil {

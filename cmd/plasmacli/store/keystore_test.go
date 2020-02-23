@@ -5,6 +5,7 @@ import (
 	cosmoscli "github.com/cosmos/cosmos-sdk/client"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
 	"strings"
@@ -79,10 +80,16 @@ func TestAccounts(t *testing.T) {
 		_, err = GetAccount(updatedNames[i])
 		require.NoError(t, err, "case %d: failed to retrieve account after updating, account { %s }", i, updatedNames[i])
 
-		// Export
-		cleanUp := cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\ntest1234\n")))
+		// Unsuccessful Export
+		cleanUp := cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("wrongpassword\nwrongpassword\n")))
 		defer cleanUp()
 		accjson, err := Export(updatedNames[i])
+		assert.Error(t, err)
+
+		// Export
+		cleanUp = cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\ntest1234\n")))
+		defer cleanUp()
+		accjson, err = Export(updatedNames[i])
 		require.NoError(t, err, "case %d: failed to export account for account { %s }", i, updatedNames[i])
 
 		// Delete
@@ -90,6 +97,12 @@ func TestAccounts(t *testing.T) {
 		defer cleanUp()
 		err = DeleteAccount(updatedNames[i])
 		require.NoError(t, err, "case %d: failed to delete account { %s }", i, updatedNames[i])
+
+		// Unsuccessful Import
+		cleanUp = cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("wrongpass\nwrongpass\n")))
+		defer cleanUp()
+		_, err = Import(updatedNames[i], accjson)
+		assert.Error(t, err)
 
 		// Import
 		cleanUp = cosmoscli.OverrideStdin(bufio.NewReader(strings.NewReader("test1234\ntest1234\n")))
