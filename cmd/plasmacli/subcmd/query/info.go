@@ -8,6 +8,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // InfoCmd returns the query information command
@@ -48,10 +49,10 @@ If --verbose is set, the input positions that created each output will also be d
 			fmt.Printf("Transaction Hash: 0x%x\nConfirmationHash: 0x%x\n", utxo.TxHash, utxo.ConfirmationHash)
 
 			// query for the inputs that created this out
-			if flags.Verbose {
+			if viper.GetBool(flags.Verbose) {
 				txInput, err := client.TxInput(ctx, utxo.Position)
 				if err != nil {
-					// print the error
+					fmt.Printf("Error retrieving further information about the inputs of this UTXO: %s", err)
 				} else {
 					for i, input := range txInput.InputPositions {
 						fmt.Printf("Input %d: Position: %s\n", i, input)
