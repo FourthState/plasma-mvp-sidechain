@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/FourthState/plasma-mvp-sidechain/client"
 	"github.com/FourthState/plasma-mvp-sidechain/cmd/plasmacli/flags"
+	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/utils"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"strings"
 )
 
 // TxCommand -
@@ -25,7 +27,11 @@ If --verbose is set, additional information about the transaction will also be d
 		ctx := context.NewCLIContext()
 
 		// argument validation
-		txHashStr := utils.RemoveHexPrefix(args[0])
-
+		arg := utils.RemoveHexPrefix(strings.TrimSpace(args[0]))
+		if pos, err := plasma.FromPositionString(arg); err != nil {
+			// position
+		} else {
+			// transaction hash
+		}
 	},
 }
