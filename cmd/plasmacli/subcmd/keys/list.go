@@ -27,6 +27,7 @@ var listCmd = &cobra.Command{
 		defer db.Close()
 
 		w := new(tabwriter.Writer)
+		// Sets tab width to 8 characters
 		w.Init(os.Stdout, 0, 8, 0, '\t', 0)
 		fmt.Fprintln(w, "NAME:\tADDRESS:\t")
 		for iter.Next() {
