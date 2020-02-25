@@ -8,11 +8,13 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"io/ioutil"
 )
 
 // ImportCmd returns the keys import command
 func ImportCmd() *cobra.Command {
-	importCmd.Flags().String(fileF, "", "read the private key from the specified keyfile (must be absolute path)")
+	importCmd.Flags().String(fileF, "", "read the private key from raw private keyfile (must be absolute path)")
+	importCmd.Flags().Bool(encryptF, false, "read the private key from an encrypted geth-compatible keyfile")
 	return importCmd
 }
 
@@ -25,10 +27,14 @@ Prints the address.
 Usage:
 	plasmacli import <name> <privatekey>
 	plasmacli import <name> --file <filepath>
+	plasmacli import <name> --file <filepath> --encrypted
 
 If the file flag is set:
 The keyfile is assumed to contain an unencrypted private key in hexadecimal format.
 The keyfile must also be an absolute path
+
+If the encrypted flag is set:
+The keyfile is assumed to contain an encrypted geth-compatible keyfile.
 
 The account is saved in encrypted format, you are prompted for a passphrase.
 You must remember this passphrase to unlock your account in the future.
@@ -36,25 +42,39 @@ You must remember this passphrase to unlock your account in the future.
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		viper.BindPFlags(cmd.Flags())
+		cmd.SilenceUsage = true
 
 		name := args[0]
 		var key *ecdsa.PrivateKey
 		var err error
 		file := viper.GetString(fileF)
-		if file != "" {
+		efile := viper.IsSet(encryptF)
+
+		if file != "" && efile {
+			keybuf, err := ioutil.ReadFile(file)
+			if err != nil {
+				return fmt.Errorf("failed loading the keyfile: %s", err)
+			}
+
+			_, err = store.Import(name, keybuf)
+			if err != nil {
+				return fmt.Errorf("error Importing keyfile: %s", err)
+			}
+			fmt.Println("Successfully imported.")
+			return nil
+		} else if file != "" && !efile {
 			key, err = crypto.LoadECDSA(file)
 			if err != nil {
-				return fmt.Errorf("failed loading the keyfile: { %s }", err)
+				return fmt.Errorf("failed loading the keyfile: %s", err)
 			}
 		} else {
 			if len(args) < 2 {
-				return errors.New("please provide an unencrytped private if the --file flag is not set")
+				return errors.New("please provide an unencrypted private key if the --file flag is not set")
 			}
 			key, err = crypto.HexToECDSA(args[1])
 			if err != nil {
-				return fmt.Errorf("failed parsing private key: { %s }", err)
+				return fmt.Errorf("failed parsing private key: %s", err)
 			}
-
 		}
 
 		address, err := store.ImportECDSA(name, key)

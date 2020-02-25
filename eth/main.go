@@ -22,7 +22,7 @@ type Client struct {
 // wrapper with this client. Will return an error if the ethereum client is
 // not fully sycned.
 func InitEthConn(nodeUrl string) (Client, error) {
-	// Connect to a remote etheruem client
+	// Connect to a remote ethereum client
 	//
 	// Ethclient wraps around the underlying rpc module and provides convenient functions. We still keep reference
 	// to the underlying rpc module to make calls that the wrapper does not support
