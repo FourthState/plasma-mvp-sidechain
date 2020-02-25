@@ -8,6 +8,7 @@ import (
 const (
 	nameF = "name"
 	fileF = "file"
+	encryptF = "encrypted"
 )
 
 // RootCmd returns the keys command
@@ -15,9 +16,10 @@ func RootCmd() *cobra.Command {
 	keysCmd.AddCommand(
 		AddCmd(),
 		DeleteCmd(),
-		ImportCmd(),
 		ListCmd(),
 		UpdateCmd(),
+		ImportCmd(),
+		ExportCmd(),
 	)
 
 	return keysCmd
