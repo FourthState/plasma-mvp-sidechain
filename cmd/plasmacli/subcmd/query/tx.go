@@ -19,19 +19,27 @@ func TxCommand() *cobra.Command {
 
 var txCmd *cobra.Command = &cobra.Command{
 	Use:   "tx <txHash/position>",
-	Short: "Query for information about a single transaction",
-	Long: `Query for information about a single transaction.
+	Short: "Query for information about a single transaction or transaction output",
+	Long: `Query for information about a single transaction or transaction output.
 If --verbose is set, additional information about the transaction will also be displayed`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *Cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
+		cmd.SilenceUsage = true
 
 		// argument validation
 		arg := utils.RemoveHexPrefix(strings.TrimSpace(args[0]))
 		if pos, err := plasma.FromPositionString(arg); err != nil {
-			// position
+			// utxo position
+			txOutput, err := client.TxOutput(ctx, pos)
+			if err != nil {
+				fmt.Printf("Error quering transaction output %s: %s\n", pos, err)
+				return err
+			}
 		} else {
 			// transaction hash
 		}
+
+		return nil
 	},
 }
