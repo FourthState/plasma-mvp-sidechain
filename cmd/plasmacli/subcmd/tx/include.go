@@ -57,6 +57,7 @@ var includeCmd = &cobra.Command{
 		if !ok {
 			return fmt.Errorf("could not parse deposit nonce. Please resubmit with nonce in base 10")
 		}
+		cmd.SilenceUsage = true
 
 		replay := viper.GetInt(replayF)
 

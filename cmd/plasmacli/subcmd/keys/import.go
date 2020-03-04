@@ -57,6 +57,8 @@ You must remember this passphrase to unlock your account in the future.
 
 		}
 
+		cmd.SilenceUsage = true
+
 		address, err := store.ImportECDSA(name, key)
 		if err != nil {
 			return err

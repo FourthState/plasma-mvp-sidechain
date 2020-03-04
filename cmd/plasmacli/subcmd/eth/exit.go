@@ -70,6 +70,8 @@ Transaction Exit Usage:
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
 
+		cmd.SilenceUsage = true
+
 		// bind key, generate transact opts
 		auth := bind.NewKeyedTransactor(key)
 		transactOpts := &bind.TransactOpts{

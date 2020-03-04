@@ -17,10 +17,11 @@ func BalanceCmd() *cobra.Command {
 var balanceCmd = &cobra.Command{
 	Use:          "balance <account/address>",
 	Short:        "Total plasma chain balance across utxos",
-	SilenceUsage: true,
 	Args:         cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
+		cmd.SilenceUsage = true
+
 		var (
 			addr ethcmn.Address
 			err  error

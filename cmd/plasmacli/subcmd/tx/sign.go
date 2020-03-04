@@ -55,6 +55,7 @@ Usage:
 			err = signSingleConfirmSig(ctx, position, signerAddr, name)
 			return err
 		}
+		cmd.SilenceUsage = true
 
 		utxos, err := client.Info(ctx, signerAddr)
 		if err != nil {

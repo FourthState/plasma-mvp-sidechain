@@ -36,6 +36,8 @@ Usage:
 			return fmt.Errorf("failed to parse gas limit: { %s }", err)
 		}
 
+		cmd.SilenceUsage = true
+
 		// bind key, generate transact opts
 		auth := bind.NewKeyedTransactor(key)
 		transactOpts := &bind.TransactOpts{

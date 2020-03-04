@@ -17,10 +17,10 @@ func InfoCmd() *cobra.Command {
 var infoCmd = &cobra.Command{
 	Use:          "info <account/address>",
 	Short:        "Information on owned utxos valid and invalid",
-	SilenceUsage: true,
 	Args:         cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.NewCLIContext()
+		cmd.SilenceUsage = true
 		var (
 			addr ethcmn.Address
 			err  error

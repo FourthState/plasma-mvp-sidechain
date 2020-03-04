@@ -61,6 +61,8 @@ Usage:
 			return fmt.Errorf("failed to retrieve account key: { %s }", err)
 		}
 
+		cmd.SilenceUsage = true
+
 		// bind key
 		auth := bind.NewKeyedTransactor(key)
 		transactOpts := &bind.TransactOpts{
