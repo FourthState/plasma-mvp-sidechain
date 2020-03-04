@@ -7,6 +7,7 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 )
 
@@ -154,3 +155,48 @@ func Blocks(ctx context.CLIContext, startingHeight *big.Int) ([]store.Block, err
 
 	return blocks, nil
 }
+
+// Returns confirm sig results for given position
+// Trusts connected full node
+func Signatures(ctx context.CLIContext, position plasma.Position) ([]byte, error) {
+	key := store.GetOutputKey(position)
+	hash, err := ctx.QueryStore(key, store.DataStoreName)
+	if err != nil {
+		return nil, err
+	}
+
+	txKey := store.GetTxKey(hash)
+	txBytes, err := ctx.QueryStore(txKey, store.DataStoreName)
+
+	var tx store.Transaction
+	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
+		return nil, fmt.Errorf("transaction decoding failed: %s", err.Error())
+	}
+
+	// Look for confirmation signatures
+	// Ignore error if no confirm sig currently exists in store
+	var sigs []byte
+	if len(tx.SpenderTxs[position.OutputIndex]) > 0 {
+		queryPath := fmt.Sprintf("custom/%s/%s/%s",
+			store.QuerierRouteName, store.QueryTx, tx.SpenderTxs[position.OutputIndex])
+		data, err := ctx.Query(queryPath, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		var spenderTx store.Transaction
+		if err := json.Unmarshal(data, &spenderTx); err != nil {
+			return nil, fmt.Errorf("unmarshaling json query response: %s", err)
+		}
+		for _, input := range spenderTx.Transaction.Inputs {
+			if input.Position.String() == position.String() {
+				for _, sig := range input.ConfirmSignatures {
+					sigs = append(sigs, sig[:]...)
+				}
+			}
+		}
+	}
+
+	return sigs, nil
+}
+

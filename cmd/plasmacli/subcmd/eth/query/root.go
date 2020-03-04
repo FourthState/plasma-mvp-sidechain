@@ -16,7 +16,6 @@ var (
 	indexF    = "index"
 	limitF    = "limit"
 	positionF = "position"
-	useNodeF  = "use-node"
 )
 
 // RootCmd returns the eth query command
