@@ -23,15 +23,17 @@ var sigCmd = &cobra.Command{
 		// parse position
 		pos, err := plasma.FromPositionString(args[0])
 		if err != nil {
-			return err
+			return fmt.Errorf("error parsing position: %s", err)
 		}
 
 		var sigs []byte
 		ctx := context.NewCLIContext()
-		sigs, err = client.Signatures(ctx, pos)
+		sigs, err = client.ConfirmSignatures(ctx, pos)
 		if err != nil {
 			return fmt.Errorf("failed to retrieve confirm signature information: %s", err)
 		}
+
+		cmd.SilenceUsage = true
 
 		switch len(sigs) {
 		case 0:

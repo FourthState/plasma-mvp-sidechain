@@ -158,7 +158,7 @@ func Blocks(ctx context.CLIContext, startingHeight *big.Int) ([]store.Block, err
 
 // Returns confirm sig results for given position
 // Trusts connected full node
-func Signatures(ctx context.CLIContext, position plasma.Position) ([]byte, error) {
+func ConfirmSignatures(ctx context.CLIContext, position plasma.Position) ([]byte, error) {
 	key := store.GetOutputKey(position)
 	hash, err := ctx.QueryStore(key, store.DataStoreName)
 	if err != nil {
@@ -188,6 +188,7 @@ func Signatures(ctx context.CLIContext, position plasma.Position) ([]byte, error
 		if err := json.Unmarshal(data, &spenderTx); err != nil {
 			return nil, fmt.Errorf("unmarshaling json query response: %s", err)
 		}
+
 		for _, input := range spenderTx.Transaction.Inputs {
 			if input.Position.String() == position.String() {
 				for _, sig := range input.ConfirmSignatures {
