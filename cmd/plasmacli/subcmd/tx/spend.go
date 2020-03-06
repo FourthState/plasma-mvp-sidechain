@@ -67,6 +67,8 @@ Usage:
 			return err
 		}
 
+		cmd.SilenceUsage = true
+
 		inputs, err := parseInputs()
 		if err != nil {
 			return err

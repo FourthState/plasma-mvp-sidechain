@@ -33,6 +33,8 @@ Usage:
 			return fmt.Errorf("failed to parse limit:  %s", err)
 		}
 
+		cmd.SilenceUsage = true
+
 		lastNonce, err := plasmaContract.DepositNonce(nil)
 		if err != nil {
 			return fmt.Errorf("failed to trying to get last deposit nonce: %s", err)

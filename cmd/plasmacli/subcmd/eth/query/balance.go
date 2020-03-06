@@ -32,8 +32,9 @@ var balanceCmd = &cobra.Command{
 			addr = ethcmn.HexToAddress(args[0])
 		}
 
-		balance, err := plasmaContract.BalanceOf(nil, addr)
+		cmd.SilenceUsage = true
 
+		balance, err := plasmaContract.BalanceOf(nil, addr)
 		if err != nil {
 			return fmt.Errorf("failed to retrieve balance: { %s }", err)
 		}

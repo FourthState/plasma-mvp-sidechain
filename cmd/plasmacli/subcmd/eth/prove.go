@@ -32,6 +32,8 @@ var proveCmd = &cobra.Command{
 			return err
 		}
 
+		cmd.SilenceUsage = true
+
 		result, sigs, err := getProof(ctx, position)
 		if err != nil {
 			return err

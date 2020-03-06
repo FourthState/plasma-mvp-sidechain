@@ -37,6 +37,8 @@ Usage:
 			return fmt.Errorf("failed to parse limit: { %s }", err)
 		}
 
+		cmd.SilenceUsage = true
+
 		end := curr + lim
 		for curr < end {
 			block, err := plasmaContract.PlasmaChain(nil, big.NewInt(curr))
