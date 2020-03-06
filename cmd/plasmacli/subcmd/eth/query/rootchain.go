@@ -18,6 +18,7 @@ Total contract balance does not include total withdraw balance. The total withdr
 	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, agrs []string) error {
 		cmd.SilenceUsage = true
+
 		lastCommittedBlock, err := plasmaContract.LastCommittedBlock(nil)
 		if err != nil {
 			return err
