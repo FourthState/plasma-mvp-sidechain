@@ -25,6 +25,7 @@ func RootCmd() *cobra.Command {
 		IncludeCmd(),
 		SpendCmd(),
 		SignCmd(),
+		BroadcastSigsCmd(),
 	)
 
 	return txCmd
