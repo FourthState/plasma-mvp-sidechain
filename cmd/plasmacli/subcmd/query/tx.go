@@ -64,7 +64,7 @@ var txCmd *cobra.Command = &cobra.Command{
 			// we expect the length of `SpenderTx` and `Spent` to be the same
 			for i, spender := range tx.SpenderTxs {
 				spent := tx.Spent[i]
-				fmt.Println("Ouput %d:\n\tSpent: %v\n", i, spent)
+				fmt.Printf("Ouput %d:\n\tSpent: %v\n", i, spent)
 				if spent {
 					// keep the indentendation
 					fmt.Printf("\tSpender Tx: 0x%x\n", spender)
