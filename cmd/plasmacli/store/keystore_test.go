@@ -58,7 +58,7 @@ func TestAccounts(t *testing.T) {
 
 	for i, n := range actualNames {
 		expectedAddr, err := GetAccount(string(n))
-		require.NoError(t, err, "case %d: failed to get account. error: %s", i, n)
+		require.NoError(t, err, "case %d: failed to get account %s", i, n)
 		require.Equal(t, actualAddrs[i], expectedAddr, "case %d: address returned from iterator does not match actual address for account %s", i, n)
 		i++
 	}
