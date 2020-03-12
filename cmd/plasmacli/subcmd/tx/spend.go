@@ -152,7 +152,7 @@ Usage:
 			Transaction: tx,
 		}
 		if err := msg.ValidateBasic(); err != nil {
-			return fmt.Errorf("failed on validating transaction. If you didn't provide the inputs please open an issue on github. Error: { %s }", err)
+			return fmt.Errorf("failed on validating transaction. If you didn't provide the inputs please open an issue on github. error: %s", err)
 		}
 
 		txBytes, err := rlp.EncodeToBytes(&msg)
@@ -352,7 +352,7 @@ func retrieveInputs(ctx context.CLIContext, accs []string, total *big.Int) (inpu
 	for i, utxo0 := range utxos {
 		exitted, err := eth.HasTxExited(utxo0.Position)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
+			return nil, nil, fmt.Errorf("must connect full eth node or specify inputs using flags. Error encountered: %s", err)
 		}
 		if exitted || utxo0.Spent {
 			continue
@@ -370,7 +370,7 @@ func retrieveInputs(ctx context.CLIContext, accs []string, total *big.Int) (inpu
 
 			exitted, err := eth.HasTxExited(utxo1.Position)
 			if err != nil {
-				return nil, nil, fmt.Errorf("Must connect full eth node or specify inputs using flags. Error encountered: %s", err)
+				return nil, nil, fmt.Errorf("must connect full eth node or specify inputs using flags. Error encountered: %s", err)
 			}
 			if exitted || utxo1.Spent {
 				continue

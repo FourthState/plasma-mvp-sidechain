@@ -33,13 +33,13 @@ func SaveSig(position plasma.Position, sig []byte, prepend bool) error {
 	dir := getDir(signatureDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return fmt.Errorf("failed to open db for signatures: { %s }", err)
+		return fmt.Errorf("failed to open db for signatures: %s", err)
 	}
 	defer db.Close()
 
 	k := getSigKey(position)
 	if err := db.Put(k, signatures, nil); err != nil {
-		return fmt.Errorf("failed to save confirmation signature: { %s }", err)
+		return fmt.Errorf("failed to save confirmation signature: %s", err)
 	}
 
 	return nil
@@ -50,13 +50,13 @@ func GetSig(position plasma.Position) ([]byte, error) {
 	dir := getDir(signatureDir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open db for signature: { %s }", err)
+		return nil, fmt.Errorf("failed to open db for signature: %s", err)
 	}
 	defer db.Close()
 
 	k := getSigKey(position)
 	if sig, err := db.Get(k, nil); err != nil {
-		return []byte{}, fmt.Errorf("failed to get signature: { %s }", err)
+		return []byte{}, fmt.Errorf("failed to get signature: %s", err)
 	} else {
 		return sig, nil
 	}

@@ -31,12 +31,12 @@ Usage:
 
 		key, err := store.GetKey(args[0])
 		if err != nil {
-			return fmt.Errorf("failed to retrieve account: { %s }", err)
+			return fmt.Errorf("failed to retrieve account: %s", err)
 		}
 
 		gasLimit, err := strconv.ParseUint(viper.GetString(gasLimitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse gas limit: { %s }", err)
+			return fmt.Errorf("failed to parse gas limit: %s", err)
 		}
 
 		cmd.SilenceUsage = true
@@ -56,7 +56,7 @@ Usage:
 			tx, err = plasmaContract.FinalizeTransactionExits(transactOpts)
 		}
 		if err != nil {
-			return fmt.Errorf("failed to finalize exits: { %s }", err)
+			return fmt.Errorf("failed to finalize exits: %s", err)
 		}
 
 		fmt.Printf("Successfully sent finalize exits transaction\nTransaction Hash: 0x%x\n", tx.Hash())

@@ -36,7 +36,7 @@ var balanceCmd = &cobra.Command{
 
 		balance, err := plasmaContract.BalanceOf(nil, addr)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve balance: { %s }", err)
+			return fmt.Errorf("failed to retrieve balance: %s", err)
 		}
 
 		fmt.Printf("Rootchain Balance: %d\n", balance)
