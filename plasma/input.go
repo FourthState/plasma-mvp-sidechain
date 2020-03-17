@@ -40,7 +40,7 @@ func (i Input) ValidateBasic() error {
 		}
 	} else {
 		if err := i.Position.ValidateBasic(); err != nil {
-			return fmt.Errorf("invalid position %s", err)
+			return fmt.Errorf("invalid position: %s", err)
 		}
 
 		if bytes.Equal(i.Signature[:], emptySig[:]) {
