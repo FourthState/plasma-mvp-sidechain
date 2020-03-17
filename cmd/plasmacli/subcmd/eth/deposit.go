@@ -30,17 +30,17 @@ Usage:
 
 		key, err := store.GetKey(args[1])
 		if err != nil {
-			return fmt.Errorf("failed to retrieve account: { %s }", err)
+			return fmt.Errorf("failed to retrieve account: %s", err)
 		}
 
 		amt, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse amount: { %s }", err)
+			return fmt.Errorf("failed to parse amount: %s", err)
 		}
 
 		gasLimit, err := strconv.ParseUint(viper.GetString(gasLimitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse gas limit: { %s }", err)
+			return fmt.Errorf("failed to parse gas limit: %s", err)
 		}
 
 		cmd.SilenceUsage = true
@@ -56,7 +56,7 @@ Usage:
 
 		tx, err := plasmaContract.Deposit(transactOpts, crypto.PubkeyToAddress(key.PublicKey))
 		if err != nil {
-			return fmt.Errorf("failed to deposit: { %s }", err)
+			return fmt.Errorf("failed to deposit: %s", err)
 		}
 
 		fmt.Printf("Successfully sent deposit transaction\nTransaction Hash: 0x%x\n", tx.Hash())

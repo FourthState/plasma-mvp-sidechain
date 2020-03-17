@@ -98,7 +98,7 @@ Usage:
 			}
 			curr, err = strconv.ParseInt(viper.GetString(indexF), 10, 64)
 			if err != nil {
-				return fmt.Errorf("failed to parse index: { %s }", err)
+				return fmt.Errorf("failed to parse index: %s", err)
 			}
 		}
 
