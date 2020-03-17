@@ -242,7 +242,6 @@ func parseConfirmSignatures(confirmSignatures [2][][65]byte) ([2][][65]byte, err
 			flag = confirmSigs0F
 		} else {
 			flag = confirmSigs1F
-
 		}
 		confirmSigTokens := strings.Split(strings.TrimSpace(viper.GetString(flag)), ",")
 		// empty confirmsig

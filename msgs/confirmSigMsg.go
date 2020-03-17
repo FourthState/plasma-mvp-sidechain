@@ -3,8 +3,6 @@ package msgs
 import (
 	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/FourthState/plasma-mvp-sidechain/utils"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -27,27 +25,7 @@ func (msg ConfirmSigMsg) Route() string { return ConfirmSigMsgRoute }
 // GetSigners will attempt to retrieve the signers of the message.
 // CONTRACT: a nil slice is returned if recovery fails
 func (msg ConfirmSigMsg) GetSigners() []sdk.AccAddress {
-	positionHash1 := utils.ToEthSignedMessageHash(msg.Input1.Position.Bytes())
-	var addrs []sdk.AccAddress
-
-	// recover first owner
-	pubKey, err := crypto.SigToPub(positionHash1, msg.Input1.Signature[:])
-	if err != nil {
-		return nil
-	}
-	addrs = append(addrs, sdk.AccAddress(crypto.PubkeyToAddress(*pubKey).Bytes()))
-
-	if msg.Input2.Signature != [65]byte{} {
-		// recover the second owner
-		positionHash2 := utils.ToEthSignedMessageHash(msg.Input1.Position.Bytes())
-		pubKey, err = crypto.SigToPub(positionHash2, msg.Input2.Signature[:])
-		if err != nil {
-			return nil
-		}
-		addrs = append(addrs, sdk.AccAddress(crypto.PubkeyToAddress(*pubKey).Bytes()))
-	}
-
-	return addrs
+	return nil
 }
 
 // GetSignBytes returns the Keccak256 hash of the transaction.

@@ -192,49 +192,25 @@ func includeDepositAnteHandler(ctx sdk.Context, ds store.DataStore, msg msgs.Inc
 // validates that the confirmSig msg is valid given the current plasma sidechain state
 func confirmSigAnteHandler(ctx sdk.Context, ds store.DataStore, confirmSigMsg msgs.ConfirmSigMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
 
-	// attempt to recover signers
-	signers := confirmSigMsg.GetSigners()
-	if len(signers) == 0 {
-		return ctx, ErrInvalidTransaction("failed recovering signers").Result(), true
-	}
-
-	expectedSigners := 0
-	if confirmSigMsg.Input1.Signature != [65]byte{} {
-		expectedSigners += 1
-	}
-	if confirmSigMsg.Input2.Signature != [65]byte{} {
-		expectedSigners += 1
-	}
-
-	if len(signers) != expectedSigners {
-		return ctx, ErrInvalidSignature("number of signers does not equal number of signatures").Result(), true
-	}
-
-	res = validateSigMsgInput(ctx, ds, confirmSigMsg.Input1, common.BytesToAddress(signers[0]), client)
+	res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input1, client)
 	if !res.IsOK() {
 		return ctx, res, true
 	}
-	if len(signers) > 1 {
-		res = validateSigMsgInput(ctx, ds, confirmSigMsg.Input2, common.BytesToAddress(signers[1]), client)
-		if !res.IsOK() {
-			return ctx, res, true
-		}
+
+	res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input2, client)
+	if !res.IsOK() {
+		return ctx, res, true
 	}
 
 	return ctx, sdk.Result{}, false
 }
 
-// validates the inputs against the output store and returns the amount of the respective input
-func validateSigMsgInput(ctx sdk.Context, ds store.DataStore, input plasma.Input, signer common.Address, client plasmaConn) (sdk.Result) {
+// validates the inputs against the output store
+func validateConfirmSigMsgInput(ctx sdk.Context, ds store.DataStore, input plasma.Input, client plasmaConn) sdk.Result {
 
-	// inputUTXO must be owned by the signer due to the prefix so we do not need to
-	// check the owner of the position
-	inputUTXO, ok := ds.GetOutput(ctx, input.Position)
+	_, ok := ds.GetOutput(ctx, input.Position)
 	if !ok {
 		return ErrInvalidInput("input, %v, does not exist", input.Position).Result()
-	}
-	if !bytes.Equal(inputUTXO.Output.Owner[:], signer[:]) {
-		return ErrSignatureVerificationFailure(fmt.Sprintf("transaction was not signed by correct address. Got: 0x%x. Expected: 0x%x", signer, inputUTXO.Output.Owner)).Result()
 	}
 
 	// validate inputs/confirmation signatures if not a fee utxo or deposit utxo
