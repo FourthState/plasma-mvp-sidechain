@@ -197,9 +197,11 @@ func confirmSigAnteHandler(ctx sdk.Context, ds store.DataStore, confirmSigMsg ms
 		return ctx, res, true
 	}
 
-	res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input2, client)
-	if !res.IsOK() {
-		return ctx, res, true
+	if confirmSigMsg.Input2.Signature == [65]byte{1} {
+		res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input2, client)
+		if !res.IsOK() {
+			return ctx, res, true
+		}
 	}
 
 	return ctx, sdk.Result{}, false
@@ -207,6 +209,10 @@ func confirmSigAnteHandler(ctx sdk.Context, ds store.DataStore, confirmSigMsg ms
 
 // validates the inputs against the output store
 func validateConfirmSigMsgInput(ctx sdk.Context, ds store.DataStore, input plasma.Input, client plasmaConn) sdk.Result {
+
+	if input.Signature == [65]byte{} || input.Signature != [65]byte{1} {
+		return ErrInvalidSignature("invalid signature provided").Result()
+	}
 
 	_, ok := ds.GetOutput(ctx, input.Position)
 	if !ok {
