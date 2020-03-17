@@ -197,11 +197,9 @@ func confirmSigAnteHandler(ctx sdk.Context, ds store.DataStore, confirmSigMsg ms
 		return ctx, res, true
 	}
 
-	if confirmSigMsg.Input2.Signature == [65]byte{1} {
-		res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input2, client)
-		if !res.IsOK() {
-			return ctx, res, true
-		}
+	res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input2, client)
+	if !res.IsOK() {
+		return ctx, res, true
 	}
 
 	return ctx, sdk.Result{}, false
