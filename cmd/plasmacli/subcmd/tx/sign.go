@@ -123,7 +123,7 @@ func signSingleConfirmSig(ctx context.CLIContext, position plasma.Position, sign
 		hash := utils.ToEthSignedMessageHash(output.ConfirmationHash)
 		sig, err := clistore.SignHashWithPassphrase(name, hash)
 		if err != nil {
-			return fmt.Errorf("failed to generate confirmation signature: { %s }", err)
+			return fmt.Errorf("failed to generate confirmation signature: %s", err)
 		}
 
 		if err := clistore.SaveSig(output.Position, sig, i == 0); err != nil {

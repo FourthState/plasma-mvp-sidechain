@@ -39,7 +39,7 @@ var includeCmd = &cobra.Command{
 		if len(args) == 2 {
 			address, err = store.GetAccount(args[1])
 			if err != nil {
-				return fmt.Errorf("Could not retrieve account: %s", args[1])
+				return fmt.Errorf("could not retrieve account: %s", args[1])
 			}
 		} else {
 			addrToken := viper.GetString(addressF)
