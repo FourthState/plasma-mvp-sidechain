@@ -527,47 +527,125 @@ func TestAnteConfirmSigInvalidSig(t *testing.T) {
 	ctx, ds := setup()
 	handler := NewAnteHandler(ds, conn{})
 
-	// Try to include with emptySig
+	// Try to include with invalid sig
 	msg := msgs.ConfirmSigMsg{
-		Input1: plasma.NewInput(plasma.NewPosition(utils.Big1, 0, 0, nil), [65]byte{}, [][65]byte{}),
-		Input2:plasma.NewInput(plasma.NewPosition(utils.Big1, 0, 0, nil), [65]byte{}, [][65]byte{}),
+		Input1: plasma.NewInput(plasma.NewPosition(utils.Big1, 1, 0, utils.Big0), [65]byte{87}, [][65]byte{}),
+		Input2:plasma.NewInput(plasma.NewPosition(utils.Big1, 2, 1, utils.Big0), [65]byte{46}, [][65]byte{}),
 	}
 
 	_, res, abort := handler(ctx, msg, false)
-	require.False(t, res.IsOK(), "Empty input signature did not error")
-	require.True(t, abort, "Empty input signature did not abort")
-
-}
-
-func TestAnteConfirmSigEmptyConfirmSig(t *testing.T) {
-
-}
-
-func TestAnteConfirmSigInvalidConfirmSig(t *testing.T) {
-
+	require.False(t, res.IsOK(), "Invalid input signature did not error")
+	require.True(t, abort, "Invalid input signature did not abort")
 }
 
 func TestAnteConfirmSigInputDNE(t *testing.T) {
+	//setup
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
 
+	// Input will by default not exist
+	msg := msgs.ConfirmSigMsg{
+		Input1: plasma.NewInput(plasma.NewPosition(utils.Big1, 1, 0, utils.Big0), [65]byte{1}, nil),
+		Input2:plasma.NewInput(plasma.NewPosition(utils.Big1, 2, 1, utils.Big0), [65]byte{1}, nil),
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+	require.False(t, res.IsOK(), "Invalid input did not error")
+	require.True(t, abort, "Invalid input did not abort")
+}
+
+func TestAnteConfirmSigEmptyConfirmSig(t *testing.T) {
+	// setup
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
+
+	pos := plasma.NewPosition(utils.Big1, 2, 3, utils.Big0)
+	transaction := plasma.Transaction{
+		Inputs:  []plasma.Input{plasma.NewInput(pos, [65]byte{}, nil)},
+		Outputs: []plasma.Output{plasma.NewOutput(addr, big.NewInt(10))},
+		Fee:     utils.Big0,
+	}
+	storeTransaction := store.Transaction{
+		Transaction: transaction,
+		ConfirmationHash: []byte{1234},
+		Spent: []bool{false},
+		SpenderTxs: [][]byte{},
+		Position: pos,
+	}
+	ds.StoreOutputs(ctx, storeTransaction)
+
+	// Try to include with empty confirm sig
+	msg := msgs.ConfirmSigMsg{
+		Input1: plasma.NewInput(pos, [65]byte{1}, nil),
+		Input2: plasma.Input{},
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+	require.False(t, res.IsOK(), "Empty confirm signature did not error")
+	require.True(t, abort, "Empty confirm signature did not abort")
 }
 
 func TestAnteConfirmSigInputIsDeposit(t *testing.T) {
+	// setup
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
 
-}
+	pos := plasma.NewPosition(utils.Big0, 0, 0, utils.Big1)
+	transaction := plasma.Transaction{
+		Inputs:  []plasma.Input{plasma.NewInput(pos, [65]byte{}, nil)},
+		Outputs: []plasma.Output{plasma.NewOutput(addr, big.NewInt(10))},
+		Fee:     utils.Big0,
+	}
+	storeTransaction := store.Transaction{
+		Transaction: transaction,
+		ConfirmationHash: []byte{1234},
+		Spent: []bool{false},
+		SpenderTxs: [][]byte{},
+		Position: pos,
+	}
+	ds.StoreOutputs(ctx, storeTransaction)
 
-func TestAnteConfirmSigInputIsFee(t *testing.T) {
+	// Try to include with deposit input
+	msg := msgs.ConfirmSigMsg{
+		Input1: plasma.NewInput(pos, [65]byte{1}, [][65]byte{{123}}),
+		Input2: plasma.Input{},
+	}
 
+	_, res, abort := handler(ctx, msg, false)
+	require.True(t, res.IsOK(), "Deposit message errored")
+	require.False(t, abort, "Deposit message aborted")
 }
 
 func TestAnteConfirmSigInputNotPartOfTx(t *testing.T) {
+	// setup
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
 
+	pos := plasma.NewPosition(utils.Big1, 2, 3, utils.Big0)
+	transaction := plasma.Transaction{
+		Inputs:  []plasma.Input{plasma.NewInput(pos, [65]byte{}, nil)},
+		Outputs: []plasma.Output{plasma.NewOutput(addr, big.NewInt(10))},
+		Fee:     utils.Big0,
+	}
+	storeTransaction := store.Transaction{
+		Transaction: transaction,
+		ConfirmationHash: []byte{1234},
+		Spent: []bool{false},
+		SpenderTxs: [][]byte{},
+		Position: pos,
+	}
+	ds.StoreOutputs(ctx, storeTransaction)
+
+	// Try to include with tx not stored yet (default behaviour)
+	msg := msgs.ConfirmSigMsg{
+		Input1: plasma.NewInput(plasma.NewPosition(utils.Big1, 2, 3, utils.Big0), [65]byte{1}, [][65]byte{{123}}),
+		Input2: plasma.Input{},
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+	require.True(t, res.IsOK(), "Deposit message errored")
+	require.False(t, abort, "Deposit message aborted")
 }
-
-func TestAnteConfirmSigParentExited(t *testing.T) {
-
-}
-
-
 
 
 func setupDeposits(ctx sdk.Context, ds store.DataStore, inputs ...Deposit) {

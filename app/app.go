@@ -116,7 +116,7 @@ func NewPlasmaMVPChain(logger log.Logger, db dbm.DB, traceStore io.Writer, optio
 	}
 	app.Router().AddRoute(msgs.SpendMsgRoute, handlers.NewSpendHandler(app.dataStore, nextTxIndex, feeUpdater))
 	app.Router().AddRoute(msgs.IncludeDepositMsgRoute, handlers.NewDepositHandler(app.dataStore, nextTxIndex, plasmaClient))
-	app.Router().AddRoute(msgs.ConfirmSigMsgRoute, handlers.NewConfirmSigHandler(app.dataStore, nextTxIndex, feeUpdater))
+	app.Router().AddRoute(msgs.ConfirmSigMsgRoute, handlers.NewConfirmSigHandler(app.dataStore))
 
 	// custom queriers
 	app.QueryRouter().AddRoute(store.QuerierRouteName, store.NewQuerier(app.dataStore))

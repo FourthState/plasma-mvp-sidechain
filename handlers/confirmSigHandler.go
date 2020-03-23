@@ -23,6 +23,7 @@ func NewConfirmSigHandler(ds store.DataStore) sdk.Handler {
 		}
 
 		for i := 0; i < len(tx1.Transaction.Inputs); i++ {
+			// TODO: Is TxIndex sufficient? Also should likely check output index?
 			if tx1.Transaction.Inputs[i].Position.TxIndex != confirmSigMsg.Input1.Position.TxIndex {
 				continue
 			}
