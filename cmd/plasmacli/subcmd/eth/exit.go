@@ -56,18 +56,18 @@ Transaction Exit Usage:
 
 		fee, err := strconv.ParseInt(viper.GetString(feeF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse fee: { %s }", err)
+			return fmt.Errorf("failed to parse fee: %s", err)
 		}
 
 		gasLimit, err := strconv.ParseUint(viper.GetString(gasLimitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse gas limit: { %s }", err)
+			return fmt.Errorf("failed to parse gas limit: %s", err)
 		}
 
 		// retrieve account key
 		key, err := ks.GetKey(args[0])
 		if err != nil {
-			return fmt.Errorf("failed to retrieve account key: { %s }", err)
+			return fmt.Errorf("failed to retrieve account key: %s", err)
 		}
 
 		cmd.SilenceUsage = true
@@ -85,7 +85,7 @@ Transaction Exit Usage:
 		if position.IsFee() {
 			tx, err = plasmaContract.StartFeeExit(transactOpts, position.BlockNum, big.NewInt(fee))
 			if err != nil {
-				return fmt.Errorf("failed to start fee exit: { %s }", err)
+				return fmt.Errorf("failed to start fee exit: %s", err)
 			}
 			fmt.Printf("Sent fee exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 			return nil
@@ -95,7 +95,7 @@ Transaction Exit Usage:
 		if position.IsDeposit() {
 			tx, err := plasmaContract.StartDepositExit(transactOpts, position.DepositNonce, big.NewInt(fee))
 			if err != nil {
-				return fmt.Errorf("failed to start deposit exit: { %s }", err)
+				return fmt.Errorf("failed to start deposit exit: %s", err)
 			}
 			fmt.Printf("Sent deposit exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 			return nil
@@ -108,7 +108,7 @@ Transaction Exit Usage:
 			ctx := context.NewCLIContext()
 			result, confirmSignatures, err = getProof(ctx, position)
 			if err != nil {
-				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
+				return fmt.Errorf("failed to retrieve exit information: %s", err)
 			}
 
 			txBytes = result.Tx
@@ -134,7 +134,7 @@ Transaction Exit Usage:
 		txPos := [3]*big.Int{position.BlockNum, big.NewInt(int64(position.TxIndex)), big.NewInt(int64(position.OutputIndex))}
 		tx, err = plasmaContract.StartTransactionExit(transactOpts, txPos, txBytes, proof, confirmSignatures, big.NewInt(fee))
 		if err != nil {
-			return fmt.Errorf("failed to start transaction exit: { %s }", err)
+			return fmt.Errorf("failed to start transaction exit: %s", err)
 		}
 		fmt.Printf("Sent exit transaction\nTransaction Hash: 0x%x\n", tx.Hash())
 		return nil

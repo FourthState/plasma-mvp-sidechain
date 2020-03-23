@@ -144,7 +144,7 @@ func (plasma *Plasma) CommitPlasmaHeaders(ctx sdk.Context, ds store.DataStore) e
 	plasma.operatorSession.lastBlockSubmission = time.Now()
 	_, err = plasma.operatorSession.SubmitBlock(headers, txnsPerBlock, feesPerBlock, firstBlockNum)
 	if err != nil {
-		logger.Error(fmt.Sprintf("error committing headers { %s }", err))
+		logger.Error(fmt.Sprintf("error committing headers %s", err))
 		return err
 	}
 
@@ -214,7 +214,7 @@ func (plasma *Plasma) HasTxExited(plasmaBlockHeight *big.Int, position plasmaTyp
 
 	// censor spends until the error is fixed
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to retrieve exit information about position %s { %s }", position, err))
+		logger.Error(fmt.Sprintf("failed to retrieve exit information about position %s. error: %s", position, err))
 		return true, err
 	}
 

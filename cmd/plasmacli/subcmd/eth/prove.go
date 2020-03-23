@@ -86,7 +86,7 @@ func getProof(ctx context.CLIContext, position plasma.Position) (*tm.ResultTx, [
 
 	var tx store.Transaction
 	if err := rlp.DecodeBytes(txBytes, &tx); err != nil {
-		return &tm.ResultTx{}, nil, fmt.Errorf("Transaction decoding failed: %s", err.Error())
+		return &tm.ResultTx{}, nil, fmt.Errorf("transaction decoding failed: %s", err.Error())
 	}
 
 	// query tm node for information about this tx

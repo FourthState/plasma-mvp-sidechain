@@ -29,12 +29,12 @@ Usage:
 		viper.BindPFlags(cmd.Flags())
 		curr, err := strconv.ParseInt(args[0], 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse block number: { %s }", err)
+			return fmt.Errorf("failed to parse block number: %s", err)
 		}
 
 		lim, err := strconv.ParseInt(viper.GetString(limitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse limit: { %s }", err)
+			return fmt.Errorf("failed to parse limit: %s", err)
 		}
 
 		cmd.SilenceUsage = true
@@ -43,7 +43,7 @@ Usage:
 		for curr < end {
 			block, err := plasmaContract.PlasmaChain(nil, big.NewInt(curr))
 			if err != nil {
-				return fmt.Errorf("failed to retrieve block: { %s }", err)
+				return fmt.Errorf("failed to retrieve block: %s", err)
 			}
 			if block.CreatedAt.Int64() == 0 {
 				break

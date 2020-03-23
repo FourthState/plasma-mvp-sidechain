@@ -53,12 +53,12 @@ Usage:
 
 		gasLimit, err := strconv.ParseUint(viper.GetString(gasLimitF), 10, 64)
 		if err != nil {
-			return fmt.Errorf("failed to parse gas limit: { %s }", err)
+			return fmt.Errorf("failed to parse gas limit: %s", err)
 		}
 
 		key, err := ks.GetKey(args[2])
 		if err != nil {
-			return fmt.Errorf("failed to retrieve account key: { %s }", err)
+			return fmt.Errorf("failed to retrieve account key: %s", err)
 		}
 
 		cmd.SilenceUsage = true
@@ -77,7 +77,7 @@ Usage:
 			ctx := context.NewCLIContext()
 			result, confirmSignatures, err = getProof(ctx, challengingPos)
 			if err != nil {
-				return fmt.Errorf("failed to retrieve exit information: { %s }", err)
+				return fmt.Errorf("failed to retrieve exit information: %s", err)
 			}
 
 			txBytes = result.Tx
@@ -104,7 +104,7 @@ Usage:
 		challengePos := [2]*big.Int{challengingPos.BlockNum, big.NewInt(int64(challengingPos.TxIndex))}
 		tx, err := plasmaContract.ChallengeExit(transactOpts, exitPos, challengePos, txBytes, proof, confirmSignatures)
 		if err != nil {
-			return fmt.Errorf("failed to send challenge transaction: { %s }", err)
+			return fmt.Errorf("failed to send challenge transaction: %s", err)
 		}
 
 		fmt.Printf("Sent challenge transaction\nTransaction Hash: 0x%x\n", tx.Hash())
