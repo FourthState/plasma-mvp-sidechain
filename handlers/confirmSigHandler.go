@@ -1,12 +1,9 @@
 package handlers
 
 import (
-	"crypto/sha256"
 	"github.com/FourthState/plasma-mvp-sidechain/msgs"
-	"github.com/FourthState/plasma-mvp-sidechain/plasma"
 	"github.com/FourthState/plasma-mvp-sidechain/store"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"math/big"
 )
 
 // NewSpendHandler sets the inputs of a spend msg to spent and creates new
@@ -18,11 +15,40 @@ func NewConfirmSigHandler(ds store.DataStore, nextTxIndex NextTxIndex, feeUpdate
 			panic("Msg does not implement SpendMsg")
 		}
 
-		/* Store Transaction and create new outputs */
-		// TODO: Find best way to store sigs/inputs in DS
-		// input1 := store.TxInput{}
-		// input2 := store.TxInput{}
-		// ds.StoreInput(ctx, input1)
+		/* Get tx, update tx data with confirm sigs, and store updated tx object */
+		// TODO: Validation on correctness of confirm sigs?
+		tx1, ok := ds.GetTxWithPosition(ctx, confirmSigMsg.Input1.Position)
+		if !ok {
+			panic("no transaction exists for the position provided")
+		}
+		
+		for i := 0; i < len(tx1.Transaction.Inputs); i++ {
+			if tx1.Transaction.Inputs[i].Position.TxIndex != confirmSigMsg.Input1.Position.TxIndex {
+				continue
+			}
+
+			// TODO: How to update ConfirmSignatures? Only 1 confirm sig held in msg, tx.inputs[i].confirmsignatures supports array
+			tx1.Transaction.Inputs[i].ConfirmSignatures = confirmSigMsg.Input1.ConfirmSignatures
+		}
+
+		ds.StoreTx(ctx, tx1)
+
+		tx2, ok := ds.GetTxWithPosition(ctx, confirmSigMsg.Input2.Position)
+		if !ok {
+			panic("no transaction exists for the position provided")
+		}
+
+		for i := 0; i < len(tx2.Transaction.Inputs); i++ {
+			if tx2.Transaction.Inputs[i].Position.TxIndex != confirmSigMsg.Input2.Position.TxIndex {
+				continue
+			}
+
+			// TODO: How to update ConfirmSignatures? Only 1 confirm sig held in msg, tx.inputs[i].confirmsignatures supports array
+			tx2.Transaction.Inputs[i].ConfirmSignatures = confirmSigMsg.Input2.ConfirmSignatures
+		}
+
+		ds.StoreTx(ctx, tx2)
+
 		return sdk.Result{}
 	}
 }
