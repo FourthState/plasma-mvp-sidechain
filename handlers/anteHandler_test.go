@@ -519,6 +519,57 @@ func TestAnteDepositWrongOwner(t *testing.T) {
 	require.True(t, abort, "Wrong owner deposit inclusion did not abort")
 }
 
+/*=====================================================================================================================================*/
+// ConfirmSigMsg Antehandler tests
+
+func TestAnteConfirmSigInvalidSig(t *testing.T) {
+	// setup
+	ctx, ds := setup()
+	handler := NewAnteHandler(ds, conn{})
+
+	// Try to include with emptySig
+	msg := msgs.ConfirmSigMsg{
+		Input1: plasma.NewInput(plasma.NewPosition(utils.Big1, 0, 0, nil), [65]byte{}, [][65]byte{}),
+		Input2:plasma.NewInput(plasma.NewPosition(utils.Big1, 0, 0, nil), [65]byte{}, [][65]byte{}),
+	}
+
+	_, res, abort := handler(ctx, msg, false)
+	require.False(t, res.IsOK(), "Empty input signature did not error")
+	require.True(t, abort, "Empty input signature did not abort")
+
+}
+
+func TestAnteConfirmSigEmptyConfirmSig(t *testing.T) {
+
+}
+
+func TestAnteConfirmSigInvalidConfirmSig(t *testing.T) {
+
+}
+
+func TestAnteConfirmSigInputDNE(t *testing.T) {
+
+}
+
+func TestAnteConfirmSigInputIsDeposit(t *testing.T) {
+
+}
+
+func TestAnteConfirmSigInputIsFee(t *testing.T) {
+
+}
+
+func TestAnteConfirmSigInputNotPartOfTx(t *testing.T) {
+
+}
+
+func TestAnteConfirmSigParentExited(t *testing.T) {
+
+}
+
+
+
+
 func setupDeposits(ctx sdk.Context, ds store.DataStore, inputs ...Deposit) {
 	for _, i := range inputs {
 		deposit := plasma.Deposit{

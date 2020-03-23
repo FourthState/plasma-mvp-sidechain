@@ -8,7 +8,7 @@ import (
 
 // NewSpendHandler sets the inputs of a spend msg to spent and creates new
 // outputs that are added to the data store.
-func NewConfirmSigHandler(ds store.DataStore, nextTxIndex NextTxIndex, feeUpdater FeeUpdater) sdk.Handler {
+func NewConfirmSigHandler(ds store.DataStore) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
 		confirmSigMsg, ok := msg.(msgs.ConfirmSigMsg)
 		if !ok {
@@ -21,7 +21,7 @@ func NewConfirmSigHandler(ds store.DataStore, nextTxIndex NextTxIndex, feeUpdate
 		if !ok {
 			panic("no transaction exists for the position provided")
 		}
-		
+
 		for i := 0; i < len(tx1.Transaction.Inputs); i++ {
 			if tx1.Transaction.Inputs[i].Position.TxIndex != confirmSigMsg.Input1.Position.TxIndex {
 				continue
