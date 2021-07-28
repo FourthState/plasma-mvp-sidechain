@@ -25,6 +25,7 @@ func RootCmd() *cobra.Command {
 		BlockCmd(),
 		DepositCmd(),
 		ExitsCmd(),
+		SigCmd(),
 		RootchainCmd(),
 	)
 
