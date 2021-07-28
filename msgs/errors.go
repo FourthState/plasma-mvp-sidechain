@@ -10,6 +10,7 @@ const (
 
 	CodeInvalidSpendMsg          sdk.CodeType = 1
 	CodeInvalidIncludeDepositMsg sdk.CodeType = 2
+	CodeInvalidConfirmSigMsg     sdk.CodeType = 3
 )
 
 // ErrInvalidSpendMsg error for an invalid spend msg
@@ -20,4 +21,8 @@ func ErrInvalidSpendMsg(codespace sdk.CodespaceType, msg string, args ...interfa
 // ErrInvalidIncludeDepositMsg error for an invalid include deposit msg
 func ErrInvalidIncludeDepositMsg(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
 	return sdk.NewError(codespace, CodeInvalidIncludeDepositMsg, msg, args...)
+}
+
+func ErrInvalidConfirmSigMsg(codespace sdk.CodespaceType, msg string, args ...interface{}) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidConfirmSigMsg, msg, args...)
 }

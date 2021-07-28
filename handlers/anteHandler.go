@@ -34,6 +34,9 @@ func NewAnteHandler(ds store.DataStore, client plasmaConn) sdk.AnteHandler {
 		case "spend_utxo":
 			spendMsg := msg.(msgs.SpendMsg)
 			return spendMsgAnteHandler(ctx, ds, spendMsg, client)
+		case "confirm_sig":
+			confirmSigMsg := msg.(msgs.ConfirmSigMsg)
+			return confirmSigAnteHandler(ctx, ds, confirmSigMsg, client)
 		default:
 			return ctx, ErrInvalidTransaction("msg is not of type SpendMsg or IncludeDepositMsg").Result(), true
 		}
@@ -58,7 +61,7 @@ func spendMsgAnteHandler(ctx sdk.Context, ds store.DataStore, spendMsg msgs.Spen
 
 	/* validate inputs */
 	for i, signer := range signers {
-		amt, res := validateInput(ctx, ds, spendMsg.Inputs[i], common.BytesToAddress(signer), client)
+		amt, res := validateSpendInput(ctx, ds, spendMsg.Inputs[i], common.BytesToAddress(signer), client)
 		if !res.IsOK() {
 			return ctx, res, true
 		}
@@ -85,7 +88,7 @@ func spendMsgAnteHandler(ctx sdk.Context, ds store.DataStore, spendMsg msgs.Spen
 }
 
 // validates the inputs against the output store and returns the amount of the respective input
-func validateInput(ctx sdk.Context, ds store.DataStore, input plasma.Input, signer common.Address, client plasmaConn) (*big.Int, sdk.Result) {
+func validateSpendInput(ctx sdk.Context, ds store.DataStore, input plasma.Input, signer common.Address, client plasmaConn) (*big.Int, sdk.Result) {
 	var amt *big.Int
 
 	// inputUTXO must be owned by the signer due to the prefix so we do not need to
@@ -184,4 +187,61 @@ func includeDepositAnteHandler(ctx sdk.Context, ds store.DataStore, msg msgs.Inc
 		return ctx, ErrInvalidTransaction(fmt.Sprintf("msg has the wrong owner field for given deposit. Resubmit with correct deposit owner: %s", deposit.Owner.String())).Result(), true
 	}
 	return ctx, sdk.Result{}, false
+}
+
+// validates that the confirmSig msg is valid given the current plasma sidechain state
+func confirmSigAnteHandler(ctx sdk.Context, ds store.DataStore, confirmSigMsg msgs.ConfirmSigMsg, client plasmaConn) (newCtx sdk.Context, res sdk.Result, abort bool) {
+
+	res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input1, client)
+	if !res.IsOK() {
+		return ctx, res, true
+	}
+
+	res = validateConfirmSigMsgInput(ctx, ds, confirmSigMsg.Input2, client)
+	if !res.IsOK() {
+		return ctx, res, true
+	}
+
+	return ctx, sdk.Result{}, false
+}
+
+// validates the inputs against the output store
+func validateConfirmSigMsgInput(ctx sdk.Context, ds store.DataStore, input plasma.Input, client plasmaConn) sdk.Result {
+
+	if input.Signature == [65]byte{} {
+		return sdk.Result{}
+	}
+	if input.Signature != [65]byte{1} {
+		return ErrInvalidSignature("invalid signature provided").Result()
+	}
+
+	_, ok := ds.GetOutput(ctx, input.Position)
+	if !ok {
+		return ErrInvalidInput("input, %v, does not exist", input.Position).Result()
+	}
+
+	// validate inputs/confirmation signatures if not a fee utxo or deposit utxo
+	if !input.IsDeposit() && !input.IsFee() {
+		tx, ok := ds.GetTxWithPosition(ctx, input.Position)
+		if !ok {
+			return sdk.ErrInternal(fmt.Sprintf("failed to retrieve the transaction that input with position %s belongs to", input.Position)).Result()
+		}
+
+		res := validateConfirmSignatures(ctx, ds, input, tx)
+		if !res.IsOK() {
+			return res
+		}
+
+		// check if the parent utxo has exited
+		for _, in := range tx.Transaction.Inputs {
+			exited, err := client.HasTxExited(ds.PlasmaBlockHeight(ctx), in.Position)
+			if err != nil {
+				return ErrInvalidInput(fmt.Sprintf("failed to retrieve exit information on input, %v", in.Position)).Result()
+			} else if exited {
+				return ErrExitedInput(fmt.Sprintf("a parent of the input has exited. Position: %v", in.Position)).Result()
+			}
+		}
+	}
+
+	return sdk.Result{}
 }
