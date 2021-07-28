@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// Position -
 type Position struct {
 	BlockNum     *big.Int
 	TxIndex      uint16
@@ -20,6 +21,7 @@ const (
 	txIndexFactor    = 10
 )
 
+// NewPosition
 func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *big.Int) Position {
 	if depositNonce == nil {
 		depositNonce = big.NewInt(0)
@@ -36,6 +38,7 @@ func NewPosition(blkNum *big.Int, txIndex uint16, oIndex uint8, depositNonce *bi
 	}
 }
 
+// Bytes serializes `p`
 func (p Position) Bytes() []byte {
 	bytes, _ := rlp.EncodeToBytes(&p)
 	return bytes
@@ -65,18 +68,22 @@ func (p Position) ValidateBasic() error {
 	return nil
 }
 
+// IsDeposit -
 func (p Position) IsDeposit() bool {
 	return p.DepositNonce.Sign() != 0
 }
 
+// IsFee -
 func (p Position) IsFee() bool {
 	return p.TxIndex == 1<<16-1
 }
 
+// IsNilPosition -
 func (p Position) IsNilPosition() bool {
 	return p.BlockNum.Sign() == 0 && p.DepositNonce.Sign() == 0
 }
 
+// Priority
 func (p Position) Priority() *big.Int {
 	if p.IsDeposit() {
 		return p.DepositNonce
@@ -92,6 +99,7 @@ func (p Position) Priority() *big.Int {
 	return temp.Add(temp, big.NewInt(int64(p.OutputIndex)))
 }
 
+// ToBigIntArray -
 func (p Position) ToBigIntArray() [4]*big.Int {
 	return [4]*big.Int{p.BlockNum, big.NewInt(int64(p.TxIndex)), big.NewInt(int64(p.OutputIndex)), p.DepositNonce}
 }
@@ -107,6 +115,9 @@ func (p Position) String() string {
 		p.BlockNum, p.TxIndex, p.OutputIndex, p.DepositNonce)
 }
 
+// FromPositionString constructs a `Position` from the string representation
+// "(blockNumber, txIndex, outputIndex, depositNonce)". The returned error will
+// also reflect an invalid position object in addition to any deserialization errors
 func FromPositionString(posStr string) (Position, error) {
 	posStr = strings.TrimSpace(posStr)
 	if string(posStr[0]) != "(" || string(posStr[len(posStr)-1]) != ")" {
@@ -160,11 +171,16 @@ func FromPositionString(posStr string) (Position, error) {
 	return pos, pos.ValidateBasic()
 }
 
-// Return the position of a utxo given the exit key
+// FromExitKey creates the position of a utxo given the exit key
 func FromExitKey(key *big.Int, deposit bool) Position {
 	if deposit {
 		return NewPosition(big.NewInt(0), 0, 0, key)
-	} else {
-		return NewPosition(new(big.Int).Div(key, big.NewInt(blockIndexFactor)), uint16(key.Int64()%blockIndexFactor/txIndexFactor), uint8(key.Int64()%2), big.NewInt(0))
 	}
+
+	return NewPosition(
+		new(big.Int).Div(key, big.NewInt(blockIndexFactor)),
+		uint16(key.Int64()%blockIndexFactor/txIndexFactor),
+		uint8(key.Int64()%2),
+		big.NewInt(0),
+	)
 }

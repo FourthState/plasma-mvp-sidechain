@@ -18,6 +18,7 @@ const (
 	signPrompt = "Would you like to finalize this transaction? [Y/n]"
 )
 
+// SignCmd -
 func SignCmd() *cobra.Command {
 	signCmd.Flags().String(ownerF, "", "Owner of the output (required with position flag)")
 	signCmd.Flags().String(positionF, "", "Position of transaction to finalize (required with owner flag)")

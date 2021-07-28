@@ -6,5 +6,6 @@ import (
 
 // Flags
 const (
-	Home = tmcli.HomeFlag
+	Home    = tmcli.HomeFlag
+	Verbose = "verbose"
 )

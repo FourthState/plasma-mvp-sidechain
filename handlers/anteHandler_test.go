@@ -352,11 +352,8 @@ func TestAnteValidTx(t *testing.T) {
 	ds.StoreOutputs(ctx, tx)
 	ds.SpendDeposit(ctx, big.NewInt(2), tx.Transaction.TxHash())
 
-	output, check := ds.GetOutput(ctx, getPosition("(1.0.0.0)"))
-	if !check {
-		fmt.Println("WHy?")
-	}
-	fmt.Printf("Output: %v\n", output)
+	_, check := ds.GetOutput(ctx, getPosition("(1.0.0.0)"))
+	require.True(t, check) // sanity
 
 	// store confirm sig into correct format
 	var confirmSig [65]byte

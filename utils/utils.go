@@ -18,6 +18,8 @@ func IsZeroAddress(addr common.Address) bool {
 	return bytes.Equal(addr[:], ZeroAddress[:])
 }
 
+// RemoveHexPrefix will remove the "0x" prefix to a hex string and also fix the byte string
+// to an even length
 func RemoveHexPrefix(hexStr string) string {
 	if len(hexStr) >= 2 && (hexStr[:2] == "0x" || hexStr[:2] == "0X") {
 		hexStr = hexStr[2:]
